@@ -54,5 +54,32 @@ www:
 	cp overview.html /cygdrive/c/xampp/htdocs/pa/Mill
 	cp rules.html /cygdrive/c/xampp/htdocs/pa/Mill
 	cp shared.js /cygdrive/c/xampp/htdocs/pa/Mill
+	cp thumbprint.jpg /cygdrive/c/xampp/htdocs/pa/Mill
 	cp wasm_worker.js /cygdrive/c/xampp/htdocs/pa/Mill
 	cp workers.png /cygdrive/c/xampp/htdocs/pa/Mill
+	cp DM.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp DM2.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp GS.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp Makefile /cygdrive/c/xampp/htdocs/www/Mill
+	cp Mill.css /cygdrive/c/xampp/htdocs/www/Mill
+	cp Mill.html /cygdrive/c/xampp/htdocs/www/Mill
+	cp Mill.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp Mills.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp NM.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp Tournament.csv /cygdrive/c/xampp/htdocs/www/Mill
+	cp brains.csv /cygdrive/c/xampp/htdocs/www/Mill
+	cp empty.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp gameWindow.png /cygdrive/c/xampp/htdocs/www/Mill
+	cp js_worker.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp manual.html /cygdrive/c/xampp/htdocs/www/Mill
+	cp millOB.json /cygdrive/c/xampp/htdocs/www/Mill
+	cp millWorker.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp mill_engine.cpp /cygdrive/c/xampp/htdocs/www/Mill
+	cp mill_engine.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp mill_engine.wasm /cygdrive/c/xampp/htdocs/www/Mill
+	cp overview.html /cygdrive/c/xampp/htdocs/www/Mill
+	cp rules.html /cygdrive/c/xampp/htdocs/www/Mill
+	cp shared.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp thumbprint.jpg /cygdrive/c/xampp/htdocs/www/Mill
+	cp wasm_worker.js /cygdrive/c/xampp/htdocs/www/Mill
+	cp workers.png /cygdrive/c/xampp/htdocs/www/Mill

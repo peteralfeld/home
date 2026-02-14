@@ -112,7 +112,7 @@ let currentDepth = 0;
 let WhiteBrain = defaultBrain();
 let BlackBrain = defaultBrain();
 let WhiteHuman = true;
-let BlackHuman = true;
+let BlackHuman = false;
 let WhiteDepth = parseInt(searchDepthWhiteElement.value, 10);
 let BlackDepth = parseInt(searchDepthBlackElement.value, 10);
 let WhiteEvalMode = 0;
@@ -143,8 +143,8 @@ let showEligibles = true;
 let showHighlight = true;
 let timing = false;
 let humanTiming = false;
-let timePerMoveForWhite = 2;
-let timePerMoveForBlack = 2;
+let timePerMoveForWhite = 3;
+let timePerMoveForBlack = 3;
 let whiteTimeRemaining = timePerMoveForWhite;
 let blackTimeRemaining = timePerMoveForBlack;
 let timerInterval = null;
@@ -208,14 +208,23 @@ function setupMenus() {
     const blackPlayerMenu = document.getElementById("BlackPlayer");
     const editMenu = document.getElementById("editBrainSelect");
     whitePlayerMenu.innerHTML = '<option value="0" selected>Human</option>';
-    blackPlayerMenu.innerHTML = '<option value="0" selected>Human</option>';
+    blackPlayerMenu.innerHTML = '<option value="0">Human</option>';
     editMenu.innerHTML = '<option value="0" disabled selected>Brain</option>';
     for (let i = 1; i < BrainList.length; i++) {
         if (BrainList[i]) {
             let name = BrainList[i].name;
-            whitePlayerMenu.add(new Option(name, i));
-            blackPlayerMenu.add(new Option(name, i));
-            editMenu.add(new Option(name, i));
+            let whiteOpt = new Option(name, i);
+            let blackOpt = new Option(name, i);
+            
+            // Logic to auto-select Arwen for Black
+            if (name === "Arwen") {
+                blackOpt.selected = true;
+                BlackBrain = BrainList[i]; // Assign the brain object
+            }
+            
+            whitePlayerMenu.add(whiteOpt);
+            blackPlayerMenu.add(blackOpt);
+            // ...
         }
     }
     const wContainer = whitePlayerMenu.parentNode;
