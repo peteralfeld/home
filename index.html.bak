@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Home Page of Peter Alfeld</title>
+    <link rel="stylesheet" href="pa.css">
+</head>
+<body>
+
+  <H1> <a href="me.html">Peter Alfeld</a>'s Home Page </H1>
+
+
+
+<IMG SRC="pa.jpg" style = "height: 200px; width: auto; float: left; margin-right: 20px;">
+
+
+
+  <p>  After spending 48 years teaching and researching mathematics, I retired in 2025. I am now a professor emeritus of mathematics at the University of Utah.   My favorite activity as a professor was teaching large classes to the new and upcoming generation.   It's so refreshing! A close second, however, was computer programming, which I started as an undergraduate student and pursued intensively throughout my career, mostly in the context of my research.   
+
+
+  <p>    Now that I am retired, I am  spending a significant amount of time learning new computer languages and writing software, strictly for (my, and perhaps your) entertainment. The results of this continued activity will show up here.
+      I am also posting some of the software I wrote in the past.
+If you have any questions, suggestions, or comments on these pages, or you find any bugs or errors, please write to me at &nbsp;<img src="address.png" alt="email address" style="height: 16px; vertical-align: middle;">.
+
+  <p>   Anything you see <a href="me.html"> in this color </a> is a clickable link that takes you to more information, or, more frequently, to software and documentation.   For example, if you click on the link in the preceding sentence, or on my name in the headline of this page, you are directed  to a short summary of my life's story.  Moreover, I'll use <e>this color</e> for highlighting key words and phrases, and   <i>this color</i> for emphasis.  I'm planning to keep this format for all new items on this web site, even though some of the older web sites (linked below) come with their own distinct formats.
+
+<p>    One of my first projects after retirement was to learn <e>JavaScript</e> which is universally used to create interactive web pages.   Virtually all browsers support JS and while it has its idiosyncrasies and weaknesses, its ubiquity makes it relevant and useful.    For JS codes no downloads are required. On the other hand, I learned, to my surprise and chagrin, that browsers actually limit the computational resources they make available to code that you run within your browser.   You don't get full access to the memory on your machine, or to the full number of threads it can run simultaneously, and computations turn to a crawl when you make your browser window invisible to work on something else. To me, this rules out JS as a general computing language.   It can be used in a stand alone fashion, but there are more powerful alternatives (e.g., Java, Python or C++).  <p> I also learned something I was unaware of for many years:   JavaScript is unrelated to Java!  According to my elder son, JS relates to Java the same way a butterfly relates to butter!
+
+<p> We'll start with the fun (i.e., <e>new) stuff</e>.   Right now there are only two items, but there will be more. I am now working on a three-dimensional version of the game of <i>Reversi</i> (also called <i> Othello</i>) that will let you use the graphics card of your computer to visualize and manipulate the three-dimensional game board in space, so that you can see what you are doing.  It will show up here when it's ready.
+
+    <a href="financial/FI.html"><H2> A financial Calculator </H2></a>
+
+       <p> As a first exercise in designing JS based interactive web pages, I wrote an <e>online financial calculator</e> modeled after the well-known and widely used <e>HP 12C</e> financial calculator.   The main idfference is that the 12C denotes a payment as negative number (because it subtracts from your wealth) whereas my JS code prepresents it as a positive number.   To me this makes more sense, the ngativesign is hiddent in the word <i>payment</i>, not in the dollar figure.
+
+    <a href="Mill/Mill.html"><H2>The game of Mill (9 Men's Morris) </h2></a>
+
+    <p> This is another example of an interactive JS page.   I chose the board game variously known as <i>Nine Men's Morris</i> or <i>Mill</i> because it's reasonably complex, but not too complex for a first project, and it has not been as widely programmed as, for example, chess or Go.  It  may not actually be all that interesting as a game, but in this project you can do much more than just play the game.  In particular, you can actively explore various computer science topics such as &alpha;/&beta;-pruning, parallel processing, the performance of JavaScript versus that of C++, Transposition Tables, hashing, and a particular form of machine learning.
+
+
+      <H2> Legacy Websites </H2>
+
+      The remaining links below take you to some web sites that I developed while still working.  They contain large (by my lights) bodies of Java software that let you do some sophisticated explorations in a very small subfield of mathematics. I don't really maintain those codes any more, and you may encounter some out of date information, or perhaps some dead links.
+
+
+<H2> Multivariate Splines </H2>
+
+The focus of much of my research was a subject called <e>multivariate splines</e> which are smooth piecewise polynomial functions in several variables, defined on a partition of an underlying domain.   If you are interested in more information read this <a href="mfo.pdf">survey</a> which I wrote in 2015.  I wrote three major software packages in Java.  To use them you'll need to download a zip file and have Java available on your computer.   Follow these links for information and software.  If you know what you are doing and just want to download the software you can use the link in the relevant item which will let you download the appropriate zip file.
+
+<OL>
+  <li> <a href = "MDS/index.html"> Multivariate Splines on Triangulations </a> &nbsp;<e>Download:</e> &nbsp; <a href="MDS/MDS.zip"> MDS.zip </a></li>
+  <li> <a href = "3DMDS/index.html"> Multivariate Splines on Tetrahedral Decompositions. </a> &nbsp;<e>Download:</e> &nbsp; <a href="3DMDS/3DMDS.zip"> 3DMDS.zip </a></li>
+  <li> <a href = "tp/index.html"> Multivariate Splines on Tensor Product Grids.</a> &nbsp;<e>Download:</e> &nbsp; <a href="tp/tp.zip"> tp.zip </a></li>
+  </OL>
+
+
+  <a href="sliderules/index.html"><H2>What can you do with a Slide Rule?</H2></a>
+
+There was a time when electronic calculators and personal computers did not yet exist.  This did not stop us from doing complicated things at the time, like going to the moon, figuring out the double helix, or designing the Boeing 747. In those days, when we needed to compute things, we used <e>slide rules</e> which are marvelous and beautiful instruments!
+There are many pages about slide rules on the web, and you can still buy brand new slide rules (50 years old but never used, and still in their factory supplied box) in various places. The purpose of this particular and quite idiosyncratic slide rule page is to describe common scales used on slide rules, and the kind of mathematical expressions that can be evaluated with those scales.
+
+</body>
+</html>

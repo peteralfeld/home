@@ -1,0 +1,1877 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            What Can You Do With A Slide Rule?
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+
+    <BODY BGCOLOR=ffffff>
+
+        <IMG SRC="../images/UUlogo.gif" ALIGN="LEFT" BORDER=1 HSPACE=10>
+
+        <H6>
+            <A HREF="http://www.math.utah.edu/~pa/">
+                Peter Alfeld,
+            </A>
+            ---
+            <A HREF="http://www.math.utah.edu/">
+                Department of Mathematics,
+            </A>
+            ---
+            <A HREF="http://www.science.utah.edu/">
+                College of Science
+            </A>
+            ---
+            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                University of Utah
+            </A>
+        </H6>
+
+
+
+
+        <H1>
+            What Can You Do With A Slide Rule?
+        </H1>
+
+    There was a time when many of us were already alive, and yet
+electronic calculators did not exist.  This did not stop us from doing
+complicated things, like going to the moon, figuring out the double
+helix, or designing the Boeing 747. In those days, when we needed to
+compute things we used <b>slide rules</b> which are marvelous and
+beautiful instruments!
+
+<p> There are many pages about slide rules on the web, and you can
+still buy brand new slide rules (40 years old but never used, and
+still in their factory supplied box) in various places.  The purpose
+of this particular and quite idiosyncratic slide rule page is to list
+common scales used on slide rules, and the kind of mathematical
+expressions that could be evaluated with those scales.
+
+<p>
+
+<a href="p1.jpg"><img src= "p1small.jpg"></a>
+
+<p>
+<a href="p2.jpg"><img src= "p2small.jpg"></a>
+
+<p> The two images on this page show the two sides of a particular
+slide rule in my collection.  This may be one of the fanciest and
+perhaps most beautiful slide rules ever made.  It's a Faber Castell
+Novo Biplex 2/83 N.  It's made of plastic, and has 30 scales and 11
+cursor marks. The rule is about 13.5 inches long and 3.25 inches wide.
+You can click on the pictures and see an enlarged image, but that
+doesn't come close to holding the real thing in your hands. It feels
+heavy and solid.  The slide and cursor move with silky smoothness and
+yet they stay in place wherever you let go of them.  The lettering is
+crisp and detailed, and pristine!  No space is wasted, but the
+information is not crowded either.  Every scale has a purpose.  German
+made slide rules of that time (the late 1960s) usually come with an
+accessory plastic ruler.  This particular slide rule has a ruler (not
+shown) that lists common formulas and physical data on one side. Those
+may be useful for slide rule calculations.  However, the other side of
+that ruler has a detailed list and explanation of common <em>notations
+in set theory</em>!  This is about as useless for slide rule
+calculations as a list of large mammals.  Apparently this slide rule
+was made when the "new math" was at its zenith and Faber Castell
+wanted its share of the action.
+
+<h2> The Basic Idea</h2>
+
+It's clear how to add or subtract two lengths using two ordinary
+rulers.  Slide rules do the same thing, add and subtract lengths, but
+they don't <em>call</em> them lengths.  For example, by calling them
+logarithms, you can multiply and divide numbers.  In fact, I don't
+know of any slide rule that actually let's you add or subtract
+numbers.  In the heyday of slide rules that was considered a trivial
+task that you did in your head, or on a piece of paper if you had to.
+
+<p>
+
+A slide rule consists of three parts: the <b>body</b>, the
+<b>slide</b>, and the <b>cursor</b>. The body and the slide are marked
+with scales.  The cursor has a <b>hairline</b> that facilitates accurate
+positioning of the cursor at a specific point on some scale.  There
+may be other marks on the cursor that are used for specific and
+special purposes.
+
+<h2> Basic Multiplication </h2>
+
+
+The most basic procedure carried out on a slide rule is the
+multiplication of two numbers <b>u</b> and <b>v</b> using the <b>C</b>
+and <b>D</b> scales.  These two scales are identical. <b>C</b> is on
+the slide, and <b>D</b> is on the body.  Move the hairline over
+<b>u</b> on the body.  Move the slide so that its beginning (marked by
+<b>1</b> on the <b>C</b> scale) lines up with the hairline.  Move the
+cursor to the number <b>v</b> on the slide.  Read the result on the
+<b>D</b> scale.  If the number <b>v</b> projects beyond the end of the
+slide rule move the end of the slide rule (marked with <b>10</b> on
+the <b>C</b> scale) above <b>u</b> and read the result as before on
+the <b>D</b> scale underneath the number <b>v</b> on the <b>C</b>
+scale.
+ 
+<H2> Why?</H2>
+
+  Why does this work?  The <b>C</b> and <b>D</b> scales show a number
+<b>x</b> that equals the exponential of the distance of <b>x</b> from
+the beginning of the <b>C</b> or <b>D</b> scale.  So basically you are
+adding the logarithms of the numbers <b>u</b> and <b>v</b>, and the
+logarithm of the product equals the sum of the logarithms.  This is
+the fundamental identity underlying all slide rules, and it is worth
+stating prominently:
+
+<P>
+<center>
+<IMG
+ WIDTH="234" HEIGHT="44" ALIGN="MIDDLE" BORDER="2"
+ SRC="log.gif" ALT="$\displaystyle \log(u*v) = \log u + \log v.$">
+</center>
+
+<p>
+I's convenient to think of the logarithm as the common (base 10)
+logarithm, and the length of the slide rule as one unit, but you can
+also think of <b>log</b> meaning the natural logarithm, and the length
+of the slide rule being <b>log(10)</b> units.
+
+
+
+<p> The multiplication of two numbers exhibits two important
+properties of slide rule calculations:
+
+<ol>
+<li> The real number line is infinite and slide rules have finite
+length.  Some scales only show a part of the real number line.
+Others, like the <b>C</b> and <b>D</b> scales, are periodic, and only
+one period is shown.  <b>x</b> is shown as a number between 1 and 10,
+and it is determined only up to a factor that is an integer power of
+<b>10</b>.  In other words your slide rule does not usually show the location
+of the decimal point.  You are supposed to understand your problem
+well enough so you can tell where to put it.  The slide rule also does
+not tell you the sign of your result.
+</li>
+<li> Compared to a calculator, the slide rule is severely limited in
+its accuracy.  You can enter and read a number typically to two or
+three decimal digits only. </li>
+</ol>
+
+<H2>Scales</H2>
+
+
+
+<p> All other scales on a slide rule are referenced to the <b>C</b> and
+<b>D</b> scales.
+
+
+
+
+
+
+
+
+<BR>
+Following is a list of scales commonly found on slide rules.  For each
+scale we list the commonly used name (like M<b>C</b>), the function
+underlying it (like <IMG
+ WIDTH="87" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg1.gif"
+ ALT="$ f(x) = x$">), and some explanations or comments.
+
+<P>
+
+
+
+<table border = "1">
+
+<TR>
+<TD><B>Name</B></td>
+<TD><B>function</B></td>
+<TD><B>Comments</B></td>
+</tr>
+
+<tr></tr>
+
+
+
+<TR><TD><B><font color="0000aa">C, D</font></b></td><td> <IMG
+ WIDTH="87" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg1.gif"
+ ALT="$ f(x) = x$"></td><td>  The basic scales.  <B><font color="0000aa">C</font></b> is on the slide,
+<B><font color="0000aa">D</font></b> on the body.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">CI, DI</font></b></td><td> <IMG
+ WIDTH="89" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg2.gif"
+ ALT="$ f(x) = \frac{1}{x}$"></td><td> <B><font color="0000aa">CI</font></b> is on the slide,
+<B><font color="0000aa">DI</font></b> on the body.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">CF, DF</font></b></td><td> <IMG
+ WIDTH="99" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg3.gif"
+ ALT="$ f(x) = \pi x$"></td><td>    <B><font color="0000aa">CF</font></b> is on the slide,
+<B><font color="0000aa">DF</font></b> on the body.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">CIF, DIF</font></b></td><td> <IMG
+ WIDTH="99" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg4.gif"
+ ALT="$ f(x) = \frac{1}{\pi x}$"></td><td>  <B><font color="0000aa">CIF</font></b> is on the slide,
+<B><font color="0000aa">DIF</font></b> on the body.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">A, B</font></b></td><td> <IMG
+ WIDTH="96" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg5.gif"
+ ALT="$ f(x) = x^2$"></td><td> <B><font color="0000aa">A</font></b> is on the body, 
+<B><font color="0000aa">B</font></B> is
+on the slide.  
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">R</font></b>, <B><font
+color="0000aa">W</font></b></td><td> <IMG
+ WIDTH="104" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg6.gif"
+ ALT="$ f(x) = \sqrt{x}$"></td><td>  May come with subscripts to
+distinguish <IMG
+ WIDTH="36" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg7.gif"
+ ALT="$ \sqrt{x}$"> and <IMG
+ WIDTH="57" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg8.gif"
+ ALT="$ \sqrt{10 x}$">, and have a prime
+attached to distinguish location on the body or slide. 
+These scales are labeled <B><font color="0000aa">W</font></b>
+(<em>Wurzel</em>) or <B><font color="0000aa">R</font></b>
+(<em>Root</em>).  The radical symbol may also be used.
+
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">K</font></b></td><td> <IMG
+ WIDTH="96" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg9.gif"
+ ALT="$ f(x) = x^3$"></td><td>
+This scale usually occurs by itself, rather than as a member of a pair.
+</TD></TR>
+<TR><TD><B><font color="0000aa">LL</font></b></td><td> <IMG
+ WIDTH="95" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg10.gif"
+ ALT="$ f(x) = e^x$"> or <IMG
+ WIDTH="108" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg11.gif"
+ ALT="$ f(x) = e^{-x}$"></td><td> This is one of
+the scales that show the decimal point.  Usually there are several
+scales, like
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="326" HEIGHT="110" BORDER="0"
+ SRC="qimg12.gif"
+ ALT="\begin{displaymath}\begin{array}{lcccc}
+&amp; \hbox{LL}_0 &amp; \hbox{LL}_1 &amp; \hbox{LL}...
+...) = &amp; e^{0.001x} &amp; e^{0.01x} &amp; e^{0.1x} &amp; e^x &amp; \\
+\end{array}\end{displaymath}">
+</DIV><P></P>
+and
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="373" HEIGHT="110" BORDER="0"
+ SRC="qimg13.gif"
+ ALT="\begin{displaymath}\begin{array}{lcccc}
+&amp; \hbox{LL}_{00} &amp; \hbox{LL}_{01} &amp; \hb...
+...e^{-0.001x} &amp; e^{-0.01x} &amp; e^{-0.1x} &amp; e^{-x} &amp; \\
+\end{array}\end{displaymath}"> <p>where 
+ <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is in the interval
+<IMG
+ WIDTH="59" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg31.gif"
+ ALT="$ [1,10]$">
+</DIV>.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">L</font></b></td><td> <IMG
+ WIDTH="117" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg14.gif"
+ ALT="$ f(x) = \log x$"></td><td>  The only scale on a slide rule that
+has a constant increment.  Usually on the slide.  If there was one such
+scale on the slide and one on the body they could be used for the 
+<em>addition</em>
+of numbers.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">S</font></b></td><td> <IMG
+ WIDTH="143" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg15.gif"
+ ALT="$ f(x) = \arcsin x$">, <IMG
+ WIDTH="146" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg16.gif"
+ ALT="$ f(x) = \arccos x$"></td><td> Lists the
+angle <IMG
+ WIDTH="20" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg17.gif"
+ ALT="$ \alpha$"> for which <IMG
+ WIDTH="89" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg18.gif"
+ ALT="$ x = sin \alpha$"> of <IMG
+ WIDTH="91" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg19.gif"
+ ALT="$ x=\cos \alpha$">.
+On slide rules, all angles are measured in degrees, and reside in the interval
+<IMG
+ WIDTH="78" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg20.gif"
+ ALT="$ [0^\circ,90^\circ]$"> of numbers.  The scale usually lists both
+<IMG
+ WIDTH="60" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg21.gif"
+ ALT="$ \arcsin$"> and <IMG
+ WIDTH="62" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg22.gif"
+ ALT="$ \arccos$">, using the identity <P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="195" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg23.gif"
+ ALT="$\displaystyle \sin\(90^\circ -
+\alpha\)= \cos\alpha.$">
+</DIV><P></P>
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">T</font></b></td><td> <IMG
+ WIDTH="148" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg24.gif"
+ ALT="$ f(x) = \arctan x$">, <IMG
+ WIDTH="149" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg25.gif"
+ ALT="$ f(x) = \hbox{arccot~} x$"></td><td> Similar to
+the <B><font color="0000aa">S</font></b> scale.  <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is in the interval <IMG
+ WIDTH="64" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg27.gif"
+ ALT="$ [0.1,1]$">, <IMG
+ WIDTH="80" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg28.gif"
+ ALT="$ \arctan x$"> 
+is in<IMG
+ WIDTH="94" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg29.gif"
+ ALT="$ [5.8^\circ,45^\circ]$"> and <IMG
+ WIDTH="237" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg30.gif"
+ ALT="$ \hbox{arccot~} x = 90^\circ - \arctan
+x$">. There may be a similar scale of <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> in the interval
+<IMG
+ WIDTH="59" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg31.gif"
+ ALT="$ [1,10]$"> in which case subscripts may be used to distinguish the
+scales.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">ST</font></b></td><td> <IMG
+ WIDTH="114" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg32.gif"
+ ALT="$ f(x) = \hbox{arc} x$"></td><td> showing the angle (in
+degrees) in the unit circle for an arc of length <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> where <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is
+in the interval <IMG
+ WIDTH="91" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg33.gif"
+ ALT="$ [0.01,0.1]$">.  For such small arcs, within the
+accuracy of a slide rule, the angle (measured in radians), the sine,
+and the tangent are all equal.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">P</font></b></td><td> <IMG
+ WIDTH="149" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg34.gif"
+ ALT="$ f(x) = \sqrt{1-x^2}$"></td><td> for <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> in the interval 
+<IMG
+ WIDTH="64" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg27.gif"
+ ALT="$ [0.1,1]$">.  The Pythagorean Scale.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">H</font></b></td><td>  <IMG
+ WIDTH="149" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg35.gif"
+ ALT="$ f(x) = \sqrt{1+x^2}$"></td><td> for <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> in the interval 
+<IMG
+ WIDTH="64" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg27.gif"
+ ALT="$ [0.1,1]$">.  There may be another scale for <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> in <IMG
+ WIDTH="59" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg31.gif"
+ ALT="$ [1,10]$">
+and the two scales may be distinguished by subscripts.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">Sh</font></b></td><td> <IMG
+ WIDTH="213" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg36.gif"
+ ALT="$ f^{-1}(x) = (e^x-e^{-x})/2$"></td><td> <IMG
+ WIDTH="19" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg37.gif"
+ ALT="$ f$"> is the inverse of
+the hyperbolic sine.  <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is in the interval <IMG
+ WIDTH="59" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg31.gif"
+ ALT="$ [1,10]$"> If a scale
+is present for <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> in <IMG
+ WIDTH="75" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg38.gif"
+ ALT="$ [0.1,10]$"> the scales may be distinguished
+by subscripts.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">Ch</font></b></td><td> <IMG
+ WIDTH="213" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg39.gif"
+ ALT="$ f^{-1}(x) = (e^x+e^{-x})/2$"></td><td> <IMG
+ WIDTH="19" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg37.gif"
+ ALT="$ f$"> is the
+inverse of the hyperbolic cosine.   <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is in the interval <IMG
+ WIDTH="59" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg31.gif"
+ ALT="$ [1,10]$">.
+
+<P>
+</TD></TR>
+<TR><TD><B><font color="0000aa">Th</font></b></td><td> <IMG
+ WIDTH="181" HEIGHT="64" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg40.gif"
+ ALT="$ f^{-1}(x) = (e^x-e^{-x})/(e^x+e^{-x})$"></td><td> <IMG
+ WIDTH="19" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg37.gif"
+ ALT="$ f$"> is
+the inverse of the hyperbolic tangent.  <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="qimg26.gif"
+ ALT="$ x$"> is in the interval <IMG
+ WIDTH="64" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="qimg27.gif"
+ ALT="$ [0.1,1]$">.
+
+<P>
+</TD></TR>
+</TABLE>
+
+<P>
+
+
+<H2>One Variable</H2>
+
+The power of a slide rule stems from the interplay of the scales and
+the movements of the slide and the cursor.  However, even if your
+slide was lined up with the scales on the body, but otherwise frozen
+in place, you could use your slide rule as a lookup table for a large
+number of formulas.  Some of them are listed in the following two
+tables. For example, if you wish to compute the expression <IMG
+WIDTH="62" HEIGHT="51" ALIGN="MIDDLE" BORDER="0" SRC="simg39.gif"
+ALT="$ \sqrt {x/\pi} $"> move the hairline over <IMG WIDTH="19"
+HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="simg14.gif" ALT="$ x $"> on
+the CF or DF scale, and read the result on the W scale.  Note that
+<IMG WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="simg14.gif"
+ALT="$ x $"> is not the number under the hairline on the C scale,
+unless you choose to start on that scale!
+<P>
+
+<table border="1">
+
+<tr><td>
+</td><td> <IMG
+ WIDTH="41" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg1.gif"
+ ALT="$ CD $">  </td><td> <IMG
+ WIDTH="52" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg2.gif"
+ ALT="$ CDI $">  </td><td> <IMG
+ WIDTH="57" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg3.gif"
+ ALT="$ CDF $">  </td><td> <IMG
+ WIDTH="68" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg4.gif"
+ ALT="$ CDIF $">  </td><td> <IMG
+ WIDTH="39" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg5.gif"
+ ALT="$ AB $">  </td><td> <IMG
+ WIDTH="29" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg6.gif"
+ ALT="$ W $">  </td><td> <IMG
+ WIDTH="26" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg7.gif"
+ ALT="$ K $">  </td></tr>
+<tr><td>
+CD    </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg15.gif"
+ ALT="$ {x}^{-1} $">  </td><td> <IMG
+ WIDTH="31" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg16.gif"
+ ALT="$ \pi x $">  </td><td> <IMG
+ WIDTH="31" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg17.gif"
+ ALT="$ {\frac {1}{\pi x}} $">  </td><td> <IMG
+ WIDTH="28" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg18.gif"
+ ALT="$ {x}^{2} $">  </td><td> <IMG
+ WIDTH="36" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg19.gif"
+ ALT="$ \sqrt {x} $">  </td><td> <IMG
+ WIDTH="28" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg20.gif"
+ ALT="$ {x}^{3} $">  </td></tr>
+<tr><td>
+CDI    </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg15.gif"
+ ALT="$ {x}^{-1} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="22" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg27.gif"
+ ALT="$ {\frac {\pi}{x}} $">  </td><td> <IMG
+ WIDTH="22" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg28.gif"
+ ALT="$ {\frac {x}{\pi}} $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg29.gif"
+ ALT="$ {x}^{-2} $">  </td><td> <IMG
+ WIDTH="35" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg30.gif"
+ ALT="$ {\frac {1}{\sqrt {x}}} $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg31.gif"
+ ALT="$ {x}^{-3} $">  </td></tr>
+<tr><td>
+CDF    </td><td> <IMG
+ WIDTH="22" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg28.gif"
+ ALT="$ {\frac {x}{\pi}} $">  </td><td> <IMG
+ WIDTH="22" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg27.gif"
+ ALT="$ {\frac {\pi}{x}} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg15.gif"
+ ALT="$ {x}^{-1} $">  </td><td> <IMG
+ WIDTH="30" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg38.gif"
+ ALT="$ {\frac {{x}^{2}}{{\pi}^{2}}} $">  </td><td> <IMG
+ WIDTH="62" HEIGHT="51" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg39.gif"
+ ALT="$ \sqrt {x/\pi} $">  </td><td> <IMG
+ WIDTH="30" HEIGHT="55" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg40.gif"
+ ALT="$ {\frac {{x}^{3}}{{\pi}^{3}}} $">  </td></tr>
+<tr><td>
+CDIF    </td><td> <IMG
+ WIDTH="31" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg17.gif"
+ ALT="$ {\frac {1}{\pi x}} $">  </td><td> <IMG
+ WIDTH="31" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg16.gif"
+ ALT="$ \pi x $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg15.gif"
+ ALT="$ {x}^{-1} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="47" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg47.gif"
+ ALT="$ {\frac {1}{{x}^{2}{\pi}^{2}}} $">  </td><td> <IMG
+ WIDTH="55" HEIGHT="57" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg48.gif"
+ ALT="$ {\frac {\sqrt {{\pi}^{-1}}}{\sqrt {x}}} $">  </td><td> <IMG
+ WIDTH="47" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg49.gif"
+ ALT="$ {\frac {1}{{x}^{3}{\pi}^{3}}} $">  </td></tr>
+<tr><td>
+AB    </td><td> <IMG
+ WIDTH="36" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg19.gif"
+ ALT="$ \sqrt {x} $">  </td><td> <IMG
+ WIDTH="35" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg30.gif"
+ ALT="$ {\frac {1}{\sqrt {x}}} $">  </td><td> <IMG
+ WIDTH="48" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg56.gif"
+ ALT="$ \sqrt {x}\pi $">  </td><td> <IMG
+ WIDTH="45" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg57.gif"
+ ALT="$ {\frac {1}{\sqrt {x}\pi}} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="37" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg58.gif"
+ ALT="$ \sqrt [4]{x} $">  </td><td> <IMG
+ WIDTH="45" HEIGHT="27" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg59.gif"
+ ALT="$ {x}^{3/2} $">  </td></tr>
+<tr><td>
+W    </td><td> <IMG
+ WIDTH="28" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg18.gif"
+ ALT="$ {x}^{2} $">  </td><td> <IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg29.gif"
+ ALT="$ {x}^{-2} $">  </td><td> <IMG
+ WIDTH="40" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg66.gif"
+ ALT="$ {x}^{2}\pi $">  </td><td> <IMG
+ WIDTH="39" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg67.gif"
+ ALT="$ {\frac {1}{{x}^{2}\pi}} $">  </td><td> <IMG
+ WIDTH="28" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg68.gif"
+ ALT="$ {x}^{4} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="28" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg69.gif"
+ ALT="$ {x}^{6} $">  </td></tr>
+<tr><td>
+K    </td><td> <IMG
+ WIDTH="37" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg76.gif"
+ ALT="$ \sqrt [3]{x} $">  </td><td> <IMG
+ WIDTH="37" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg77.gif"
+ ALT="$ {\frac {1}{\sqrt [3]{x}}} $">  </td><td> <IMG
+ WIDTH="50" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg78.gif"
+ ALT="$ \sqrt [3]{x}\pi $">  </td><td> <IMG
+ WIDTH="47" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg79.gif"
+ ALT="$ {\frac {1}{\sqrt [3]{x}\pi}} $">  </td><td> <IMG
+ WIDTH="45" HEIGHT="27" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg80.gif"
+ ALT="$ {x}^{2/3} $">  </td><td> <IMG
+ WIDTH="37" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg81.gif"
+ ALT="$ \sqrt [6]{x} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td></tr>
+<tr><td>
+LL    </td><td> <IMG
+ WIDTH="55" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg88.gif"
+ ALT="$ \ln \left( x \right) $">  </td><td> <IMG
+ WIDTH="94" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg89.gif"
+ ALT="$ \left( \ln \left( x \right) \right) ^{-1} $">  </td><td> <IMG
+ WIDTH="71" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg90.gif"
+ ALT="$ \ln \left( x \right) \pi $">  </td><td> <IMG
+ WIDTH="58" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg91.gif"
+ ALT="$ {\frac {1}{\ln \left( x \right) \pi}} $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg92.gif"
+ ALT="$ \left( \ln \left( x \right) \right) ^{2} $">  </td><td> <IMG
+ WIDTH="76" HEIGHT="51" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg93.gif"
+ ALT="$ \sqrt {\ln \left( x \right) } $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg94.gif"
+ ALT="$ \left( \ln \left( x \right) \right) ^{3} $">  </td></tr>
+<tr><td>
+L    </td><td> <IMG
+ WIDTH="38" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg100.gif"
+ ALT="$ {10}^{x} $">  </td><td> <IMG
+ WIDTH="51" HEIGHT="26" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg101.gif"
+ ALT="$ {10}^{-x} $">  </td><td> <IMG
+ WIDTH="50" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg102.gif"
+ ALT="$ {10}^{x}\pi $">  </td><td> <IMG
+ WIDTH="56" HEIGHT="64" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg103.gif"
+ ALT="$ {\frac {\displaystyle {10}^{-x}}{\displaystyle\pi}} $">  </td><td> <IMG
+ WIDTH="48" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg104.gif"
+ ALT="$ {100}^{x} $">  </td><td> <IMG
+ WIDTH="55" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg105.gif"
+ ALT="$ \sqrt{10^x} $">  </td><td> <IMG
+ WIDTH="59" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg106.gif"
+ ALT="$ {1000}^{x} $">  </td></tr>
+<tr><td>
+S    </td><td> <IMG
+ WIDTH="64" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg112.gif"
+ ALT="$ \sin \left( x \right) $">  </td><td> <IMG
+ WIDTH="102" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg113.gif"
+ ALT="$ \left( \sin \left( x \right) \right) ^{-1} $">  </td><td> <IMG
+ WIDTH="80" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg114.gif"
+ ALT="$ \sin \left( x \right) \pi $">  </td><td> <IMG
+ WIDTH="65" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg115.gif"
+ ALT="$ {\frac {1}{\sin \left( x \right) \pi}} $">  </td><td> <IMG
+ WIDTH="89" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg116.gif"
+ ALT="$ \left( \sin \left( x \right) \right) ^{2} $">  </td><td> <IMG
+ WIDTH="84" HEIGHT="51" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg117.gif"
+ ALT="$ \sqrt {\sin \left( x \right) } $">  </td><td> <IMG
+ WIDTH="89" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg118.gif"
+ ALT="$ \left(\sin \left( x \right)\right)^3 $">  </td></tr>
+<tr><td>
+T    </td><td> <IMG
+ WIDTH="68" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg124.gif"
+ ALT="$ \tan \left( x \right) $">  </td><td> <IMG
+ WIDTH="107" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg125.gif"
+ ALT="$ \left( \tan \left( x \right) \right) ^{-1} $">  </td><td> <IMG
+ WIDTH="84" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg126.gif"
+ ALT="$ \tan \left( x \right) \pi $">  </td><td> <IMG
+ WIDTH="68" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg127.gif"
+ ALT="$ {\frac {1}{\tan \left( x \right) \pi}} $">  </td><td> <IMG
+ WIDTH="94" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg128.gif"
+ ALT="$ \left( \tan \left( x \right) \right) ^{2} $">  </td><td> <IMG
+ WIDTH="89" HEIGHT="51" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg129.gif"
+ ALT="$ \sqrt {\tan \left( x \right) } $">  </td><td> <IMG
+ WIDTH="94" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg130.gif"
+ ALT="$ \left( \tan \left( x \right) \right) ^{3} $">  </td></tr>
+<tr><td>
+P    </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg25.gif"
+ ALT="$ \sqrt {1-{x}^{2}} $">  </td><td> <IMG
+ WIDTH="64" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg136.gif"
+ ALT="$ {\frac {1}{\sqrt {1-{x}^{2}}}} $">  </td><td> <IMG
+ WIDTH="93" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg137.gif"
+ ALT="$ \sqrt {1-{x}^{2}}\pi $">  </td><td> <IMG
+ WIDTH="74" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg138.gif"
+ ALT="$ {\frac {1}{\sqrt {1-{x}^{2}}\pi}} $">  </td><td> <IMG
+ WIDTH="64" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg139.gif"
+ ALT="$ 1-{x}^{2} $">  </td><td> <IMG
+ WIDTH="82" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg140.gif"
+ ALT="$ \sqrt [4]{1-{x}^{2}} $">  </td><td> <IMG
+ WIDTH="109" HEIGHT="59" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg141.gif"
+ ALT="$ \left( 1-{x}^{2} \right) ^{3/2} $">  </td></tr>
+<tr><td>
+H    </td><td> <IMG
+ WIDTH="97" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg147.gif"
+ ALT="$ \sqrt {-1+{x}^{2}} $">  </td><td> <IMG
+ WIDTH="77" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg148.gif"
+ ALT="$ {\frac {1}{\sqrt {-1+{x}^{2}}}} $">  </td><td> <IMG
+ WIDTH="110" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg149.gif"
+ ALT="$ \sqrt {-1+{x}^{2}}\pi $">  </td><td> <IMG
+ WIDTH="87" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg150.gif"
+ ALT="$ {\frac {1}{\sqrt {-1+{x}^{2}}\pi}} $">  </td><td> <IMG
+ WIDTH="80" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg151.gif"
+ ALT="$ -1+{x}^{2} $">  </td><td> <IMG
+ WIDTH="98" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg152.gif"
+ ALT="$ \sqrt [4]{-1+{x}^{2}} $">  </td><td> <IMG
+ WIDTH="125" HEIGHT="59" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg153.gif"
+ ALT="$ \left( -1+{x}^{2} \right) ^{3/2} $">  </td></tr>
+
+<P>
+
+
+</table>
+
+
+
+<table border="1">
+
+
+<tr><td>
+    </td><td> <IMG
+ WIDTH="35" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg8.gif"
+ ALT="$ LL $">  </td><td> <IMG
+ WIDTH="21" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg9.gif"
+ ALT="$ L $">  </td><td> <IMG
+ WIDTH="21" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg10.gif"
+ ALT="$ S $">  </td><td> <IMG
+ WIDTH="22" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg11.gif"
+ ALT="$ T $">  </td><td> <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg12.gif"
+ ALT="$ P $">  </td><td> <IMG
+ WIDTH="26" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg13.gif"
+ ALT="$ H $">  </td><td>   
+</td></tr>
+<tr><td>
+CD    </td><td> <IMG
+ WIDTH="27" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg21.gif"
+ ALT="$ {e^{x}} $">  </td><td> <IMG
+ WIDTH="65" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg22.gif"
+ ALT="$ \log \left( x \right) $">  </td><td> <IMG
+ WIDTH="91" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg23.gif"
+ ALT="$ \arcsin \left( x \right) $">  </td><td> <IMG
+ WIDTH="96" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg24.gif"
+ ALT="$ \arctan \left( x \right) $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg25.gif"
+ ALT="$ \sqrt {1-{x}^{2}} $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg26.gif"
+ ALT="$ \sqrt {1+{x}^{2}} $">  </td><td>   
+</td></tr>
+<tr><td>
+CDI    </td><td> <IMG
+ WIDTH="46" HEIGHT="29" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg32.gif"
+ ALT="$ {e^{{x}^{-1}}} $">  </td><td> <IMG
+ WIDTH="90" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg33.gif"
+ ALT="$ \log \left( {x}^{-1} \right) $">  </td><td> <IMG
+ WIDTH="117" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg34.gif"
+ ALT="$ \arcsin \left( {x}^{-1} \right) $">  </td><td> <IMG
+ WIDTH="121" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg35.gif"
+ ALT="$ \arctan \left( {x}^{-1} \right) $">  </td><td> <IMG
+ WIDTH="77" HEIGHT="56" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg36.gif"
+ ALT="$ {\frac {\sqrt {-1+{x}^{2}}}{x}} $">  </td><td> <IMG
+ WIDTH="64" HEIGHT="56" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg37.gif"
+ ALT="$ {\frac {\sqrt {1+{x}^{2}}}{x}} $">  </td><td>   
+</td></tr>
+<tr><td>
+CDF    </td><td> <IMG
+ WIDTH="31" HEIGHT="26" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg41.gif"
+ ALT="$ {e^{{\frac {x}{\pi}}}} $">  </td><td> <IMG
+ WIDTH="71" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg42.gif"
+ ALT="$ \log \left( {\frac {x}{\pi}} \right) $">  </td><td> <IMG
+ WIDTH="98" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg43.gif"
+ ALT="$ \arcsin \left( {\frac {x}{\pi}} \right) $">  </td><td> <IMG
+ WIDTH="102" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg44.gif"
+ ALT="$ \arctan \left( {\frac {x}{\pi}} \right) $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="65" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg45.gif"
+ ALT="$ \sqrt {{\frac {{\pi}^{2}-{x}^{2}}{{\pi}^{2}}}} $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="65" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg46.gif"
+ ALT="$ \sqrt {{\frac {{\pi}^{2}+{x}^{2}}{{\pi}^{2}}}} $">  </td><td>   
+</td></tr>
+<tr><td>
+CDIF    </td><td> <IMG
+ WIDTH="40" HEIGHT="28" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg50.gif"
+ ALT="$ {e^{{\frac {1}{\pi x}}}} $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg51.gif"
+ ALT="$ \log \left( {\frac {1}{\pi x}} \right) $">  </td><td> <IMG
+ WIDTH="107" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg52.gif"
+ ALT="$ \arcsin \left( {\frac {1}{\pi x}} \right) $">  </td><td> <IMG
+ WIDTH="112" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg53.gif"
+ ALT="$ \arctan \left( {\frac {1}{\pi x}} \right) $">  </td><td> <IMG
+ WIDTH="124" HEIGHT="65" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg54.gif"
+ ALT="$ \sqrt {{\frac {{x}^{2}{\pi}^{2}-1}{{\pi}^{2}}}}{x}^{-1} $">  </td><td> <IMG
+ WIDTH="123" HEIGHT="65" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg55.gif"
+ ALT="$ \sqrt {{\frac {{x}^{2}{\pi}^{2}+1}{{\pi}^{2}}}}{x}^{-1} $">  </td><td>   
+</td></tr>
+<tr><td>
+AB    </td><td> <IMG
+ WIDTH="40" HEIGHT="28" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg60.gif"
+ ALT="$ {e^{\sqrt {x}}} $">  </td><td> <IMG
+ WIDTH="82" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg61.gif"
+ ALT="$ \log \left( \sqrt {x} \right) $">  </td><td> <IMG
+ WIDTH="109" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg62.gif"
+ ALT="$ \arcsin \left( \sqrt {x} \right) $">  </td><td> <IMG
+ WIDTH="113" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg63.gif"
+ ALT="$ \arctan \left( \sqrt {x} \right) $">  </td><td> <IMG
+ WIDTH="72" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg64.gif"
+ ALT="$ \sqrt {1-x} $">  </td><td> <IMG
+ WIDTH="72" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg65.gif"
+ ALT="$ \sqrt {1+x} $">  </td><td>   
+</td></tr>
+<tr><td>
+W    </td><td> <IMG
+ WIDTH="35" HEIGHT="29" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg70.gif"
+ ALT="$ {e^{{x}^{2}}} $">  </td><td> <IMG
+ WIDTH="77" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg71.gif"
+ ALT="$ \log \left( {x}^{2} \right) $">  </td><td> <IMG
+ WIDTH="104" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg72.gif"
+ ALT="$ \arcsin \left( {x}^{2} \right) $">  </td><td> <IMG
+ WIDTH="108" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg73.gif"
+ ALT="$ \arctan \left( {x}^{2} \right) $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg74.gif"
+ ALT="$ \sqrt {1-{x}^{4}} $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg75.gif"
+ ALT="$ \sqrt {1+{x}^{4}} $">  </td><td>   
+</td></tr>
+<tr><td>
+K    </td><td> <IMG
+ WIDTH="43" HEIGHT="28" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg82.gif"
+ ALT="$ {e^{\sqrt [3]{x}}} $">  </td><td> <IMG
+ WIDTH="84" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg83.gif"
+ ALT="$ \log \left( \sqrt [3]{x} \right) $">  </td><td> <IMG
+ WIDTH="110" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg84.gif"
+ ALT="$ \arcsin \left( \sqrt [3]{x} \right) $">  </td><td> <IMG
+ WIDTH="114" HEIGHT="46" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg85.gif"
+ ALT="$ \arctan \left( \sqrt [3]{x} \right) $">  </td><td> <IMG
+ WIDTH="98" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg86.gif"
+ ALT="$ \sqrt {1-{x}^{2/3}} $">  </td><td> <IMG
+ WIDTH="98" HEIGHT="52" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg87.gif"
+ ALT="$ \sqrt {1+{x}^{2/3}} $">  </td><td>   
+</td></tr>
+<tr><td>
+LL    </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="102" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg95.gif"
+ ALT="$ \log \left( \ln \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="128" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg96.gif"
+ ALT="$ \arcsin \left( \ln \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="133" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg97.gif"
+ ALT="$ \arctan \left( \ln \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="137" HEIGHT="68" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg98.gif"
+ ALT="$ \sqrt {1- \left( \ln \left( x \right) \right) ^{2}} $">  </td><td> <IMG
+ WIDTH="137" HEIGHT="68" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg99.gif"
+ ALT="$ \sqrt {1+ \left( \ln \left( x \right) \right) ^{2}} $">  </td><td>   
+</td></tr>
+<tr><td>
+L    </td><td> <IMG
+ WIDTH="49" HEIGHT="31" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg107.gif"
+ ALT="$ {e^{\displaystyle{10}^{x}}} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="111" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg108.gif"
+ ALT="$ \arcsin \left( {10}^{x} \right) $">  </td><td> <IMG
+ WIDTH="115" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg109.gif"
+ ALT="$ \arctan \left( {10}^{x} \right) $">  </td><td> <IMG
+ WIDTH="117" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg110.gif"
+ ALT="$ \sqrt {+{100}^{x}-1} $">  </td><td> <IMG
+ WIDTH="101" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg111.gif"
+ ALT="$ \sqrt {1+{100}^{x}} $">  </td><td>   
+</td></tr>
+<tr><td>
+S    </td><td> <IMG
+ WIDTH="60" HEIGHT="27" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg119.gif"
+ ALT="$ {e^{\sin \left( x \right) }} $">  </td><td> <IMG
+ WIDTH="110" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg120.gif"
+ ALT="$ \log \left( \sin \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="141" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg121.gif"
+ ALT="$ \arctan \left( \sin \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="66" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg122.gif"
+ ALT="$ \cos \left( x \right) $">  </td><td> <IMG
+ WIDTH="148" HEIGHT="68" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg123.gif"
+ ALT="$ \sqrt {2- \left( \cos \left( x \right) \right) ^{2}} $">  </td><td>   
+</td></tr>
+<tr><td>
+T    </td><td> <IMG
+ WIDTH="64" HEIGHT="27" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg131.gif"
+ ALT="$ {e^{\tan \left( x \right) }} $">  </td><td> <IMG
+ WIDTH="115" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg132.gif"
+ ALT="$ \log \left( \tan \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="141" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg133.gif"
+ ALT="$ \arcsin \left( \tan \left( x \right) \right) $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="150" HEIGHT="68" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg134.gif"
+ ALT="$ \sqrt {1- \left( \tan \left( x \right) \right) ^{2}} $">  </td><td> <IMG
+ WIDTH="150" HEIGHT="68" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg135.gif"
+ ALT="$ \sqrt {1+ \left( \tan \left( x \right) \right) ^{2}} $">  </td><td>   
+</td></tr>
+<tr><td>
+P    </td><td> <IMG
+ WIDTH="70" HEIGHT="29" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg142.gif"
+ ALT="$ {e^{\sqrt {1-{x}^{2}}}} $">  </td><td> <IMG
+ WIDTH="130" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg143.gif"
+ ALT="$ \log \left( \sqrt {1-{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="157" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg144.gif"
+ ALT="$ \arcsin \left( \sqrt {1-{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="161" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg145.gif"
+ ALT="$ \arctan \left( \sqrt {1-{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg146.gif"
+ ALT="$ \sqrt {2-{x}^{2}} $">  </td><td>   
+</td></tr>
+<tr><td>
+H    </td><td> <IMG
+ WIDTH="83" HEIGHT="29" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg154.gif"
+ ALT="$ {e^{\sqrt {-1+{x}^{2}}}} $">  </td><td> <IMG
+ WIDTH="146" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg155.gif"
+ ALT="$ \log \left( \sqrt {-1+{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="173" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg156.gif"
+ ALT="$ \arcsin \left( \sqrt {-1+{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="177" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg157.gif"
+ ALT="$ \arctan \left( \sqrt {-1+{x}^{2}} \right) $">  </td><td> <IMG
+ WIDTH="81" HEIGHT="50" ALIGN="MIDDLE" BORDER="0"
+ SRC="simg146.gif"
+ ALT="$ \sqrt {2-{x}^{2}} $">  </td><td> <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg14.gif"
+ ALT="$ x $">  </td><td> 
+</td></tr>
+
+
+<P>
+
+
+</table>
+
+There are some caveats about reading that table. For example, <IMG
+WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="simg14.gif"
+ALT="$ x $"> may have to be in a certain interval, and the table does
+not distinguish between different versions of the same scale, e.g.,
+the various LL scales.  For the S scale, we only consider the inverse
+sine function, not the inverse cosine function.  So before you use
+your slide rule as suggested in the table you'll have to think
+carefully about what you are doing, which never hurts anyway.  The
+typesetting of some of those formulas is a bit idiosyncratic.  They
+were mostly machine generated, and I did not want to introduce
+additional errors by excessive manual editing.
+
+<P>
+
+As the table clearly indicates, if you move the hairline over any number
+on any scale at all, and read the number on the same scale right under
+the hairline, you'll get that very same number back!
+
+<P>
+
+
+
+
+<H2>Two Variables</H2>
+
+
+<P>
+Of course the number of possibilities is vastly increased by allowing
+the slide to move.  We consider two procedures, PLUS and MINUS,
+involving scales 1, 2, and 3. Scales 1 and 3 are on the body, scale 2
+is on the slide.
+
+<P>
+<B>PLUS:</B> Select <B>u</B> on scale 1, move the beginning of scale 2
+above u, move the hairline to <B>v</B> on scale 2, and
+read the result on scale 3, underneath the hairline.  For
+example if the scales involved are <B>D</B>, <B>C</B>, and <B>D</B>, the
+result would be the product, <B>uv</B>.
+
+<P>
+<B>MINUS:</B> Select <B>u</B> on scale 1, move the hairline over
+<B>u</B>, move <B>v </B> on scale 2 underneath the hairline, move the
+hairline to the beginning (or end) of scale 2, and read the result on
+scale 3, underneath the hairline.  For example, if the scales involved
+are again <B>D</B>, <B>C</B>, and <B>D</B>, the result is the
+quotient, <IMG WIDTH="21" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+SRC="timg1.gif" ALT="$ \frac{u}{v}$">.
+
+<P>
+What happens if we use other scales?  Assuming a (very hypothetical)
+slide rule that has all the scales listed above both on the body and
+on the slide, these two procedures let you evaluate 3,540 different
+expressions in 4,394 different ways.  Three examples are given in the
+following table.
+<a href="two.pdf">Click here</a> 
+to see a similarly organized pdf file (of
+several hundred pages) showing all the possibilities.
+<P>
+
+<table border = "1">
+<tr><td> 1 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp;&nbsp;<IMG
+ WIDTH="29" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="timg2.gif"
+ ALT="$ \displaystyle uv $"> &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; PLUS </tr>
+<tr><td> 15 &nbsp;</td><td>&nbsp; 2 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp;&nbsp;<IMG
+ WIDTH="24" HEIGHT="58" ALIGN="MIDDLE" BORDER="0"
+ SRC="timg3.gif"
+ ALT="$ \displaystyle {\frac {u}{v}} $"> &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; MINUS </tr>
+<tr><td> 2403 &nbsp;</td><td>&nbsp; 1803 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp;&nbsp;<IMG
+ WIDTH="28" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="timg4.gif"
+ ALT="$ \displaystyle {u}^{v} $"> &nbsp;</td><td>&nbsp; LL &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; LL &nbsp;</td><td>&nbsp; PLUS </tr>
+<tr>&nbsp;</tr>
+<tr><td> 139 &nbsp;</td><td>&nbsp; 26 &nbsp;</td><td>&nbsp; 2 &nbsp;</td><td>&nbsp; <IMG
+ WIDTH="99" HEIGHT="83" ALIGN="MIDDLE" BORDER="0"
+ SRC="timg5.gif"
+ ALT="$ \displaystyle{\sqrt{\frac{v^2+u^2}{v^2}}}$"> &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; CDI &nbsp;</td><td>&nbsp; H &nbsp;</td><td>&nbsp; PLUS </tr>
+<tr><td> 287 &nbsp;</td><td>&nbsp; 83 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp; <IMG
+ WIDTH="65" HEIGHT="28" ALIGN="BOTTOM" BORDER="0"
+ SRC="timg6.gif"
+ ALT="$ \displaystyle u^3v^{3/2}$"> &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; AB &nbsp;</td><td>&nbsp; W &nbsp;</td><td>&nbsp; Minus </tr>
+<tr><td> 424 &nbsp;</td><td>&nbsp; 168 &nbsp;</td><td>&nbsp; 1 &nbsp;</td><td>&nbsp; <IMG
+ WIDTH="143" HEIGHT="73" ALIGN="MIDDLE" BORDER="0"
+ SRC="timg7.gif"
+ ALT="$ \displaystyle \arcsin\left(\frac{u}{\ln(v)}\right)$"> &nbsp;</td><td>&nbsp; CD &nbsp;</td><td>&nbsp; LL &nbsp;</td><td>&nbsp; S &nbsp;</td><td>&nbsp;  MINUS </td></tr> 
+</table>
+
+<P>
+
+The first three rows of this table show the most common operations on a
+slide rule: product, quotient, and power.
+
+
+<P>
+The last three rows show less common formulas that can be evaluated.
+Thus, according to the fifth row, to compute <IMG WIDTH="99"
+HEIGHT="83" ALIGN="MIDDLE" BORDER="0" SRC="timg5.gif" ALT="$
+\displaystyle{\sqrt{\frac{v^2+u^2}{v^2}}}$"> follow the PLUS procedure
+with scales 1, 2, and 3 being <B>D</B>, <B>CI</B>, and <B>H</B>,
+respectively.  The first number in that row, 139, indicates the entry
+in the table, 26 means it is the 26th distinct formula in the table,
+and 2 means it's the second way to evaluate this particular formula.
+These numbers are not important for the example, but they illustrate
+the organization of the pdf file.  Caveats apply even more so than to
+the one variable table above. The variables have to be in certain
+ranges, and you may have to be judicious about which variant of the
+relevant scale you use to read your result.
+
+<P>
+
+Of course, slide rule manuals do not list thousands of formulas.  They
+describe basic principles and then people can figure out how to use
+slide rules to best advantage for their particular applications.
+There are more pedestrian ways to compute <IMG WIDTH="99" HEIGHT="83"
+ALIGN="MIDDLE" BORDER="0" SRC="timg5.gif" ALT="$
+\displaystyle{\sqrt{\frac{v^2+u^2}{v^2}}}$"> but if you have to evaluate
+such expressions many times you'll find the shortcut eventually.
+Once you have it you can impress your friends and coworkers!
+
+<P> The last example in the table requires an <b>LL</b> scale on the slide.
+When I went to high school our work horse slide rule was the Aristo
+Scholar 903. It has a body and cursor with one side, but a slide with
+two sides, one of which shows several LL scales.  So prior to doing
+this calculation you need to turn the slide around. This gives you a
+very strange slide rule without a C scale.  For years I have wondered
+for what kind of application one would want to turn the slide on the
+Aristo Scholar, and after writing this web page I know!
+
+<H2>Sophisticated Multiplication and Division</H2>
+
+<em>Sophisticated Multiplication</em> sounds like an oxymoron, but it
+isn't in slide rule lore.  We can multiply and divide using the
+<B>C</b> and <b>D</b> scales, and so in particular we can multiply
+with &pi; and compute reciprocals.  Thus there is nothing we can
+compute with the <b>CI</b>, <b>DI</b>, <b>CF</b>, <b>DF</b>,
+<b>CIF</b>, and <b>DIF</b>, scales that we can't compute with just the
+<B>C</b> and <b>D</b> scales.  The purpose of these additional scales
+is to make multiplication and division fast and easy by minimizing the
+number of times and the distances that the slide and cursor have to be
+moved,particularly when doing <em>repeated</em> division and
+multiplication.  Try it, and you'll see that it is especially
+convenient if multiplications and divisions alternate.  If you have a
+sequence of multiplications only you can replace some of them with a
+division by the reciprocal of the relevant factor, using the
+<b>CI</b> and <b>DI</b> scales.  On the <b>*F</b> scales, the number
+<b>1</b> is almost exactly in the middle of those scales, and so by
+switching to those scales when appropriate one can reduce the distance
+by which one has to move the slide!  If that was their only purpose,
+the optimal folding factor for the <b>*F</b> scales would have been
+the square root of <b>10</b>.  It so happens that &pi; is close to
+that square root and works almost as well.  In addition however, it
+makes it possible to multiply or divide by &pi; without any slide
+movement at all.  At some stage in the past someone hat the quite
+brilliant idea to approximate the square root of <b>10</b> by &pi;.
+
+
+
+
+
+
+
+
+<H2>Quadratic Equations</H2>
+
+<P>
+One thing slide rules can do that calculators can't is create tables.
+Here is an intriguing application of that idea that I found in the
+Post Versalog Slide Rule Instructions, Frederick Post Company,
+1963. That readable little book describes very many applications of
+slide rules.
+
+<P>
+Suppose we want to find the roots of the equation <P></P> <DIV
+ALIGN="CENTER"> <IMG WIDTH="152" HEIGHT="48" ALIGN="MIDDLE" BORDER="0"
+SRC="pimg1.gif" ALT="$\displaystyle x^2+bx +c = 0.$"> </DIV><P></P>
+Let's assume that <IMG WIDTH="16" HEIGHT="22" ALIGN="BOTTOM"
+BORDER="0" SRC="pimg2.gif" ALT="$ c$"> is positive, and the roots are
+real.  If <IMG WIDTH="16" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+SRC="pimg2.gif" ALT="$ c$"> is negative we ignore that fact and worry
+about the signs of the solutions later.  As an exercise you may want
+to figure out what happens when the roots of the quadratic equation
+are complex. If the solutions are <IMG WIDTH="19" HEIGHT="22"
+ALIGN="BOTTOM" BORDER="0" SRC="pimg3.gif" ALT="$ u$"> and <IMG
+WIDTH="17" HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="pimg4.gif"
+ALT="$ v$"> we have <P></P> <DIV ALIGN="CENTER"> <IMG WIDTH="470"
+HEIGHT="48" ALIGN="MIDDLE" BORDER="0" SRC="pimg5.gif"
+ALT="$\displaystyle (x-u)(x-v) = x^2-(u+v)x+uv= x^2+bx + c.$">
+</DIV><P></P> So we want to find two numbers <IMG WIDTH="19"
+HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="pimg3.gif" ALT="$ u$"> and
+<IMG WIDTH="17" HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="pimg4.gif"
+ALT="$ v$"> that add to <IMG WIDTH="16" HEIGHT="23" ALIGN="BOTTOM"
+BORDER="0" SRC="pimg6.gif" ALT="$ b$"> and multiply to <IMG WIDTH="16"
+HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="pimg2.gif" ALT="$ c$">.  We
+move the hairline over <IMG WIDTH="16" HEIGHT="22" ALIGN="BOTTOM"
+BORDER="0" SRC="pimg2.gif" ALT="$ c$"> on the <B>D</B> scale, and
+place the beginning or end of the slide under the hairline (choosing
+whichever causes the smaller projection of the slide beyond the body).
+Now the product of any pair of numbers on the <B>D</B> and <B>CI</B>
+scales (or on the <B>DF</B> and <B>CIF</B> scales) is equal to <IMG
+WIDTH="16" HEIGHT="22" ALIGN="BOTTOM" BORDER="0" SRC="pimg2.gif"
+ALT="$ c$">. Your slide rule now contains a table of pairs of numbers
+that all have the same product.  All that's left to do is to move the
+hairline until we find a pair of numbers on the <B>D</B> and <B>CI</B>
+scales (or <B>DF</B> and <B>CIF</B> scales) that add to <IMG
+WIDTH="16" HEIGHT="23" ALIGN="BOTTOM" BORDER="0" SRC="pimg6.gif"
+ALT="$ b$">.  Computing the sums mentally as we move the hairline is a
+pleasant exercise that requires no external help.  Once we have the
+pair of numbers we can figure out the sign of the roots from the signs
+of <IMG WIDTH="16" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+SRC="pimg6.gif" ALT="$ b$"> and <IMG WIDTH="16" HEIGHT="22"
+ALIGN="BOTTOM" BORDER="0" SRC="pimg2.gif" ALT="$ c$">.
+
+<P>
+
+
+
+
+
+<H2>Cursor Marks</H2>
+
+Many slide rules have special purpose marks on the cursors, in
+addition to the hairline.  As an illustration, here is a list of 
+calculations that can be accomplished with the cursor marks on the 
+Faber Castell Slide Rule pictured above.
+
+<UL>
+
+<lI> Put the hairline over the diameter of a circle on scale <b>D</b>
+or <b>C</b> and read the area of the circle under a special mark on
+scale <b>A</b> or <b>B</b>.  </li>
+
+<li> The same marks can be used with the <b>CI</b> scale to compute the
+volumes of cylinders. </li>
+
+<li> Two marks facilitate instant conversion of <em>kW</em> and <em>hp</em> (<em>PS</em>)
+on the scales <b>C</b> and <b>D</b>. </li>
+
+<li> To multiply a number with 3.6 (and an integer power of 10)
+put the hairline over it on the <b>C</b> or <b>D</b> scale, and read the
+result under a special mark on the <b>CF</b> or <b>DF</b> scale. Of
+course, reversing that procedure let's you divide by 3.6.</li>
+
+</UL>
+
+<H2>Specific Slide Rules</H2>
+
+The following table lists scales on some specific slide rules.
+Numbers indicate the number of scales present.  For example, 8
+<b>LL</b> scales usually means 8 distinct scales, 2 <B>C</b> scales
+usually means there is a <b>C</b> scale on each side of the slide
+rule.  A <font color="00aa00"><b>green entry</b></font> means the
+scale is on the slide, a black it is on the body. <b>Name</b> is the
+name of the slide rule.
+<b>Sides</b> lists how many sides are used (one or both).
+<b>Scales</b> lists the total number of scales.  The table is sorted
+by a decreasing total number of scales.
+<b>Marks</b> lists how many marks are on the cursor, including the
+hairline, and the remaining columns indicate the specific scales as
+listed above.  The last column gives reference numbers corresponding
+to notes that follow the table.
+<P>
+
+<table border = 1>
+
+<tr>
+<td><b>Name</b></td>
+<td><b>Sides</b></td>
+<td><b>Scales</b></td>
+<td><b>Marks</b></td>
+<td><b><font color="0000aa">&nbsp;C&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;D&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;CI&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;DI&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;CF&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;DF&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;CIF&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;A&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;B&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;R,W&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;K&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;LL&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;L&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;S&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;T&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;ST&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;P&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;H&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;Sh&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;Ch&nbsp;</font></b></td>
+<td><b><font color="0000aa">&nbsp;Th&nbsp;</font></b></td>
+<td><b>&nbsp;Notes&nbsp;</b></td>
+</tr>
+
+<tr></tr>
+
+
+
+<tr>
+<td>&nbsp;<b>Pickett N4</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>33</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>8</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b>9</b></td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Aristo Hyperlog 0972</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>31</b></td>
+<td>&nbsp;<b>6</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>8</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Faber Castell Novo-Biplex 2/83 N</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>30</b></td>
+<td>&nbsp;<b>11</b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color="00aa00">2</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>2,<font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>8</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1,2</b></td>
+</tr>
+
+
+
+<tr>
+<td>&nbsp;<b>Pickett N803</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>28</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>8</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>6,7</b></td>
+</tr>
+
+
+
+
+<tr>
+<td>&nbsp;<b>Aristo MultiLog 0970</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>24</b></td>
+<td>&nbsp;<b>6</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>8</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Faber Castell 52/82</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>22</b></td>
+<td>&nbsp;<b>7</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>3</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1, <font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>4</b></td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Pickett N600</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b>22</b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">2</font></b></td>
+<td>&nbsp;<b>2</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00"></font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>6</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>8</b></td>
+</tr>
+
+
+<tr>
+<td>&nbsp;<b>Aristo Scholar 0903 LL</b></td>
+<td>&nbsp;<b>1.5</b></td>
+<td>&nbsp;<b>15</b></td>
+<td>&nbsp;<b>4</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">3</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1, <font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>3,4</b></td>
+</tr>
+
+
+
+<tr>
+<td>&nbsp;<b>Faber Castell 111/54</b></td>
+<td>&nbsp;<b>1.5</b></td>
+<td>&nbsp;<b>14</b></td>
+<td>&nbsp;<b>5</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>3</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>4,10</b></td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Aristo Scholar 0903</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>10</b></td>
+<td>&nbsp;<b>4</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+</tr>
+
+<tr>
+<td>&nbsp;<b>Faber Castell Mentor 52/80</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>7</b></td>
+<td>&nbsp;<b>5</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b><font color = "00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>5</b></td>
+</tr>
+
+
+
+<tr>
+<td>&nbsp;<b>Pickett 160 microline</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b>7</b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b><font color="00aa00">1</font></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b>1</b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+<td>&nbsp;<b></b></td>
+</tr>
+
+
+</table>
+
+
+
+
+<P>
+
+<B>Notes:</b>
+
+<OL>
+
+<LI> The <B>LL0</b> scale is merged with one of the <B>D</b> scales. </li>
+
+<LI> The <B>W</b> scales enable multiplication and division with
+increased accuracy, effectively providing a rule with a length of two
+feet. </li>
+
+<LI> The slide is reversible.  The scales one the back side are
+<B>S</b>, and 3 <B>LL</b> scales.
+</li>
+
+<LI> One additional scale, labeled  <B>BI</b>, shows
+<IMG
+ WIDTH="41" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="simg29.gif"
+ ALT="$ {x}^{-2} $">.
+</li>
+
+<LI> Has rulers and instructions on the back of the scale. </li>
+
+<LI><b>LL</b> scales are merged with their reciprocals, e.g., <b>LL1</b> with 
+<b>LL01</b>.</li>
+
+<LI>Has a special <b>DFM</b> scale on the body.  It is folded at
+<b>M</b> which is the base 10 logarithm of <em>e</em>.</li>
+
+<LI> Also has an <b>Ln</b> (natural logarithm) scale. </li>
+
+<LI> Has the following additional scales:
+     <UL>
+     <li> 3 cube root scales on the body </li>
+     <li> A pair of scales folded about the base 10 logarithm of <em>e</em>.</li>
+     <li> A natural logarithm scale on the slide.</li>
+     </ul>
+</li>
+
+<LI> One edge of the slide rule protrudes and can be used as a ruler. </li>
+
+</ol>
+
+    </BODY>
+</HTML>
+
+

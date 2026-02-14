@@ -1,0 +1,295 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+        Spline Spaces
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+        <H2>
+            Spline Spaces and Minimal Determining Sets
+        </H3>
+        <P>
+            A <EM>spline</EM> is a smooth piecewise polynomial function.
+            The splines of interest in these pages are defined on
+            <A HREF="triangulation.html">
+                <EM>triangulations</EM>.
+            </A>
+        </P>
+    </li>
+        <P>
+            Let <EM>T</EM> be a triangulation and <EM>D</EM> the union
+            of the triangles in <EM>T</EM>.  We define
+        </P>
+        <P>
+            <IMG SRC="S1.gif">
+        </P>
+        <P>
+            This is the space of all <EM>r</EM> times differentiable
+            functions that on each triangle can be represented as a
+            bivariate polynomial of degree <EM>d</EM>. <EM>P <SUP>d
+            </SUP></EM> is the <EM>(d+2)(d+1)/2</EM> -dimensional space
+            of bivariate polynomials of degree <EM>d</EM>
+        </P>
+        <P>
+            Let <EM>s</EM> be a spline in <EM>S</EM>.  On each triangle
+            <EM>t</EM> in <EM>T</EM> we express it in the
+            <A HREF="bform.html">
+                Bernstein-B&eacute;zier form.
+            </A>
+            Since we require that <EM>s</EM> be at least continuous we
+            identify the control points along the edges shared by
+            neighboring triangles, and collect the B&eacute;zier ordinates into
+            a vector <EM>c</EM>.  In the case of splines that are just
+            continuous, i.e., <EM>r=0</EM>, we can assign an arbitrary
+            value to each entry of <EM>c</EM> and thereby obtain all
+            splines that are piecewise polynomial of degree <EM>d</EM>
+            and globally continuous.  A spline <EM>s</EM> in <EM>S</EM>
+            that is <EM>r&gt;0</EM> times differentiable satisfies the
+            homogeneous <EM>smoothness conditions</EM>
+        </P>
+        <P>
+            <IMG SRC = "S2.gif">
+        </P>
+        <P>
+            which are
+            <A HREF="bform.html#smooth">
+                described here.
+            </A>
+        </P>
+        <P>
+            <EM>A</EM> is an <EM>m</EM> by <EM>n</EM> matrix
+            where <EM>m</EM> equals the number of smoothness conditions
+            and <EM>n</EM> equals the number of B&eacute;zier ordinates of a
+            spline in <EM>S</EM>.  The dimension of <EM>S</EM> equals
+            <EM>n -</EM> rank <EM>(A)</EM>.
+        </P>
+        <P>
+            Each B&eacute;zier ordinate corresponds to a domain point <EM>t
+            </EM>. We therefore denote it by <EM>c<SUB>t</SUB></EM>.
+            We also denote the set of all domain points by <EM>P</EM>.
+            A subset <EM>Q</EM> of <EM>P</EM> is a <B>determining set
+            </B> if
+        </P>
+        <P>
+            <IMG SRC = "S3.gif">
+            <p>If <EM>Q</EM> is no larger than any other determining set it
+            is a <B>minimal determining set</B>.  It follows from basic
+            linear algebra that the number of points in any minimal
+            determining set equals the dimension of <EM>S</EM>.  The
+            B&eacute;zier ordinates corresponding to the points in a minimal
+            determining set can be chosen arbitrarily and then uniquely
+            determine a spline <EM>s</EM> in <EM>S</EM>.
+        </P>
+        <H3>
+            An Example
+        </H3>
+        <P>
+            <IMG SRC = "example.gif" ALIGN = "RIGHT">
+            We illustrate these concept with an example shown in
+            the Figure nearby.  This triangulation is known as the <EM>
+            Clough-Tocher</EM> split.  The vertices of the outer
+            triangles are labeled <EM>V<SUB>1</SUB></EM>, <EM>V<SUB>2
+            </SUB></EM>, and <EM>V<SUB>3</SUB></EM>.  The interior
+            point is
+        </P>
+        <P>
+            <EM>V<SUB>0</SUB> = (V<SUB>1</SUB> + V<SUB>2</SUB> + V
+           <SUB>3</SUB> )/3</EM>
+        </P>
+        <P>
+            To compute the smoothness conditions across edge <EM> V
+           <SUB>0</SUB> V<SUB>2</SUB></EM>, for example, we need to
+            express <EM>V<SUB>1</SUB></EM> in terms of barycentric
+            coordinates with respect to the triangle <EM> V<SUB>0</SUB>
+            V<SUB>2</SUB> V<SUB>3</SUB></EM>:
+        </P>
+        <P>
+            <EM>V<SUB>1</SUB> = 3V<SUB>0</SUB> - V<SUB>2</SUB> - V
+           <SUB>3</SUB>.</EM>
+        </P>
+        <P>
+            Proceeding as
+            <A HREF="bform.html#smooth">
+                indicated here
+            </A>
+            we obtain the matrix
+        </P>
+        <P>
+            <IMG SRC="S4.gif">
+            <p>where for convenience the columns have been labeled
+            with the indices of the domain points. 
+        </P>
+        <P>
+            In this example, <EM>r=1</EM> and <EM>d=3</EM>.  There are
+            three interior edges, each giving rise to three <EM>C <SUP>1
+            </SUP></EM> conditions, for a total of 9 equations.  The
+            total number of domain points is 19.  (The labeling starts
+            with 0 because that's how Java thinks about them.) The rank
+            of the matrix is 7 and the dimension of <EM>S</EM> is
+            12.
+        </P>
+        <P>
+            It turns out that the points marked with green and red plus
+            signs form a minimal determining set.  Thus the following
+            B&eacute;zier ordinates (indicated with plus signs in the
+            Figure) may be set arbitrarily:
+        </P>
+        <P>
+            <EM> c<SUB>0</SUB>, c<SUB>2</SUB>, c<SUB>4</SUB>, 
+            c<SUB>6</SUB>, c<SUB>7</SUB>, c<SUB>9</SUB>, 
+            c<SUB>10</SUB>, c<SUB>12</SUB>, c<SUB>13</SUB>, c<SUB>15</SUB>, 
+            c<SUB>17</SUB>, c<SUB>18</SUB>.</EM>
+        </P>
+        <P>
+            <A HREF="how.html">
+                Click here
+            </A> to see
+            how the minimal determining set has been found.
+        </P>
+
+<a name="dimension"></a>
+<H2>Dimensions</H2>
+
+<P> <a href="bibliography.html">Larry Schumaker</a> showed that for all
+<em>d &gt;= r &gt= 1</em>
+
+<p><IMG SRC="S5.gif">(*)
+<p>where
+<p><IMG SRC="S6.gif">
+
+<p> The summation for <em>sigma</em> runs over all interior vertices
+<em>v</em> <em>e<sub>v</sub></em> is the number of slopes assumed by
+the edges emanating from <em>v</em>.  The term <em>sigma</em> captures
+an essential property of multivariate spline spaces: the dimension
+depends not just on the combinatorics of the triangulation, but also
+its <em>geometry</em>, i.e., the precise relative location of the
+vertices.
+
+<p> As shown by <a href="bibliography.html">Schumaker and Ibrahim, and
+Hong,</a> the lower bound (*) gives the true dimension if <p><em>d
+&gt;3r+1.</em>
+
+
+
+        <HR>
+        [25-Mar-1999]
+    </BODY>
+</HTML>

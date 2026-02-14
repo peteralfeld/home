@@ -1,0 +1,313 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          MDS in three variables.
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+<BR>
+
+<P>
+<H1><FONT COLOR = "red">Macro Elements on the Clough-Tocher Split </font></color></h1>
+
+<P>
+The Clough-Tocher Macro Panel lets you impose symmetric
+super smoothness conditions on the Clough-Tocher split and then check if
+a macro element can be built with those conditions.
+
+<P>
+To obtain the macro panel select the configuration "Clough-Tocher",
+and click on the button "macro elements" in the control panel.  
+The buttons on the macro panel have the following effects:
+
+<P>
+
+<UL>
+<LI><B>Hide</B> causes the macro panel to disappear. To make it
+reappear click again on "macro elements".
+
+<P>
+</LI>
+<LI><B>Draw</B> causes the current smoothness conditions to be drawn
+initially, or if the linear algebra in the drawing window has been
+initialized.  (Otherwise the smoothness conditions are drawn
+automatically whenever they are changed.)
+
+<P>
+</LI>
+<LI><B>Init</B> initializes the linear algebra (and exits super
+selection mode) in the drawing window.
+
+<P>
+</LI>
+<LI><B>Set</B> initializes the linear algebra if necessary and
+attempts to set the natural data that go with the current set of
+smoothness conditions and the current polynomial degree.
+
+<P>
+</LI>
+<LI><B>Clear</B> removes all super smoothness conditions.
+
+<P>
+</LI>
+<LI>The status window gives information about the current analysis in
+some situations.
+
+<P>
+</LI>
+</UL>
+
+<P>
+Super smoothness conditions can be imposed using the text fields 
+in the second row of the macro panel, and the buttons to either side
+of those text fields.  The text fields lists the <B>additional</B>
+degree of smoothness.  So if all the text fields show zero then 
+the spline is the ordinary space without any super smoothness conditions
+at all.
+
+<P>
+Groups of super smoothness conditions are indicated by representative points, edges, or faces.  Recall that the boundary vertices are labeled 
+<IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img1.gif"
+ ALT="$ V_0$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.gif"
+ ALT="$ V_1$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.gif"
+ ALT="$ V_2$">, and <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.gif"
+ ALT="$ V_3$">, and the centroid is
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="228" HEIGHT="69" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.gif"
+ ALT="$\displaystyle V_4 = \frac{V_0+V_1+V_2+V_3}{4}.$">
+</DIV><P></P>
+
+<P>
+
+<UL>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img1.gif"
+ ALT="$ V_0$">: extra smoothness at the boundary vertices.
+
+<P>
+</LI>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.gif"
+ ALT="$ V_4$">: extra smoothness at the centroid.
+
+<P>
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.gif"
+ ALT="$ E_{01}$">: extra smoothness at the boundary edges.
+
+<P>
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.gif"
+ ALT="$ E_{04}$">: extra smoothness at the interior edges.
+
+<P>
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.gif"
+ ALT="$ F_{014}$">: extra smoothness across the interior faces. For the
+Clough-Tocher split there is just one kind of interior face, and so
+increasing the smoothness across interior faces 
+is equivalent to increasing <IMG
+ WIDTH="17" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img10.gif"
+ ALT="$ r$">.
+
+<P>
+</LI>
+</UL>
+
+<P>
+Natural Data
+
+<P>
+Let <IMG
+ WIDTH="17" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img10.gif"
+ ALT="$ r$"> and <IMG
+ WIDTH="17" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="img11.gif"
+ ALT="$ d$"> be as usual. Let <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img12.gif"
+ ALT="$ R$"> denote the
+total degree of smoothness at the boundary vertices
+and let <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img13.gif"
+ ALT="$ E$"> denote the total degree of smoothness along the
+boundary edges.  Then in terms of the domain points the following 
+are the natural data:
+
+<P>
+
+<UL>
+<LI>The <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img12.gif"
+ ALT="$ R$"> balls around the vertices, requiring 
+<IMG
+ WIDTH="70" HEIGHT="51" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.gif"
+ ALT="$ 4{R+3 \choose 3}$"> imposable points.
+
+<P>
+</LI>
+<LI>The <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img13.gif"
+ ALT="$ E$"> globs around the boundary edges requiring
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="270" HEIGHT="88" ALIGN="MIDDLE" BORDER="0"
+ SRC="img15.gif"
+ ALT="$\displaystyle 6\sum_{i=0}^E (i+1)(d-2R-1+i)_+ $">
+</DIV><P></P>
+imposable points.  The index
+<IMG
+ WIDTH="14" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ i$"> runs from the edge outwards through the shells surrounding the
+edge.  In going from shell <IMG
+ WIDTH="14" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ i$"> to <IMG
+ WIDTH="50" HEIGHT="40" ALIGN="MIDDLE" BORDER="0"
+ SRC="img17.gif"
+ ALT="$ i+1$">, the number of
+coefficients in an <IMG
+ WIDTH="50" HEIGHT="40" ALIGN="MIDDLE" BORDER="0"
+ SRC="img17.gif"
+ ALT="$ i+1$">-th derivative not defined by the vertex
+data increases by 1 over the same number for an <IMG
+ WIDTH="14" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ i$">-th derivative,
+and the factor <IMG
+ WIDTH="66" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.gif"
+ ALT="$ (i+1)$"> accounts for the number of mixed partial
+derivatives of order <IMG
+ WIDTH="14" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ i$">.
+
+<P>
+</LI>
+<LI>The remaining points in the layers zero through r for each boundary
+face, requiring a total of <P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="615" HEIGHT="81" ALIGN="MIDDLE" BORDER="0"
+ SRC="img19.gif"
+ ALT="$\displaystyle 4 \sum_{i=0}^r {{d-i+2-3(E-i+1)\choose 2
+}}_{+} - 3{R+2-i-2(E+1-i)\choose 2}_+ $">
+</DIV><P></P>
+imposable points.  Of course,
+these expressions can be simplified, but in this form they show their
+origin.  The first term gives the number of points on the <IMG
+ WIDTH="14" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ i$">-th
+layer, working inwards, that are not contained in the edge globs. The
+second term accounts for the possibility of the vertex balls
+intersecting with that set.
+
+<P>
+</LI>
+</UL>
+
+<P>
+The code attempts to impose the right number of conditions and informs
+you of whether or not this is possible.
+
+<P>
+The following examples will illustrate the ideas:
+
+<P>
+A Quintic <IMG
+ WIDTH="32" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="img20.gif"
+ ALT="$ C^1$"> Element 
+
+<P>
+Let <IMG
+ WIDTH="55" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img21.gif"
+ ALT="$ r=1 $"> and <IMG
+ WIDTH="56" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="img22.gif"
+ ALT="$ d=5$">, and require <IMG
+ WIDTH="32" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="img23.gif"
+ ALT="$ C^2$"> smoothness at the
+boundary vertices.  The dimension of the spline space is 68.
+The natural data comprise 64 conditions that can all be
+imposed.  The four remaining degrees of freedom may be used, for
+example, to interpolate to function and gradient values at the
+centroid of the tetrahedron.
+
+<P>
+A nonic polynomial <IMG
+ WIDTH="32" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="img20.gif"
+ ALT="$ C^1$"> element.
+
+<P>
+Let <IMG
+ WIDTH="55" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img21.gif"
+ ALT="$ r=1 $"> and <IMG
+ WIDTH="56" HEIGHT="23" ALIGN="BOTTOM" BORDER="0"
+ SRC="img24.gif"
+ ALT="$ d=9$">, and require <IMG
+ WIDTH="32" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="img25.gif"
+ ALT="$ C^9$"> smoothness around the
+centroid.  The resulting space is actually polynomial of dimension
+220.  Imposing 4-balls around the boundary vertices and 2-globs along
+the boundary edges, in addition to the natural face data, gives rise
+to the well known polynomial <IMG
+ WIDTH="32" HEIGHT="25" ALIGN="BOTTOM" BORDER="0"
+ SRC="img20.gif"
+ ALT="$ C^1$"> element.  The 216 natural data
+can be imposed, and the remaining four degrees of freedom can be used,
+for example, to interpolate to function and gradient values at the
+centroid of the tetrahedron.
+
+<P>
+

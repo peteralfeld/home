@@ -1,0 +1,149 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Why Logarithms?
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+
+    <BODY BGCOLOR=ffffff>
+
+        <IMG SRC="../../images/UUlogo.gif" ALIGN="LEFT" BORDER=1 HSPACE=10>
+
+        <H6>
+            <A HREF="http://www.math.utah.edu/~pa/">
+                Peter Alfeld,
+            </A>
+            ---
+            <A HREF="http://www.math.utah.edu/">
+                Department of Mathematics,
+            </A>
+            ---
+            <A HREF="http://www.science.utah.edu/">
+                College of Science
+            </A>
+            ---
+            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                University of Utah
+            </A>
+        </H6>
+
+
+
+<H1>Why Logarithms?</H1>
+
+
+
+
+It turns out that the only (non-zero differentiable) functions with the
+key property <P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="259" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img1.gif"
+ ALT="$\displaystyle f(xy) = f(x) + f(y)\qquad(*)$">
+</DIV><P></P>
+are logarithmic
+functions.  To see this we derive a differential equation for <IMG
+ WIDTH="19" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+src =  "img2.gif"
+ ALT="$ f$">
+whose solution is a logarithm.  Differentiating in <IMG
+ WIDTH="33" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img3.gif"
+ ALT="$ (*)$"> with
+respect to <IMG
+ WIDTH="19" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+src =  "img4.gif"
+ ALT="$ x$"> gives
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="377" HEIGHT="72" ALIGN="MIDDLE" BORDER="0"
+src =  "img5.gif"
+ ALT="$\displaystyle yf'(xy) = f'(x)\quad\Longrightarrow\quad f'(xy) = \frac{f'(x)}{y}.$">
+</DIV><P></P>
+Similarly, differentiating with respect to <IMG
+ WIDTH="18" HEIGHT="39" ALIGN="MIDDLE" BORDER="0"
+src =  "img6.gif"
+ ALT="$ y$"> gives
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="376" HEIGHT="72" ALIGN="MIDDLE" BORDER="0"
+src =  "img7.gif"
+ ALT="$\displaystyle xf'(xy) = f'(y)\quad\Longrightarrow\quad f'(xy) = \frac{f'(y)}{x}.$">
+</DIV><P></P>
+Hence
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="142" HEIGHT="72" ALIGN="MIDDLE" BORDER="0"
+src =  "img8.gif"
+ ALT="$\displaystyle \frac{f'(x)}{y} = \frac{f'(y)}{x}.$">
+</DIV><P></P>
+In the special case <IMG
+ WIDTH="56" HEIGHT="39" ALIGN="MIDDLE" BORDER="0"
+src =  "img9.gif"
+ ALT="$ y=1$"> this turns into
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="136" HEIGHT="72" ALIGN="MIDDLE" BORDER="0"
+src =  "img10.gif"
+ ALT="$\displaystyle f'(x) = \frac{f'(1)}{x}.$">
+</DIV><P></P>
+From <IMG
+ WIDTH="33" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img3.gif"
+ ALT="$ (*)$"> if follows that <IMG
+ WIDTH="84" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img11.gif"
+ ALT="$ f(1) = 0$">.  The solution of this
+initial value problem is
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="205" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img12.gif"
+ ALT="$\displaystyle f(x) = C\ln x = \log_b x$">
+</DIV><P></P>
+where <IMG
+ WIDTH="84" HEIGHT="27" ALIGN="BOTTOM" BORDER="0"
+src =  "img13.gif"
+ ALT="$ b = e^{1/C}$"> and  <IMG
+ WIDTH="95" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img14.gif"
+ ALT="$ C= f'(1)$"> is an arbitrary constant.  
+
+<P>
+<BR>
+
+<P>
+So only logarithms work.  However, if you want to settle for
+properties that are more complicated than <IMG
+ WIDTH="33" HEIGHT="44" ALIGN="MIDDLE" BORDER="0"
+src =  "img3.gif"
+ ALT="$ (*)$"> there are other
+possibilities.  For example, you may want to think about how to
+construct a slide rule based on the identity <P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="361" HEIGHT="67" ALIGN="MIDDLE" BORDER="0"
+src =  "img15.gif"
+ ALT="$\displaystyle \sin x \sin y =
+\frac{1}{2}[\cos(x-y) - \cos(x+y)].$">
+</DIV><P></P>
+
+<P>
+
+
+
+    </BODY>
+</HTML>
+

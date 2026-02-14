@@ -1,0 +1,51 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructions </title>
+    <link rel="stylesheet" href="FI.css">
+</head>
+<body>
+  <H1> A Financial Calculator - Instructions</H1>
+
+<P> 
+
+  Calculations that can be made with this calculator involve five key parameters:
+
+  <OL>
+
+    <LI> <B>N:</B>
+  The number of payment periods where payments, including interest payments, are made. </LI>
+   <LI> <B>I:</B> The percent interest applied at the end of each period. </LI>
+    <LI><B>A</B> The initial value of the account </LI>
+    <LI> <B>P:</B> The payment that is made each period. </LI>
+    <LI> <B>F:</B> The future, or final, value of the account.  </LI>
+    </OL>
+  
+<P>  You can see more <a href="Examples.html" target = "_blank">examples</A>, but to clarify the concepts here is our default example that is built into the calculator: Suppose you take out a 30 year mortgage of $100,000, and you ask how much you need to pay each month at 0.5% interest to pay off the loan by the end of the 30-year period.   You choose:
+
+<P>  <LI> N = 360 (30 years times 12 months) </LI>
+  <LI> I = 0.5 (percent interest per month) </LI>
+  <LI> A = 100,000 (your initial loan amount), and</LI>
+  <LI> F = 0 (your remaining debt at the end of the 30 year period). </LI>
+  
+<P>  Note that the monthly payment is positive, even though it subtracts from your funds and your debt.  When you first bring up the calculator these numbers are already entered into their respective text fields. The monthly payment works out to be $599.55 per month.
+
+<P> The five parameters are not independent, any four of them determine the fifth.  You can replace that values in the text fields with your own values and press the the <wb>Compute</wb>  button next to the pertinent text field.
+
+<P>  The Calculator has one text field for each of the five parameters.   If the current values of the parameters are consistent then the background of those text fields is <wg>green</wg>, otherwise it is <wr>red</wr>.   To enter a value in any text field click on it.   This will cause the text field to go blank.  Type your new value as a plain number, without commas or Dollar signs.  Then hit Enter on your keyboard.  Clicking on the text field while it is empty will restore the current value of the current parameter in the text field.
+
+<P> If your current parameters are inconsistent you can compute the value of any of the five parameters that will make them consistent.  Do so by clicking on the <wb>Compute</wb> Button next to the text field.
+
+  <P> For example, suppose that in the default example you want to see how your monthly payment changes if the monthly percentage is 0.6 percent instead of 0.5.  Click on the second green text field, enter the value 0.6, and click on the fourth <wb>Compute</wb> button.
+
+  <P> Using one of the <wp>purple</wp> buttons at the bottom of the calculator page, you can also compute a payment schedule. This will produce a table that shows the present value of the account, and the interest and principal components of each payment.  To create any schedule the parameters need to be consistent.
+
+  <P> Specifically, clicking on <wp>Create Payment Schedule</wp> will add the table at the bottom of the Calculator page.   Changing any of the parameters will make that schedule disappear.
+
+  <P> Clicking on <wp>Export HTML</wp> will create and download an HTML version of the payment schedule, and clicking on <wp>Export csv (comma delimited)</wp> will create and download a .csv file that can be imported into a spreadsheet program.
+  
+</body>
+</html>
+

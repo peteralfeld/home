@@ -1,0 +1,160 @@
+##DESCRIPTION
+##Arithmetic
+##ENDDESCRIPTION
+
+##KEYWORDS('algebra')
+
+DOCUMENT();        # This should be the first executable line in the problem.
+
+loadMacros(
+"PG.pl",
+"PGbasicmacros.pl",
+"PGchoicemacros.pl",
+"PGanswermacros.pl",
+"PGauxiliaryFunctions.pl"
+);
+
+TEXT(&beginproblem);
+
+TEXT(EV2(<<EOT));
+
+
+
+
+ Macro Elements on the Clough-Tocher Split 
+
+
+
+  The Clough-Tocher Macro Panel lets you impose symmetric
+super smoothness conditions on the Clough-Tocher split and then check if
+a macro element can be built with those conditions.
+
+   To obtain the macro panel select the configuration "Clough-Tocher",
+and click on the button "macro elements" in the control panel.  
+The buttons on the macro panel have the following effects:
+
+\begin{itemize}
+
+\item {\bf Hide} causes the macro panel to disappear. To make it
+reappear click again on "macro elements".
+
+\item {\bf Draw} causes the current smoothness conditions to be drawn
+initially, or if the linear algebra in the drawing window has been
+initialized.  (Otherwise the smoothness conditions are drawn
+automatically whenever they are changed.)
+
+\item {\bf Init} initializes the linear algebra (and exits super
+selection mode) in the drawing window.
+
+\item  {\bf Set} initializes the linear algebra if necessary and
+attempts to set the natural data that go with the current set of
+smoothness conditions and the current polynomial degree.
+
+\item  {\bf Clear} removes all super smoothness conditions.
+
+\item The status window gives information about the current analysis in
+some situations.
+
+\end{itemize}
+
+Super smoothness conditions can be imposed using the text fields 
+in the second row of the macro panel, and the buttons to either side
+of those text fields.  The text fields lists the {\bf additional}
+degree of smoothness.  So if all the text fields show zero then 
+the spline is the ordinary space without any super smoothness conditions
+at all.
+
+Groups of super smoothness conditions are indicated by representative points, edges, or faces.  Recall that the boundary vertices are labeled 
+\(V_0\), \(V_1\), \(V_2\), and \(V_3\), and the centroid is
+\[V_4 = \frac{V_0+V_1+V_2+V_3}{4}.\]
+
+\begin{itemize}
+
+\item  {\(V_0\):} extra smoothness at the boundary vertices.
+
+\item  {\(V_4\):} extra smoothness at the centroid.
+
+\item  {\(E_{01}\):} extra smoothness at the boundary edges.
+
+\item  {\(E_{04}\):} extra smoothness at the interior edges.
+
+\item  {\(F_{014}\):} extra smoothness across the interior faces. For the
+Clough-Tocher split there is just one kind of interior face, and so
+increasing the smoothness across interior faces 
+is equivalent to increasing \(r\).
+
+\end{itemize}
+
+Natural Data
+
+Let \(r\) and \(d\) be as usual. Let \(R\) denote the
+total degree of smoothness at the boundary vertices
+and let \(E\) denote the total degree of smoothness along the
+boundary edges.  Then in terms of the domain points the following 
+are the natural data:
+
+\begin{itemize}
+
+\item  The \(R\) balls around the vertices, requiring 
+\(4{R+3 \choose 3}\) imposable points.
+
+\item The \(E\) globs around the boundary edges requiring
+\[6\sum_{i=0}^E (i+1)(d-2R-1+i)_+ \] imposable points.  The index
+\(i\) runs from the edge outwards through the shells surrounding the
+edge.  In going from shell \(i\) to \(i+1\), the number of
+coefficients in an \(i+1\)-th derivative not defined by the vertex
+data increases by 1 over the same number for an \(i\)-th derivative,
+and the factor \((i+1)\) accounts for the number of mixed partial
+derivatives of order \(i\).
+
+\item  The remaining points in the layers zero through r for each boundary
+face, requiring a total of \[4 \sum_{i=0}^r  {{d-i+2-3(E-i+1)\choose 2
+}}_{+} - 3{R+2-i-2(E+1-i)\choose 2}_+ \] imposable points.  Of course,
+these expressions can be simplified, but in this form they show their
+origin.  The first term gives the number of points on the \(i\)-th
+layer, working inwards, that are not contained in the edge globs. The
+second term accounts for the possibility of the vertex balls
+intersecting with that set.
+
+
+
+\end{itemize}
+
+The code attempts to impose the right number of conditions and informs
+you of whether or not this is possible.
+
+The following examples will illustrate the ideas:
+
+A Quintic \(C^1\) Element 
+
+Let \( r=1 \) and \(d=5\), and require \(C^2\) smoothness at the
+boundary vertices.  The dimension of the spline space is 68.
+The natural data comprise 64 conditions that can all be
+imposed.  The four remaining degrees of freedom may be used, for
+example, to interpolate to function and gradient values at the
+centroid of the tetrahedron.
+
+ A nonic polynomial \(C^1\) element.
+
+Let \(r = 1\) and \(d=9\), and require \(C^9\) smoothness around the
+centroid.  The resulting space is actually polynomial of dimension
+220.  Imposing 4-balls around the boundary vertices and 2-globs along
+the boundary edges, in addition to the natural face data, gives rise
+to the well known polynomial \(C^1\) element.  The 216 natural data
+can be imposed, and the remaining four degrees of freedom can be used,
+for example, to interpolate to function and gradient values at the
+centroid of the tetrahedron.
+
+
+
+
+EOT
+
+
+
+
+
+
+
+
+ENDDOCUMENT();        # This should be the last executable line in the problem.

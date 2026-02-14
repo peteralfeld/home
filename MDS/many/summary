@@ -1,0 +1,59 @@
+up to 13 triangles
+
+with flaps
+
+ counting all triangulations (164241 have flaps)
+ Number of triangulations:
+ VB =      3     4     5     6     7     8     9    10    11    12    13    14    15
+    VI
+     0     1     1     1     3     4    12    27    78   214   654 1,944 6,05518,900
+     1     1     2     4    11    28    90   285   951 3,19810,93837,567            
+     2     1     5    14    53   178   673 2,461 9,28034,712                        
+     3     4    18    69   293 1,187 4,91920,108                                    
+     4    16    88   396 1,845 8,252                                                
+     5    78   489 2,497                                                            
+     6   457                                                                        
+Number of Triangles:
+     1     1
+     2     1
+     3     2
+     4     5
+     5     9
+     6    28
+     7    73
+     8   239
+     9   762
+    10  2,659
+    11  9,264
+    12 33,526
+    13 122,493
+
+
+without flaps
+
+ Summary --- 169062 triangulations
+ not counting 164241 triangulations with flaps
+ Number of triangulations:
+ VB =      3     4     5     6     7     8     9    10    11    12    13    14    15
+    VI
+     0                                                                              
+     1     1     1     1     1     1     1     1     1     1     1     1            
+     2     1     3     4     8    12    23    39    75   137                        
+     3     4    10    22    53   119   279   645                                    
+     4    16    50   135   393 1,067                                                
+     5    78   278   902                                                            
+     6   457                                                                        
+Number of Triangles:
+     1      
+     2      
+     3     1
+     4     1
+     5     2
+     6     4
+     7     9
+     8    19
+     9    51
+    10   127
+    11   372
+    12 1,026
+    13 3,209

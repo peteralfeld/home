@@ -1,0 +1,188 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          MDS in three variables.
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+
+
+
+
+
+
+<BR>
+<H1><FONT COLOR = "red"> Macro Elements on the Worsey-Farin Split </FONT></H1>
+
+<P>
+The Worsey-Farin Macro Panel lets you impose symmetric
+super smoothness conditions on the Worsey-Farin split and then check if
+a macro element can be built with those conditions.
+
+<P>
+Because of the split faces of the macro tetrahedron the panel works
+somewhat differently than the other panels.  We refer to the vertices
+of the macro tetrahedron as its <I>corners</I> and the centroids of its
+faces as the <I>face centroids</I>.  Note that both corners and face
+centroids are boundary vertices of the macro tetrahedron.
+
+<P>
+To obtain the macro panel select the configuration "Worsey-Farin",
+and clock on the button "macro elements" in the control panel.  
+The buttons on the macro panel have the following effects:
+
+<P>
+
+<UL>
+<LI><B>Hide</B> cause the macro panel to disappear. To make it
+reappear click again on "macro elements".
+
+<P>
+</LI>
+<LI><B>Draw</B> causes the current smoothness conditions to be drawn
+initially, or if the linear algebra in the drawing window has been
+initialized.  (Otherwise the smoothness conditions are drawn
+automatically whenever they are changed.) 
+
+<P>
+</LI>
+<LI><B>Init</B> initializes the linear algebra (and exits super
+selection mode) in the drawing window.
+
+<P>
+</LI>
+<LI><B>V</B> initializes the linear algebra if necessary and
+attempts to set the data in the corner balls.  If <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img1.gif"
+ ALT="$ R$"> is the 
+smoothness around the corners, then the corresponding number of data is
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="167" HEIGHT="73" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.gif"
+ ALT="$\displaystyle M_V=4{R+3 \choose 3}.$">
+</DIV><P></P>  (The code actually also includes any inactive points
+(that do not enter any smoothness conditions) since these must be imposed.)
+
+<P>
+</LI>
+<LI><B>E</B> imposes the natural data for the six boundary edges 
+connecting the corners, given the vertex data.   Of these there are
+<P></P>
+<DIV ALIGN="CENTER">
+<IMG
+ WIDTH="325" HEIGHT="88" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.gif"
+ ALT="$\displaystyle M_E = 6\sum_{\rho=0}^E (d-2R+\rho-1)(\rho+1) $">
+</DIV><P></P>
+where <IMG
+ WIDTH="23" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img4.gif"
+ ALT="$ E$"> is the degree of smoothness imposed around those edges.
+This number is the same as for the Clough-Tocher and Morgan-Scott Splits.
+
+<P>
+</LI>
+<LI><B>F</B> imposes additionally all points in the boundary faces of
+the macro tetrahedron and the first <IMG
+ WIDTH="17" HEIGHT="22" ALIGN="BOTTOM" BORDER="0"
+ SRC="img5.gif"
+ ALT="$ r$"> layers moving inwards, given
+the vertex and edge data.  A general formula for the <I>natural</I>
+number of such data is currently unknown, and the code will simply
+report the total number of conditions that have been imposed.
+
+<P>
+</LI>
+<LI><B>Clear</B> removes all super smoothness conditions. 
+
+<P>
+</LI>
+<LI>The status window gives information about the current analysis in
+some situations.
+
+<P>
+</LI>
+</UL>
+
+<P>
+Super smoothness conditions can be imposed using the text fields 
+in the second row of the macro panel, and the buttons to either side
+of those text fields.  The text fields lists the <B>additional</B>
+degree of smoothness.  So if all the text fields show zero then 
+the spline is the ordinary space without super smoothness conditions
+at all.
+
+<P>
+The following groups of super smoothness conditions are available:
+
+<P>
+
+<UL>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.gif"
+ ALT="$ V_{0} $"> corner
+</LI>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.gif"
+ ALT="$ V_{4} $"> Centroid               
+</LI>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.gif"
+ ALT="$ V_{5} $"> face centroid
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.gif"
+ ALT="$ E_{01} $"> edges connecting corners
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.gif"
+ ALT="$ E_{04$">  edges connecting corners and the centroid
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.gif"
+ ALT="$ E_{05} $"> edges connecting corners and face centroids.
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img12.gif"
+ ALT="$ E_{45} $"> edges connecting the centroid and face centroids
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img13.gif"
+ ALT="$ F_{014} $"> a face containing two corners and the centroid
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.gif"
+ ALT="$ F_{045} $"> a face containing a corner, the centroid, and a face centroid
+
+<P>
+</LI>
+</UL>
+
+<P>
+</BODY>
+</HTML>
+
+<P>
+

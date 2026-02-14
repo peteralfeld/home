@@ -1,0 +1,68 @@
+##DESCRIPTION
+##  sample true-false question
+##ENDDESCRIPTION
+
+##KEYWORDS('true-false')
+
+DOCUMENT();        # This should be the first executable line in the problem.
+
+loadMacros(
+"PG.pl",
+"PGbasicmacros.pl",
+"PGchoicemacros.pl",
+"PGanswermacros.pl",
+"PGauxiliaryFunctions.pl"
+);
+
+install_problem_grader(~~&std_problem_grader);
+TEXT(&beginproblem);
+$showPartialCorrectAnswers = 0;
+$showPartialCredit = 0;
+
+TEXT(EV2(<<EOT));
+  
+Of course the number of possibilities is vastly increased by allowing
+the slide to move.  We consider two procedures, PLUS, and MINUS,
+involving scales 1, 2, and 3. Scales 1 and 3 are on the body, scale 2
+is on the slide.
+
+{\bf PLUS:} Select {\bf u} on scale 1, move the beginning of scale 2
+above u, move the hairline to {\bf v} on scale 2, and
+read the result on scale 3, underneath the hairline.  For
+example if the scales involved are {\bf D}, {\bf C}, and {\bf D}, the
+result would be the product, {\bf uv}.
+
+{\bf MINUS:} Select {\bf u} on scale 1, move the hairline over {\bf
+u}, move {\bf v } on scale 2 underneath the hairline, move the
+hairline to the beginning (or end) of scale 2, and read the result on
+scale 3, underneath the hairline.  For example, if the scales involved are
+again  {\bf D}, {\bf C}, and {\bf D}, the result is the quotient,
+\(\frac{u}{v}\).
+
+What happens if we use other scales?  Assuming a (very hypothetical)
+slide rule that has all the scales listed above both on the body and
+on the slide, these two procedures let you evaluate 3,540 different
+expressions.  Some examples are given in the following table.  Click
+on the table to see a similarly organized pdf file showing all the
+possibilities.
+
+nl 139 nc 26 nc 2 nc \(\displaystyle{\sqrt{\frac{v^2+u^2}{v^2}}}\) nc CD nc CDI nc H nc PLUS el
+
+nl 287 nc 83 nc 1 nc \(\displaystyle u^3v^{3/2}\) nc CD nc AB nc W nc Minus el
+
+nl 424 nc 168 nc 1 nc \(\displaystyle \arcsin\left(\frac{u}{\ln(v)}\right)\) CD nc LL nc S el 
+
+
+Thus, to compute \(\displaystyle{\sqrt{\frac{v^2+u^2}{v^2}}}\) follow
+the PLUS procedure with scales 1, 2, and 3 being {\bf D}, {\bf CI},
+and {\bf H}, respectively.  The first number, 139 indicates the entry
+in the table, 26 means it is the 26th distinct formula, and 2 means
+it's the second way to compute this formula.  These numbers are not
+important for this example, but they illustrate the organization of
+the pdf file.
+
+
+EOT
+
+
+ENDDOCUMENT();        # This should be the last executable line in the problem.

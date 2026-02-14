@@ -1,0 +1,50 @@
+Mill Tournament Results
+Date,"2/12/2026, 1:11:41 PM"
+Parameters: 
+Games per Pair,100
+White Depth,6
+Black Depth,6
+White Strategy Mode,0
+Black Strategy Mode,0
+
+Standings
+Rank,Name,Points,Wins,Losses,Draws
+1,Arwen,224,362,138,700
+2,Frodo,223,360,137,703
+3,Bilbo,183,344,161,695
+4,Celebrian,152,354,202,644
+5,Dwalin,149,335,186,679
+6,Eowyn,96,299,203,698
+7,Galadriel,-1027,23,1050,127
+
+Head-to-Head (Points received by Row Player when playing White against Column Player)
+White \ Black,Arwen,Bilbo,Celebrian,Dwalin,Eowyn,Frodo,Galadriel
+Arwen,,36,39,30,45,34,178
+Bilbo,21,,40,39,34,29,181
+Celebrian,35,23,,31,48,31,186
+Dwalin,21,37,51,,33,24,169
+Eowyn,29,26,32,31,,14,167
+Frodo,29,34,39,50,39,,169
+Galadriel,3,5,1,5,4,5,
+
+Player Parameters:
+Name,GS,N3,N4,M1,M2,FB,PD,MS,DMS,NMF,NMR,NMG
+Arwen,62,13,33,178,4,78,552,18,1000,10,98,626
+Bilbo,47,13,31,153,4,33,480,24,1000,12,52,531
+Celebrian,79,16,48,184,4,92,733,22,1000,10,116,713
+Dwalin,37,11,29,145,3,30,452,24,1000,15,54,508
+Eowyn,81,15,49,267,4,89,741,28,1000,12,57,856
+Frodo,55,13,32,166,4,56,516,21,1000,11,75,579
+Galadriel,50,15,30,10,4,300,1000,100,500,10,20,30
+
+Game Outcome Statistics
+Result Type,Count
+White Wins (Material),86
+White Wins (Blocked),625
+White Wins (Time),0
+Black Wins (Material),141
+Black Wins (Blocked),1225
+Black Wins (Time),0
+Draw (Repetition),2096
+Draw (80 Move Rule),27
+Draw (3 vs 3 Standoff),0

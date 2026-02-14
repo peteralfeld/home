@@ -1,0 +1,3452 @@
+
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Dimensions on the Morgan-Scott Split
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                <TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="../bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="../index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="../examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H2>
+            Dimensions on the Morgan-Scott Split
+        </H3>
+        <P>
+            <IMG SRC="MS.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            The Morgan-Scott Split is one of the most studied
+            triangulations in multivariate spline theory since it
+            exhibits a large number of varied phenomena.  On this page
+            we give the dimension of various configurations of the
+            split, to illustrate the complexity of the split, and also
+            to demonstrate the power of the MDS code.  The dimensions
+            can be obtained by running the code with a sufficiently high
+            amount of memory.
+        </P>
+        <P>
+            As illustrated in the nearby figure, the Morgan split is
+            obtained by taking a triangle with vertices V <SUB>0</SUB>,
+            V <SUB>1</SUB>, V <SUB>2</SUB>.  inscribing another triangle
+            with vertices V <SUB>3</SUB>, V <SUB>4</SUB>, V <SUB>5</SUB>
+            .
+            and adding edges to make a triangulation with seven
+            triangles.  It can also be obtained by projecting an
+            octahedron into the plane (where the original triangle forms
+            the image of the eight face of the octahedron).
+        </P>
+        <P>
+            The MDS code has several versions of the Morgan-Scot split
+            on the list of built-in triangulations.  In these
+            illustrations we consider eight different configurations.
+            Emphasis is on parallel pairs of edges emanating from the
+            same vertex since they tend to cause dimensions to become
+            non-generic.  Note that for the effects to occur the edges
+            must be <B>exactly</B> parallel which is possible to obtain
+            because the coordinates of vertices are all integer.
+        </P>
+        <P>
+            For each configuration the following information is given:
+        </P>
+        <UL>
+            <LI>
+                A description of its distinguishing features.
+            </LI>
+            <LI>
+                The coordinates of the vertices.
+            </LI>
+            <LI>
+                A link to a binary file that can be read by the MDS
+                code.  It will most likely show up empty on your
+                browser, but you can download like any other file and
+                then read it into your downloaded copy of the MDS code.
+            </LI>
+            <LI>
+                A link to the description of the split generated by the
+                MDS code.
+            </LI>
+            <LI>
+                A link to a graphical image of the particular split.
+                Pairs of parallel edges emanating from the same vertex
+                are drawn in red.
+            </LI>
+        </UL>
+        <H3>
+            Example 1:  A generic configuration.
+        </H3>
+        <P>
+            This configuration contains no recognized geometric
+            artifacts.  In all cases the dimension equals the generic
+            value.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,488), (520,488), (300,113),
+                (344,338), (254,332), (285,408).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS1">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS1.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS1.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 2:  One parallel pair of edges.
+        </H2>
+        <P>
+            This configuration contains just one pair of parallel edges.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,488), (520,488), (300,113),
+                (344,338), (300,363), (285,425).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS2">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS2.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS2.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 3:  Two parallel pairs of edges.
+        </H2>
+        <P>
+            This configuration contains pairs of parallel edges.
+            However, these do not form a singular vertex.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,488), (520,488), (300,113),
+                (312,280), (254,332), (324,447).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS3">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS3.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS3.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 4:  A singular Vertex
+        </H2>
+        <P>
+            This configuration contains two pairs of parallel edges
+            which intersect to from a singular vertex.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,488), (520,488), (300,114),
+                (344,338), (256,263), (355,394).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS4">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS4.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS4.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 5:  Three pairs of parallel edges.
+        </H3>
+        <P>
+            This configuration contains three pairs of parallel edges.
+            It has been used by Wang to construct a finite element.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,490), (521,490), (297,112),
+                (330,274), (205,382), (363,436).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS5">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS5.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS5.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 6:  The symmetric Split.
+        </H3>
+        <P>
+            This configuration is symmetric in the sense defined by
+            Diener and
+            <A HREF="dependence.html">
+                discussed here.
+            </A>
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (80,488), (520,488), (300,113),
+                (344,338), (256,338), (300,413).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS6">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS6.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS6.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 7:  A partially symmetric split.
+        </H3>
+        <P>
+            This configuration has vertices V <SUB>4</SUB> and V <SUB>5
+            </SUB> symmetrically placed with respect to the line from V
+            <SUB>0</SUB> V <SUB>3</SUB>.  Thus is exhibits part of
+            Diener's symmetry.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (75,500), (525,500), (325,100),
+                (355,340), (265,340), (303,452).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS7">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS7.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS7.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            Example 8:  Diener's Example.
+        </H3>
+        <P>
+            This strange looking configuration was given by Diener as an
+            example of a configuration that satisfies an algebraic
+            condition that came up in his analysis.  It is reproduced as
+            Diener gave, it with two of the edges of the inner triangle
+            defined by the unit vectors in the plane.
+        </P>
+        <UL>
+            <LI>
+                <B>Vertices:</B> (580,76), (20,126), (132,526),
+                (356,176), (412,176), (356,126).
+            </LI>
+            <LI>
+                <A HREF="configurations/MS8">
+                    binary file.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS8.tri">
+                    MDS code description.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="configurations/MS8.gif">
+                    image
+                </A>
+            </LI>
+        </UL>
+        <H2>
+            Dimensions
+        </H2>
+        <P>
+            The following table gives dimension of various spline spaces
+            on the above described configurations.  For each case, the
+            true dimension is computed and compared to
+            <A HREF="../Srd.html#dimension">
+                Schumaker's lower bound
+            </A>
+            (for that particular configuration).  When the dimension and
+            the lower bound agree, their common value is listed.  If
+            they disagree, the dimension is listed, followed by a slash,
+            and the discrepancy.  Thus, for example, the dimension on
+            the symmetric split when <B>r=1</B> and <B>d=2</B> is 7 and
+            the lower bound is 6.
+        </P>
+        <P>
+            <B>m</B> and <B>n</B> are the dimension of the linear system
+            that must be analyzed.  They are included to illustrate the
+            capacity of the MDS code.
+        </P>
+        <P>
+            For clarity, <B>r</B> and <B>d</B> are listed on a yellow
+            background, and the matrix dimensions on a purple
+            background.  A cyan background indicates that the dimension
+            of the spline space actually equals the dimension of the
+            space of polynomials of degree <B>d</B>.  Thus in that case
+            all splines are in fact polynomials.  A green background
+            indicates that there are nontrivial splines, and the true
+            dimension exceeds
+            <A HREF="../Srd.html#dimension">
+                Schumaker's lower bound.
+            </A>
+        </P>
+        <P>
+            At present, except in the special case of the symmetric
+            split and <B>d=2r</B>, we have no theory that explains the
+            entries on a green background (except for configuration 8 in
+            the case that <B>d=2r</B>, see Dwight Diener, <EM>
+            Instability in the dimension of spaces of bivariate
+            piecewise polynomials of degree 2r and smoothness order r.
+            </EM> SIMA J. Numer.  Anal., 27 (1990), pp.  543-551)
+        </P>
+        <P>
+            The dimension on the Morgan-split is completely understood
+            (in the sense that we know a minimal determining set) in the
+            case that <B>d&gt;3r+1.</B> However, for the range of <B>r
+            </B> considered here, discrepancies only occur for <B>d&lt;
+            2r+1.</B> It is an open question whether discrepancies occur
+            for larger of values of <B>d</B>, either on the Morgan-Scott
+            split for values of <B>r</B> not considered here, or on
+            configurations other than the Morgan-Scott split.
+            <CENTER>
+                <TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+                    <TR>
+                        <TD ALIGN=right>
+                            <B> r</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> d</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> Conf.  1</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> Conf.  2</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> Conf.  3</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B>Conf.  4</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> Conf.  5</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> Conf.  6</B>
+                        </TD>
+                        <TD ALIGN=right >
+                            <B>Conf.  7</B>
+                        </TD>
+                        <TD ALIGN=right >
+                            <B> Conf.  8</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> m</B>
+                        </TD>
+                        <TD ALIGN=right>
+                            <B> n</B>
+                        </TD>
+                    </TR> 
+                    <TR>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD ALIGN=right bgcolor = #ffffaa>
+                        <B> 1</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #ffffaa>
+                        <B> 2</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffff>
+                        <B>6</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffff>
+                        <B>6</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffff>
+                        <B>6</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>7</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffff>
+                        <B>6</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffaa>
+                        <B>7 / 1</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffaa>
+                        <B>7 / 1</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaffff>
+                        <B>6</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaaaff>
+                        <B> 18</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaaaff>
+                        <B> 18</B>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD ALIGN=right bgcolor = #ffffaa>
+                        <B> 1</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #ffffaa>
+                        <B> 3</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>17</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right>
+                        <B>16</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaaaff>
+                        <B> 27</B>
+                    </TD>
+                    <TD ALIGN=right bgcolor = #aaaaff>
+                        <B> 37</B>
+                    </TD>
+                </TR> 
+                <TR>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+                <TD>
+                    &nbsp;
+                </TD>
+            </TR>
+        <TR>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 2</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 3</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 3</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 2</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 1</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 1</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 3</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 3</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>10 / 3</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 45</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 37</B>
+            </TD>
+        </TR>
+        <TR>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 2</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 4</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffff>
+                <B>15</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>16</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>17</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>18</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>18</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffaa>
+                <B>16 / 1</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffaa>
+                <B>16 / 1</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaffaa>
+                <B>16 / 1</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 63</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 63</B>
+            </TD>
+        </TR>
+        <TR>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 2</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #ffffaa>
+                <B> 5</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>30</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>31</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>32</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>33</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>33</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>30</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>30</B>
+            </TD>
+            <TD ALIGN=right>
+                <B>30</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 81</B>
+            </TD>
+            <TD ALIGN=right bgcolor = #aaaaff>
+                <B> 96</B>
+            </TD>
+        </TR> 
+        <TR>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+        <TD>
+            &nbsp;
+        </TD>
+    </TR>
+    <TR>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 4</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 2</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 1</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 1</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>15 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 81</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 63</B>
+        </TD>
+    </TR>
+    <TR>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 5</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 2</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 1</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>22</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffff>
+            <B>21 / 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 108</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 96</B>
+        </TD>
+    </TR>
+    <TR>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 6</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>31</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>32</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>33</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>36</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>34</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffaa>
+            <B>32 / 1</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaffaa>
+            <B>32 / 1</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>31</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 135</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 136</B>
+        </TD>
+    </TR>
+    <TR>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 3</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #ffffaa>
+            <B> 7</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>51</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>52</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>53</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>56</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>54</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>51</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>51</B>
+        </TD>
+        <TD ALIGN=right>
+            <B>51</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 162</B>
+        </TD>
+        <TD ALIGN=right bgcolor = #aaaaff>
+            <B> 183</B>
+        </TD>
+    </TR> 
+    <TR>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>21 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 126</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 96</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 162</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 136</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>37 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>38 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>40</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>37 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>37 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 198</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 183</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>51</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>53</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>55</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>59</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>57</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>52 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>52 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>51</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 234</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 237</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>76</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>80</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>84</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>82</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>76</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>76</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>76</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 270</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 298</B>
+    </TD>
+</TR>
+<TR>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>28 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 180</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 136</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 225</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 183</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>46 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 270</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 237</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>57 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>59 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>63</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>61</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>56 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>56 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 315</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 298</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 10</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>75</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>81</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>87</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>84</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>76 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>76 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>75</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 360</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 366</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 11</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>105</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>108</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>111</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>117</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>114</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>105</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>105</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>105</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 405</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+</TR>
+<TR>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>36 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 243</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 183</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 297</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 237</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 351</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 298</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>67 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>68 / 3</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>70</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>69</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 405</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 366</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 11</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>82</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>86</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>93</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>90</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>82 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>82 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 459</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>106</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>110</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>114</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>122</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>118</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>107 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>107 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>106</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 513</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 523</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 13</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>145</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>149</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>157</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>153</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 567</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 612</B>
+    </TD>
+</TR>
+<TR>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>45 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 315</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 237</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 378</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 298</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 366</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 11</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 5</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>79 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 504</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>93 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>95 / 3</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>100</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>97</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>92 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>92 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 567</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 523</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 13</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>108</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>113</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>118</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>128</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>123</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>112 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>112 / 4</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>108</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 630</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 612</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 14</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>146</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>151</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>162</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>156</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>142 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>142 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>141</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 693</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 708</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 15</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>181</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>186</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>191</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>202</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>196</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>181</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>181</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>181</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 756</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 811</B>
+    </TD>
+</TR>
+<TR>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>55 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 396</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 298</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 468</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 366</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 11</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 540</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 14</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 7</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 612</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 523</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 13</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>106 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>107 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>109 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>108</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 684</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 612</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 14</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>124 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>128 / 3</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>135</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>132</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>121 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>121 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 756</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 708</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 15</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>142</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>149</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>156</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>168</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>163</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>146 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>146 / 4</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>142</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 828</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 811</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 16</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>180</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>187</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>194</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>207</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>201</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>181 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>181 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>180</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 900</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 921</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 17</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>225</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>232</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>239</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>252</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>246</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>225</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>225</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>225</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 972</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1038</B>
+    </TD>
+</TR>
+<TR>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+<TD>
+    &nbsp;
+</TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>66 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 486</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 366</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 11</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>78 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 567</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 441</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>91 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 648</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 523</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 13</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 16</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>105 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 729</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 612</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 14</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 16</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 8</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>121 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>120 / 24</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 810</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 708</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>138 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>140 / 6</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>145</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>142</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 891</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 811</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 16</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>153 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>159 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>165 / 2</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>177</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>171</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>157 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>157 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B>153 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 972</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 921</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 17</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>183</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>191</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>199</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>215</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>207</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>187 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>187 / 4</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>183</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1053</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1038</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 18</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>226</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>234</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>242</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>259</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>250</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>227 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffaa>
+        <B>227 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>226</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1134</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1162</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #ffffaa>
+        <B> 19</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>276</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>284</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>292</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>309</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>300</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>276</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>276</B>
+    </TD>
+    <TD ALIGN=right>
+        <B>276</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1215</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaaaff>
+        <B> 1293</B>
+    </TD>
+</TR>
+<TR>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+    <TD>
+        &nbsp;
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 13</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 2</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 1</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 105</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 105 / 3</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 810</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 612</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 14</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 3</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 3</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 120</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 9</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 120 / 9</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 918</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 708</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 12</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 6</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 6</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 136</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 136 / 18</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1026</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 811</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 16</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 20</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 10</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 153</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 153 / 30</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1134</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 921</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 17</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 26</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 13</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 11</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 171</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 171 / 39</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1242</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1038</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 18</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 42</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 28</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 14</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 7</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 190</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 42</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 42</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 190 / 42</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1350</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1162</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 19</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 210 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 211 / 26</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 212 / 13</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 214 / 2</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 213</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 210 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 210 / 39</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 210 / 39</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1458</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1293</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 20</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 231 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 235 / 20</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 239 / 10</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 247</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 243</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 231 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 231 / 30</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 231 / 30</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1566</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1431</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 21</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 253 / 15</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 262 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 271 / 5</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 288</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 280</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 257 / 19</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 257 / 19</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 253 / 15</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1674</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1576</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 22</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 282</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 296</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 310</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 335</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 324</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 292 / 10</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 292 / 10</B>
+    </TD>
+    <TD ALIGN=right >
+        <B> 282</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1782</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1728</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 23</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 333</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 347</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 361</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 388</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 375</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 337 / 4</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 337 / 4</B>
+    </TD>
+    <TD ALIGN=right >
+        <B> 333</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1890</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1887</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 24</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 391</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 405</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 419</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 447</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 433</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 392 / 1</B>
+    </TD>
+    <TD ALIGN=right bgcolor = #aaffff>
+        <B> 392 / 1</B>
+    </TD>
+    <TD ALIGN=right >
+        <B> 391</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 1998</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 2053</B>
+    </TD>
+</TR>
+<TR>
+    <TD ALIGN=right>
+        <B> 12</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 25</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 456</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 470</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 484</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 512</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 498</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 456</B>
+    </TD>
+    <TD ALIGN=right >
+        <B> 456</B>
+    </TD>
+    <TD ALIGN=right >
+        <B> 456</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 2106</B>
+    </TD>
+    <TD ALIGN=right>
+        <B> 2226</B>
+    </TD>
+</TR>
+</TABLE>
+</CENTER>
+<P>
+    [25-Mar-1999]
+</P>
+</BODY>
+</HTML>

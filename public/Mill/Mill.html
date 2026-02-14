@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>The Game of Mill</title>
+    <link rel="stylesheet" href="Mill.css">
+  </head>
+  <body>
+    <table>
+      <tr>
+        <td colspan="3" style="text-align: center;">
+          <div style="display: flex; justify-content: center; gap: 3px;">
+            <div id="timeMoveWhite" class="whiteStatusBox" title="Shows the average number of minutes for a move by White">
+              <input type="text" id="timeForWhite" name="timeForWhite" placeholder="" style="text-align: right" class="whiteInput" title="Enter the average number of seconds for a move by White.  For example, to specify 2 minutes enter 120.">min/move
+            </div>
+            <div id="whiteClock" class="whiteStatusBox" title="The visual clock showing how much time White has left to make a move (if timing is enabled)."> white clock </div>
+            <div id="numberWhitePieces" class="whiteStatusBox" title="A counter showing the total number of White stones currently on the playing field."> white pieces </div>
+            <div>
+              <button type="button" id="Timing" style="height: 40px; background-color: blue; color: white; font-size: 20px; width: 160px;" title="Toggle timing rules. Blue: Clocks decorative. Green (Auto): Enforced for 'Time' AI. Green (All): Enforced for Humans too."> Timing </button>
+            </div>
+            <div id="numberBlackPieces" class="blackStatusBox" title="A counter showing the total number of Black stones currently on the playing field."> black pieces </div>
+            <div id="blackClock" class="blackStatusBox" title="The visual clock showing how much time Black has left to make a move (if timing is enabled)."> black clock </div>
+            <div id="timeMoveBlack" class="blackStatusBox" title="Shows the average number of minutes for a move by Black">
+              <input type="text" id="timeForBlack" name="timeForBlackxs" placeholder="" style="text-align: right" class="blackInput" title="Enter the average number of seconds for a move by Black. For example, to specify 2 minutes, enter 120.">min/move
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <canvas id="Board" width="800" height="800" title="The Game Board. Click to place a stone, click and drag to move one.  Click Play before starting a game."></canvas>
+        </td>
+        <td style="vertical-align: top;">
+          <table>
+            <tr>
+              <td style="background-color: rgb(200,255,255); color: navy; text-align: center">
+                <div class="box" id="status" style="height: 167px; overflow-y: auto;" title="This general purpose box displays turn instructions, game results, and progress reports for tournaments or AI evolutions."></div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div> White: <select id="WhitePlayer" name="WhitePlayer" style="font-size: 18px; margin-left: 10px;" title="Menu to choose the White player. Select 'Human' for manual play, or a name for the AI.">
+                      <option value="0" selected>Human</option>
+                    </select>
+                  </div> SD: <div>
+                    <select id="searchDepthWhite" name="searchDepthWhite" style="font-size: 18px; margin-left: 10px;" title="Select the search depth for White, if played by the AI.  Set to Time to use the clock instead of a fixed depth. This menu is irrelevant for human play."></select>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div> Black: <select id="BlackPlayer" name="BlackPlayer" style="font-size: 18px; margin-left: 10px;" title="Menu to choose the Black player. Select 'Human' for manual play, or a name for the AI."></select>
+                  </div> SD: <div>
+                    <select id="searchDepthBlack" name="searchDepthBlack" style="font-size: 18px; margin-left: 10px;" title="Select the search depth for Black, if played by the AI.  Set to Time to use the clock instead of a fixed depth. This menu is irrelevant for human play."></select>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%; align-items: center;">
+                  <button type="button" id="Evaluate" style="background-color: rgb(200,200,255); color: rgb(0,0,55); font-size: 20px; flex: 1; height: 30px;" title="Calculates the score of the current board state using the selected depth."> Evaluate Board </button>
+                  <select id="evalDepth" style="font-size: 18px; margin-left: 5px;" title="Select the search depth for the board evaluation. Greater depths are more accurate but take longer. The default choice of zero computes a static evaluation and writes detailed information to the console."></select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%; align-items: center;">
+                  <button type="button" id="Recommend" style="background-color: rgb(200,200,255); color: rgb(0,0,55); font-size: 20px; flex: 1; height: 30px;" title="Calculate and display a list of all legal moves for the current position, ranked by their score. List only distinct moves if symmetry check is active."> Available Moves </button>
+                  <select id="recDepth" style="font-size: 18px; margin-left: 5px;" title="Select the search depth for the evaluation of available moves."></select>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <button type="button" id="randomize" style="background-color: green; color: white; font-size: 20px; width: 100%;" title="Select whether to play the first of all available moves with the best score, or make a random choice among them. Random choice (the default) is best; because of timing, pruning, and worker allocation issues, always playing the first move does not necessarily, and usually does not, provide for repeatability of computer games."> Random </button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table>
+                  <tr>
+                    <td>Toggle:&nbsp;</td>
+                    <td>
+                      <button type="button" id="Labels" style="background-color: blue; color: white; font-size: 20px; width: 100%;" title="Toggle the display of labels (1-24) of the board vertices."> Lab </button>
+                    </td>
+                    <td>
+                      <button type="button" id="eligibles" style="background-color: blue; color: white; font-size: 20px; width: 100%;" title="Toggle the highlighting of legal moves and captures."> Elgb </button>
+                    </td>
+                    <td>
+                      <button type="button" id="highlight" style="background-color: blue; color: white; font-size: 20px; width: 100%;" title="Toggles the highlighting of the most recent move."> HLight </button>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table>
+                  <tr>
+                    <td>Report:&nbsp;</td>
+                    <td>
+                      <button type="button" id="reportDepths" style="background-color: magenta; color: white; font-size: 20px; width: 100%;" title="Print detailed node counts and search depth statistics on the console (F12)."> Stats </button>
+                    </td>
+                    <td>
+                      <button type="button" id="ReportTiming" style="background-color: magenta; color: white; font-size: 20px; width: 100%;" title="Prints the time taken for each calculation on the console (F12)."> CPU </button>
+                    </td>
+                    <td>
+                      <button type="button" id="Game" style="background-color: magenta; color: white; font-size: 20px; width: 100%;" title="List current game's history on the console (F12)."> Game </button>
+                    </td>
+                    <td>
+                      <button type="button" id="print" style="background-color: rgb(245,234,221); color: rgb(0,75,0); font-size: 20px; font-weight: bold; width: 100%;" title="Save a high-resolution PNG image of the current board state to your computer."> Board </button>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div id="cores" class="statusBox" style="text-align: center" title="The container displaying the parallel processing settings. It wraps the input field for the number of worker threads.">
+                  <input type="text" size="3" id="numberProcesses" name="numberCores" placeholder="" style="text-align: center" class="input" title="The input field shows how many concurrent Web Workers (threads) are being used by your system. You can change this to any positive integer. This is an advanced topic. See the manual for a detailed discussion."> &nbsp;workers
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table>
+                  <tr>
+                    <td>
+                      <button type="button" id="alphaBeta" style="background-color: green; color: red; font-size: 20px; width: 100%;" title="Enable or disable the pruning algorithm. Disabling this (Red) will make the AI extremely slow. Keep it Green.">
+                        <B>&alpha;/&beta;</B>
+                      </button>
+                    </td>
+                    <td>
+                      <button type="button" id="tTable" style="background-color: green; color: red; font-size: 20px; width: 100%;" title="Enable or disable keeping track of which nodes have already been analyzed.">
+                        <B>TT</B>
+                      </button>
+                    </td>
+                    <td>
+                      <button type="button" id="OB" style="background-color: green; color: red; font-size: 20px; width: 100%;" title="Enable or disable the use of the pre-calculated Opening Book (if one is available).">
+                        <B>OB</B>
+                      </button>
+                    </td>
+                    <td style="text-align: right;">&nbsp;S:&nbsp;</td>
+                    <td>
+                      <input type="text" id="symCutoff" style="width: 25px; text-align: center; font-size: 18px;" class="input" title="An optimization setting. Determines up to which ply the engine checks for symmetrical board positions to reduce calculation size.">
+                    </td>
+                    <td style="text-align: right;">&nbsp;TT(m):&nbsp;</td>
+                    <td>
+                      <input type="text" id="ttLimit" style="width: 50px; text-align: center; font-size: 18px;" class="input" title="Set the memory limit for the Transposition Table. For example, '16' means that up to 16 million positions (~400MB) can be stored in memory.">
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <button type="button" id="silence" style="background-color: green; color: white; font-size: 15px; font-weight: bold; width: 100%; height: 30px;" title="Toggles visual updates during Tournaments or Improvement runs. Silence On runs faster.   You can toggle this feature while the tournament or improvement cycle is ongoing."> Silence OFF </button>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%; align-items: center; justify-content: space-between;">
+                  <button type="button" id="improveBtn" style="background-color: orange; color: black; font-size: 18px; font-weight: bold; padding: 2px 5px;" title="Begin the genetic algorithm to improve the selected Brain. Successful mutants will be uploaded when they become available."> Improve </button>
+                  <select id="editBrainSelect" style="font-size: 18px; width: 90px;" title="Select the AI brain that you wish to evolve."></select>
+                  <div style="display: flex; gap: 2px; align-items: center;">
+                    <input type="text" id="impGenerations" value="10" style="width: 50px; text-align: center; font-size: 18px;" title="Enter the number of generations you want to run the cycle.">
+                    <input type="text" id="impGames" value="3" style="width: 25px; text-align: center; font-size: 18px;" title="Enter the number of games played against the new Mutant during evolution.">
+                    <input type="text" id="impPercent" value="1.5" style="width: 25px; text-align: center; font-size: 18px;" title="The maximum mutation rate for a mutation, expressed in percentage. This determines how drastically a brain's parameters can change in one generation.">
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; justify-content: space-between;">
+                  <input type="text" id="p_groupScore" style="width: 50px; text-align: center;" class="input" placeholder="GS" title="A penalty value applied based on how fragmented the player's pieces are.">
+                  <input type="text" id="p_N3" style="width: 50px; text-align: center;" class="input" placeholder="N3" title="A bonus for occupying a vertex connected to 3 other points.">
+                  <input type="text" id="p_N4" style="width: 50px; text-align: center;" class="input" placeholder="N4" title="A bonus for occupying a vertex connected to 4 other points (crossroads).">
+                  <input type="text" id="p_mobility1Score" style="width: 50px; text-align: center;" class="input" placeholder="M1" title="Score added for every immediate empty neighbor (freedom to move).">
+                  <input type="text" id="p_mobility2Score" style="width: 50px; text-align: center;" class="input" placeholder="M2" title="Score added for empty spots reachable in two steps.">
+                  <input type="text" id="p_flyBonus" style="width: 50px; text-align: center;" class="input" placeholder="FB" title="The bonus added when the AI reaches the 'Flying' stage (3 pieces left), encouraging it to hold onto material.">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; justify-content: space-between;">
+                  <input type="text" id="p_pieceDiffMultiplier" style="width: 50px; text-align: center;" class="input" placeholder="PD" title="A multiplier usually applied to the material difference (White stones vs Black stones).">
+                  <input type="text" id="p_millScore" style="width: 50px; text-align: center;" class="input" placeholder="MS" title="The score value awarded for having a closed Mill on the board.">
+                  <input type="text" id="p_doubleMillScore" style="width: 50px; text-align: center;" class="input" placeholder="DMS" title="The bonus added if the AI achieves a 'Double Mill' formation (a configuration allowing a player to close a mill on every turn).">
+                  <input type="text" id="p_nearMillFilled" style="width: 50px; text-align: center;" class="input" placeholder="NMF" title="Score for having 2 stones in a line where the 3rd spot is blocked by the opponent.">
+                  <input type="text" id="p_nearMillReady" style="width: 50px; text-align: center;" class="input" placeholder="NMR" title="Score for having 2 stones in a line where the 3rd spot is empty (a threat to close a mill).">
+                  <input type="text" id="p_nearMillGuaranteed" style="width: 50px; text-align: center;" class="input" placeholder="NMG" title="Score for having 2 stones in a line where the 3rd spot is empty and cannot be blocked by the opponent on their next turn.">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 2px;">
+                  <button type="button" id="btnImportBrains" style="background-color: rgb(245,234,221); color: black; font-size: 15px; font-weight: bold; flex: 1; height: 30px;" title="Load a list of AI brains from a CSV file. If the filename matches a file in the directory, it may auto-load; otherwise, it opens a file selector."> Import </button>
+                  <input type="text" id="brainFileName" value="brains" style="font-size: 16px; flex: 1.5; text-align: center; height: 26px;" title="The name of the file to be created when clicking 'Export', or the name of the file to attempt auto-loading when clicking 'Import'.">
+                  <button type="button" id="btnExportBrains" style="background-color: rgb(245,234,221); color: black; font-size: 15px; font-weight: bold; flex: 1; height: 30px;" title="Save all current brains (including any changes you made in the editor) to a CSV file on your computer."> Export </button>
+                  <button type="button" id="btnResetBrains" style="background-color: rgb(255,200,200); color: black; font-size: 15px; font-weight: bold; flex: 1; height: 30px;" title="Discard all changes and reload the original list of AI personalities."> Defaults </button>
+                  <input type="file" id="fileInputBrains" style="display: none;" accept=".csv, .txt">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div id="participants" style="display: flex; justify-content: center; gap: 3px;" title="Checkboxes to determine which AI personalities enter the round-robin tournament. If no AIs are selected at all, the system runs a fixed match between the players selected in the main White/Black dropdowns. Specifying just one AI lets you create a record of the parameters for that AI."> participants </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%; gap: 3px;">
+                  <button type="button" id="tournament" style="background-color: orange; color: black; font-size: 18px; font-weight: bold; padding: 2px 5px; width: 100%;" title="Begin the round-robin tournament based on the selected participants and game count. Results are downloaded to your computer upon completion of the tournament."> run tournament </button>
+                  <input type="text" id="tGames" name="tGames" value="100" style="font-size: 18px; width: 60px; text-align: center;" title="Enter the number of games played during every match between two players.">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%;">
+                  <button type="button" id="setup" style="background-color: rgb(245,234,221); color: rgb(0,75,0); font-size: 15px; font-weight: bold; flex: 1; height: 30px;" title="Enable or exit setup mode. When active, clicking vertices manually cycles their color, allowing you to specify custom board positions."> &nbsp;setup board&nbsp; </button> &nbsp;ply:&nbsp; <input type="text" id="plies" name="plies" placeholder="" class="input" style="text-align: center; height: 30px; box-sizing: border-box; width: 4ch;" title="This displays the number of 'plies' (half-moves) played so far. In Setup Mode, you can edit this number to force the game logic into Phase 2 (Moving, ply 18+) or Phase 3 (Flying).">
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%;">
+                  <button type="button" id="createOB" style="background-color: rgb(200,150,800); color: rgb(0,0,50); font-size: 15px; font-weight: bold; width: 100%; height: 30px;" title="Trigger the calculation of a database of perfect moves for the opening phase. This process downloads a JSON file when complete."> create OB </button> Plies: <select id="OBplies" name="OBmoves" style="font-size: 18px; margin-left: 10px;" title="Set the depth (in half-moves) of the opening book generation. E.g., 4 plies means the book covers the first 2 moves for each player.">
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4" selected>4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                  </select> Depth: <select id="OBDepth" name="OBDepth" style="font-size: 18px; margin-left: 10px;" title="Set the search depth to determine the stored moves when generating an Opening Book.">
+                    <option value="2">2</option>
+                    <option value="4" selected>4</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="10">10</option>
+                  </select>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+        <td style="vertical-align: top; width: 230px">
+          <table>
+            <tr>
+              <td style="padding: 0;"></td>
+            </tr>
+            <tr>
+              <td>
+                <button type="button" id="engineToggle" class="statusBox" style="width: 100%; font-size: 16px; font-weight: bold; cursor: pointer;" title="Toggles between the standard JavaScript engine and the high-performance C++ engine."> Mill v. 27 (C++) </button>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <button type="button" id="play" style="background-color: rgb(0,255,0); color: rgb(255,0,0); font-size: 30px; width: 100%; height: 60px; text-align: center;" title="Start the game. If the game is running, pause execution. If paused, it resumes the game. If a board state has been selected from the game history, start playing from that board state.">
+                  <h2>Play</h2>
+                </button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <button type="button" id="reset" style="background-color: red; color: yellow; font-size: 20px; width: 100%;" title="Stop any active game, clear the board, reset the clock, and delete the move history."> Reset </button>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0;">
+                <div style="display: flex; width: 100%;">
+                  <button type="button" id="backward" style="background-color: rgb(200,255,255); color: rgb(55,0,0); font-size: 20px; width: 50%;" title="Step backward through the game list, updating the board"> Backward </button>
+                  <button type="button" id="forward" style="background-color: rgb(200,255,255); color: rgb(55,0,0); font-size: 20px; width: 50%;" title="Step forward through the game list, updating the board."> Forward </button>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div id="game" title="This provides a list of the moves in the ongoing, or just finished, game.  Clicking the 'White' or 'Black' buttons in this list restores the board to that state. You can analyze that board, modify it, modify the game parameters, and resume playing from the modified state."></div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="3">
+          <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: left"> Click here for more information: <a target="_blank" href="overview.html" title="Introduction">Overview</a>
+            <a target="_blank" href="rules.html" title="Rules of the game">Game Rules</a>
+            <a target="_blank" href="manual.html" title="User manual">User Manual</a>
+          </div>
+        </td>
+      </tr>
+    </table>
+    <script type="module" src="Mill.js"></script>
+  </body>
+</html>

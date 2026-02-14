@@ -1,0 +1,83 @@
+body{background-color: rgb(200, 240, 255)
+    }
+
+th, td {
+  border: 1px solid black; /* This adds a 1px solid black border to each cell */
+}
+
+
+wb {
+    color: white;
+    background-color: blue;
+}
+
+wg {
+    color: white;
+    background-color: rgb(0,127,0);
+}
+
+wr {
+    color: white;
+    background-color: rgb(127,0,0);
+}
+wp {
+    color: white;
+    background-color: rgb(127,0,127);
+}
+
+content += ""
+
+
+
+
+table {
+  border-collapse: collapse; /* Merges adjacent cell borders */
+}
+
+table {
+  background-color: white; /* Or any other color you prefer */
+}
+
+table {
+  font-family: "Times New Roman", Times, serif;
+  font-size: 14px;
+  color: #000;
+}
+
+td {
+    text-align: right;
+}
+
+th {
+    text-align: right;
+}
+
+
+#puF {
+    display: none; /* Hidden by default */
+    position: absolute; /* Positioned relative to the viewport or closest positioned ancestor */
+    height: 20px;
+    width: 370px;
+    background-color: #e0ffe0f0;
+    color: #0099000;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 4px 4px 10px rgba(0,0,0,0.2);
+    z-index: 100; /* Ensure it appears above other content */
+}
+
+#exportHTML{
+    width: 200px; /* Fixed width of 200 pixels */
+    height: 40px; /* Fixed height of 40 pixels */
+}
+
+#Schedule{
+    width: 200px; /* Fixed width of 200 pixels */
+    height: 40px; /* Fixed height of 40 pixels */
+}
+
+#exportCSV{
+    width: 200px; /* Fixed width of 200 pixels */
+    height: 40px; /* Fixed height of 40 pixels */
+}
+

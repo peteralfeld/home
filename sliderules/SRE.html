@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+
+<HTML>
+    <HEAD>
+        <TITLE>Slide Rule Explorer</TITLE>
+    </HEAD>
+
+    <BODY BGCOLOR=ffffff>
+
+        <IMG SRC="../images/UUlogo.gif" ALIGN="LEFT" BORDER=1 HSPACE=10>
+
+        <H6>
+            <A HREF="http://www.math.utah.edu/~pa/">
+                Peter Alfeld,
+            </A>
+            ---
+            <A HREF="http://www.math.utah.edu/">
+                Department of Mathematics,
+            </A>
+            ---
+            <A HREF="http://www.science.utah.edu/">
+                College of Science
+            </A>
+            ---
+            <A HREF="http://www.utah.edu/">
+                University of Utah
+            </A>
+        </H6>
+
+
+<A href="SRE.zip"><IMG src = "SRE.PNG"></A>
+<p>
+<FONT Color="red"><B>Click on this image to download the software, see below how to get a panel with working controls.</b></Font>
+
+
+
+
+<font color ="#000077">        <H1>The Slide Rule Explorer User's Guide</H1></Font>
+
+<H2><font color ="#000077"> by <a href="http://www.math.utah.edu/~pa">Peter Alfeld </a>, Department of Mathematics, University of Utah</font></H2>
+
+<p>
+   The slide rule explorer (<font size="+1"><B><I>SRE</I></B></font>)
+let's you explore more than 100,000 mathematical expressions that can
+be evaluated on a slide rule.  You enter an expression and then click
+on <font color="#770000" size="+1"><b>Find</b></font> to identify
+slide rule procedures that will evaluate that expression.
+
+   One way to view the <font size="+1"><B><I>SRE</I></B></font> is as
+a device to look up the expressions described on
+my <a href="http://www.math.utah.edu/~pa/sliderules">slide rule
+page</a> and in my article
+<I>Many Formulas</I>, Journal of the
+<a href = "http://www.oughtred.org">
+Oughtred Society</a>, vol. 18, No. 2, 2009, pp. 18-21.  However, it
+can also be used to explore more restricted scale combinations and to
+analyze the capabilities of existing or newly designed sliderules.
+
+   <font color ="#000077"><H2> To get started </H2></font>
+
+<font size="+1"><B><I>SRE</I></B></font> runs on any computer that supports <a href="https://java.com/en/">
+java.</a>  Download the file
+<a href="SRE.zip">SRE.zip</a>, unzip it, and put the files you'll get into
+a suitable directory.  To start the software connect to that directory and type
+   
+<h3><pre> java rule </pre></h3>
+
+in a suitable <B>Command Window</b>. (To get a command window in
+Windows 10, for example, right click on the start button and then
+click on "Command Prompt" in the resulting menu.)
+
+
+<P>
+A panel should appear that looks like the image on the top of this web
+page.  We will refer to it as the <B>Control Panel</b>.  Using any of
+the variables <i>x</i>, <i>y</i>, and <i>z</i>, enter a mathematical
+expression in the <font color = "#770000", size = "+1"><B>Expression
+Text Field</b></font> in the second row of the control window and
+click on the green button labeled <font color = "#770000", size =
+"+1"><b>Find</b></font> (or just click on
+<font color = "#770000", size = "+1"><b>Find</b></font> if you wish to
+know how to compute <i>x*y*z</i>).  In the <font color = "#770000",
+size = "+1"><b>Procedure Text Field</b></font> in the third row of the
+<b>Control Panel</b> you will find a short description of how to
+compute your expression with a slide rule.  Click on the button
+labeled <font color = "#770000", size = "+1"><b>Verbose</b></font> to
+see a more detailed description appear in the <b>Command Window</b>.
+
+<P>
+
+With the <font size="+1"><B><I>SRE</I></B></font>, you can enter
+expressions and see if and how you can evaluate these expressions with
+your slide rule.  You can also see a list of expressions that can be
+so evaluated, and you can select the scales that are present on the
+slide and body of your slide rule.  The remainder of this page
+describes how to use the controls in the
+<b>Control Panel</b>, what kind of sliderule procedures are available,
+how to select what scales you assume are present on your sliderule,
+and how to log the results of your investigation.
+
+<font color ="#000077"><H2>Available Procedures</H2></Font>
+
+Depending on whether an expression has 1, 2, or 3 variables,
+the <font size="+1"><B><I>SRE</I></B></font> investigates one of four
+procedures.  These are described here briefly, and more fully on
+my <a href = "http://www.math.utah.edu/~pa/sliderules/index.html">
+slide rule page.</a>
+
+<font color ="#000077"><H3>1 Variable: Table Lookup</H3></Font>
+
+You align all scales, find the variable <i>x</i> on Scale 1, and look
+up the result on Scale 2.
+
+
+<P>
+<B>Examples:</B> If the two scales are the same, you won't be surprised to find <i>x</i> as
+the result.  If Scale 1 is the C scale and Scale 2 the CF scale you
+find <i>pi*x</i>.  Reversely, if Scale 1 is the CF scale and Scale 2 the C scale you will find <i>x/pi</i>.
+
+<font color ="#000077"><H3>2 Variables: Multiplication or Division</H3></Font>
+
+These are modeled after the ordinary multiplication and division
+procedures which are probably the most frequently employed
+slide rule procedures.  However, instead of using the C and D scales
+exclusively, the <font size="+1"><B><I>SRE</I></B></font> considers
+the use of other scales as well.  For example, suppose you have a
+sliderule with an A (<i>x^2</i>) and D (<i>x</i>) scale on the body,
+and a K (<i>x^3</i>) scale on the slide, and you want to compute
+<i>x^(1/2)*y^(1/3)</i> or <i>x^(1/2)/y^(1/3).</i>  Proceed as follows:
+
+<P>
+<B>Example, Multiplication:</B> Find <i>x</i> on the A scale, align
+the index of the K scale with <i>x</i>, move the hairline to <i>y</i>
+on the K scale, and read the result
+<i>x^(1/2)*y^(1/3)</i> under the hairline on the D scale.
+
+<P>
+<B>Example, Division:</B> Find <i>x</i> on the A scale, align
+with <i>y</i> on the K scale, move the hairline to the index of the K
+scale, and read the result
+<i>x^(1/2)/y^(1/3)</i> under the hairline on the D scale.
+
+<font color ="#000077"><H3>3 Variables</H3></Font>
+
+This procedure is obtained from either of the two 2 variable procedures
+by replacing the index of scale 2 with a number on another scale.
+
+<P>
+<B>Example:</b> To compute the triple product <i>x*y*z</i> you can
+save one alignment over the ordinary repeated multiplication procedure
+by proceeding as follows: Find <i>x</i> on the D scale, align <i>x</i>
+with <i>y</i> on the CI scale, move the hairline over <i>z</i> on the
+C scale, and read the expression <i>x*y*z</i> under the hairline on
+the D scale.
+
+
+<font color ="#000077"><H2> Available Scales </H2></Font>
+
+All scales are referenced to the C (on the slide) and D (on the body)
+scales.  We refer to these two scales collectively as the CD scale, and to a value on
+either of those two scales as <i>x</i>.  Those scales are logarithmic, the logarithm
+of <i>x</i> is proportional to the distance of <i>x</i> from the index of the scale.
+The <font size="+1"><B><I>SRE</I></B></font> incorporates a total of
+13 scales.  They are briefly described here, for more information see
+Table 1 on the <a href="http://www.math.utah.edu/~pa/sliderules">
+slide rule page.</a>
+
+<OL>
+
+<LI> <B>CD</B>, <i>x</i>, the C and D scales, C on the slide, D on
+the body. </LI>
+
+<LI> <B>CDI</B>, <i>1/x</i>, inverted scales, the CI scale on the
+slide, DI on the body.</LI>
+
+<LI> <B>CDF</B>, <i>pi*x</i>, the folded scales, CF on the slide, DF
+on the body. </LI>
+
+<LI> <B>CDIF</B>, <i>1/(x*pi)</i>, folded and inverted scales, CIF on
+the slide, DIF on on the body.</LI>
+
+<LI> <B>AB</B>, <i>x^2</i>, square scales, A on the body, B on the
+slide. </LI>
+
+<LI> <B>W</B>, <i>sqrt(x)</i>, square root scale. </LI>
+
+<LI> <B>ABI</B>, <i>1/x^2</i>, inverted square scales, AI on the body, BI on the
+slide. </LI>
+
+
+
+<LI> <B>K</B>, <i>x^3</i>, cube scale. </LI>
+
+<LI> <B>KI</B>, <i>1/x^3</i>, inverted cube scale. </LI>
+
+<LI> <B>LL, E</B>, <i>exp(x)</i>, exponential scale. </LI>
+
+<LI> <B> L </B>, <i>log(x)</i>, logarithmic scale, the only scale to have a constant
+increment. </LI>
+
+<LI> <B> S </B> <i>arcsin(x)</i>, measured in degrees. </LI>
+
+
+<LI> <B> T </B> <i>arctan(x)</i>, measured in degrees. </LI>
+
+<LI><B>P</B>, <i>sqrt(1-x^2)</i>, the Pythagorean Scale. </LI>
+
+<LI><B>H</B>, <i>sqrt(1+x^2)</i>.  </LI>
+
+<LI><B>SH</B>, <i> sinh(x) </i> hyperbolic sine </li>
+
+<LI><B>CH</B>, <i> cosh(x) </i> hyperbolic cosine </li>
+
+<LI><B>TH</B>, <i> tanh(x) </i> hyperbolic tangent </li>
+
+</OL>
+
+
+
+
+
+<font color ="#000077"><H2>Selecting Scale Combinations </H2></Font>
+
+The <font color = "#770000", size = "+1"><b>radio buttons</b></font>
+in the last 2 rows of the control panel let you select the scales that
+are present on the body and the slide of a hypothetical slide rule.
+The <font size="+1"><B><I>SRE</I></B></font> will search only for
+expressions that can be computed with those scales by the above
+procedures.  By default all scales are assumed to be present on both
+slide and body.  The total number of expressions, including
+duplications, that can be evaluated with those scales are 324 for 1
+variable expressions, 11,664 for 2 variable expressions, and 104,976 for
+3 variable expressions.  (The <font size="+1"><B><I>SRE</I></B></font>
+tries even more approaches by permuting the sequence of input
+variables for the 2 and 3 variable expressions.)
+
+<p> The <font color = "#770000", size = "+1"><b>scale menu</b></font>
+in the first row of the control panel, next to the quit button, let's
+you preselect the following combinations:
+
+<UL>
+<LI><B>All</B>, the default. </LI>
+<LI><B>None</B>, to start setting up a very basic sliderule with few scales. </li>
+<LI><B>Arithmetic</b>, having the CD, CDI, CDF, CDIF, AB, W, and K
+scales on both body and slide.</li>
+<LI><B>Aristo Scholar</b>, the sliderule I used in High School, having
+CD, AB, K, L, S, and T on the body, and CD, CDI, and AB on the
+slide.</li>
+<LI><B>FC 2/83N</B>, Faber Castell, the perhaps fanciest slide rule
+ever made, see the pictures
+on <a href="http://www.math.utah.edu/~pa/sliderules"> the main
+page.</a></li>
+<LI><B>FC 5789</b>, a much more basic Faber Castell, having CD, AB, K,
+S, and T on the body and CD, CDI, AB, and L on the body.  (It also
+comes with a straightedge and a centimeter scale!)</li>
+<li><b>Pickett N500-ES</b>, a fancy Pickett Rule, having CD, CDI, CDF,
+AB, K, LL, S, and T on the body, and CD, CDI, CDF, CDIF, AB, S, T, and
+P on the slide</LI>
+<li><b>K+E 68-1617</b>, a simple rule with few scales,
+having CD, AB, and K on the body, and CD, CDI, AB, L, S, and T on
+the slide</LI>
+<li><b>Staedtler Mars 544A</b>, another simple rule with 
+CD, CDF, AB, and K on the body, and CD, CDI, CDF, and CDIF on
+the slide</LI>
+</UL>
+
+
+Any of these selections can of course be modified by the <font color =
+"#770000", size = "+1"><b>radio buttons.</font></b>
+
+
+<font color ="#000077"><H2>Listing Available Expressions</H2></Font>
+
+By clicking on one of the three <font color = "#770000", size =
+"+1"><b>List Buttons</b></font> in the top row of the control panel
+all 1, 2, or 3 variable expressions that can be computed with the current scale
+combination are listed in the command window.  You can also save them
+in a log file, see the next section.
+
+<font color ="#000077"><H2>Logging</H2></Font>
+
+By clicking on the <font color = "#770000", size =
+"+1"><b>Logs</b></font> Button in the first row of the control panel
+you can cause the <font size="+1"><B><I>SRE</I></B></font> to log its
+output in a file called SRE.n.log .  The log is an exact copy of what
+is also printed in the command window. The number <i>n</i> is an
+integer that gets incremented every time you log a session. (The
+bigger it is the more you have worked, and the better you can feel.)
+When logging is active the <font color = "#770000", size =
+"+1"><b>Logs</b></font> Button is green, otherwise it is red.  By
+default logging is inactive.  To close the log file properly make sure
+you exit the session with the <font color = "#770000" size =
+"+1"><b>Quit</b></font> button rather than by some other means (such
+as turning off your computer.)
+
+<font color ="#000077"><H2>Finding Working Scale Combinations</H2></Font>
+
+
+Pressing on <font color = "#770000", size = "+1"><b>Find</b></font> in
+the second row of the control panel will find and print the next
+working scale combination in the procedure text field and in the
+command window.  Pressing <font color = "#770000", size =
+"+1"><b>Find</b></font> again will find the next expression, and so
+on.  Clicking on <font color = "#770000", size =
+"+1"><b>All</b></font> will find all (remaining) scale combinations
+and list them in the command window. You can go back to the beginning
+of the list by clicking on
+<font color = "#770000", size = "+1"><b>start over</b></font>.  For
+each working scale combination there is a brief description in
+the <font color = "#770000", size = "+1"><b>Procedure Text
+Field</b></font>.  A more detailed descriptions of the last listed
+scale combination can be printed in the command window by clicking on
+the
+<font color = "#770000", size = "+1"><b>Verbose</b></font> button.
+
+<P>
+The <font size="+1"><B><I>SRE</I></B></font> proceeds through all
+available scale combinations and identifies those (if any) that work for the
+current expression.  For the 2 variable expressions it then tries
+interchanging <i>x</i> and <i>y</i>.  For example, <i>x*y = y*x</i>,
+and so you can first enter <i>x</i> and then <i>y,</i> or vice versa,
+using the same procedure.  Thus, having all scales available on body
+and slide, the product <i>x*y</i> can be computed in 42 different
+ways.  For the 3 variable expressions all 6 permutations of the input
+variables are investigated.  Thus the product <i>x*y*z</i> can be
+evaluated in any of 96 distinct ways.
+<font color ="#000077"><H2>Entering Expressions</H2></Font>
+
+Expressions can be entered in the text fields in the second and third
+rows of the control panel, or by selecting scale combinations in the
+fourth, fifth, or sixth row.   For example, if you wonder what you get when using the C
+and D scales exclusively select CD on each of the scale menus in the fourth,
+fifth, and sixth row of the control panel.  (Select <b>Multiply</b> in
+the last menu of the 2 variable row.)  The expressions
+<i>x</i> , <i>x*y,</i> and <i>x/y*z</i> will appear in the associated
+text fields.  (You can also use these text fields to store expressions
+for later examination. In that case make sure not to touch the
+associated scale menus after entering your expressions.)  To find more ways to evaluate any of those expressions
+click on the pertinent 
+<font color = "#770000" size = "+1"><b>Transfer</b></font> button, and then
+use the 
+<font color = "#770000" size = "+1"><b>Find</b></font>,
+<font color = "#770000" size = "+1"><b>All</b></font>,
+and
+<font color = "#770000" size = "+1"><b>Verbose</b></font>
+ buttons, as desired.
+
+<P>
+When entering expressions in a text field, note that for your input to
+be effective it needs to be finalized by pressing the Enter key on the
+keyboard.
+
+<p>
+Expressions are of the ordinary algebraic kind.  By clicking on the
+button labeled <font color = "#770000", size =
+"+1"><b>Syntax</b></font> you get the following information in the
+command window.
+
+<pre>
+algebraic expression syntax:
+
+ x, y, z: can be used as variables, one or two may be missing
+ +, -, *, /, **, ^: arithmetic operations, ** or ^ is exponentiation
+ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, pi: the only pure numbers allowed (no multidigit numbers)
+ properly matching parentheses, brackets, braces, (), [], {} 
+ white space (blanks and tabs) allowed, and will be ignored
+ available functions: 
+	 sqrt, Sqrt, SQRT: square root 
+	 exp: natural exponential
+	 EXP or Exp: base 10 exponential
+	 log or ln: natural logarithm
+	 LOG or Log: base 10 logarithm
+	 sin: sine function
+	 asin or arcsin: inverse sin
+	 tan: tangent function
+	 arctan or atan: inverse tangent function
+	 cos: cosine function
+	 sinh: hyperbolic sine function
+	 cosh: hyperbolic cosine function
+	 tanh: hyperbolic tangent function
+	 asinh: inverse hyperbolic sine function
+	 acosh: inverse hyperbolic cosine function (x > 0)
+	 atanh: inverse hyperbolic tangent function
+
+ Examples:
+ z*sqrt(1-y^2), sin(x*y), EXP(1+x^2), {x/[y/z]} 
+ arctan((x^2-1)^(1/2)/(y^2-1)^(1/2)*(z^2-1)^(1/2))
+</pre>
+
+<p> Note that while you can use the usual notations to input the hyperbolic functions and their inverses, they are represented internally in terms of exponentials and logarithm and will be so displayed on output.
+
+
+
+<p> If an expression cannot be interpreted, for example because there
+is a syntax error, there will be an appropriate message in the command
+window.  If the expression cannot be evaluated with the currently
+available scales the message
+<pre>no working scale combos found</pre>
+is printed in the text field in the third row of the control panel,
+and in the command window.
+
+
+
+<font color ="#000077"><H2>Documentation</H2></Font>
+
+The main documentation of the <font size="+1"><B><I>SRE</I></B></font>
+is this web page.  Clicking on <font color = "#770000" size =
+"+1"><b>Help</b></font> prints this very brief help information in the
+command window:
+
+<pre>
+You can find the documentation for this software online at
+<a href="http://www.math.utah.edu/~pa/sliderules/SRE.html">www.math.utah.edu/~pa/sliderules/SRE.html</a>
+The file SRE.html also should have come with this software.
+You can view it locally with your preferred browser.
+More information about the context of this software is at
+<a href="http://www.math.utah.edu/~pa/sliderules">www.math.utah.edu/~pa/sliderules</a>
+direct questions to Peter Alfeld at peteralfeld@gmail.com .
+</pre>
+
+You may find it interesting to look at the files table1.data,
+table2.data, and table3.data which come with this software.  They
+contain tables with available expressions in algebraic form,
+equivalent versions in reverse polish notation, their scale
+combinations, and information on how to test whether an expression entered by
+you is equivalent.  Do note that modifying these files in any way
+may interfere with the proper operation of the
+<font size="+1"><B><I>SRE</I></B></font> software!
+
+<font color ="#000077"><H2>How It Works</H2></Font>
+
+The tables of computable expressions were generated with the symbol
+processing language
+<a href="http://www.maplesoft.com"> Maple </a>.
+The <font size="+1"><B><I>SRE</I></B></font> software converts those
+to reverse polish notation for faster evaluation.  It does the same to
+any expression entered by you.  To compare two expressions it
+evaluates each at two sets of random numbers and compares the results.
+If they agree within a certain tolerance the software deems the two
+expressions equivalent.  Thus it does not matter (within the narrowly
+defined <font size="+1"><B><I>SRE</I></B></font> syntax) how you enter
+your expression.  For example, it will recognize that any procedure to
+compute <i>x*y</i> also works to compute <i>((x+y)^2-(x-y)^2)/4</i> if
+you choose to enter that latter expression.
+
+<p> On the other hand, you want to enter expressions without unduly
+limiting their domain. For example, the software will find 2 scale
+combos for the expression
+<i>sqrt(1-x^2)/sqrt(1-y^2)</i> but 4 for the seemingly equivalent
+expression
+<i>sqrt((1-x^2)/(1-y^2)).</i>  The reason for this is that the first
+expression cannot be evaluated in real arithmetic if the absolute
+values of x and y are greater than 1, whereas the second expression
+can.
+
+<font color ="#000077"><H2>Caveats</H2></Font>
+
+The <font size="+1"><B><I>SRE</I></B></font> is restricted to the four
+procedures described on this page.  Of course many, in fact,
+infinitely many, others are possible.  For example, a product of any
+number of factors can be computed in a straightforward fashion, but
+the <font size="+1"><B><I>SRE</I></B></font> will tell you that it
+cannot find a scale combination to compute 2*x*y, and it cannot even
+recognize expressions with more than 3 variables (and those 3
+would have to be <i>x</i>, <i>y</i>, and <i>z</i>). 
+
+<p> It is possible that some valid scale combinations are not recognized 
+by the software because some parts of an equivalent expression cannot be evaluated at the random numbers provided in the data files.  It is also possible that 
+the software will deem two expressions equivalent when mathematically they aren't.  These cases should be rare. 
+
+<p>
+It is well known
+to any slide rule enthusiast that there are many restrictions on the
+ranges of the numbers that can be entered and manipulated on the
+various scales of a slide rule. Scales may be split into two or more
+subscales and it is up to you to figure out which is relevant for a
+particular calculation. Scales may not contain information about the
+location of the decimal point.  In any calculation, slide rule based
+or otherwise, you have to understand your problem before you compute
+an answer, you need to check your answers, and you need to be vigilant
+about the possibility of errors. So don't just identify a procedure,
+apply it, and assume you have the right answer!
+
+<font color ="#000077"><H2>More Info</H2></Font>
+
+You can write to me at peteralfeld@gmail.com.
+
+    </BODY>
+</HTML>
+
+
+
+
+
+

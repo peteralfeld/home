@@ -1,0 +1,180 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Residual Arithmetic
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+<Center><table>
+
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#ffa0a0><b>5<!-- dim = 79 --></td><td bgcolor=#a0a0ff><b>7<!-- dim = 44 --></td><td bgcolor=#a0a0ff><b>11<!-- dim = 42 --></td><td bgcolor=#a0a0ff><b>13<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>17<!-- dim = 40 --></td><td bgcolor=#a0ffff><b>19<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>23<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>29<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>31<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>37<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>41<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>43<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>47<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>53<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>59<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>61<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>67<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>71<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>73<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>79<!-- dim = 39 --></td>
+
+
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffff><b>83<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>89<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>97<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>101<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>103<!-- dim = 39 --></td><td bgcolor=#a0a0ff><b>107<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>109<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>113<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>127<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>131<!-- dim = 40 --></td><td bgcolor=#a0ffff><b>137<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>139<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>149<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>151<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>157<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>163<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>167<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>173<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>179<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>181<!-- dim = 39 --></td>
+
+
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffff><b>191<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>193<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>197<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>199<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>211<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>223<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>227<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>229<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>233<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>239<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>241<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>251<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>257<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>263<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>269<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>271<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>277<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>281<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>283<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>293<!-- dim = 39 --></td>
+
+
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffff><b>307<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>311<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>313<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>317<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>331<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>337<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>347<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>349<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>353<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>359<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>367<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>373<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>379<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>383<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>389<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>397<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>401<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>409<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>419<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>421<!-- dim = 39 --></td>
+
+
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffff><b>431<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>433<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>439<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>443<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>449<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>457<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>461<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>463<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>467<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>479<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>487<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>491<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>499<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>503<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>509<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>521<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>523<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>541<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>547<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>557<!-- dim = 39 --></td>
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffa0><b>563<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>569<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>571<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>577<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>587<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>593<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>599<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>601<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>607<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>613<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>617<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>619<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>631<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>641<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>643<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>647<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>653<!-- dim = 39 --></td><td bgcolor=#a0a0ff><b>659<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>661<!-- dim = 40 --></td><td bgcolor=#a0a0ff><b>673<!-- dim = 40 --></td>
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffa0><b>677<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>683<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>691<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>701<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>709<!-- dim = 39 --></td><td bgcolor=#a0ffff><b>719<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>727<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>733<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>739<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>743<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>751<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>757<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>761<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>769<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>773<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>787<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>797<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>809<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>811<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>821<!-- dim = 39 --></td>
+
+<!-- true dimension = 39-->
+
+<TR><td bgcolor=#a0ffa0><b>823<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>827<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>829<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>839<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>853<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>857<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>859<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>863<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>877<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>881<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>883<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>887<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>907<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>911<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>919<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>929<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>937<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>941<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>947<!-- dim = 39 --></td><td bgcolor=#a0ffa0><b>953<!-- dim = 39 --></td>
+
+
+
+
+</table></center>
+
+
+
+
+    <HR>
+    [15-Mar-1999]
+</BODY>
+</HTML>

@@ -1,0 +1,29 @@
+\magnification=1440
+\input macros.tex
+\hsize = 8truein\hoffset=-0.9truein
+
+$$\dim S^r_d \geq {d+2 \choose 2} + {d-r+1 \choose 2}E_I - \left[{d+2\choose 2} - {r+2 \choose 2}\right]V_I 
++ \sum_V \sigma_V\eq{e1}$$
+
+$$\sigma_V = \sum_{j=1}^{d-r} \left(r+j+1-je_V\right)_+\eq{e2}$$
+
+$$\dim S^r_d \leq {d+2 \choose 2} + {d-r+1 \choose 2}E_I - \left[{d+2\choose 2} - {r+2 \choose 2}\right]V_I 
++ \sum_V \tilde\sigma_V\eq{e3}$$
+
+$$\sigma_V = \sum_{j=1}^{d-r} \left(r+j+1-j\tilde e_V\right)_+\eq{e4}$$
+
+$$d\geq 3r +2\eq{e5}$$
+
+$$r=1\and d=4 \eq{e6}$$
+
+$$\dim S^r_d \cap C^\rho(v) = 
+{\rho+2 \choose 2} + E_v\left[{d-r+1 \choose 2} - {\rho-r+1 \choose 2}\right] 
++ \sum_{j=\rho-r+1}^{d-r} \left(r+j+1-je_v\right)_+\eq{e7}$$
+		
+$$\eqalign{
+&C^\rho = \set{s \in S^r_d: \hbox{$s$ is $\rho\geq r$ times differentiable at $v$} } \cr
+E_v \hbox{is the number of edges attached to $v$} \cr}\eq{e8}$$
+
+
+
+\bye

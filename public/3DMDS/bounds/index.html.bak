@@ -1,0 +1,159 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          Bounds and Dimensions
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+
+<H1><FONT COLOR = "red"> Bounds on the Dimensions of Trivariate Spline Spaces </FONT></H1>
+
+
+The Tables referenced below give the dimensions, and bounds on those
+dimensions for various configurations, and a range of values of
+<em>r</em> and <em>d</em>.  The bounds can be computed with 
+the 3DMDS package. Three bounds are given.  Details of these bounds
+will be described elsewhere, but here is an outline.
+
+<OL> 
+<LI> <b>l.b.</b> A lower bound obtained by counting domain points and
+smoothness conditions while building the configuration by adding one
+tetrahedron at a time, joining it at 1, 2, or 3 faces.  The lower
+bound may be less than the dimension of the polynomial space.  In that
+case of course it can be easily augmented by setting it to the
+polynomial dimension.  However, the smaller value is shown since this
+is a better indication of the quality of the bounds.  Lower bounds below the 
+polynomial dimension are marked in Gray.
+
+
+</li>
+
+<li> <b> c.o.b. </b> A complex upper bound obtained as follows: Pick a
+plane P that is not parallel to any (interior) face of any of the
+tetrahedra.  Intersect each face with that plane and translate the
+intersections (without changing their slopes) so that they contain the
+origin.  Pick another line L in P that is not parallel to any of the
+given lines and that does not contain the origin.  Compute the
+intersections of L with the intersections.  On the resulting line
+analyze the univariate spline space obtained by associating a
+univariate polynomial with each tetrahedra and making those
+polynomials join smoothly across the points on L corresponding to the
+interior faces of those tetrahedra.  Use those dimensions of
+univariate spaces to obtain the upper bound on the trivariate space.
+</li>
+
+<li> <b> s.o.b. </b> A simple upper bound obtained by counting 
+domain points and smoothness conditions when building the
+triangulation.
+
+</li>
+
+</OL>
+
+
+
+In the tables, <b>background</b> colors indicate the following circumstances:
+
+<UL>
+
+<LI><Font size = "+2" Color = #aaffaa> <b>Green</b> </font> (Green)
+The spline space is actually polynomial. </li>
+
+<LI><Font size = "+2" Color = #ffffaa> <b>Yellow</b> </font> (Yellow)
+The dimension is greater than the polynomial dimension. </li>
+
+<LI><Font size = "+2" Color = #ffaaaa> <b>Red</b> </font> (Red)
+The bound gives the true dimension. </li>
+
+<LI><Font size = "+2" Color = #dddddd> <b>Gray</b> </font> (Gray)
+The lower bound is lower than the polynomial dimension. </li>
+
+<LI><Font size = "+2" Color = #aaffff> <b>Cyan</b> </font> (Cyan)
+The upper bound overestimates the dimension but it is better than the
+other upper bound. </li>
+
+<LI><Font size = "+2" Color = #ddddff> <b>Light Blue</b> </font> (Light Blue)
+Some of the domain points do not enter any smoothness conditions. </li>
+
+
+</UL>
+
+
+<P>&nbsp;
+
+Tables are available for the following configurations:
+
+<P>
+
+
+ 
+
+<OL>
+
+<LI> <a href = "2T.html"> Two Tetrahedra </a></li>
+<LI> <a href = "3orange.html"> A 3-orange </a></li>
+<LI> <a href = "rTI.html"> The symmetric type I Cube </a></li>
+<LI> <a href = "CT.html"> The symmetric Clough-Tocher Split </a></li>
+<LI> <a href = "rMS.html"> The symmetric Morgan-Scott Split </a></li>
+<LI> <a href = "rOct.html"> The regular Octahedron </a></li>
+<LI> <a href = "rWF.html"> The Worsey-Farin Split </a></li>
+<LI> <a href = "rdCT.html"> The double Clough-Tocher Split </a></li>
+<LI> <a href = "rTIV.html"> The symmetric type IV cube </a></li>
+<LI> <a href = "gMS.html"> The generic Morgan-Scott Split </a></li>
+<LI> <a href = "gOct.html"> The generic Octahedron </a></li>
+<LI> <a href = "gWF.html"> The generic Worsey-Farin Split </a></li>
+<LI> <a href = "gdCT.html"> The generic double Clough-Tocher Split </a></li>
+<LI> <a href = "gtIV.html"> The generic type IV cube </a></li>
+<LI> <a href = "Rudin.html"> Rudin's example of an unshellable
+triangulation </a> (Note that the simple upper and lower bounds
+mentioned above are based on shelling the triangulation.  So they
+don't apply to this configuration.  However, no case (of <em>r</em>
+and <em>d</em>) is known where they are actually inconsistent with the
+dimension. </li>
+<LI> <a href = "MSface.html"> A tetrahedron with each face being split
+by the symmertic Morgan-Scott SPlit. (a 28-cell)</a><li>
+<LI> <a href = "WMSface.html"> A tetrahedron with each face being
+split by the Wang/Morgan-Scott SPlit.</a><li>
+<LI> <a href = "dCTface.html"> A tetrahedron with each face being
+split by the double CLough-Tocher Split. (a 36-cell)</a><li>
+</OL>
+
+
+The columns in the tables contain the following information:
+
+<UL>
+
+
+ <LI><b>r</B> is the degree of smoothness.  (No supersplines are illustrated at present.) </LI>
+ <LI><b>d</B> is the polynomial degree. </LI>
+ <LI><b>pol</B> the dimension of the polynomial space, listed for reference and comparison. </LI>
+ <LI><b>l.b.</B> is the above mentioned lower bound. </LI>
+ <LI><b>dim</B> is the computed dimension. </LI>
+ <LI><b>c.u.b.</B> is the complex upper bound. </LI>
+ <LI><b>s.u.b.</B> is the simple upper bound. </LI>
+
+ <LI><b>M</B> is the initial number of equations. </LI>
+ <LI><b>N</B> is the initial number of unknowns. </LI>
+ <LI><b>rank</B> is the rank of the initial linear system. </LI>
+ <LI><b>MDS</B> is the number of active points (excluding those who do not enter any smoothness conditions at all) which need to be in a minimal determining set.  This is also the number of rows in the reduced linear system.</li>
+ <LI><b>delta</B> is the density of the reduced system, measured in percent. </LI>
+ <LI><b>mods</B> is the number of times a residual was computed in the generation of this particular line. </LI>
+</UL>
+</BODY>
+</HTML>

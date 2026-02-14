@@ -1,0 +1,30 @@
+This is TeX, Version 3.1415 (C version 6.1) (format=plain 99.11.6)  8 MAY 2001 10:49
+**bounds
+(bounds.tex (macros.tex
+\testfl=\read0
+\nll=\write0
+ (bounds.aux)
+\mem=\write1
+\proclaimnumber=\count26
+\equationnumber=\count27
+\fnumb=\count28
+\figurenumb=\count29
+\figoffset=\dimen16
+\lineno=\count30
+\prbnumb=\count31
+\figurenumb=\count32
+\figoffset=\dimen17
+ (/usr/local/lib/tex/inputs/epsf.sty
+This is `epsf.tex' v2.7k <10 July 1997>
+\epsffilein=\read1
+\epsfframemargin=\dimen18
+\epsfframethickness=\dimen19
+\epsfrsize=\dimen20
+\epsftmp=\dimen21
+\epsftsize=\dimen22
+\epsfxsize=\dimen23
+\epsfysize=\dimen24
+\pspoints=\dimen25
+\epsfnoopenhelp=\toks12
+)) [1] )
+Output written on bounds.dvi (1 page, 3560 bytes).

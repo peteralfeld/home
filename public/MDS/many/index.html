@@ -1,0 +1,1416 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-118374315-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-118374315-1');
+</script>
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Many Triangulations
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = 4>
+                            <APPLET CODE="MDS.class"
+                                CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                                WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                                <B>
+                            </APPLET>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = "2">
+                            <A HREF="../bform.html">
+                                <FONT size = "-1">
+                                    <B> The Bernstein B&eacute;zier Form
+                                    </B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../index.html">
+                                <FONT size = "-1">
+                                    <B> Home Page</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../examples.html">
+                                <FONT size = "-1">
+                                    <B> Examples</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H2>
+            Many Triangulations
+        </H3>
+        <P>
+            <IMG SRC="title.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            The MDS code has an experimental feature that lets you
+            enumerate all triangulations of certain types.  For example,
+            the Figure nearby shows all possible triangulations with
+            seven triangles having no flaps.  (A flap is a triangle
+            having exactly one interior edge.  If you allow flaps there
+            are
+            <A HREF= "flapsOK.gif">
+                73 distinct triangulations with 7 triangles.
+            </A>
+            )
+        </P>
+        <H3>
+            Terms and Concepts
+        </H3>
+        <P>
+            A
+            <A HREF="../triangulation.html">
+                triangulation
+            </A>
+            has two components:  its <EM>topology</EM> which describe
+            how the triangles are connected, and its <EM>geometry</EM>
+            which is the specification of the precise location of the
+            vertices.
+        </P>
+        <P>
+            The enumeration mode of the MDS code attempts to compute all
+            possible topologies of triangulations up to a certain number
+            or size.  It also has the ability to generate a particular
+            geometry of each of these triangulations, and then display
+            the triangulation and study spline spaces on them.
+        </P>
+        <P>
+            The original motivation for introducing this mode is that
+            <A HREF="http://www.math.utah.edu/~alfeld/talks/S13/4CMP.html">
+                certain proof techniques
+            </A>
+            require the analysis of a large number of particular
+            triangulations with certain properties, and the first step
+            for using these techniques is the ability to list these
+            triangulations.  However, using the enumeration mode one can
+            conduct other interesting investigations as well.
+        </P>
+        <P>
+            In the context of the MDS code, an <B>abstract triangulation
+            </B> is a set of triples of integers.  We think of the
+            integers as (abstract) vertices.  Pairs of integers are
+            (abstract) edges, and triples are (abstract) triangles.  The
+            order of the vertices in the triples is immaterial.
+            Abstract triangulations are constructed recursively.  A
+            single triangle is an abstract triangulation.  Given an
+            abstract triangulation T, a new abstract triangulation can
+            be obtained by adding a <EM>flap</EM> to T, or adding a <EM>
+            fill</EM>.  A flap is a new triangle one of whose edges
+            occurs exactly once in the triangles of T. (I.e., the new
+            triangle joins T on exactly one boundary edge.) The third
+            point of the new triangle is not present in any triangle of
+            T. (As a practical matter, it equals the highest index in T
+            + 1).  A fill is a new triangle two of whose edges occur
+            exactly once in the triangles of T, and the third of whose
+            edges does not occur at all among the triangles of T. (Since the
+            two existing edges share a vertex on the new triangle they
+            share the same vertex on the old triangulation.)  
+        </P>
+        <P>
+            Two abstract triangulations S and T are <EM>isomorphic</EM>
+            if T can be obtained by permuting the sequence of triangles
+            and the labeling of vertices in S.
+        </P>
+        <P>
+            The MDS code proceeds by starting with a single triangle
+            {0,1,2} and adding flaps and fills to form a growing list
+            that contains all (non-isomorphic) abstract triangulations
+            subject to certain constraints.
+        </P>
+        <H3>
+            Invoking the Enumeration Mode
+        </H3>
+        <P>
+            To use the enumeration features you need to
+            <A HREF="../guide.html#standalone">
+                download the MDS code.
+            </A>
+            Select ENUMERATE as the last
+            option of the triangulation menu on the MDS Control Panel.
+            <BR clear=all>
+            <IMG SRC="Control.png" ALIGN = "RIGHT">
+            <BR clear=all>
+        </P>
+        <H3>
+            User's Guide
+        </H3>
+        <P>
+            The image nearby shows the enumerate control panel.  The
+            controls have the following effects:
+        </P>
+        <UL>
+            <LI>
+                <B>Row 1</B>
+                <UL>
+                    <LI>
+                        N:  This textfield specifies the (maximum)
+                        number of triangulations to be computed.
+                    </LI>
+                    <LI>
+                        initialize:  This button generates the list of
+                        triangulations.  This may take a long time, and
+                        once started it can't be interrupted.
+                    </LI>
+                    <LI>
+                        reset:  this button resets any constraints that
+                        have been imposed (see below).
+                    </li>
+                    <LI>
+                        hide:  this button closes the enumerate control
+                        window.  (To make it visible again reselect
+                        enumeration mode on the MDS Control Panel.)
+                    </li>
+                    <LI>
+                        Quit:  this button dismisses the entire MDS
+                        package.  Use with care.
+                    </LI>
+                    <LI>
+		      check LB: an experimental feature that goes through the
+		      current list  of triangulations and prints
+		      certain information to the standard output,
+		      including a statement of whether or not the
+		      dimension equals the lower bound.  Best used by
+		      piping the standard output into a file and then
+		      examining the file with a text editor. 
+		    </LI>  
+                </UL>
+            </LI>
+            <LI>
+                <B>Row 2</B>
+                <UL>
+                    <LI>
+                        <B>n:</B> The textfield determines the index of
+                        the currently considered abstract triangulation.
+                        The green buttons increment or decrement that
+                        number.  The red buttons do the same and in
+                        addition display a particular realization of the
+                        select abstract triangulation.  Thus the code
+                        computes a particular geometry and displays it
+                        in the current drawing window.  See below for a
+                        description of the particular geometry.
+                    </li>
+                    <LI>
+                        <B>Report:</B> Pressing this button causes a
+                        report to be listed to standard output.  For
+                        example, the report on the Clough-Tocher split,
+                        with 0 being the interior vertex, and 1, 2, 3,
+                        being the boundary vertices, the report is:
+<PRE> triangulation: VB = 3 VI = 1 no flaps
+tri.    v1     v2     v3
+0:       0      1      2
+1:       0      1      3
+2:       0      2      3
+ Vertices:
+0: 300 300               <--- coordinates of vertex 0
+1: 541 300               <--- coordinates of vertex 1
+2: 180 500               <--- coordinates of vertex 2
+3: 180 100               <--- coordinates of vertex 3
+3 boundary edges:
+0: 1 2                   <--- vertices of boundary edge 0
+1: 1 3                   <--- vertices of boundary edge 1
+2: 2 3                   <--- vertices of boundary edge 2
+3 interior edges:
+0: 0 1                   <--- vertices of interior edge 0
+1: 0 2                   <--- vertices of interior edge 1
+2: 0 3                   <--- vertices of interior edge 2
+3 boundary vertices:
+0: 1  3 --- 2  3         <--- boundary vertex 0 has index 1, degree 3, neighboring vertices have indices 2 and 3
+1: 2  3 --- 1  3         <--- boundary vertex 1 has index 2, degree 3, neighboring vertices have indices 1 and 3
+2: 3  3 --- 1  2         <--- boundary vertex 2 has index 3, degree 3, neighboring vertices have indices 1 and 2
+1 interior vertices:
+0: 0  3                  <--- interior vertex 0 has degree 0 and degree 3
+</PRE>
+                    </LI>
+                    <LI>
+                        <B>show:</B> pressing this button will display a
+                        realization of the current abstract
+                        triangulation in the current drawing window.
+                        There it can be examined like any other
+                        triangulation.
+                    </li>
+                    <LI>
+                        <B>new:</B> has a similar effect as show, except
+                        it brings up a new drawing window.
+                    </li>
+                    <LI>
+                        how <B>many:</B> prints to the bottom row of the
+                        control window and to standard output the number
+                        of triangulations in the current list that
+                        satisfy the currently active constraints.
+                    </li>
+                    <LI>
+                        <B>summary:</B> prints a summary of the
+                        properties of the triangulations in the current
+                        list.  For example, the summary for all
+                        triangulations with up to 12 triangles is:
+<PRE>
+ counting all 46281 triangulations (44669 have flaps)
+ Number of triangulations:
+ VB =      3     4     5     6     7     8     9    10    11    12    13    14
+    VI
+     0     1     1     1     3     4    12    27    78   214   654 1,944 5,767
+     1     1     2     4    11    28    90   285   951 3,198 10,938            
+     2     1     5    14    53   178   673 2,461 9,280                        
+     3     4    18    69   293 1,187 4,919                                    
+     4    16    88   396 1,845                                                
+     5    78   489                                                            
+Number of Triangles:
+     1     1
+     2     1
+     3     2
+     4     5
+     5     9
+     6    28
+     7    73
+     8   239
+     9   762
+    10 2,659
+    11 9,264
+    12 33,238
+</PRE>
+                        Thus 44,669 of the 46,281 triangulations have
+                        flaps, there are 2,659 triangulations with
+                        exactly 10 triangles, and there are 4,919
+                        triangulations with 9 boundary vertices and 3
+                        interior vertices.
+                    </li>
+                    <LI>
+                        <B>flaps:</B> determines whether triangulations
+                        with flaps are included in the summary,
+                        displayed in the drawing window, or plotted when
+                        required.  The above summary with flaps not
+                        included becomes:
+<PRE>
+ not counting 44669 triangulations with flaps
+ Number of triangulations:
+ VB =      3     4     5     6     7     8     9    10    11    12    13    14
+    VI
+     0                                                                        
+     1     1     1     1     1     1     1     1     1     1     1            
+     2     1     3     4     8    12    23    39    75                        
+     3     4    10    22    53   119   279                                    
+     4    16    50   135   393                                                
+     5    78   278                                                            
+Number of Triangles:
+     1      
+     2      
+     3     1
+     4     1
+     5     2
+     6     4
+     7     9
+     8    19
+     9    51
+    10   127
+    11   372
+    12 1,026
+</PRE>
+                        Thus there are for example 75 different
+                        triangulations with 2 interior vertices, 10
+                        boundary vertices, and no flaps.
+                    </li>
+                    <LI>
+                        <B>CT OK:</B> Similarly includes or excludes
+                        triangulations with Clough-Tocher vertices
+                        (i.e., interior vertices of degree 3).
+                    </li>
+                    <LI>
+                        <B>CC OK:</B> Similarly includes or excludes
+                        triangulations with cross cuts, i.e., interior
+                        edges both of whose vertices lie on the
+                        boundary.  (Flaps are a special case of
+                        cross-cuts.)
+                    </li>
+                </UL>
+            </LI>
+            <LI>
+                <B>Row 3:</B> Plotting.  The items in this row control
+                plotting sets of triangulations.  The triangulations are
+                plotted in m by n tables of entries each of which is k
+                by k pixels.  m, n, and k are controlled by the three
+                textFields in this row, respectively.  The entries of
+                these textfields are limited by the available screen
+                size.  The buttons have the following effects:
+                <UL>
+                    <LI>
+                        plot:  causes the plots to be generated, in as
+                        many windows as necessary, that show all
+                        triangulations satisfying the currently active
+                        constraints.
+                    </li>
+                    <LI>
+                        one:  causes a plot of the current triangulation
+                        to be appended to the current plot.
+                    </li>
+                    <LI>
+                        clear:  hides the current plotting windows
+                    </li>
+                    <LI>
+                        mark:  adds or removes identifying numbers to
+                        the plot.
+                    </li>
+                </UL>
+                Clicking with the left mouse button on any triangulation
+                in the plot causes it to be displayed in the current
+                drawing window.  Clicking with the middle button causes
+                it to be displayed in a new drawing window.
+            </LI>
+            <LI>
+                <B>Row 4:</B> Constraints.  The controls in this row
+                impose constraints in addition to those specified by N,
+                and the flaps and CT buttons.
+                <UL>
+                    <LI>
+                        VB:  the number of boundary vertices.  If it is
+                        zero there is no constraint.  Otherwise all
+                        triangulation displayed must have VB boundary
+                        vertices.  VB has no effect during
+                        initialization (since it may decrease by adding
+                        fills).
+                    </li>
+                    <LI>
+                        VI:  similarly constrains the number of interior
+                        vertices.
+                    </li>
+                    <LI>
+                        V:  constrains the total number of vertices.
+                        For display and summary the number of vertices
+                        must equal V, for initialization it must not
+                        exceed V.
+                    </li>
+                    <LI>
+                        T:  similarly constrains the total number of
+                        triangles.
+                    </li>
+                </UL>
+                All Constraints must be satisfied simultaneously.
+            </LI>
+            <LI>
+                <B>Row 5:</B> Saving and restoring lists of
+                triangulations.  Initialization may take a long time.
+                For example, finding all 169,062 triangulations with up
+                to 13 triangles takes about two days of CPU time on my
+                system.  Therefore lists of triangulations can be stored
+                in files.  The file is specified by directory and file
+                name and written or read by the Save and Restore button,
+                respectively.  Constraints are effective when saving.
+                So for example you can save triangulations without flaps
+                for further examination.
+                <P>
+                    It is possible to download files form our server
+                    directly into the MDS code running on your machine,
+                    using the menu in row 5.  The following files are
+                    currently available:
+                </P>
+                <UL>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T10">
+                            T10:  all triangulations with up to 10
+                            triangles, 3,779 triangulations, 231,798
+                            bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T10.nf">
+                            T10.nf:  all triangulations with up to 10
+                            triangles but no flaps, 214 triangulations
+                            12,770 bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T11">
+                            T11:  all triangulations with up to 11
+                            triangles, 9,264 triangulations, 648,484
+                            bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T11.nf">
+                            T11.nf:  all triangulations with up to 12
+                            triangles but no flaps, 372 triangulations
+                            26,044 bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T12">
+                            T12:  all triangulations with up to 12
+                            triangles, 42,681 triangulations, 3,406,366
+                            bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T12.nf">
+                            T12.nf:  all triangulations with up to 12
+                            triangles but no flaps, 1,612 triangulations
+                            116,786 bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T13">
+                            T13:  all triangulations with up to 13
+                            triangles, 169,062 triangulations, 13,472,680
+                            bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T13.nf">
+                            T13.nf:  all triangulations with up to 13
+                            triangles but no flaps, 4,821 triangulations
+                            379,924 bytes.
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T14">
+                            T14:  all triangulations with up to 14
+                            triangles, 623,942 triangulations,
+			    53,502,120
+                            bytes.  You need lots of memory, and lots
+                            of patience, to sift through these data.  
+                        </A>
+                    </li>
+                    <LI>
+                        <A HREF="http://www.math.utah.edu/~alfeld/MDS/T14.nf">
+                            T14.nf:  all triangulations with up to 14
+                            triangles but no flaps, 14,190 triangulations
+                            1,204,396 bytes.
+                        </A>
+                    </li>
+                </UL>
+                You can also download these (binary) files directly
+                through your browser.  They may look empty, or as if
+                they contain gibberish, but they should download
+                normally.
+            </LI>
+            <LI>
+                <B>Row 6:</B> Status Label.  This labels provides some
+                information.  More is printed to standard output.
+            </LI>
+        </UL>
+        <H3>
+            Downloading the Package
+        </H3>
+        <P>
+            The entire package, containing all class files and
+            triangulation lists, can be obtained by downlaoding the file
+            <A HREF="http://www.math.utah.edu/~alfeld/MDS/message">
+                <H1>
+                    message
+                </H1>
+            </A>
+        </P>
+        <P>
+            Copy that file to a directory on a Unix system and type
+        </P>
+<PRE>source message
+</PRE>
+        (It's called message because it is also suitable for e-mailing.)
+        The directory containing message will also contain the class and
+        data files.
+        <H3>
+            Constructing the list of triangulations
+        </H3>
+        <P>
+            The algorithm to construct the list of up to N
+            triangulations reflects the fact that in multivariate spline
+            research flaps are trivial.  Thus within the constraints
+            given by the size of the available stack (and possibly other
+            constraints imposed on the number of triangles or vertices)
+            fills are made whenever possible and flaps are added only
+            when this is necessary to make fills possible.  This
+            principle is illustrated in the
+            <A HREF="first100.gif">
+                list of the first 100 triangulations
+            </A>
+            so generated.
+        </P>
+        <P>
+            The following description of the algorithm assumes for
+            simplicity that the list of triangulations is constrained
+            only by the available space, i.e., the parameter N.
+        </P>
+        <OL>
+            <LI>
+                We are given a stack with N levels labeled from 0 to
+                N-1.  The stack is filled with triangulations starting
+                from the bottom (at level 0).
+            </LI>
+            <LI>
+                The triangle [0,1,2] is put on the stack, and n = fill =
+                flap = 0
+            </LI>
+            <LI>
+                While n &lt; N-1
+            </LI>
+                <UL>
+                    <LI>
+                        Let T be triangulation flap on the stack.
+                    </LI>
+                    <LI>
+                        For each of the boundary edges of T:
+                        <UL>
+                            <LI>
+                                Add a flap, to obtain a triangulation S.
+                                Check if S is a new triangulation.  If
+                                so:
+                                <UL>
+                                    <LI>
+                                        Increment n by 1.
+                                    </LI>
+                                    <LI>
+                                        Add S to the stack.
+                                    </LI>
+                                </UL>
+                            </LI>
+                            <LI>
+                                While fill &lt; n
+                                <UL>
+                                    <LI>
+                                        Let F be triangulation fill
+                                    </LI>
+                                    <LI>
+                                        For each of the boundary
+                                        vertices of F:
+                                        <UL>
+                                            <LI>
+                                                Add a fill, denote the
+                                                resulting triangulation
+                                                by S, see if S is new,
+                                                and if so, increment n
+                                                and add S to the stack
+                                            </LI>
+                                        </UL>
+                                    </LI>
+                                    <LI>
+                                        Increment fill by 1.
+                                    </LI>
+                                </UL>
+                            </LI>
+                        </UL>
+                    </LI>
+                    <LI>
+                        Increment flap by 1.
+                    </LI>
+                </UL>
+        </OL>
+        <H3>
+            Determining Isomorphisms
+        </H3>
+        <P>
+            As discussed above, two triangulations are isomorphic if one
+            can be obtained from the other by relabeling the vertices
+            and triangles and changing their sequence.  Let S and T be
+            two triangulations.  The algorithm to compare them is as
+            follows:
+        </P>
+        <OL>
+            <LI>
+                If T and S have different values of VB or VI they are
+                not isomorphic
+            </lI>
+            <LI>
+                The vertices of T and S are ordered by increasing
+                degree.  If two corresponding vertices have different
+                degrees then S and T are not isomorphic.
+            </LI>
+            <LI>
+                Now the real work starts.
+                <UL>
+                    <LI>
+                        Divide both sets of triangles (from S and T)
+                        into equivalence classes.  Two vertices are
+                        equivalent if they have the same degree and they
+                        are both boundary or both interior vertices. Two
+                        triangles are equivalent if their vertices form
+                        three equivalent pairs.
+                    </LI>
+                    <LI>
+                        If the two triangulations do not have identical
+                        equivalence classes they are not isomorphic.
+                    </LI>
+                    <LI>
+                        Try to rearrange the triangles in T so as to
+                        duplicate the construction of S. Create a stack
+                        of triangles in T.
+                    </LI>
+                    <LI>
+                        If the stack is full S and T are isomorphic, if
+                        it's empty they are not.
+                    </LI>
+                    <LI>
+                        Put a triangle from the of the same class as
+                        triangle 0 in S on the stack.
+                    </LI>
+                    <LI>
+                        Until the stack is full or empty:
+                        <UL>
+                            <LI>
+                                The triangles currently on the stack are
+                                <EM>consistent</EM> if vertices in
+                                triangles on the stack always correspond
+                                to the same vertices of the
+                                corresponding triangles in S.
+                            </LI>
+                            <LI>
+                                Add a triangle of the right class to the
+                                top of the stack.  Check that
+                                consistency is maintained.
+                            </LI>
+                            <LI>
+                                If that's not possible check if it's
+                                possible to relabel the vertices of the
+                                top triangle and still have consistency.
+                            </LI>
+                            <LI>
+                                If that's not possible, remove the top
+                                triangle.
+                            </LI>
+                        </UL>
+                    </LI>
+                </UL>
+            </LI>
+        </OL>
+        <P>
+            In computing all triangulations up to 13 triangles, the last
+            step (involving the stack of triangles) never identified two
+            triangulations as distinct that have not already been
+            recognized as such at this stage.  If you find two
+            non-isomorphic triangulations that have passed all tests up
+            to this stage the package will inform you and I'd be very
+            interested to hear from you.
+        </P>
+        <H3>
+            Rendering an Abstract Triangulation
+        </H3>
+        <P>
+            The particular geometries displayed in the plotting windows
+            are obtained by arranging the boundary vertices equally
+            spaced in the proper sequence in a circle and then computing
+            coordinates of interior vertices such that each interior
+            vertex is the average of all vertices connected to it by an
+            edge.
+        </P>
+        <H3>
+            Examples
+        </H3>
+        <P>
+            The following table lists the number of triangulations with
+            a given number of boundary vertices (VB) and interior
+            vertices (VI), and no flaps.  Clicking on a link will show a
+            picture of these triangulations.  Columns correspond to VB,
+            rows to VI.  The values for VI=0 (no triangulations without
+            flaps) and VI=1 (one triangulation for each VB) are not
+            shown.
+        </P>
+        <TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+            <TR>
+                <TD>
+                    VI/VB
+                </TD>
+                <TD>
+                    3
+                </TD>
+                <TD>
+                    4
+                </TD>
+                <TD>
+                    5
+                </TD>
+                <TD>
+                    6
+                </TD>
+                <TD>
+                    7
+                </TD>
+                <TD>
+                    8
+                </TD>
+                <TD>
+                    9
+                </TD>
+                <TD>
+                    10
+                </TD>
+                <TD>
+                    11
+                </TD>
+            </TR>
+            <TR>
+                <TD>
+                    2
+                </TD>
+                <TD>
+                    <A HREF="VB=3VI=2.html">
+                        1
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=4VI=2.html">
+                        3
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=5VI=2.html">
+                        4
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=6VI=2.html">
+                        8
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=7VI=2.html">
+                        12
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=8VI=2.html">
+                        23
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=9VI=2.html">
+                        39
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=10VI=2.html">
+                        75
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="VB=11VI=2.html">
+                        137
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        3
+                    </TD>
+                    <TD>
+                        <A HREF="VB=3VI=3.html">
+                            4
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=4VI=3.html">
+                            10
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=5VI=3.html">
+                            22
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=6VI=3.html">
+                            53
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=7VI=3.html">
+                            119
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=8VI=3.html">
+                            279
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=9VI=3.html">
+                            645
+                        </A>
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        <A HREF="VB=3VI=4.html">
+                            16
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=4VI=4.html">
+                            50
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=5VI=4.html">
+                            135
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=6VI=4.html">
+                            393
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=7VI=4.html">
+                            1,067
+                        </A>
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        5
+                    </TD>
+                    <TD>
+                        <A HREF="VB=3VI=5.html">
+                            78
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=4VI=5.html">
+                            278
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="VB=5VI=5.html">
+                            902
+                        </A>
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        6
+                    </TD>
+                    <TD>
+                        <A HREF="VB=3VI=6.html">
+                            457
+                        </A>
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+            </TABLE>
+            <P>
+                The following table similarly lists the numbers of
+                triangulations including flaps, with a given value of VB
+                and VI, and up to 13 triangles.
+            </P>
+            <TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+                <TR>
+                    <TD>
+                        VI/VB
+                    </TD>
+                    <TD>
+                        3
+                    </TD>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        5
+                    </TD>
+                    <TD>
+                        6
+                    </TD>
+                    <TD>
+                        7
+                    </TD>
+                    <TD>
+                        8
+                    </TD>
+                    <TD>
+                        9
+                    </TD>
+                    <TD>
+                        10
+                    </TD>
+                    <TD>
+                        11
+                    </TD>
+                    <TD>
+                        12
+                    </TD>
+                    <TD>
+                        13
+                    </TD>
+                    <TD>
+                        14
+                    </TD>
+                    <TD>
+                        15
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        0
+                    </TD>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        3
+                    </TD>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        12
+                    </TD>
+                    <TD>
+                        27
+                    </TD>
+                    <TD>
+                        78
+                    </TD>
+                    <TD>
+                        214
+                    </TD>
+                    <TD>
+                        654
+                    </TD>
+                    <TD>
+                        1,944
+                    </TD>
+                    <TD>
+                        6,055
+                    </TD>
+                    <TD>
+                        18,900
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        2
+                    </TD>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        11
+                    </TD>
+                    <TD>
+                        28
+                    </TD>
+                    <TD>
+                        90
+                    </TD>
+                    <TD>
+                        285
+                    </TD>
+                    <TD>
+                        951
+                    </TD>
+                    <TD>
+                        3,198
+                    </TD>
+                    <TD>
+                        10,938
+                    </TD>
+                    <TD>
+                        37,567
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        2
+                    </TD>
+                    <TD>
+                        1
+                    </TD>
+                    <TD>
+                        5
+                    </TD>
+                    <TD>
+                        14
+                    </TD>
+                    <TD>
+                        53
+                    </TD>
+                    <TD>
+                        178
+                    </TD>
+                    <TD>
+                        673
+                    </TD>
+                    <TD>
+                        2,461
+                    </TD>
+                    <TD>
+                        9,280
+                    </TD>
+                    <TD>
+                        34,712
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        3
+                    </TD>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        18
+                    </TD>
+                    <TD>
+                        69
+                    </TD>
+                    <TD>
+                        293
+                    </TD>
+                    <TD>
+                        1,187
+                    </TD>
+                    <TD>
+                        4,919
+                    </TD>
+                    <TD>
+                        20,108
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        4
+                    </TD>
+                    <TD>
+                        16
+                    </TD>
+                    <TD>
+                        88
+                    </TD>
+                    <TD>
+                        396
+                    </TD>
+                    <TD>
+                        1,845
+                    </TD>
+                    <TD>
+                        8,252
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        5
+                    </TD>
+                    <TD>
+                        78
+                    </TD>
+                    <TD>
+                        489
+                    </TD>
+                    <TD>
+                        2,497
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        6
+                    </TD>
+                    <TD>
+                        457
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                    <TD>
+                        &nbsp;
+                    </TD>
+                </TR>
+            </TABLE>
+            <H3>
+                Literature
+            </H3>
+            <P>
+                This chapter is under construction.
+            </P>
+            <P>
+                [31-Jan-2003]
+            </P>
+        </BODY>
+    </HTML>

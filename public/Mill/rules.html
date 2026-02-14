@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Game Rules</title>
+    <link rel="stylesheet" href="Mill.css">
+  </head>
+  <body>
+    <h1> The Game of Mill: <a target="_blank" href="Mill.html">&nbsp;<img src="thumbprint.jpg" style="width: 100px; height: auto"></a> Game Rules</h1>
+    <p> The game of Mill is played on a board like that shown in Figure 1. There are 24 <i> points</i> or <i> vertices</i> connected by <i>edges</i>, as shown. The game is played by two players, traditionally known as <i>White</i> and <i>Black</i>, who take turns placing or moving white or black <i>men</i> or <i>pieces</i>. The vertices in the Figure are numbered for convenience and easy reference, but the numbering is not part of the game. </p>
+    <p>
+    <table class="gameTable">
+      <tr>
+        <td>
+          <img src="Mills.png" style="width: 400px; height: auto;">
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <b> The Game Board </b>
+        </td>
+      </tr>
+    </table>
+    </p>
+    <p> The eponymous key concept of the game is that of a <i>mill</i>. A mill is a set of three pieces of the same color, connected by two edges, which are either both horizontal, or both vertical. In the Figure, there are two white mills (3-15-24 and 22-23-24) and one black mill (7-12-16). Mills may overlap, as shown by the two white mills. Black has a <i>double mill</i>, i.e., black can close a mill, and take an opposing piece at every move, by moving a piece back and forth between vertices 7 and 8. </p>
+    <p> A <i>move</i> is an action of white, followed by an action of black. A <i>ply</i> is half a move, i.e., the action of one player only. </p>
+    <p> The game rules are simple. Here is a concise list: </p>
+    <ol>
+      <li>
+        <i>Start:</i> The players start with 9 pieces each.
+      </li>
+      <li>
+        <i>Placement:</i> Starting with White, players take turns placing a piece on any empty vertex.
+      </li>
+      <li>
+        <i>Movement:</i> Once all 18 pieces are placed, players take turns moving a piece to an adjacent empty vertex.
+      </li>
+      <li>
+        <i>Capturing:</i> A player who forms a mill <b>must</b> remove an opposing piece from the board. <ul>
+          <li> Pieces currently forming a mill are immune to capture unless no other pieces are available. </li>
+          <li> If placing a piece completes two mills simultaneously, only one opposing piece is removed. </li>
+        </ul>
+      </li>
+      <li>
+        <i>Flying:</i> A player reduced to three pieces may <I>fly</I> by moving a piece to any empty vertex, regardless of adjacency.
+      </li>
+      <li>
+        <i>Outcome:</i>
+        <ul>
+          <li>
+            <i>Win</i> and <i>Loss</i>: A player wins by reducing the opponent to two pieces, or by blocking the opponent from making a legal move. The opponent loses the game.
+          </li>
+          <li>
+            <i>Draw:</i> There are several circumstance that lead to a draw. In the following list the first two rules are part of the game. The remaining two rules are used by the software to prevent computer games that go on indefinitely. <ul>
+              <li> The same position occurs for the third time with the same player to move, and <b>one player claims the draw</b>. As a practical matter, this software <b>always</b> claims the draw, whether the player is human or a computer personality. The three positions need not be immediately following each other. </li>
+              <li> The players may agree to a draw at any time. However, in this software, the computer players never actually agree to a draw. (For example, a case could be made that a situation where both players have 3 or 4 pieces should count as a draw, except for rare exceptional cases.) </li>
+              <li> Both players have only three pieces left and they have each made two moves without taking an opposing piece. The reason for this rule is that with proper play both players can always prevent their opponent from closing a mill, so unless one player does not pay attention that game will go on forever. </li>
+              <li> The players play for 80 plies (40 moves) after the setup phase (the first 18 plies) without taking an opposing piece. </li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ol>
+  </body>
+</html>

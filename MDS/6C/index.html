@@ -1,0 +1,1753 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-118374315-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-118374315-1');
+</script>
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Dimensions on a Hexagonal Triangulation
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="../bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="../index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="../examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            Dimensions on a Hexagonal Configuration
+        </H3>
+        <P>
+            <IMG SRC="regular.gif" ALIGN="RIGHT">
+        </P>
+        <P>
+            On this page several configurations of a traingulation
+            consisting of 18 triangles.  It exhibits various
+            degencrecaise that cannot be explained by the existing
+            theory.
+        </P>
+        <P>
+            The most symmetric configuration consists of a regular
+            hexagon inside a regular hexagon with all the triangles
+            being congruent and equilateral, as illustrated in the
+            nearby figure.
+        </P>
+        <P>
+            For each configuration, the following table contains the
+            following information:
+        </P>
+        <UL>
+            <LI>
+                Number of the configuration
+            </LI>
+            <LI>
+                A link to the MDS code generated description of the
+                configuration and an image,
+            </LI>
+            <LI>
+                A link to a binary file that can be read by the MDS
+                code,
+            </LI>
+            <LI>
+                For each of the interior vertices, the number of
+                distinct slopes assumed by the edges emanating from
+                those vertices.
+            </LI>
+            <LI>
+                The total number of interior vertices for which this
+                number is 3 (i.e., the minimum.  Such vertices are
+                sometimes called <EM>Clough-Tocher Vertices</EM>
+            </LI>
+        </UL>
+        <TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+            <TR>
+                <TD ALIGN="right">
+                    <B>Conf.</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>Desc.</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>binary</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>0</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>1</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>2</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>3</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>4</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>5</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>V <SUB>6</SUB></B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>CT Vtcs</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B> 1</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C1.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C1">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>7</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>2</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C2.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C2">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 6</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C3.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C3">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C4.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C4">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C5.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C5">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>6</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C6.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C6">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 2</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>7</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C7.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C7">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 1</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>8</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C8.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C8">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 4</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 1</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>9</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C9.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C9">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 3</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 1</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>10</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C10.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C10">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 0</B>
+                </TD>
+            </TR>
+            <TR>
+                <TD ALIGN="right">
+                    <B>11</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C11.html">
+                        Description
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B>
+                    <A HREF="C11">
+                        Binary
+                    </A>
+                    </B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 6</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 5</B>
+                </TD>
+                <TD ALIGN="right">
+                    <B> 0</B>
+                </TD>
+            </TR>
+        </TABLE>
+        <H2>
+            Dimensions
+        </H2>
+        <P>
+            The following table gives dimension of various spline spaces
+            on the above described configurations.  For each case, the
+            true dimension is computed and compared to
+            <A HREF="../Srd.html#dimension">
+                Schumaker's lower bound
+            </A>
+            (for that particular configuration).  When the dimension and
+            the lower bound agree, their common value is listed.  If
+            they disagree, the dimension is listed, followed by a slash,
+            and the discrepancy.  Thus, for example, the dimension on
+            the completelysymmetric split (configuration C1) when <B>r=1
+            </B> and <B>d=2</B> is 12 and the lower bound is 9.
+        </P>
+        <P>
+            <B>m</B> and <B>n</B> are the dimension of the linear system
+            that must be analyzed.  They are included to illustrate the
+            capacity of the MDS code.
+        </P>
+        <P>
+            For clarity, <B>r</B> and <B>d</B> are listed on a yellow
+            background, and the matrix dimensions on a purple
+            background.  A cyan background indicates that the dimension
+            of the spline space actually equals the dimension of the
+            space of polynomials of degree <B>d</B>.  Thus in that case
+            all splines are in fact polynomials.  A green background
+            indicates that there are nontrivial splines, and the true
+            dimension exceeds
+            <A HREF="../Srd.html#dimension">
+                Schumaker's lower bound.
+            </A>
+        </P>
+        <P>
+            At present there is no theory that explains the cases
+            highlighted in green.
+        </P>
+        <P>
+            The dimension of spline spaces completely understood (in the
+            sense that we know a minimal determining set) in the case
+            that <B>d&gt;3r+1.</B> However, for the range of <B>r</B>
+            considered here, discrepancies only occur for <B>d&lt;2r+1.
+            </B> It is an open question whether discrepancies occur for
+            larger of values of <B>d</B>, either on the Morgan-Scott
+            split for values of <B>r</B> not considered here, or on
+            other configurations.<BR CLEAR="ALL">
+            <CENTER>
+                <TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+                    <TR>
+                        <TD>
+                            <B>r</B>
+                        </TD>
+                        <TD>
+                            <B>d</B>
+                        </TD>
+                        <TD>
+                            <B>C1</B>
+                        </TD>
+                        <TD>
+                            <B>C2</B>
+                        </TD>
+                        <TD>
+                            <B>C3</B>
+                        </TD>
+                        <TD>
+                            <B>C4</B>
+                        </TD>
+                        <TD>
+                            <B>C5</B>
+                        </TD>
+                        <TD>
+                            <B>C6</B>
+                        </TD>
+                        <TD>
+                            <B>C7</B>
+                        </TD>
+                        <TD>
+                            <B>C8</B>
+                        </TD>
+                        <TD>
+                            <B>C9</B>
+                        </TD>
+                        <TD>
+                            <B>C10</B>
+                        </TD>
+                        <TD>
+                            <B>C11</B>
+                        </TD>
+                        <TD>
+                            <B>m</B>
+                        </TD>
+                        <TD>
+                            <B>n</B>
+                        </TD>
+                    </TR>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 1 </b></td>
+<td align=right bgcolor = #ffffaa><B> 2</b></td>
+<td align=right bgcolor = #aaffaa><B>12 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>11 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>10 / 1 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td> 
+<td align=right><B>9 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 48 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 43 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 1 </b></td>
+<td align=right bgcolor = #ffffaa><B> 3</b></td>
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 72 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 91 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 3</b></td>
+<td align=right bgcolor = #aaffaa><B>16 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>15 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>14 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>12 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>11 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 4 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 120 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 91 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 4</b></td>
+<td align=right bgcolor = #aaffaa><B>34 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>32 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>30 / 1 </b></td> 
+<td align=right><B>28 </b></td> 
+<td align=right><B>27 </b></td> 
+<td align=right><B>26 </b></td> 
+<td align=right><B>25 </b></td> 
+<td align=right><B>25 </b></td> 
+<td align=right><B>25 </b></td> 
+<td align=right><B>24 </b></td> 
+<td align=right><B>24 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 168 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 157 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right><B>67 </b></td> 
+<td align=right><B>66 </b></td> 
+<td align=right><B>65 </b></td> 
+<td align=right><B>64 </b></td> 
+<td align=right><B>63 </b></td> 
+<td align=right><B>62 </b></td> 
+<td align=right><B>61 </b></td> 
+<td align=right><B>61 </b></td> 
+<td align=right><B>61 </b></td> 
+<td align=right><B>60 </b></td> 
+<td align=right><B>60 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 216 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 241 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 4</b></td>
+<td align=right bgcolor = #aaffaa><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>20 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>19 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>17 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>16 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 11 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 216 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 157 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right bgcolor = #aaffaa><B>39 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>36 / 7 </b></td> 
+<td align=right bgcolor = #aaffaa><B>33 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>29 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>26 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>24 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>23 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 5 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 5 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 288 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 241 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 6</b></td>
+<td align=right bgcolor = #aaffaa><B>64 / 4 </b></td> 
+<td align=right bgcolor = #aaffaa><B>61 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>59 / 1 </b></td> 
+<td align=right><B>56 </b></td> 
+<td align=right><B>54 </b></td> 
+<td align=right><B>53 </b></td> 
+<td align=right><B>51 </b></td> 
+<td align=right><B>49 </b></td> 
+<td align=right><B>48 </b></td> 
+<td align=right><B>46 </b></td> 
+<td align=right><B>46 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 360 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 343 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right><B>108 </b></td> 
+<td align=right><B>107 </b></td> 
+<td align=right><B>106 </b></td> 
+<td align=right><B>104 </b></td> 
+<td align=right><B>102 </b></td> 
+<td align=right><B>101 </b></td> 
+<td align=right><B>99 </b></td> 
+<td align=right><B>97 </b></td> 
+<td align=right><B>96 </b></td> 
+<td align=right><B>94 </b></td> 
+<td align=right><B>94 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 432 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 463 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right bgcolor = #aaffaa><B>27 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>26 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>25 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>23 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>22 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 336 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 241 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 6</b></td>
+<td align=right bgcolor = #aaffaa><B>46 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>43 / 8 </b></td> 
+<td align=right bgcolor = #aaffaa><B>40 / 7 </b></td> 
+<td align=right bgcolor = #aaffaa><B>35 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>31 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 13 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 432 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 343 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right bgcolor = #aaffaa><B>72 / 11 </b></td> 
+<td align=right bgcolor = #aaffaa><B>67 / 8 </b></td> 
+<td align=right bgcolor = #aaffaa><B>62 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>55 / 1 </b></td> 
+<td align=right><B>51 </b></td> 
+<td align=right><B>49 </b></td> 
+<td align=right><B>46 </b></td> 
+<td align=right><B>44 </b></td> 
+<td align=right><B>43 </b></td> 
+<td align=right><B>40 </b></td> 
+<td align=right><B>39 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 528 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 463 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 8</b></td>
+<td align=right bgcolor = #aaffaa><B>107 / 4 </b></td> 
+<td align=right bgcolor = #aaffaa><B>103 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>100 / 1 </b></td> 
+<td align=right><B>96 </b></td> 
+<td align=right><B>93 </b></td> 
+<td align=right><B>91 </b></td> 
+<td align=right><B>88 </b></td> 
+<td align=right><B>86 </b></td> 
+<td align=right><B>85 </b></td> 
+<td align=right><B>82 </b></td> 
+<td align=right><B>81 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 624 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 601 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right><B>163 </b></td> 
+<td align=right><B>161 </b></td> 
+<td align=right><B>159 </b></td> 
+<td align=right><B>156 </b></td> 
+<td align=right><B>153 </b></td> 
+<td align=right><B>151 </b></td> 
+<td align=right><B>148 </b></td> 
+<td align=right><B>146 </b></td> 
+<td align=right><B>145 </b></td> 
+<td align=right><B>142 </b></td> 
+<td align=right><B>141 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 720 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 757 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 6</b></td>
+<td align=right bgcolor = #aaffaa><B>34 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>33 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>32 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>30 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>29 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 480 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 343 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right bgcolor = #aaffaa><B>54 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>51 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>48 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>42 / 7 </b></td> 
+<td align=right bgcolor = #aaffaa><B>39 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 14 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 15 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 19 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 20 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 600 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 463 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 8</b></td>
+<td align=right bgcolor = #aaffaa><B>81 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>75 / 15 </b></td> 
+<td align=right bgcolor = #aaffaa><B>69 / 12 </b></td> 
+<td align=right bgcolor = #aaffaa><B>60 / 7 </b></td> 
+<td align=right bgcolor = #aaffaa><B>53 / 4 </b></td> 
+<td align=right bgcolor = #aaffaa><B>48 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>47 / 5 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 5 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 10 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 11 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 720 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 601 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right bgcolor = #aaffaa><B>115 / 16 </b></td> 
+<td align=right bgcolor = #aaffaa><B>107 / 11 </b></td> 
+<td align=right bgcolor = #aaffaa><B>99 / 6 </b></td> 
+<td align=right><B>89 </b></td> 
+<td align=right><B>85 </b></td> 
+<td align=right><B>82 </b></td> 
+<td align=right><B>78 </b></td> 
+<td align=right><B>76 </b></td> 
+<td align=right><B>75 </b></td> 
+<td align=right><B>71 </b></td> 
+<td align=right><B>70 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 840 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 757 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 10</b></td>
+<td align=right bgcolor = #aaffaa><B>159 / 6 </b></td> 
+<td align=right bgcolor = #aaffaa><B>153 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>148 / 1 </b></td> 
+<td align=right><B>143 </b></td> 
+<td align=right><B>139 </b></td> 
+<td align=right><B>136 </b></td> 
+<td align=right><B>132 </b></td> 
+<td align=right><B>130 </b></td> 
+<td align=right><B>129 </b></td> 
+<td align=right><B>125 </b></td> 
+<td align=right><B>124 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 960 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 931 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 5 </b></td>
+<td align=right bgcolor = #ffffaa><B> 11</b></td>
+<td align=right><B>225 </b></td> 
+<td align=right><B>222 </b></td> 
+<td align=right><B>219 </b></td> 
+<td align=right><B>215 </b></td> 
+<td align=right><B>211 </b></td> 
+<td align=right><B>208 </b></td> 
+<td align=right><B>204 </b></td> 
+<td align=right><B>202 </b></td> 
+<td align=right><B>201 </b></td> 
+<td align=right><B>197 </b></td> 
+<td align=right><B>196 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1080 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1123 </b></td></tr> 
+
+<tr>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right bgcolor = #aaffaa><B>42 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>41 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>40 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>38 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>37 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 648 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 463 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 8</b></td>
+<td align=right bgcolor = #aaffaa><B>63 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>60 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>57 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>51 / 8 </b></td> 
+<td align=right bgcolor = #aaffaa><B>48 / 10 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 10 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 15 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 19 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 21 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 26 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 27 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 792 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 601 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right bgcolor = #aaffaa><B>91 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>85 / 16 </b></td> 
+<td align=right bgcolor = #aaffaa><B>79 / 14 </b></td> 
+<td align=right bgcolor = #aaffaa><B>69 / 10 </b></td> 
+<td align=right bgcolor = #aaffaa><B>61 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 16 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 24 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 25 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 936 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 757 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 10</b></td>
+<td align=right bgcolor = #aaffaa><B>126 / 23 </b></td> 
+<td align=right bgcolor = #aaffaa><B>117 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>108 / 13 </b></td> 
+<td align=right bgcolor = #aaffaa><B>95 / 6 </b></td> 
+<td align=right bgcolor = #aaffaa><B>84 / 1 </b></td> 
+<td align=right><B>79 </b></td> 
+<td align=right bgcolor = #aaffaa><B>75 / 2 </b></td> 
+<td align=right><B>69 </b></td> 
+<td align=right><B>67 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 5 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 6 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1080 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 931 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 11</b></td>
+<td align=right bgcolor = #aaffaa><B>169 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>158 / 11 </b></td> 
+<td align=right bgcolor = #aaffaa><B>147 / 4 </b></td> 
+<td align=right><B>137 </b></td> 
+<td align=right><B>131 </b></td> 
+<td align=right><B>127 </b></td> 
+<td align=right><B>121 </b></td> 
+<td align=right><B>117 </b></td> 
+<td align=right><B>115 </b></td> 
+<td align=right><B>109 </b></td> 
+<td align=right><B>108 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1224 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1123 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 12</b></td>
+<td align=right bgcolor = #aaffaa><B>222 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>215 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>210 / 1 </b></td> 
+<td align=right><B>203 </b></td> 
+<td align=right><B>197 </b></td> 
+<td align=right><B>193 </b></td> 
+<td align=right><B>187 </b></td> 
+<td align=right><B>183 </b></td> 
+<td align=right><B>181 </b></td> 
+<td align=right><B>175 </b></td> 
+<td align=right><B>174 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1368 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1333 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 6 </b></td>
+<td align=right bgcolor = #ffffaa><B> 13</b></td>
+<td align=right><B>301 </b></td> 
+<td align=right><B>297 </b></td> 
+<td align=right><B>293 </b></td> 
+<td align=right><B>287 </b></td> 
+<td align=right><B>281 </b></td> 
+<td align=right><B>277 </b></td> 
+<td align=right><B>271 </b></td> 
+<td align=right><B>267 </b></td> 
+<td align=right><B>265 </b></td> 
+<td align=right><B>259 </b></td> 
+<td align=right><B>258 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1512 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1561 </b></td></tr> 
+
+<tr>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 8</b></td>
+<td align=right bgcolor = #aaffaa><B>51 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>50 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>49 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>47 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>46 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>45 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 840 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 601 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right bgcolor = #aaffaa><B>73 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>70 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>67 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>61 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>58 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 24 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 33 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 34 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1008 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 757 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 10</b></td>
+<td align=right bgcolor = #aaffaa><B>102 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>96 / 17 </b></td> 
+<td align=right bgcolor = #aaffaa><B>90 / 16 </b></td> 
+<td align=right bgcolor = #aaffaa><B>79 / 13 </b></td> 
+<td align=right bgcolor = #aaffaa><B>72 / 14 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 13 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 21 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 30 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 38 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 39 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1176 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 931 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 11</b></td>
+<td align=right bgcolor = #aaffaa><B>138 / 30 </b></td> 
+<td align=right bgcolor = #aaffaa><B>128 / 25 </b></td> 
+<td align=right bgcolor = #aaffaa><B>118 / 20 </b></td> 
+<td align=right bgcolor = #aaffaa><B>103 / 13 </b></td> 
+<td align=right bgcolor = #aaffaa><B>90 / 8 </b></td> 
+<td align=right bgcolor = #aaffaa><B>81 / 4 </b></td> 
+<td align=right bgcolor = #aaffaa><B>80 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 15 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 26 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 27 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1344 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1123 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 12</b></td>
+<td align=right bgcolor = #aaffaa><B>181 / 31 </b></td> 
+<td align=right bgcolor = #aaffaa><B>168 / 23 </b></td> 
+<td align=right bgcolor = #aaffaa><B>155 / 15 </b></td> 
+<td align=right bgcolor = #aaffaa><B>137 / 5 </b></td> 
+<td align=right><B>124 </b></td> 
+<td align=right><B>119 </b></td> 
+<td align=right><B>111 </b></td> 
+<td align=right><B>105 </b></td> 
+<td align=right><B>102 </b></td> 
+<td align=right><B>94 </b></td> 
+<td align=right><B>93 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1512 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1333 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 13</b></td>
+<td align=right bgcolor = #aaffaa><B>231 / 21 </b></td> 
+<td align=right bgcolor = #aaffaa><B>217 / 12 </b></td> 
+<td align=right bgcolor = #aaffaa><B>204 / 4 </b></td> 
+<td align=right><B>192 </b></td> 
+<td align=right><B>184 </b></td> 
+<td align=right><B>179 </b></td> 
+<td align=right><B>171 </b></td> 
+<td align=right><B>165 </b></td> 
+<td align=right><B>162 </b></td> 
+<td align=right><B>154 </b></td> 
+<td align=right><B>153 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1680 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1561 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 14</b></td>
+<td align=right bgcolor = #aaffaa><B>293 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>285 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>279 / 1 </b></td> 
+<td align=right><B>270 </b></td> 
+<td align=right><B>262 </b></td> 
+<td align=right><B>257 </b></td> 
+<td align=right><B>249 </b></td> 
+<td align=right><B>243 </b></td> 
+<td align=right><B>240 </b></td> 
+<td align=right><B>232 </b></td> 
+<td align=right><B>231 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1848 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1807 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 7 </b></td>
+<td align=right bgcolor = #ffffaa><B> 15</b></td>
+<td align=right><B>384 </b></td> 
+<td align=right><B>379 </b></td> 
+<td align=right><B>374 </b></td> 
+<td align=right><B>366 </b></td> 
+<td align=right><B>358 </b></td> 
+<td align=right><B>353 </b></td> 
+<td align=right><B>345 </b></td> 
+<td align=right><B>339 </b></td> 
+<td align=right><B>336 </b></td> 
+<td align=right><B>328 </b></td> 
+<td align=right><B>327 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2016 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2071 </b></td></tr> 
+
+<tr><td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right bgcolor = #aaffaa><B>61 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>60 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>59 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>57 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>56 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>55 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1056 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 757 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 10</b></td>
+<td align=right bgcolor = #aaffaa><B>84 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>81 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>78 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>72 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>69 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 24 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 33 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 35 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1248 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 931 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 11</b></td>
+<td align=right bgcolor = #aaffaa><B>114 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>108 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>102 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>90 / 15 </b></td> 
+<td align=right bgcolor = #aaffaa><B>84 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 33 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 36 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 45 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 47 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1440 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1123 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 12</b></td>
+<td align=right bgcolor = #aaffaa><B>151 / 30 </b></td> 
+<td align=right bgcolor = #aaffaa><B>141 / 27 </b></td> 
+<td align=right bgcolor = #aaffaa><B>131 / 24 </b></td> 
+<td align=right bgcolor = #aaffaa><B>114 / 17 </b></td> 
+<td align=right bgcolor = #aaffaa><B>101 / 14 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 21 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 30 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 40 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 42 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1632 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1333 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 13</b></td>
+<td align=right bgcolor = #aaffaa><B>195 / 38 </b></td> 
+<td align=right bgcolor = #aaffaa><B>181 / 31 </b></td> 
+<td align=right bgcolor = #aaffaa><B>167 / 24 </b></td> 
+<td align=right bgcolor = #aaffaa><B>146 / 13 </b></td> 
+<td align=right bgcolor = #aaffaa><B>128 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>118 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>114 / 8 </b></td> 
+<td align=right bgcolor = #aaffaa><B>106 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 20 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1824 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1561 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 14</b></td>
+<td align=right bgcolor = #aaffaa><B>246 / 35 </b></td> 
+<td align=right bgcolor = #aaffaa><B>229 / 25 </b></td> 
+<td align=right bgcolor = #aaffaa><B>212 / 15 </b></td> 
+<td align=right bgcolor = #aaffaa><B>189 / 2 </b></td> 
+<td align=right><B>177 </b></td> 
+<td align=right><B>170 </b></td> 
+<td align=right><B>160 </b></td> 
+<td align=right><B>154 </b></td> 
+<td align=right><B>151 </b></td> 
+<td align=right><B>141 </b></td> 
+<td align=right><B>139 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2016 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1807 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 15</b></td>
+<td align=right bgcolor = #aaffaa><B>305 / 22 </b></td> 
+<td align=right bgcolor = #aaffaa><B>288 / 12 </b></td> 
+<td align=right bgcolor = #aaffaa><B>273 / 4 </b></td> 
+<td align=right><B>259 </b></td> 
+<td align=right><B>249 </b></td> 
+<td align=right><B>242 </b></td> 
+<td align=right><B>232 </b></td> 
+<td align=right><B>226 </b></td> 
+<td align=right><B>223 </b></td> 
+<td align=right><B>213 </b></td> 
+<td align=right><B>211 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2208 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2071 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 16</b></td>
+<td align=right bgcolor = #aaffaa><B>378 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>368 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>360 / 1 </b></td> 
+<td align=right><B>349 </b></td> 
+<td align=right><B>339 </b></td> 
+<td align=right><B>332 </b></td> 
+<td align=right><B>322 </b></td> 
+<td align=right><B>316 </b></td> 
+<td align=right><B>313 </b></td> 
+<td align=right><B>303 </b></td> 
+<td align=right><B>301 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2400 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2353 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 8 </b></td>
+<td align=right bgcolor = #ffffaa><B> 17</b></td>
+<td align=right><B>481 </b></td> 
+<td align=right><B>474 </b></td> 
+<td align=right><B>467 </b></td> 
+<td align=right><B>457 </b></td> 
+<td align=right><B>447 </b></td> 
+<td align=right><B>440 </b></td> 
+<td align=right><B>430 </b></td> 
+<td align=right><B>424 </b></td> 
+<td align=right><B>421 </b></td> 
+<td align=right><B>411 </b></td> 
+<td align=right><B>409 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2592 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2653 </b></td></tr> 
+
+
+
+<tr><td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 10</b></td>
+<td align=right bgcolor = #aaffaa><B>72 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>71 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>70 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>68 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>67 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 8 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 9 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 11 </b></td> 
+<td align=right bgcolor = #aaffff><B>66 / 12 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1296 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 931 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 11</b></td>
+<td align=right bgcolor = #aaffaa><B>96 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>93 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>90 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>84 / 9 </b></td> 
+<td align=right bgcolor = #aaffaa><B>81 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 12 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 24 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 33 </b></td> 
+<td align=right bgcolor = #aaffff><B>78 / 36 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1512 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1123 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 12</b></td>
+<td align=right bgcolor = #aaffaa><B>127 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>121 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>115 / 18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>103 / 16 </b></td> 
+<td align=right bgcolor = #aaffaa><B>97 / 20 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 20 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 30 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 38 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 42 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 52 </b></td> 
+<td align=right bgcolor = #aaffff><B>91 / 55 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1728 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1333 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 13</b></td>
+<td align=right bgcolor = #aaffaa><B>165 / 30 </b></td> 
+<td align=right bgcolor = #aaffaa><B>155 / 28 </b></td> 
+<td align=right bgcolor = #aaffaa><B>145 / 26 </b></td> 
+<td align=right bgcolor = #aaffaa><B>127 / 20 </b></td> 
+<td align=right bgcolor = #aaffaa><B>115 / 20 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 18 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 30 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 38 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 42 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 54 </b></td> 
+<td align=right bgcolor = #aaffff><B>105 / 57 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1944 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1561 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 14</b></td>
+<td align=right bgcolor = #aaffaa><B>210 / 45 </b></td> 
+<td align=right bgcolor = #aaffaa><B>195 / 38 </b></td> 
+<td align=right bgcolor = #aaffaa><B>180 / 31 </b></td> 
+<td align=right bgcolor = #aaffaa><B>157 / 20 </b></td> 
+<td align=right bgcolor = #aaffaa><B>137 / 12 </b></td> 
+<td align=right bgcolor = #aaffaa><B>123 / 6 </b></td> 
+<td align=right bgcolor = #aaffaa><B>122 / 17 </b></td> 
+<td align=right bgcolor = #aaffff><B>120 / 23 </b></td> 
+<td align=right bgcolor = #aaffff><B>120 / 27 </b></td> 
+<td align=right bgcolor = #aaffff><B>120 / 39 </b></td> 
+<td align=right bgcolor = #aaffff><B>120 / 42 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2160 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 1807 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 15</b></td>
+<td align=right bgcolor = #aaffaa><B>262 / 49 </b></td> 
+<td align=right bgcolor = #aaffaa><B>243 / 38 </b></td> 
+<td align=right bgcolor = #aaffaa><B>224 / 27 </b></td> 
+<td align=right bgcolor = #aaffaa><B>197 / 12 </b></td> 
+<td align=right bgcolor = #aaffaa><B>175 / 2 </b></td> 
+<td align=right><B>165 </b></td> 
+<td align=right bgcolor = #aaffaa><B>156 / 3 </b></td> 
+<td align=right><B>145 </b></td> 
+<td align=right><B>141 </b></td> 
+<td align=right bgcolor = #aaffff><B>136 / 7 </b></td> 
+<td align=right bgcolor = #aaffff><B>136 / 10 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2376 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2071 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 16</b></td>
+<td align=right bgcolor = #aaffaa><B>321 / 42 </b></td> 
+<td align=right bgcolor = #aaffaa><B>299 / 28 </b></td> 
+<td align=right bgcolor = #aaffaa><B>277 / 14 </b></td> 
+<td align=right><B>251 </b></td> 
+<td align=right><B>239 </b></td> 
+<td align=right><B>231 </b></td> 
+<td align=right><B>219 </b></td> 
+<td align=right><B>211 </b></td> 
+<td align=right><B>207 </b></td> 
+<td align=right><B>195 </b></td> 
+<td align=right><B>192 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2592 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2353 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 17</b></td>
+<td align=right bgcolor = #aaffaa><B>388 / 25 </b></td> 
+<td align=right bgcolor = #aaffaa><B>368 / 13 </b></td> 
+<td align=right bgcolor = #aaffaa><B>351 / 4 </b></td> 
+<td align=right><B>335 </b></td> 
+<td align=right><B>323 </b></td> 
+<td align=right><B>315 </b></td> 
+<td align=right><B>303 </b></td> 
+<td align=right><B>295 </b></td> 
+<td align=right><B>291 </b></td> 
+<td align=right><B>279 </b></td> 
+<td align=right><B>276 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2808 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2653 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 18</b></td>
+<td align=right bgcolor = #aaffaa><B>470 / 5 </b></td> 
+<td align=right bgcolor = #aaffaa><B>459 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>450 / 1 </b></td> 
+<td align=right><B>437 </b></td> 
+<td align=right><B>425 </b></td> 
+<td align=right><B>417 </b></td> 
+<td align=right><B>405 </b></td> 
+<td align=right><B>397 </b></td> 
+<td align=right><B>393 </b></td> 
+<td align=right><B>381 </b></td> 
+<td align=right><B>378 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 3024 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 2971 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 9 </b></td>
+<td align=right bgcolor = #ffffaa><B> 19</b></td>
+<td align=right><B>585 </b></td> 
+<td align=right><B>577 </b></td> 
+<td align=right><B>569 </b></td> 
+<td align=right><B>557 </b></td> 
+<td align=right><B>545 </b></td> 
+<td align=right><B>537 </b></td> 
+<td align=right><B>525 </b></td> 
+<td align=right><B>517 </b></td> 
+<td align=right><B>513 </b></td> 
+<td align=right><B>501 </b></td> 
+<td align=right><B>498 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 3240 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 3307 </b></td></tr> 
+
+
+
+    </TABLE>
+</CENTER>
+<P>
+    [08-Apr-1999]
+</P>
+</BODY>
+</HTML>
+
+
+

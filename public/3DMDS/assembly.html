@@ -1,0 +1,66 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+Assembly Steps
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+<H1><FONT COLOR = "red"> Table of Assembly Steps </FONT></H1>
+
+<table border = 10, cellpadding = 5, bgcolor="#ffffcc">
+<tr><td>number </td><td> name </td><td> Description </td><td>Example </td> </tr><tr>&nbsp;</tr>
+<tr><td>0 </td><td> &nbsp; </td> <td> Isolated tetrahedron </td><td>T</td> </tr>
+<tr><td>1 </td><td>v10 </td> <td> one vertex </td><td> V<sub>1</sub> </tr>
+<tr><td>2 </td><td>v21 </td> <td> two vertices </td><td> V<sub>1</sub>, V<sub>2</sub> </tr>
+<tr><td>3 </td><td>v33 </td> <td> three vertices </td><td>  V<sub>1</sub>, V<sub>2</sub>, V<sub>3</sub> </tr>
+<tr><td>4 </td><td>v46 </td> <td> four vertices </td><td>  V<sub>1</sub>, V<sub>2</sub>, V<sub>3</sub>, V<sub>4</sub> </tr>
+<tr><td>5 </td><td>e10 </td> <td> one edge </td><td> E<sub>12</sub> </tr>
+<tr><td>6 </td><td>e20 </td> <td> two opposite edges </td><td> E<sub>12</sub>, E<sub>34</sub> </tr>
+<tr><td>7 </td><td>e21 </td> <td> two edges sharing a vertex </td><td>  E<sub>12</sub>, E<sub>23</sub> </tr>
+<tr><td>8 </td><td>e32 </td> <td> three edges forming a path </td><td>   E<sub>12</sub>, E<sub>23</sub>, E<sub>34</sub> </tr>
+<tr><td>9 </td><td>e33 </td> <td> three edges sharing a vertex </td><td> E<sub>12</sub>, E<sub>13</sub>, E<sub>14</sub>  </tr>
+<tr><td>10 </td><td>e33F </td> <td> three edges on one face </td><td>  E<sub>12</sub>, E<sub>23</sub>, E<sub>31</sub> </tr>
+<tr><td>11 </td><td>e44 </td> <td> four edges forming a loop </td><td>  E<sub>12</sub>, E<sub>23</sub>, E<sub>34</sub>, E<sub>41</sub> </tr>
+<tr><td>12 </td><td>e45 </td> <td> four edges not forming a loop </td><td>  E<sub>12</sub>, E<sub>23</sub>, E<sub>31</sub>, E<sub>14</sub> </tr>
+<tr><td>13 </td><td>e56 </td> <td> five edges </td><td>  E<sub>12</sub>, E<sub>13</sub>, E<sub>14</sub>, E<sub>23</sub>, E<sub>24</sub> </tr>
+<tr><td>14 </td><td>e612 </td> <td> six edges </td><td>   E<sub>12</sub>, E<sub>13</sub>, E<sub>14</sub>, E<sub>23</sub>, E<sub>24</sub>, E<sub>34</sub> </tr>
+<tr><td>15 </td><td>ev11 </td> <td> one edge and one vertex </td><td> E<sub>12</sub>, V<sub>3</sub> </tr>
+<tr><td>16 </td><td>ev12 </td> <td> one edge and two vertices </td><td>  E<sub>12</sub>, V<sub>3</sub>, V<sub>4</sub> </tr>
+<tr><td>17 </td><td>ev21 </td> <td> two edges and one vertex </td><td>  E<sub>12</sub>, E<sub>23</sub>, V<sub>4</sub></tr>
+<tr><td>18 </td><td>ev31 </td> <td> three edges and one vertex </td><td>  E<sub>12</sub>, E<sub>23</sub>, E<sub>31</sub>, V<sub>4</sub> </tr>
+<tr><td>19 </td><td>fe11 </td> <td> one face and one edge </td><td>  F<sub>123</sub>, E<sub>14</sub> </tr>
+<tr><td>20 </td><td>fe12 </td> <td> one face and two edges </td><td>  F<sub>123</sub>, E<sub>14</sub>, E<sub>24</sub> </tr>
+<tr><td>21 </td><td>fe13 </td> <td> one face and three edges </td><td>  F<sub>123</sub>, E<sub>14</sub>, E<sub>24</sub>, E<sub>34</sub> </tr>
+<tr><td>22 </td><td>fe21 </td> <td> two faces and one edge </td><td>  F<sub>123</sub>, F<sub>124</sub>, E<sub>34</sub> </tr>
+<tr><td>23 </td><td>f1 </td> <td> one face </td><td> F<sub>123</sub> </tr>
+<tr><td>24 </td><td>f2 </td> <td> two faces </td><td> F<sub>123</sub>, F<sub>124</sub> </tr>
+<tr><td>25 </td><td>f3 </td> <td> three faces </td><td> F<sub>123</sub>, F<sub>124</sub>, F<sub>134</sub> </tr>
+<tr><td>26 </td><td>f4 </td> <td> four faces </td><td> F<sub>123</sub>, F<sub>124</sub>, F<sub>134</sub>, F<sub>234</sub> </tr>
+<tr><td>27 </td><td>fv </td> <td> one face and the opposite vertex </td><td> F<sub>123</sub>, V<sub>4</sub> </tr>
+</table>
+
+</BODY>
+
+<BR>&nbsp;<BR>
+
+The example illustrates the facets on which a tetrahedron with
+vertices 1 through 4 is joined.  Both the reference number and the
+name of each step are used internally in the software.
+
+</HTML>

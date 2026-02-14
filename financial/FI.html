@@ -1,0 +1,97 @@
+
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Financial Calculator </title>
+    <link rel="stylesheet" href="FI.css">
+</head>
+<body>
+  <H1> A Financial Calculator </H1>
+
+
+  <B> version 5 &nbsp; August 22, 2025 </B>
+
+
+<P>  This is a financial calculator that comes with bells 
+  <audio id="Bell1" src="bell-323942.mp3" preload="auto"></audio>
+<button onclick="playBell1()" id = "B1" name = "B1" style = "color: red; background-color: yellow">Bell 1</button>
+
+<audio id="Bell2" src="church-bells-194653.mp3" preload="auto"></audio>
+<button onclick="playBell2()" id = "B2" name = "B2" style = "color: red; background-color: yellow">Bell 2</button>
+
+and whistles
+
+<audio id="Whistle1" src="calling-whistle-41861.mp3" preload="auto"></audio>
+<button onclick="playWhistle1()" id = "W1" name = "W11" style = "color: red; background-color: yellow">Whistle 1</button>
+
+<audio id="Whistle2" src="whistle-slide-down-02-350715.mp3" preload="auto"></audio>
+<button onclick="playWhistle2()" id = "W2" name = "W12" style = "color: red; background-color: yellow">Whistle 2</button>
+(courtesy of <A href="https://pixabay.com/sound-effects/search/"> pixabay </a>)
+
+
+<P>  Suppose you wish to borrow a dollar amount <B>A</B> and make <B>N</B> payments of  <B>P</B> Dollars each, at an interest rate of <B>I</B>% per payment period, leaving you with a future value of <B>F</B> Dollars. (For a standard loan <B>F</B> will be zero.)
+
+<P> This calculator lets you specify four of these five quantities, and compute the fifth.  It also lets you list or download a payment schedule if you like.   The payment periods are called "months" on this page, for convenience, but they could of course be periods of any length.  The dollar amounts can be negative, with the appropriate interpretations.
+
+<P> The calculator is modeled after the popular HP 12C model, and you can probably use it right away, using the text fields and buttons below, but you can also get more information first.  Each of these links opens in a new tab:
+  
+    <UL>
+      <LI> <A href="Instructions.html" target="_blank"> <B> Instructions </B> </A> </LI>
+      <LI> <A href="Examples.html" target = "_blank"> <B> Examples </B> </A>, and </LI>
+      <LI> <A href="math.pdf" target = "_blank"> <B> The Mathematics </B> </A> </LI>
+   </UL>
+
+
+
+
+
+<P>  Briefly, you enter the parameters in the text fields below.   To change the value of a text field click on it.   This will blank it. (Clicking again at this stage will restore the current value).  Enter your new parameter as a number (without dollar signs or commas). If the current values are consistent the backgrounds of the text fields will be <wg>green</wg>.  Otherwise they'll be <wr>red</wr>.   If they are red, you can compute the value of any of the five parameters by clicking on its <wb>Compute</wb> button.  This will compute the appropriate parameter, depending on the values of the others, and turn the text fields green.
+
+<P>The calculator starts with an example in a consistent state, and it will not let you enter strings that it does not recognize as a number.
+
+<P>
+
+<P>  <button type = "button" id = "bN" name = "bN" style = " background-color: blue; color: white">Compute</button>
+  <input type="text" id="tN" name="tN" placeholder="" style="text-align: right">   = <B>N</B> = 
+duration of the loan (months)
+
+
+<BR>
+<button type = "button" id = "bI" name = "bI"style = " background-color: blue; color: white">Compute</button>
+<input type="text" id="tI" name="tI" placeholder="" style="text-align: right"> = <B>I</B> = 
+monthly interest rate in percent.
+
+<BR>
+<button type = "button" id = "bA" name = "bA"style = " background-color: blue; color: white">Compute</button>
+<input type="text" id="tA" name="tA" placeholder="" style="text-align: right"> = <B>A</B> = 
+Loan Amount
+
+<BR>
+<button type = "button" id = "bP" name = "bPN"style = " background-color: blue; color: white">Compute</button>
+<input type="text" id="tP" name="tP" placeholder="" style="text-align: right"> = <B>P</B> = 
+monthly payment
+
+<BR>
+<button type = "button" id = "bF" name = "bF"style = " background-color: blue; color: white">Compute</button>
+<input type="text" id="tF" name="tF" placeholder="" style="text-align: right"> = <B>F</B> = 
+future value 
+
+<P>
+<button type = "button" id = "Schedule" name = "Schedule"style =  " background-color: purple; color: white">Create Payment Schedule</button>
+
+<P>
+<button type = "button" id = "ExportHTML" name = "Export HTML" style = " background-color: purple; color: white" maxlength=50>Export HTML</button>      
+
+<P>
+<button type = "button" id = "ExportCSV" name = "ExportCSV"style = " background-color: purple; color: white">Export csv (comma delimited)</button>      
+
+<div id="puF" class="popup-style"> click, enter a new Future Value, and press ENTER     </div>
+
+<div id="output"></div> <!-- New element for displaying output -->
+
+<script src="FI.js"></script>
+</body>
+</html>
+

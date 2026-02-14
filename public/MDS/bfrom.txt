@@ -1,0 +1,271 @@
+
+Larry,
+
+   Here's a first draft of the user's guide to the MDS applet.  I'll put 
+   a more polished version on the web soon.  You can see some 
+   pictures generated with the applet on 
+   http://www.math.utah.edu/~alfeld/MDS/ 
+   and http://www.math.utah.edu/~alfeld/MDS/bform.html
+   
+   And let me know what you think.  I'll try to fix any bugs,
+   and I'm open to the suggestion of modifying features or adding new
+   ones.
+
+   Have fun!
+
+   Peter
+
+
+
+To activate the applet.
+
+   Click on the box on the web page
+   http://www.math.utah.edu/~alfeld/MDS/ Two windows will pop up, the
+   control window, and a drawing window.  The initial triangulation is
+   the Clough-Tocher split.  You can change the values of r and d in the
+   third row of the control panel.  There is one red textfield for r and
+   one for d.  To edit a text field move the cursor into the textfield
+   and click (always the left mouse button) or highlight part of the
+   text.  Then type the replacement string.  A change in any text window
+   becomes effective only after you type RETURN.  The contents of the
+   textfields can also be incremented or decremented (by 1) by clicking
+   on the "+" and +-" buttons next to the textfield.
+
+   Quitting.  To quit click on the upper left button (l;labeled Quit)
+   of the control panel.
+
+   Constructing a MDS.
+
+   Suppose you want to construct a minimal determining set.  To add a
+   point to the set just click on the domain point.  The first time
+   you do this some linear algebra will be initialized and any points
+   that do not enter the smoothness conditions are added.  The symbols
+   have the following meaning:
+
+- a fat plus sign: The point is in the MDS
+
+- a white circle: The status of that point is as yet undetermined.
+
+- a filled in circle: That point is implied to be zero by the smoothness
+  conditions, based on the points that are currently in the MDS.
+
+- A filled in box: That point does not enter any smoothness conditions
+  (and therefore is in the MDS).
+
+- an outlined white box: That point does not enter any smoothness
+  conditions and is not included in the current MDS, because it has
+  not been initialized, or it has been taken out for some counting
+  purposes.
+
+   Points that are currently in the MDS can also be taken out, by
+   clicking on them.  Any points that are implied by the larger set,
+   but not by the smaller, revert to their outlined status.
+
+Adding and removing points in groups.
+
+   The menu in the fifth row of the control panel can be used to
+   determine the effect of clicking on a point, according to the
+   following options:
+
+- point (the default) Add or remove one point at a time.
+
+- ring.  Add or remove all points in the ring containing the target
+  point.  To pick the center of the ring click on that vertex first
+  (in ring mode).  The default center for the cells is the interior
+  point.
+
+- disk.  This works similarly to the ring.
+
+- triangle.  Click on an interior point of a triangle to add or remove
+  the entire triangle, on the interior point of an edge to add or
+  remove an entire edge, or a vertex to add or remove that vertex.
+
+   NOTE: Remember to switch back to point mode when done with one of
+   the other modes.  You can do this using the menu on the control
+   panel or simply by typing a period in the drawing window..
+
+Adding Color
+
+   The current color can be changed using the second menu in the
+   fifth row of the control panel.  The default is black.
+
+Having more than one drawing window.
+
+   The drawing window contains a specific triangulation, or you can
+   design your own in it. You can have several drawing windows at once.
+   The control window always corresponds to one particular drawing
+   window.  The drawing windows are numbered.  You pick which one is
+   currently associated with the control window by changing the number in
+   the text field in the second row of the control panel, the one preceded
+   by the string "T =". You can increase or decrease that number by
+   clicking "+" or "-" on the buttons next to it.  You can also edit the
+   contents of the text window.  Any change becomes effective only after
+   typing return after editing the text window.  The most convenient
+   way of associating the control panel with a given triangulation is
+   to type "c" or "C" in the relevant drawing window.
+
+Miscellaneous Options
+
+   The following is a list of options available on the control
+   panel. not yet discussed:
+
+*** Second Row:
+
+ - New  Clicking on the this button brings up a new drawing window,
+   with the parameters set to the same value ads they are in the
+   current drawing window.
+
+ - Hide!  Hides the drawing window currently associated with the
+   control panel.
+
+ - Show! Opens the drawing window currently associated with the
+   control panel, and puts it on top of all others.
+
+ - Redraw  Redraws the contents of the current drawing window.
+
+ - Reset Resets the contents of the current drawing window.  The
+   triangulation and the values of r and d remain unchanged.  Starting
+   on the MDS requires reinitialization of the linear algebra.
+
+*** Third Row.  The third row is dedicated to the control of r and d.
+
+*** Fourth Row:
+
+- MDS Assigns the currently chosen color to all points currently in
+  the MDS.
+
+- DET Assigns the currently chosen color to all points determined by
+  the smoothness conditions.
+
+- NON Assigns the currently chosen color to all points not entering
+  any smoothness conditions (those marked with square boxes).
+
+- Menu  The menu in the fourth row provides a choice of built-in
+  triangulations:
+
+    - Custom Triangulation (see below)
+    - a single triangle
+    - two neighboring triangles
+    - The Clough-Tocher split (the default)
+    - a singular vertex
+    - a generic 4 star
+    - a generic 5 star
+    - a regular hexagon as it appears in a type I triangulation.  The
+      applet recognizes this vertex as non-confinable.
+    - a regular hexagon in the traditional sense.  Because of round-off
+      errors the applet does not recognize this vertex as confinable.
+    - a generic hexagon
+    - the Morgan-Scott split.
+ 
+  Note: susceptibility to round-off errors is the fundamental weakness
+  of the applet.  A more complete discussion will be on the web pages.
+
+- Complete  Constructs a complete minimal determining set starting
+  with those that have already been chosen.
+
+
+*** Fifth Row:
+
+-   Label Vs  Shows the internal numbering of the vertices.
+
+-   Label BPs  Shows the internal numbering of the Domain Points
+
+-   quadrilaterals   toggles the drawing of the quadrilaterals
+    symbolizing the smoothness conditions on and off.
+
+-   grid   toggles the grind in each triangle on and off.
+
+*** Sixth Row
+
+- label  Turns a label at the bottom of the drawing window on or
+  off.  That label contains a count of the points currently in the
+  MDS, and a statement of the dimension of the spline space.
+
+- Header  Turns a headline in the drawing window on or off.  The text
+  of that head line can be chosen in the textfield next to the button.
+
+
+Keyboard Commands
+
+   Several Keyboard commands are available in each drawing window.
+   The list below will be extended in the near future.  The idea is
+   that essentially one should be able to control each drawing window
+   without using the control panel at all. 
+
+   D   increment d by 1
+   d   decrement d by 1
+   R   increment r by 1
+   r   decrement r by 1
+   0   make current color black
+   1   make current color red
+   2   make current color green
+   3   make current color blue
+   4   make current color cyan
+   5   make current color magenta
+   6   make current color yellow
+<RET>  redraw the net
+ o,O   restart
+ q,Q   hide window
+ x,X   exit system
+ c,C   associate control panel with this window and put it on top
+   .   point mode 
+   @   ring mode
+   #   disk mode
+   $   triangle mode
+
+  The following Function keys may not be available or perhaps work
+  differently on your keyboard:
+
+  F0   Custom Triangulation
+  F1   a single triangle
+  F2   two neighboring triangles
+  F3   The Clough-Tocher split (the default)
+  F4   a singular vertex
+  F5   a generic 4 star
+  F6   a generic 5 star
+  F7   a regular hexagon as it appears in a type I triangulation.  The
+       applet recognizes this vertex as non-confinable.
+  F8   a regular hexagon in the traditional sense.  Because of round-off
+       errors the applet does not recognize this vertex as confinable.
+  F9   a generic hexagon
+ F10   the Morgan-Scott split.
+ 
+
+Designing a custom triangulation
+
+  This mode is not completely debugged, and it's a little awkward.
+  But you can design your own triangulation by following these steps:
+
+1. Select custom mode by using the menu on the control panel or by
+   typing F1.
+
+2. Draw the first triangle by moving the mouse to their intended
+   location and clicking.
+
+3. Add flaps by moving the mouse to the midpoint of the newly to be
+   interior edge and dragging the mouse to the intended location of
+   the new boundary vertex.  Once you let go of the mouse button that
+   vertex cannot be moved.
+
+4. Adding a fill by clicking on the newly to be interior vertex.
+
+5. When you are finished with your triangulation type "f" or "F" in
+   the drawing window.  You can now use this triangulation like any
+   of the others.  
+
+
+   Note: Currently there are no facilities to recover from a mistake
+   in setting up the triangulation, or to change the location of the
+   vertices.  The only option is to start over by bringing up a new
+   drawing window. 
+
+
+
+
+
+
+
+
+
+
+

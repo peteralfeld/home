@@ -1,0 +1,220 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            MDS User's Guide
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H1>
+            Floating Point Data for C<sup>1</sup> Cubic CT split
+        </H1>
+
+<pre>
+3 <--- number of triangles 
+3 <--- boundary vertices
+1 <--- interior vertices 
+19<--- active domain points 
+12 <--- active points in a MDS
+7 <--- number of points to be determined
+3 <--- polynomial degree d 
+0.3333333333333333 0.3333333333333333 0.3333333333333333 <--- barycentric coordinates of V3
+2 0 3 <--- triangle 0
+2 3 1 <--- triangle 1
+3 0 1 <--- triangle 2
+ 0 0 0 3 <--- coefficient 0
+ 1 0 0 2 <--- coefficient 1
+ 2 0 0 1 <--- coefficient 2
+ 3 0 0 0 <--- coefficient 3
+ 0 0 1 2 <--- coefficient 4
+ 1 0 1 1 <--- coefficient 5
+ 2 0 1 0 <--- coefficient 6
+ 0 1 0 2 <--- coefficient 7
+ 1 1 0 1 <--- coefficient 8
+ 2 1 0 0 <--- coefficient 9
+ 0 0 2 1 <--- coefficient 10
+ 0 0 3 0 <--- coefficient 11
+ 1 0 2 0 <--- coefficient 12
+ 0 1 1 1 <--- coefficient 13
+ 0 1 2 0 <--- coefficient 14
+ 0 2 0 1 <--- coefficient 15
+ 0 3 0 0 <--- coefficient 16
+ 0 2 1 0 <--- coefficient 17
+ 1 2 0 0 <--- coefficient 18
+0 <--- point 0 to be determined
+1 <--- point 1 to be determined
+2 <--- point 2 to be determined
+4 <--- point 3 to be determined
+7 <--- point 4 to be determined
+10 <--- point 5 to be determined
+15 <--- point 6 to be determined
+3 <--- point 0 in MDS
+8 <--- point 1 in MDS
+9 <--- point 2 in MDS
+5 <--- point 3 in MDS
+11 <--- point 4 in MDS
+12 <--- point 5 in MDS
+13 <--- point 6 in MDS
+14 <--- point 7 in MDS
+6 <--- point 8 in MDS
+16 <--- point 9 in MDS
+17 <--- point 10 in MDS
+18 <--- point 11 in MDS
+36 <--- number of non-zero entries
+0 3 0.037037037037037035 <--- 0
+0 8 0.2222222222222222 <--- 1
+0 9 0.037037037037037035 <--- 2
+0 5 0.2222222222222222 <--- 3
+0 11 0.037037037037037035 <--- 4
+0 12 0.037037037037037035 <--- 5
+0 13 0.2222222222222222 <--- 6
+0 14 0.037037037037037035 <--- 7
+0 6 0.037037037037037035 <--- 8
+0 16 0.037037037037037035 <--- 9
+0 17 0.037037037037037035 <--- 10
+0 18 0.037037037037037035 <--- 11
+1 3 0.1111111111111111 <--- 12
+1 8 0.3333333333333333 <--- 13
+1 9 0.1111111111111111 <--- 14
+1 5 0.3333333333333333 <--- 15
+1 6 0.1111111111111111 <--- 16
+2 3 0.3333333333333333 <--- 17
+2 9 0.3333333333333333 <--- 18
+2 6 0.3333333333333333 <--- 19
+4 5 0.3333333333333333 <--- 20
+4 11 0.1111111111111111 <--- 21
+4 12 0.1111111111111111 <--- 22
+4 13 0.3333333333333333 <--- 23
+4 14 0.1111111111111111 <--- 24
+7 8 0.3333333333333333 <--- 25
+7 13 0.3333333333333333 <--- 26
+7 16 0.1111111111111111 <--- 27
+7 17 0.1111111111111111 <--- 28
+7 18 0.1111111111111111 <--- 29
+10 11 0.3333333333333333 <--- 30
+10 12 0.3333333333333333 <--- 31
+10 14 0.3333333333333333 <--- 32
+15 16 0.3333333333333333 <--- 33
+15 17 0.3333333333333333 <--- 34
+15 18 0.3333333333333333 <--- 35
+1.0 <--- infinity norm of transformation matrix
+1.1102230246251565E-16 <--- max deviation of line sum from 1 in transformation matrix
+</pre>
+
+
+        <HR>
+        [25-Jan-2000]
+    </BODY>
+</HTML>

@@ -1,0 +1,178 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Bounds on the Dimension of Spline Spaces
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = 4>
+                            <APPLET CODE="MDS.class"
+                                CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                                WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                                <B>
+                            </APPLET>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = "2">
+                            <A HREF="../bform.html">
+                                <FONT size = "-1">
+                                    <B> The Bernstein B&eacute;zier Form
+                                    </B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../index.html">
+                                <FONT size = "-1">
+                                    <B> Home Page</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../examples.html">
+                                <FONT size = "-1">
+                                    <B> Examples</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H2>
+           Bounds on the Dimension of Spline Spaces
+        </H3>
+For spline spaces without supersmoothness conditions the following
+was shown in  <a href="../bibliography.html#LLS1979"> Schumaker's 1979
+paper:</a>
+
+<p><img SRC = "e1.gif"> (1)
+<p>where
+<p><img SRC = "e2.gif"> (2)
+<p> The last summation is over the interior vertices of the underlying
+triangulation, and <em>e<sub>v</sub></em> is the number of edges of
+different slopes attached to the vertex <em>v</em>.
+<p>
+In a <a href="../bibliography.html#LLS1984"> 
+subsequent paper in 1984
+</a>
+Schumaker published a similar upper bound:
+<p><img SRC = "e3.gif"> (3)
+<p>where
+<p><img SRC = "e4.gif"> (4)
+<p> Here it is assumed that the vertices of the triangulation are
+ordered in such a way that very vertex but the first is connected by
+an edge to a vertex that has already been listed, and the tilde
+denotes the number of edges of different slopes that are do not
+connect to vertices already in the list.
+
+In some cases the true dimension is known (and equal to the lower bound
+(1)).  In particular this is the case when the number of interior
+vertices does not exceed 1 (also shown in Schumaker's 1979 paper), and
+in the case that 
+<p> <img src="e5.gif">
+<p> as shown by 
+<a href="../bibliography.html#Hong"> Hong </a>
+and 
+<a href="../bibliography.html#IS"> Ibrahim and Schumaker </a>
+in 1991.
+
+Supersmoothness conditions complicate the issue. 
+
+
+
+
+        <P>
+            [08-May-2001]
+        </P>
+    </BODY>
+</HTML>

@@ -1,0 +1,175 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Reduced Polynomial Degree - Examples
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+
+        <H2>
+            Reduced Polynomial Degree - Examples
+        </H2>
+
+<IMG SRC="redEx1.gif"" ALIGN = "RIGHT">
+
+<p> The first example shows the familiar <a href="felm.html">
+Clough-Tocher element</a>  camouflaged as a spline of degree
+<em>4</em> rather than <em>3</em>.   The points marked in black are
+determined by interpolation to function and gradient values at the
+vertices of the macrotriangle.  The points shown as black circles are
+<em>implied</em>, those shown as black cross hairs are given as data.
+The three turquoise cross hairs are given by the cross boundary
+derivative data, the turquoise solid circles are implied by the
+smoothness conditions.  The dimension of this spline space is 12. This
+contrasts with the dimension of <em>C<sup>1</sup></em> quartics, which
+is 21.
+
+
+<br Clear="all">
+
+<IMG SRC="redEx2.gif"" ALIGN = "RIGHT">
+
+<p> A similar element could be built on the generic Morgan-Scott split
+,as illustrated in the Figure nearby, by reducing the degree of the
+central triangle to 2.
+
+
+
+<br Clear="all">
+
+<IMG SRC="redEx3.gif"" ALIGN = "RIGHT">
+
+<p> However, it the same idea is applied to the symmetric Morgan-Scott
+split then it turns out that the vertex data cannot be all imposed,
+as indicated in the lower right corner of the Figure nearby.  Imposing
+the function value and one directional derivative implies all other
+directional derivatives.
+
+<p> Of course, the <em>C<sup>1</sup></em> cubic Clough-Tocher element
+works perfectly fine and there is no need to construct a
+<em>C<sup>1</sup></em>
+element on the Morgan-Scott split.
+However, I've been trying to construct smoother  elements on a
+symmetric split and the phenomenon illustrated here seems to be
+inevitable: the last piece of data needed on the boundary to ensure
+smoothness between macrotriangle always seems to be dependent on the
+other boundary data.  This subject is under investigation.
+
+
+        <HR>
+        [05-Jan-2000]
+    </BODY>
+</HTML>
+

@@ -1,0 +1,117 @@
+##DESCRIPTION
+##  sample true-false question
+##ENDDESCRIPTION
+
+##KEYWORDS('true-false')
+
+DOCUMENT();        # This should be the first executable line in the problem.
+
+loadMacros(
+"PG.pl",
+"PGbasicmacros.pl",
+"PGchoicemacros.pl",
+"PGanswermacros.pl",
+"PGauxiliaryFunctions.pl"
+);
+
+install_problem_grader(~~&std_problem_grader);
+TEXT(&beginproblem);
+$showPartialCorrectAnswers = 0;
+$showPartialCredit = 0;
+
+TEXT(EV2(<<EOT));
+Following is a list of scales commonly found on slide rules.  For each
+scale we list the commonly used name (like <b>C</b>), the function
+underlying it (like \(f(x) = x\), and some explanations or comments.
+
+
+\begin{itemize}
+
+\item {\bf C, D}, \(f(x) = x\).  The basic scales.  {\bf C} is on the slide,
+{\bf D} on the body.
+
+\item {\bf CI, DI}, \(f(x) = \frac{1}{x}\).  {\bf CI} is on the slide,
+{\bf DI} on the body.
+
+\item {\bf CF, DF}, \(f(x) = \pi x\).    {\bf CF} is on the slide,
+{\bf DF} on the body.
+
+\item {\bf CIF, DIF}, \(f(x) = \frac{1}{\pi x}\).  {\bf CIF} is on the slide,
+{\bf DIF} on the body.
+
+\item {\bf A, B}, \(f(x) = x^2\).  {\bf A} is on the body, {\bf B} is
+on the slide.  
+
+\item {\bf W}, \(f(x) = \sqrt{x}\).  May come with subscripts to
+distinguish \(\sqrt{x}\) and \(\sqrt{10 x}\), and have a prime
+attached to distinguish location on the body or slide.
+
+
+\item {\bf K}, \(f(x) = x^3\). 
+
+\item {\bf LL}, \(f(x) = e^x\) of \(f(x) = e^{-x}\). This is one of
+the scales that show the decimal point.  Usually there are several
+scales, like
+\[\begin{array}{lcccc}
+       & \hbox{LL}_0 & \hbox{LL}_1 & \hbox{LL}_2 &  \hbox{LL}_3 &\\
+f(x) = & e^{0.001x}  & e^{0.01x}   & e^{0.1x}    &  e^x & \\
+\end{array}
+\]
+and
+\[\begin{array}{lcccc}
+       & \hbox{LL}_{00} & \hbox{LL}_{01} & \hbox{LL}_{02} &  \hbox{LL}_{03} &\\
+f(x) = & e^{-0.001x}  & e^{-0.01x}   & e^{-0.1x}    &  e^{-x} & \\
+\end{array}
+\]
+
+\item {\bf L}, \(f(x) = \log x\).  The only scale on a slide rule that
+has a constant increment.  Usually on the slide.  If there was one such
+scale on the slide and one on the body they could be used for the addition
+of numbers.
+
+\item {\bf S}, \(f(x) = \arcsin x\), \(f(x) = \arccos x\). Lists the
+angle \(\alpha\) for which \(x = sin \alpha\) of \(x=\cos \alpha\).
+On slide rules, all angles are measured in degrees, and reside in the interval
+\([0^\circ,90^\circ]\) of numbers.  The scale usually lists both
+\(\arcsin\) and \(\arccos\), using the identity \[\sin\(90^\circ -
+\alpha\) = \cos\alpha.\]
+
+\item {\bf T}, \(f(x) = \arctan x\), \(f(x) = \hbox{arccot~} x\). Similar to
+the {\bf S} scale.  \(x\) is in the interval \([0.1,1]\), \(\arctan x\) 
+is in\([5.8^\circ,45^\circ]\) and \(\hbox{arccot~} x = 90^\circ - \arctan
+x\). There may be a similar scale of \(x\) in the interval
+\([1,10]\) in which case subscripts may be used to distinguish the
+scales.
+
+\item {\bf ST}, \(f(x) = \hbox{arc} x\), showing the angle (in
+degrees) in the unit circle for an arc of length \(x\) where \(x\) is
+in the interval \([0.01,0.1]\).  For such small arcs, within the
+accuracy of a slide rule,  the sine,
+and the tangent are equal.
+
+\item {\bf P}, \(f(x) = \sqrt{1-x^2}\), for \(x\) in the interval 
+\([0.1,1]\).  The Pythagorean Scale.
+
+\item{\bf H},  \(f(x) = \sqrt{1+x^2}\), for \(x\) in the interval 
+\([0.1,1]\).  There may be another scale for \(x\) in \([1,10]\)
+and the two scales may be distinguished by subscripts.
+
+\item{\bf Sh}, \(f^{-1}(x) = (e^x-e^{-x})/2\). \(f\) is the inverse of
+the hyperbolic sine.  \(x\) is in the interval \([1,10]\) If a scale
+is present for \(x\) in \([0.1,10]\) the scales may be distinguished
+by subscripts.
+
+\item{\bf Ch}, \(f^{-1}(x) = (e^x+e^{-x})/2\). \(f\) is the
+inverse of the hyperbolic cosine.   \(x\) is in the interval \([1,10]\).
+
+\item{\bf Th}, \(f^{-1}(x) = (e^x-e^{-x})/(e^x+e^{-x})\). \(f\) is
+the inverse of the hyperbolic tangent.  \(x\) is in the interval \([0.1,1]\).
+
+
+
+\end{itemize}
+
+EOT
+
+
+ENDDOCUMENT();        # This should be the last executable line in the problem.

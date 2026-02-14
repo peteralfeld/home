@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mill Instructions</title>
+    <link rel="stylesheet" href="Mill.css">
+    <style>
+      /* Specific styles for the Reference Section spacing */
+      .ref-item {
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .back-link {
+        font-size: 12px;
+        text-decoration: none;
+        color: #666;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      .back-link:hover {
+        text-decoration: underline;
+        color: #000;
+      }
+
+      /* TOC Styles */
+      .toc-table {
+        width: 950px;
+        background-color: transparent;
+        /* Matches page background */
+        color: white;
+        /* Assumes dark background or CSS handles text color */
+        border-collapse: collapse;
+        margin-bottom: 30px;
+        font-family: Calibri, ’Carlito’, sans-serif;
+        font-size: 18px;
+      }
+
+      .toc-table td {
+        padding: 8px 12px;
+        border: 1px solid #004080;
+        width: 25%;
+        vertical-align: top;
+      }
+
+      .toc-table a {
+        color: white;
+        /* Ensure visibility if background is dark */
+        text-decoration: none;
+        display: block;
+      }
+
+      .toc-table a:hover {
+        text-decoration: underline;
+        color: #ffcc00;
+      }
+
+      /* Back Link Symbol Style */
+      .back-symbol {
+        text-decoration: none;
+        font-size: 1.2em;
+        margin-left: 10px;
+        color: #0077cc;
+      }
+
+      .back-symbol:hover {
+        color: #000;
+      }
+
+      /* Make the target offset slightly so the header is not hidden by browser UI */
+      :target {
+        scroll-margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="doc-wrapper">
+      <H1> The Game of Mill: <a target="_blank" href="Mill.html">&nbsp;<img src="thumbprint.jpg" style="width: 100px; height: auto; vertical-align: middle;"></a>&nbsp;Instructions </H1>
+      <H2>User Manual</H2>
+      <p> This page serves as a comprehensive manual for users, explaining what the software can do, and how to use it. Its contents are arranged in a sequence matching the arrangement on the <e>Game Page</e> where you can play the game. You can read the manual as an introductory (and spell-binding!) narrative. You can also click on any item in this table of contents to get to any particular spot. If you see a link like this <a href="javascript:history.back()">&#8617;</a> you can click on it to get back to the list of contents. Also keep in mind that you can hover over any component of the game page and see an explanatory window pop up after a couple of seconds. <h3 id="contents">Table of contents</h3>
+      <table class="toc-table">
+        <tr>
+          <td>
+            <a href="#algo">The computer algorithm</a>
+          </td>
+          <td>
+            <a href="#gamepage">The game page</a>
+          </td>
+          <td>
+            <a href="#clock">The system clock</a>
+          </td>
+          <td>
+            <a href="#board">The game board</a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="#status">Status window and console</a>
+          </td>
+          <td>
+            <a href="#select">Selecting players</a>
+          </td>
+          <td>
+            <a href="#scores">Move and board scores</a>
+          </td>
+          <td>
+            <a href="#random">Playing at random</a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="#aids">Graphical aids</a>
+          </td>
+          <td>
+            <a href="#data">Collecting data</a>
+          </td>
+          <td>
+            <a href="#parallel">Parallel processing</a>
+          </td>
+          <td>
+            <a href="#efficiency">Increasing efficiency</a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="#ai">AI players</a>
+          </td>
+          <td>
+            <a href="#static">Static evaluations</a>
+          </td>
+          <td>
+            <a href="#silence">Silence is golden</a>
+          </td>
+          <td>
+            <a href="#dealing">Dealing with brains</a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="#modifying">Modifying a brain</a>
+          </td>
+          <td>
+            <a href="#improvement">Brain improvement</a>
+          </td>
+          <td>
+            <a href="#import">Import/export brains</a>
+          </td>
+          <td>
+            <a href="#tournament">Running a tournament</a>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <a href="#setup">Setting up a board</a>
+          </td>
+          <td>
+            <a href="#engines">Switching engines</a>
+          </td>
+          <td>
+            <a href="#playing">Playing and resetting</a>
+          </td>
+          <td>
+            <a href="#gametable">The game table</a>
+          </td>
+        </tr>
+      </table>
+      <H3 id="algo"> The computer algorithm <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <P> A rudimentary understanding of how the computer plays is useful for understanding how to use the controls. For more detailed information a <a href="algorithm.html"> complete description</a> of the algorithm is available. Here is an extremely terse introduction: The moves available to the computer form a tree rooted at the current board position. The computer examines that tree to a certain depth. It uses a formula (the <e>static evaluation</e>) to assign a value to each relevant leaf of the tree. It then determines which best static value the player can obtain with perfect play, and makes the required move. The depth of computer searches can be fixed or vary widely if limited by the game clock. <p> There are many references to <e>time</e> on this page. A JavaScript code running in a browser has no facility to measure the amount of time used by the CPU, and in any case, the concept of <e>CPU time</e> becomes ambiguous when using parallel processes. All times in these notes are elapsed <e>wall-clock time</e>, but care was taken to ensure that they are measured only when the computer was essentially doing nothing but running the Mill software, and the browser window was at least partially visible on the screen. As a result, those stated times are reasonably comparable and reproducible on the particular machine they were obtained. <p> The following Table illustrates the performance of the computer algorithms on my particular Windows 11 machine. The software offers two engines, one written in JavaScript (JS), and one written in C++. The C++ version is much faster than the JS version. However, while the JS version works with essentially any browser, the C++ engine may not work on your particular computer. It requires a compiled version of the C++ code that is part of the package. <p> There are two blocks in the Table, the first one corresponding to the C++ engine, the second corresponding to the JS version. The Table shows data for a computation of the first move (with the opening book being turned off). The main columns go with the depth of the computer search. That depth is measured in plies, i.e., half moves. A move consists of a ply performed by White, followed by a ply performed by Black. The row headed <e>Nodes</e> gives the number of nodes of the tree visited by the code for this particular depth. This number is only a little larger than the number of leaves where the static evaluation is performed. The next row gives the <e>Time</e> measured in milliseconds (ms). The third row of each block, <e>Nodes/Time</e>, gives the number of nodes that were visited each millisecond. The row labeled <e>Time Factor</e> gives the ratio of the time for the current depth and the time for the preceding depth. It is a measure of the <e>branching factor</e>, i.e., the average number of nodes attached to a single node two levels higher in the tree. <table style="border: none; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px; font-family: Calibri, ’Carlito’, sans-serif; font-size: 18px; background-color: transparent; color: white; width: fit-content;">
+        <thead>
+          <tr>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Metric</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Engine</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 2</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 4</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 6</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 8</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 10</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth 12</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Nodes</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">C++</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">96</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">5,859</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">622,771</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">11,044,969</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">158,178,627</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">3,585,455,835</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Time (ms)</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">C++</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">14</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">63</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">824</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12,090</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">283,492</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Nodes/Time</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">C++</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">8</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">419</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">9,886</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13,404</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13,084</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12,648</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Time Factor</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">C++</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;"></td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">15</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">23</td>
+          </tr>
+          <tr>
+            <td colspan="8" style="border: none; height: 10px;"></td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Nodes</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">JS</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">96</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">5,859</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">619,556</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">10,515,717</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">116,666,470</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">2,118,151,527</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Time(ms)</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">JS</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">14</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">33</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">445</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">7,813</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">141,598</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">27,562,078</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Nodes/Time</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">JS</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">7</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">178</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1,393</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1,346</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">824</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">77</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Time Factor</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">JS</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;"></td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">2</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">18</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">18</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">195</td>
+          </tr>
+          <tr>
+            <td colspan="8" style="border: none; height: 10px;"></td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: left;">Time</td>
+            <td style="border: none; padding: 4px 10px; text-align: left;">JS/C++</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">2</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">7</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">9</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">97</td>
+          </tr>
+        </tbody>
+      </table>
+      <p> It is evident that the C++ engine is significantly faster than the JS engine, by a typical factor 10. The initial factors 1 and 2 are not significant because the times involved are mostly determined by overhead. For depth 12 the JS engine technically succeeds in computing the move, but it is virtually useless since it takes almost 8 hours for the calculation. The reason why C++ is generally faster is that it is a compiled language while JS is interpreted. The basic reason why JS fails at depth 12 is that C++ has a much more efficient way than JS of handling arrays, and JS runs into memory limitations at that stage. <p> Note that the complexity of the game tree varies greatly with the board state. After all pieces are on the board, and many are blocked, the branching factor in the tree is much smaller, and a given depth requires less time. This is clearly visible if you play a game with time (rather than depth) controls. In the middle game the computer will do a much deeper search than earlier in the game. <h3 id="gamepage">The game page <a href="#contents" class="back-symbol">&#8617;</a>
+      </h3>
+      <p> To understand the following discussion of the game controls it is best to bring up the actual game page in a different window, but you can also use this static image: <p>
+        <a href="Mill.html">
+          <img src="gameWindow.png" style="width: 900px; height: auto;">
+        </a>
+      <p> The image shows the <e>game table</e> on the the <e>game page</e> where you can play a game or otherwise explore this software. You can get to it by clicking on the image, by clicking on the small board in the headline of any of these pages, or <a href="Mill.html">right here</a>. The contents of the game page (the table with the board and the controls, plus the row of links below the table) take up a space of approximately 1330 pixels wide by 910 pixels high. Most laptops and desktops can accommodate that space. However, depending on your settings, you may find it convenient to adjust the resolution of your display. Notice the Black box with explanatory text at the bottom of the game board. All the controls in the game table have a box like that attached to them that will pop up after two seconds if you hover over that control with your mouse. The box will disappear when you move the mouse elsewhere. <p>If you are are not familiar with the game of mill there is a page with <a href="rules.html">game rules</a> here. <p> The particular image above shows the window after a match between <e>Arwen</e> and <e>Bilbo,</e> two of the built-in AI personalities. Arwen (playing White) won after 49 plies (half moves) by blocking Bilbo so that he was unable to make another move. <H3 id="clock">The system clock <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The top row of the game table contains the <e>system</e>
+        <e>clock</e> which works much like an ordinary chess clock. Its main purpose is to govern <e>variable depth computer play</e>, but it can also be used by human players. The left side of the clock (text fields with White backgrounds) constitutes the <e>White</e>
+        <e>clock,</e> the right side the <e>Black</e>
+        <e>clock</e>. In the center is the <e>Timing</e>
+        <e>Button</e> which activates the clock for human players. <p> The key parameter for the clock is the <e>time interval</e> that can be set separately for White and Black. When it is the computer’s move it will start by searching for the best move at a depth of 2 plies (one move). At the end of the search it will take note of the best move it found. It will then increase the current search depth by 2 and start a new search. This process is repeated until more than 2% of the available time has passed after concluding the search at the current depth. The required search time increases greatly with the search depth, which is the reason for starting a new search only within a very short time interval at the beginning of the available time. The default time interval is 2 seconds. It happens rarely, but it is possible that the system runs out of time and loses, despite the precautions, particularly at very short time intervals when overhead becomes more significant. The maximum search depth varies greatly with the available time, and the state of the game board. There is no formal upper bound on the search depth. In practical play on a common PC typical search depths range from 4 to 16 or so. The time available for a move will increase with the first few moves and in long games will stabilize around 10 or 20 times the length of the time interval. <p> A typical time for a search depth of 8 is less than a second, whereas for a search depth of 10 it may be a significant fraction of a minute. The system can technically search at depth 20, but it would take you several years to see the answer. <p> Note that the system clock measures <e>wall-clock time</e>. This puts a computer brain at a disadvantage when the system is busy with heavy computational tasks, or running in the background. For example, if you wish to improve several computer brains simultaneously each will get less time allocated than they would if they were running by themselves. Browsers allocate significantly more time to computations with visible results since presumably the user is watching. So for tournaments between computers, or when you are concerned about getting repeatable results, it is better to regulate the computer time by specifying a constant search depth rather than a specific amount of time. If you want to run long tournaments, or improve several players, it is better to run these calculations sequentially rather than concurrently. <H3 id="board">The game board <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> Below the system clock there are three columns. The leftmost column consists of only one row, containing the <e>game board</e>. You place pieces on the board by clicking on the relevant vertex, and you move a piece by clicking on it and then dragging it to its new location. Note the Black text window at the bottom of the board shown in the image. Each component of the game table has an explanatory text like this that pops up after hovering over the component for two seconds. <H3 id="status">Status window and console <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> At the top of the second column is the <e> status window</e>. It contains information about the current game, tournament, or AI improvement cycle. More information is available in the browser’s <e>console</e> which is not shown in the image. On a windows machine, the console can be opened by typing CTL-SHIFT-J or clicking on F12. It will open to the right or at the bottom of the game table. The console is part of the browser, not the Mill software. Usually it is used for development and debugging, but it also contains information about your ongoing Mill session. <H3 id="select">Selecting players <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> In the two rows below the message window you can specify the current players. They may be human (you!), any of the built-in AI players, or an AI player that you import or create yourself. In the image, the White player is Arwen, and the Black player is Bilbo. <p>For each computer player, you can specify one of four modes. <e>Legacy</e> is the original mode where all phases of the game are treated equally, <e>Ramp</e> is a modification of Legacy where initially the algorithm ignores issues of mobility and then gradually increases the emphasis on mobility as it approaches the transition to moving pieces after ply 18. The "Flying" mode reduces the mobility score that would be used in the legacy mode (since mobility is vastly increased when moving from four to three pieces). <e>Both</e> means that both of these adjustments are effective. There is some evidence that Both is Best, and that Flying beats Ramp, but the effects are small, and you may wish to experiment on your own. <p> More significant is the menu labeled <e>SD:</e>. It determines the main mode of the AI. You can select <e>Time</e> or a specific search depth. In time mode the game is regulated by the clock as described above. You can specify the time interval which will determine the average time between computer moves. Pick what you find convenient for your play. In a specific depth mode the computer will search the game tree up to the given number of plies. As indicated in the Table above, the amount of time used per ply grows substantially with depth. If you wish to play a game against an AI personality, the most convenient way is to use a time control for the computer play. A time interval of 2 seconds is reasonable, but you may be more patient and give the AI more time. <H3 id="scores">Move and board scores <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next two rows let you evaluate the current board state, or generate a ranked list of possible moves on the current board. The two menus let you select the depth of each evaluation. Clicking <e>Evaluate Board</e> will write the score at the specified depth in the msg window. If the depth is zero it will also write a detailed description of the static evaluation in the console. Clicking <e>Recommend</e> will list all available moves for the current player, sorted by their calculated score, in the status window. Greater depths take more time, of course. Positive scores favor White and negative scores favor Black. The greater the absolute value of the score, the greater the advantage. The maximum score is 99,999, corresponding to a certain win of White. <H3 id="random">Playing at random <a href="#contents" class="back-symbol">&#8617;</a>
+      </h3>
+      <p> At every ply, the computer computes all possible moves and assigns a score to them. Sometimes there are several moves with the same best score. By default the algorithm will play a move randomly selected from the top group. You can make it always pick the first by clicking on the next button, labeled <e> Random</e> in the middle column. Ideally this should create a repeatable action, but because of differences in which the game tree is traversed and pruned, there remains a random element, even if only one processor is used. Playing at random is generally a good thing. It makes the game more interesting. <H3 id="aids">Graphical aids <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The controls in the next row let you <e>toggle</e> on and off certain graphical aids in the game board, specifically: <ul>
+        <li>
+          <e>LAB</e>, the numerical <i>labels</i> on the board. These play a central role in the computer code, and they may be useful for discussing a game, but they are not needed for actual game play.
+        </li>
+        <li>
+          <e>Elgb</e>, for <i>eligible</i>. When on, upon entering the board with the mouse, the system will mark the locations that can be used for the next option, e.g., placing a stone, moving a stone, or removing a stone.
+        </li>
+        <li>
+          <e>HLight</e>, for <i>highlight</i>. When on, the system will mark the last move on the board by drawing one or two yellow (technically, gold) circles.
+        </li>
+      </ul>
+      <H3 id="data">Collecting data <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> In the next row, labeled <e>Report</e>, you can obtain certain data: <ul>
+        <li>
+          <e>Stats</e>, off by default, will print the number of nodes visited at every depth, after each move, on the console.
+        </li>
+        <li> Similarly, <e>CPU</e>, short for <i>CPU time </i> but it’s actually wall clock time, will turn on or off a report of the time used for each move. </li>
+        <li>
+          <e>Game</e> will cause a concise list of board states after each move of the current game to be listed on the console. This will consist of an array with 25 entries. The first entry (counted as entry 0) is the ply count of the move, for the remaining entries, 1 means the vertex is blank, 2 means it is occupied by White, and 3 means it is occupied by Black.
+        </li>
+        <li> Clicking on <e>Board</e> will cause the system to upload a png image of the current game board. This facility was used to generate some of the images in these web pages, and you can use it to send an image to your friends, so they can appreciate your cleverness. </li>
+      </ul>
+      <H3 id="parallel">Parallel processing <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next row, labeled <e>Workers</e>, governs a major feature of the software. Modern computers usually can run several CPUs, or <e>threads</e>, simultaneously. This is known as <e>parallel processing</e>, which JS handles by passing messages between the main thread and the individual threads, which in JS are referred to as <e>workers</e>. The issues involved in parallel processing are complex. There is a whole separate page on this site addressing the issues, but for our immediate purposes it suffices to note that parallel processing is not nearly as effective as you might expect. The default number of workers, N, say, is determined as follows: The system queries your machine for the number of workers it can support. If the system does not provide this information, then N is set to 4. If the system states the maximum number is M then N is set to M-2. However, you can set the value in the text field equal to any positive integer, even one greater than M. The system will create as many workers as you specify, and then use them all if it can. <p> My own system provides 32 threads. With some coaxing I was able to keep them all busy at close to 100 percent, which eventually caused the CPU board to overheat and crash the system. However, the savings as far as the time required for the computation of a move, and the number of nodes visited is not nearly as dramatic. <p> To illustrate this I had the system compute the first ply at depth 10, with the number of workers ranging from 1 to 32. This chart shows wall-clock time shown in milliseconds, plotted against the number of workers, on a log-log scale: <p>
+        <img src="workers.png" style="width: 810px; height: auto">
+      <p> The dashed gray line shows what one would naively expect. The total time required by n workers should equal the time required by one worker, divided by n. The jagged blue graph shows the actual time required by the workers. 32 workers are in fact faster than 1 worker, but only by a factor 10 or so, not by a factor 32. There are several reasons for the discrepancy. The workers do not communicate directly with each other, and there is a delay in making their results available to the other workers. This causes extra work for all workers. There is also a certain overhead in running the workers. The jaggedness of the blue line is due to random effects in distributing parts of the game tree to individual workers and their pruning of their subtrees. <H3 id="efficiency">Increasing efficiency <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p>The next line, starting with a button labeled <e>&alpha;/&beta;</e>, lets you turn off or modify certain features that increase the <e>efficiency</e> of the algorithm. They are explained in detail elsewhere, here is a quick summary: <ul>
+        <li>
+          <e>&alpha;/&beta; pruning:</e> every board position has a numerical score. White tries to pick moves that maximize the score, and Black tries to minimize the score. If White has analyzed the game tree to the point that it knows it can obtain a score of <e>at least &alpha; = 100</e> with its next move, and it examines a node for which it knows that Black at that node can get a score of <e>at most &beta; = 50</e>, then White will never consider making a move leading to that node, because Black will never allow White to go there. White can, and will, ignore the part of the game tree rooted at that node. This kind of pruning saves massive amounts of computations. If there are several possible moves leading to different positions, but with the same maximum score, pruning may affect the final position, and the corresponding move, but not the score of that position. <p> You can use this button to turn off &alpha;/&beta; pruning. But you would want to do this only to impress yourself or your friends with the phenomenal effectiveness of &alpha;/&beta; pruning.
+        </li>
+        <LI>
+          <e>Transposition Table </e>. Most board positions can be attained in more than one way. A transposition table keeps track of positions that have already been visited and makes it possible to utilize the analysis already applied to that position at an earlier stage. The button labeled <e>TT</e> lets you turn off the internal transposition table. You may want to do this when using the JavaScript engine. JS handles arrays inefficiently (unlike C++) , and a browser can be stingy with memory allocations. Managing the TT can lead to memory problems and even crash your session. <p>The text field labeled <e>TT(m)</e> lets you specify the size of the TT in millions of nodes. Increasing it makes the code more efficient, and also increases the risk that it will run into memory problems.
+        </li>
+        <LI>
+          <e>The Opening Book</e>. It seems pointless to recompute the first few moves every time you play a game, particularly since, to paraphrase Horatio Nelson, during the first four plies you cannot go far wrong by placing your piece on any empty four-way intersection. An opening book is a table that tells for a number of early game positions which move to make at that position. The opening book that comes with the code is small, it covers only the first four plies of the game. There are 479 of them, and the moves to be taken for each of them were computed at depth 8. You can compute your own opening book, but it will take a long time, and you will need to keep your browser window open and visible during that time. To use your own book you’ll need to download the files for this page and place them onto a web server that you have access to. To create your own book select the initial number of plies and the depth at which the moves are computed. Clicking on the button labeled <e>create OB</e> will compute the book and download a file named <e>millOB.json</e> to your system. Place it in the same directory that contains your HTML files.
+        </li>
+        <li>
+          <e>Symmetry:</e> There are some obvious symmetries in the Mill Board. For example, a rotation by 90 degrees does not change the layout of the board. In fact there are only four truly distinct options for making the first move: play on a four way intersection (5, 11, 14, or 20), play on a three way intersection (2, 8, 10, 12, 13, 15,17, 23,19, 21), play on a corner (1, 3, 7, 8, 16,17, 22, or 24) or play on one of the interior corners 4, 6, 19, and 20. It turns out that there are a total of 16 symmetry transformations that do not change the layout of the board. For the first move, clearly it should suffice to investigate only one position in each set. The advantages of symmetry diminish as the game proceeds and the board position gets more complicated, and less symmetric. Keeping track of symmetry is computationally expensive. (The system applies all 16 similarity transforms to each board position obtained by making a single ply, computes a hash code of the resulting position, takes note of the smallest of those codes, and then sees if that code has occurred previously.) Thus you may wish to reduce the number of plies where symmetry is being taken into account. In the text field labeled <e>S:</e> you can set the ply at which the code stops using symmetry to find the best move. The maximum possible choice for that cutoff is 19, which is also the default. In that case the code will take advantage of symmetry during the entire initial placement phase, i.e., the first 18 plies of the game. Setting it to zero will make sure the computer never uses symmetry.
+        </li>
+      </ul> The following Table illustrates the effectiveness of these features. It shows the number of nodes investigated while computing the first move at depths two through 12. The first column lists the depth of the search. The second column, headed <e>none</e> shows the number of nodes in the search tree. This is smaller, but very close to, the number of nodes encountered when searching without any aid. These numbers are computed assuming no mills were formed during the first 6 moves, rather than obtained by running the code. The third column, headed <e>S</e>, shows the number of nodes examined utilizing only symmetry. The last two entries in that column are conservative (aiming for under- rather than overestimating) estimates. The fourth column, headed <e>S+&alpha;/&beta;</e> shows the number of nodes obtained by using Symmetry and &alpha;/&beta; pruning. The last column, headed <e>S + &alpha;/&beta;+TT</e>, shows the counts for using all three facilities, symmetry, &alpha;/&beta; pruning, and a transposition table (with a capacity of 16,000,000 positions, divvied up among 30 workers). <p>
+      <table style="border: none; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px; font-family: Calibri, ’Carlito’, sans-serif; font-size: 18px; background-color: transparent; color: white; width: fit-content;">
+        <thead>
+          <tr>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Depth</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">none</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">S</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">S+&alpha;/&beta;</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">S+&alpha;/&beta;+TT</th>
+            <th id="nodes">
+              <a href="javascript:history.back()" class="back-symbol">&#8617;</a>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">2</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">576</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">192</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">192</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">192</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">267,744</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">44,624</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">10,428</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">5,859</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">6</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">102,277,344</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">17,447,118</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">924,851</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">648,947</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">8</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">31,500,832,224</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">6,010,574,862</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">36,747,175</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">11,753,982</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">7,622,973,656,544</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">1,800,000,000,000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">1,072,674,057</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">164,095,689</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">12</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">1,402,556,105,125,344</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">540,000,000,000,000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">27,450,718,752</td>
+            <td style="border: none; padding: 4px 10px; text-align: right; color: white;">3,587,306,472</td>
+          </tr>
+        </tbody>
+      </table>
+      <p> Note the extraordinary effectiveness of &alpha;/&beta; pruning. Using symmetry, for depth 10, it reduces the number of nodes by a factor of approximately 17,000. For depth 12, the corresponding factor is almost 20,000, and it is amplified by a factor 8 using the Transposition Table. For the last entry in the last row, my computer really did visit three and a half billion nodes, at the blistering rate of about 16 million nodes a second. <H3 id="ai">AI players <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next few rows let you play tournaments of AI players, edit AI brains, and start a simulated <e>evolution</e> of an individual AI player. Recall that the computer algorithm traverses the game tree and assigns scores to the game positions at the leaves of the tree. <H3 id="static">Static evaluations <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The formula for that static evaluation is <p style="font-family: ’Courier New’, monospace; font-weight: bold; margin-left: 40px; line-height: 1.6;"> V = - W<sub>GS</sub> &times; &Delta;GS + W<sub>N3</sub> &times; &Delta;N3 + W<sub>N4</sub> &times; &Delta;N4 + W<sub>M1</sub> &times; &Delta;M1 + W<sub>M2</sub> &times; &Delta;M2 + W<sub>FB</sub> &times; &Delta;FlyBonus <br> &nbsp;&nbsp;&nbsp;&nbsp; + W<sub>PD</sub> &times; &Delta;PD + W<sub>Mill</sub> &times; &Delta;Mill + W<sub>DM</sub> &times; &Delta;DM + W<sub>NMF</sub> &times; &Delta;NMF + W<sub>NMR</sub> &times; &Delta;NMR + W<sub>NMG</sub> &times; &Delta;NMG <p> The variables <b>W<sub>subscript</sub>
+        </b> represent the <i>weights</i> (or importance) the AI assigns to different aspects of the game. For example, a brain with a high <b>W<sub>M1</sub>
+        </b> will play aggressively for open space, while one with a high <b>W<sub>PD</sub>
+        </b> will prioritize capturing pieces above all else. <p> The <e>&Delta;</e> in this formula indicates the difference between the corresponding number for White and Black. <p> The specific <e>parameters</e> used in the formula are: <ul>
+        <li>
+          <b>GS (Group Score):</b> This is the number of groups of a player’s pieces such that no member of one group can visit a member of another group by moving along empty squares or a vertex occupied by a piece of the same color. It provides a measure of fragmentation. The AI is penalized (hence the minus sign) for having its stones scattered into disconnected groups of pieces that cannot support each other.
+        </li>
+        <li>
+          <b>N3 (Node 3):</b> The number of pieces sitting on a three way vertex.
+        </li>
+        <li>
+          <b>N4 (Node 4):</b> The number of pieces sitting on a 4-way intersection.
+        </li>
+        <li>
+          <b>M1 (Mobility 1):</b> The sum of the number of empty neighbors of each piece.
+        </li>
+        <li>
+          <b>M2 (Mobility 2):</b> The sum of the number of empty vertices that a piece can reach in two moves.
+        </li>
+        <li>
+          <b>FB (FlyBonus):</b> A bonus applied if the player has exactly 3 stones (the "Flying" phase), reflecting their sudden ability to <e>fly</e> anywhere.
+        </li>
+        <li>
+          <b>PD (Piece Difference):</b> The number of pieces.
+        </li>
+        <li>
+          <b>Mill:</b> The number of active mills currently on the board.
+        </li>
+        <li>
+          <b>DM (Double Mill):</b> The number of double mills, which allows for forming a mill on every turn.
+        </li>
+        <li>
+          <b>NMF (Near Mill Filled):</b> Two pieces in a line where the third spot is occupied by the opponent but can be captured.
+        </li>
+        <li>
+          <b>NMR (Near Mill Ready):</b> Two pieces in a line where the third spot is empty (a potential mill).
+        </li>
+        <li>
+          <b>NMG (Near Mill Guaranteed):</b> Two pieces in a line where the third spot can be occupied in the next move, without the opponent being able to prevent it.
+        </li>
+      </ul>
+      <Table>
+        <TR>
+          <TD>
+            <img src="GS.png" style="width: 200px; height: auto">
+          </TD>
+          <TD>
+            <img src="DM.png" style="width: 200px; height: auto">
+          </TD>
+          <TD>
+            <img src="DM2.png" style="width: 200px; height: auto">
+          </TD>
+          <TD>
+            <img src="NM.png" style="width: 200px; height: auto">
+          </TD>
+        </TR>
+        <TR>
+          <TD>Group score</TD>
+          <TD>Double mills </TD>
+          <TD>Double mills</TD>
+          <TD>Near mills</TD>
+        </TR>
+      </Table>
+      <p> These concepts are illustrated in the four boards above. On the leftmost board, both Black and White have two separated <e>groups</e> of pieces. One of White’s groups consists of the stones on 15 and 23, and one of Black’s groups consist of the single piece on 22. In both cases the remaining pieces form the second group. There are three kinds of <e>double mills</e>, illustrated in the middle two boards. In the second board, White can move the piece on 23 up and down, and Black can move its piece on 9 back and forth. In board 3, White can move its piece on 4 up and down. Each of those moves closes a mill. The concept of a <e>near mill</e> is illustrated in the fourth board, on the right. The points {22, 23, 15} contribute to NMF, the points {2,4,6} to NMR, and the points {6, 13, 15} to NMG. Black also has a near mill contributing to NMG. <p>The following table lists the specific weights assigned to the different AI personalities defined in the software. These values determine the strategic character of each player.
+
+
+
+
+<table style="border: none; border-collapse: collapse; margin-top: 20px; margin-bottom: 20px; font-family: Calibri, ’Carlito’, sans-serif; font-size: 16px; background-color: transparent; color: white; width: fit-content;">
+        <thead>
+          <tr>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Name</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">GS</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">N3</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">N4</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">M1</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">M2</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">FB</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">PD</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">Mill</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">DM</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">NMF</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">NMR</th>
+            <th style="border: none; padding: 5px 10px 7px 10px; text-align: right; color: white; font-weight: bold;">NMG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Arwen</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">62</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">33</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">178</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">78</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">552</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">18</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">98</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">626</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Bilbo</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">47</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">31</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">153</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">33</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">480</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">24</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">52</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">531</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Celebrian</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">79</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">16</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">48</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">184</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">92</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">733</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">22</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">116</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">713</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Dwalin</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">37</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">11</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">29</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">145</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">3</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">30</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">452</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">24</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">15</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">54</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">508</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Eowyn</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">81</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">15</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">49</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">267</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">89</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">741</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">28</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">12</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">57</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">856</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Frodo</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">55</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">32</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">162</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">56</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">516</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">21</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">11</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">75</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">579</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Galadriel</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">50</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">15</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">30</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">300</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">100</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">500</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">20</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">30</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Hamfast</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">1000</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Indis</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">0</td>
+          </tr>
+          <tr>
+            <td style="border: none; padding: 4px 10px; text-align: right;">Jolly</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-62</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-13</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-33</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-178</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-4</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-78</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-552</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-18</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-1000</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-10</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-98</td>
+            <td style="border: none; padding: 4px 10px; text-align: right;">-626</td>
+          </tr>
+        </tbody>
+      </table>
+
+
+      <p> The weights are normalized so that the maximum weight is 1000. The players are sorted roughly by decreasing playing ability. <p> You may recognize the names of the brains which replace the standard Alice, Bob, ... sequence. When first starting to create the AI players I guessed some suitable parameters which are now Galadriel's parameters. The parameters of the first AI player were all created, going back to Galadriel in some way or other, by the evolution algorithm that is part of the software. Frodo's parameters are the average of Arwen's and Bilbo's parameters. <p> The last three players were added for fun and for experimental purposes. <e>Hamfast</e> says that all these factors are important but he can’t bother distinguishing them, <e>Indis</e> says that she is too busy paying attention until she recognizes a certain win or loss in her subtree, and <e>Jolly</e> is in love with Arwen and will do everything he can to help her win. <H3 id="silence"> Silence is golden <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> Returning to the controls in the middle column of the Game Page, the next row contains only one button, prominently labeled <e>Silence</e>, on or off. If silence is off each game in a tournament or an evolution cycle will be displayed on the game board. Otherwise only the status window will contain information about the progress being made. You can turn silence on or off temporarily as the tournament or improvement cycle proceed. With silence on the tournament or improvement cycle will proceed faster. <p> Whether you do or do not display the games, keep in mind, however, that browsers typically limit the access of a page if the page is not at least partly visible on the screen. So if you want to run a tournament or an evolution overnight make sure your computer stays on and the board shows on the screen. <H3 id="dealing">Dealing with brains <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next three rows let you <e>improve</e> (or impair) a brain, and import or export your own list of brains. <H3 id="modifying">Modifying a brain <a href="#contents" class="back-symbol">&#8617;</a>
+      </h3>
+      <p>You can freely <e>modify</e> the built-in brains. To do so select the brain you want to modify, using the menu labeled <e>brain</e>. You will see the weights for that specific brain. To modify them just enter the new value. Your modifications will be active until you exit the Game Page. <H3 id="improvement">Brain improvement <a href="#contents" class="back-symbol">&#8617;</a>
+      </h3>
+      <p> You can attempt to <e> improve </e> a brain using the built in genetic algorithm. It proceeds by applying a small random change to a brain, and running a tournament between the player and its mutant. If the mutant wins the AI then tries to refine that mutation with a line search in the direction of the change, and finally replace the player with the mutant when the line search converges. If the current player wins the initial tournament the AI applies another random change (a new generation) and runs another tournament. Note that if a parameter is set to zero then it cannot be changed because mutations add or subtract a percentage of the current value. <p> To run the evolution proceed as follows: <OL>
+        <li>
+          <e>Select a Brain:</e> Choose a brain from the menu labeled <e>Brain</e> to edit or improve.
+        </li>
+        <li>In the first text field to the right of the Brains Menu, pick the number of generations. This choice is not critical, since any successful mutation is uploaded and saved as soon as it is found. So you can interrupt the ongoing evolution at any stage without losing any information. </li>
+        <li>In the next text field, set the number of games in the tournament. The AI will play that number of games twice, once with the mutant being White, once with it being Black. 10 games strike a reasonable balance between reliability and efficiency.</li>
+        <li> In the rightmost <e>Percent:</e> Set Max percentage change. For refinements of an existing successful brain 5% is a good choice. If you start with a very rough approximation you can choose a higher percentage. The applied percentage may be adjusted by the system as the evolution proceeds. </li>
+        <li>
+          <e>Start:</e> Click on the button labeled <e>Improve</e>.
+        </li>
+        <li> Once an improved mutation is found the AI will download a JavaScript file defining the mutation, and suitable for pasting into a JS code. The file will appear where your downloads usually appear, e.g., in your <e>Downloads</e> folder. </li>
+      </ol>
+      <H3 id="import">Import/export brains <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next line lets you import or export a comma delimited spreadsheet with a specified list of <e>brains</e> Thus you can keep your own list of players without having to edit them each time you play. To do so enter the filename (without the .csv extension) in the text field labeled brains and click import or export. <e>Export</e> will put the file into your download directory. Clicking <e>Import</e> will look for the file on the server. If it cannot find it the code will open a dialog where you can specify the location of your brains list. As an example, <A href="brains.csv">here</a> is the spreadsheet with the built-in brains. <H3 id="tournament">Running a tournament <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next three lines let you design and <e>run a tournament</e>. To do so follow these steps: <OL>
+        <LI> Select the search depth for the games, using the two menus labeled <e>Time</e> below the status window. You can choose time mode as well but keep in mind that time means wall clock time and that the game will run much more slowly when the Game Page is invisible, for example, when you temporarily use your computer for other purposes. I usually run tournaments at depth 6. You can have different search depths for White and Black. </li>
+        <li> Choose the number of games played by each pair of players. Keep in mind that there is a great deal of randomness in the moves made by the players, and that most games are draws. If you really want to know which players are better choose a large number like 100 games per pair.</li>
+        <LI> Choose the participants using the selection buttons labeled with the first letters of the players’ names.</li>
+        <LI>Click on <e>run tournament.</e>
+        </li>
+        <li> The code will have each player play the specified number of games, once as Black and once as White, against every other player. When the tournament is over it will upload a comma delimited spreadsheet to your computer. You can see the <a href="Tournament.csv"> results </a>of a depth 6 100 game tournament among the player listed here. The ordering of the computer brains is based on that tournament, rather than vice versa. The names of the computer brains were assigned after the tournament. </li>
+      </ol>
+      <H3 id="setup">Setting up a board <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next to last row in the second column lets you create specific board scenarios for computer analysis. Start by clicking on the setup board button. This will interrupt any ongoing game and change the color of the board. The current board state remains unchanged. You can then click on any vertex and cycle through the three possible states (White, Black, empty) of that vertex. The ply number in the text field next to the setup button determines whose play (even is White, odd is Black) it is, and whether the game is in the placement (ply count ≤ 18) or moving phase (ply count > 18). If you just want to continue the game you don’t need to do anything. However, you can change the current ply number by entering its new value in the text field. To finish the set up process click again on the setup board button. <p> As mentioned above, the last row lets you create an opening book. <H3 id="engines">Switching engines <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The remaining controls are located in the third column of the Game Page. The first row lists the version number and the engine of the code. This is actually a button that lets you switch the engines. I originally started writing this software entirely in JavaScript. JavaScript is the language of choice for designing interactive web pages. However, letting the parallel worker calculations be handled by compiled C++ code makes the game much more efficient. You want to use the C++ engine if you can, and use the JS version only if you have to, or if you want to compare the performances of the two engines. <H3 id="playing">Playing and resetting <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> The next row contains the <e>Play</e> button. Use it to start a game, or to interrupt a game, tournament, or improvement cycle. <p> The <e>Reset</e> button in the next row resets the board to its original position. It has no effect on other settings. <H3 id="gametable">The game table <a href="#contents" class="back-symbol">&#8617;</a>
+      </H3>
+      <p> At the bottom of the third column is the Game Table. It lists the moves as they happen. Each row of that table lists <OL>
+        <li> In the column headed <e>n</e>, the number of the ply. The Game Board shows the status <b>after</b> that ply is applied. </li>
+        <li> The column headed <e>P</e> lists the player whose move it is. This is actually a button. Clicking on it will interrupt the game if it is ongoing, and will display the board state after that particular ply. You can then step through the game using the <e>Forward</e> and <e>Backward Buttons</e> above the game table, change player parameters, or modify the board. You can resume the game, with the changes applied, by clicking on the <e>Play</e> button. <li>The action of that ply is described in the next three columns, headed by <e>p</e>, <e>q</e>, and <e>x</e>. <e>p</e> denotes the vertex where a stone was placed or a move was started. If the action is an actual movement, <e>q</e> denotes the destination of the moved stone. <e>x </e> denotes the location of any opposing stone that is removed. <li> The columns headed <e>w</e> and <e>b</e> contain the numbers of White and Black pieces after the ply. </li>
+        <li> The last column of the game table gives the static evaluation of the board after the ply. Recall that you can obtain a deeper level evaluation by using the <e>Evaluate Board</e> button. </li>
+      </OL>
+    </div>
+  </body>
+</html>

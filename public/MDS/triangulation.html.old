@@ -1,0 +1,285 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Triangulations
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+
+
+        <H2>
+            Triangulations
+        </H2>
+        <P>
+            A <EM>Triangulation</EM> <EM>T</EM> is a collection of <EM>N
+            </EM> triangles satisfying the following requirements:
+        </P>
+        <OL>
+            <LI>
+                The interiors of the triangles are pairwise disjoint.
+            </li>
+            <LI>
+                Each edge of a triangle in <EM>T</EM> is either a common
+                edge of two triangles in <EM>T</EM> or else it is on the
+                boundary of the union <EM>D</EM> of all the triangles.
+            </li>
+            <LI>
+                <EM>D</EM> is homeomorphic to a square</L>
+            </LI>
+        </OL>
+        <IMG SRC="triangulation.gif" ALIGN="RIGHT">
+        <P>
+            The first requirement says that triangles don't overlap.
+            The second requirement rules out combinations of triangles
+            where one has a vertex in the interior of an edge of another
+            triangle, and the strange sounding last requirement rules
+            out holes, pinchpoints (where just 2 triangles meet in a
+            single point) and disjoint sets of triangles.
+        </P>
+        <P>
+            The reason for the popularity of triangulations is that
+            given any set of points, one can construct a triangulation
+            that has those points as the vertices of the triangulation.
+            Triangulations are a natural generalization of the concept
+            of partitioning an interval into subintervals.
+        </P>
+        <P>
+            The Figure nearby illustrates a triangulation.  The vertices
+            are indicated by circles, and the triangles by grey shading.
+            The domain <EM>D</EM> of interest therefore is the grey
+            polygon.  The triangulation consists of 16 triangles that
+            share 14 vertices, 10 of which lie on the boundary of <EM>D
+            </EM>.
+        </P>
+        <P>
+            To facilitate discussions we have to introduce some notation
+            and language:
+        </P>
+        <UL>
+            <LI>
+                <EM>T</EM> is the triangulation, i.e., the set of
+                triangles.
+            </li>
+            <LI>
+                <EM>N</EM> is the number of triangles in <EM>T</EM>
+            </li>
+            <LI>
+                <EM>D</EM> is the union of the triangles in <EM>T</EM>
+                (and the domain of the
+                <A HREF="Srd.html">
+                    splines
+                </A>
+                of interest in these pages).
+            </li>
+            <LI>
+                A vertex of a triangle in <EM>T</EM> is a <EM>boundary
+                vertex</EM> of <EM>T</EM> if it is contained in the
+                boundary of <EM>D</EM>, it is an interior vertex
+                otherwise (in which case it is contained in the interior
+                of <EM>D</EM>).
+            </li>
+            <LI>
+                Similarly, an edge of a triangle in <EM>T</EM> is a <EM>
+                boundary edge</EM> of <EM>T</EM> if it is contained in
+                the boundary of <EM>D</EM>, it is an interior edge
+                otherwise.
+            </li>
+            <LI>
+                <EM>V<SUB>B</SUB></EM> is the number of boundary
+                vertices of <EM>T</EM>, <EM>V<SUB>I</SUB></EM> is the
+                number of interior vertices of <EM>T</EM>, and
+                <P>
+                    <CENTER>
+                        <EM>V = V<SUB>B</SUB> + V<SUB>I</SUB></EM>
+                    </CENTER>
+                </P>
+                <P>
+                    is the total number of vertices of <EM>T</EM>.
+                </P>
+            </li>
+            <LI>
+                Similarly, <EM>E<SUB>B</SUB></EM> is the number of
+                boundary edges of <EM>T</EM>, <EM>E<SUB>I</SUB></EM>
+                is the number of interior edges of <EM>T</EM>, and
+                <P>
+                    <CENTER>
+                        <EM>E = E<SUB>B</SUB> + E<SUB>I</SUB></EM>
+                    </CENTER>
+                </P>
+                <P>
+                    is the total number of edges of <EM>T</EM>.
+                </P>
+            </li>
+            <LI>
+                It can be shown (this is a good <B>exercise</B> ) that
+                for all triangulations <EM>T</EM>
+                <CENTER>
+                    <EM>
+                    <P>
+                        V<SUB>B</SUB> = E<SUB>B</SUB>
+                    </P>
+                    <P>
+                        E = 2V<SUB>B</SUB> + 3V<SUB>I</SUB> - 3
+                    </P>
+                    <P>
+                        N = V<SUB>B</SUB> + 2V<SUB>I</SUB> - 2</EM>
+                    </CENTER>
+                </li>
+            </UL>
+            <H3>
+                Notes
+            </H3>
+            <P>
+                Triangulations form a huge subject in Mathematics.  You
+                may be interested in looking at these two very different
+                graduate level books in Computer Science and
+                Mathematics, respectively:
+            </P>
+            <UL>
+                <LI>
+                    <A HREF="http://greta.cs.ioc.ee/yik/lib/20/Prepa1.html">
+                        Franco P. Preparata and Michael Ian Shamos: <EM>
+                        Computational Geometry, an Introduction</EM>,
+                        Springer Verlag, 1985, ISBN 0-387-96131-3.
+                    </A>
+                </li>
+                <LI>
+                    T.B.  Rushing, <EM>Topological Embeddings</EM>,
+                    Academic Press, 1973, ISBN 0-12-603550-4
+                </li>
+            </UL>
+            To whet your appetite, here is a description of just one
+            aspect of triangulations.  It is possible to build any
+            triangulation <EM>T</EM> by starting with a single triangle
+            and then adding one triangle at a time, joining it to the
+            growing triangulation either on one or on two boundary
+            edges, such that at every stage one continues to have a
+            triangulation.  This may seem obvious but in fact a similar
+            statement does not hold for triangulations in three
+            dimension (where one uses tetrahedra instead of triangles).
+            <A HREF="http://www.math.utah.edu/~alfeld/Rudin.html">
+                Click here to see a counterexample.
+            </A>
+            <HR>
+            [15-Mar-1999]
+        </BODY>
+    </HTML>

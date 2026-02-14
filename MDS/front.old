@@ -1,0 +1,117 @@
+<!-- -*-html-*- -->
+<!-- Prettyprinted by html-pretty flex version 1.00 [04-Dec-1997] -->
+<!-- on Thu May 14 09:12:45 1998 -->
+<!-- for Peter Alfeld (alfeld@sunblock.math.utah.edu) -->
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Have a title here
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR=ffffff>
+        <P>
+            <CENTER>
+                <TABLE BORDER=0>
+                    <TR>
+                        <TD>
+                            <IMG SRC="title.gif">
+                        </TD>
+                        <TD>
+                            <TABLE BORDER=0 CELLPADDING=5>
+                                <TR>
+                                    <TD>
+                                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                                            <B> Peter Alfeld</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="http://www.math.utah.edu/">
+                                            <B> Department of
+                                            Mathematics</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="http://www.science.utah.edu/">
+                                            <B> College of Science</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                            <B> University of Utah</B>
+                                        </A>
+                                    </TD>
+                                </TR>
+                                <TD colspan = 4>
+                                    <APPLET CODE="MDS.class"
+                                        CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                                        WIDTH = 500 HEIGHT = 55
+                                        HSPACE=20 VSPACE=20>
+                                        <B>
+                                    </APPLET>
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD colspan = "2">
+                                    <A HREF="bform.html">
+                                        <B> The Bernstein B&eacute;zier
+                                        Form</B>
+                                    </A>
+                                </TD>
+                                <TD>
+                                    <A HREF="index.html">
+                                        <B> Home Page</B>
+                                    </A>
+                                </TD>
+                                <TD>
+                                    <A HREF="examples.html">
+                                        <B> Examples</B>
+                                    </A>
+                                </TD>
+                                <TD>
+                                </TR>
+                                <TR>
+                                    <TD COLSPAN="2">
+                                        <A HREF="Srd.html">
+                                            <B> Spline Spaces and
+                                            Minimal Determining Sets</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="guide.html">
+                                            <B> User's Guide</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="subtleties.html">
+                                            <B> Subtleties</B>
+                                        </A>
+                                    </TD>
+                                </TR>
+                                <TR>
+                                    <TD COLSPAN="2">
+                                        <A HREF="triangulation.html">
+                                            <B>Triangulations</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="how.html">
+                                            <B>How does it work?</B>
+                                        </A>
+                                    </TD>
+                                    <TD>
+                                        <A HREF="">
+                                            <B></B>
+                                        </A>
+                                    </TD>
+                                </TR>
+                            </TABLE>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>

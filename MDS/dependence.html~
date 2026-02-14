@@ -1,0 +1,368 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Data Dependence
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <IMG SRC="dependence/sv.gif" ALIGN = "RIGHT">
+        <H2>
+            Data Dependence
+        </H3>
+        <H3>
+            A Singular Vertex
+        </H3>
+        <P>
+            Unlike in the univariate case, the precise location of the
+            vertices matters for the dimension of a spline space.  The
+            simplest example is that of a <B>singular vertex</B>.  A
+            singular vertex is an interior vertex of degree 4 where the
+            four edges form two parallel pairs.  The two figures nearby
+            illustrate minimal determining sets for <EM>r=1</EM> and
+            <EM>d=2</EM> for a singular vertex and a generic
+            (non-singular) vertex of degree 4.
+        </P>
+        <P>
+            As in all examples, points in the minimal determining set
+            are labeled with plus signs.  Note that there are eight
+            points in the minimal determining set for the singular
+            vertex and only seven in the set for the generic vertex.
+        </P>
+        <P>
+            It is easy to see how this comes about geometrically.
+            Because of the geometry of the situation the quadrilaterals
+            containing the boundary vertices have degenerated into
+            triangles and the requirement that they be planar has
+            degenerated into the requirement that the three control
+            points at the base of the triangles be <EM>collinear!</EM>
+            The choice of the coefficient at each boundary vertex is
+            arbitrary since the triangle can pivot around its base and
+            still be planar.  The boundary vertices therefore must be
+            contained in any minimal determining set, and selecting them
+            will not imply any other coefficients to be determined.
+        </P>
+        <P>
+            In the figure showing the singular vertex the boundary
+            vertices are marked in red.  Selecting the green points
+            determines the points marked as full green circles. Finally,
+            selecting the blue point determines the blue full circles.
+            <BR CLEAR = "RIGHT">
+            <IMG SRC="dependence/generic.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            Here is a subtlety:  The southwest blue full circle is
+            determined in two different ways:  going clockwise from the
+            blue cross, and going counterclockwise from the blue cross.
+            In the generic case this amounts to an additional
+            consistency condition which reduces the number of points in
+            the minimal determining set by 1.  However, in the case of a
+            singular vertex the two smoothness conditions are always
+            consistent!  You can see this geometrically by assigning
+            zero to all points in the minimal determining set except the
+            blue one.  Then consider assigning a (possibly non-zero)
+            value to the blue plus sign and think of changing that
+            value.  This amounts to moving the corresponding control
+            point up and down.  Moving it up results in a lowering
+            requirement on the southeast blue full circle.  Moving that
+            point down results in a lifting requirement on the southwest
+            blue full circle.  Continuing clockwise we obtain a lowering
+            requirement on the northwest blue full circle which in turn
+            generates a lifting requirement on the blue plus sign.  So
+            the lifting action on that point causes a lifting
+            requirement, and because of the geometry the action and the
+            requirement are consistent.  We can thus assign an arbitrary
+            value to the point marked with a blue plus sign.<BR
+                CLEAR="RIGHT">
+            <IMG SRC="dependence/ms.gif" ALIGN = "RIGHT">
+        </P>
+        <H3>
+            The Morgan-Scott Split
+        </H3>
+        <P>
+            A more complicated example was discovered by Morgan and
+            Scott in 1975.  The triangulation is known as the <EM>
+            Morgan-Scott Split</EM>.  It consists of seven triangles as
+            indicated in the two figures nearby.
+        </P>
+        <P>
+            The Morgan-Scott split exhibits a different and more subtle
+            kind of symmetry.  It is symmetric if the three lines from a
+            boundary vertex to the opposite interior vertex intersect in
+            the same point as illustrated in the nearby figure on the
+            left.  The green lines connect opposite vertices, they are
+            not part of the triangulation!
+        </P>
+        <P>
+            As illustrated in the Figure, a symmetric version of the
+            Morgan-Scott split can be obtained for example by denoting
+            the boundary vertices of the triangulation by <EM>V <SUB>0
+            </SUB></EM>, <EM>V <SUB>1</SUB></EM>, <EM>V <SUB>2</SUB>
+            </EM>, defining the interior vertices by
+        </P>
+        <P>
+            <EM>V <SUB>3</SUB> = (V <SUB>0</SUB> + 2V <SUB>1</SUB> + 2V
+            <SUB>2</SUB> )/5</EM>
+        </P>
+        <P>
+            <EM>V <SUB>4</SUB> = (2V <SUB>0</SUB> + V <SUB>1</SUB> + 2V
+            <SUB>2</SUB> )/5</EM>
+        </P>
+        <P>
+            <EM>V <SUB>5</SUB> = (2V <SUB>0</SUB> + 2V <SUB>1</SUB> + V
+            <SUB>2</SUB> )/5</EM>
+            <A HREF="MS">             
+               <IMG SRC="dependence/sym.gif" ALIGN = "Left">
+            </A>
+        </P>
+        <P>
+            It is apparent from the Figures that for <EM>r=1</EM> and
+            <EM>d=2</EM> the dimensions of <EM>S</EM> for the symmetric
+            Morgan-Scott Split is 7 and for the generic Morgan-Scott
+            split it is 6.
+        </P>
+        <P>
+            There is a qualitative difference in the variation of the
+            dimension caused by a singular vertex and by the
+            Morgan-Scott split.  The increased dimension in the case of
+            the singular vertex persists for higher values of <EM>d</EM>
+            .
+            In other words, for <EM>r=1</EM> and <EM>d&gt;1</EM> the
+            dimension of <EM>S</EM> is <EM>always</EM> larger by 1 if
+            the interior vertex is singular than if it is not.  On the
+            other hand, for the Morgan-Scott split, when <EM>d&gt;2</EM>
+            and <EM>r=1</EM> the dimension of <EM>S</EM> is the same
+            whether or not the split is symmetric.
+        </P>
+        <A HREF="6C"><IMG ALIGN = "RIGHT" SRC="Hex.gif"></A>
+        <P>
+            Dwight Diener ( <EM>Instability in the dimension of spaces
+            of bivariate piecewise polynomials of degree 2r and
+            smoothness order r.</EM> SIMA J. Numer.  Anal., 27 (1990),
+            pp.  543-551) showed that the dimension is always greater by
+            1 on the symmetric split in the case that d =2r.
+        </P>
+        <H3>
+            <A HREF="MS">
+                Click here for more detailed dimension results on the
+                Morgan-Scott split. 
+            </A>
+        </H3>
+        <H3>
+            A Hexagonal Triangulation
+        </H3>
+        <P>
+            The figure nearby shows a hexagonal triangulation whose
+            various configurations exhibit numerous discrepancies
+            between the true dimension and 
+            <a href="Srd.html#dimension">Schumaker's lower bound.</a>
+                Click             <A HREF="6C"> here      </A>
+            or on the picture to find out more about dimensions on
+            this triangulation. 
+        </P>
+        <H3>
+            An Open Problem
+        </H3>
+        <P>
+            In the case that <EM>r=1</EM> and <EM>d=2</EM> many
+            configurations are known for which the dimension of <EM>S
+            </EM> depends on the geometry of the triangulation.  In the
+            case that <EM>d&gt;3</EM> it is known that singular vertices
+            are the <EM>only</EM> configurations for which the geometry
+            is variable.  In the case that <EM>d=3</EM> singular
+            vertices are the only known configurations, and it is not
+            known if there are any others.  The problem of whether there
+            any other configurations is very difficult.  It has been
+            recognized and open since
+            <A HREF="bibliography.html">
+                Morgan and Scott
+            </A>
+            wrote their famous 1975 paper.  Many people, including
+            myself and
+            <A HREF="http://atlas.math.vanderbilt.edu/~schumake/">
+                Larry Schumaker
+            </A>
+            have been trying to solve it for many years, and so far it
+            has resisted all solution attempts.  See
+            <A HREF="C1cubics.html">
+                this page
+            </A>
+            for more information.
+            <A name = "confine">
+            </A>
+        </P>
+        <H3>
+            Confinable Vertices
+        </H3>
+        <P>
+            In our paper on <EM>C <SUP>1</SUP></EM> quartics
+            <A HREF="bibliography.html">
+                (Number 8 in the bibliography)
+            </A>
+            we say an interior vertex is <EM>confinable</EM> if there is
+            a minimal determining set for <EM>r=1</EM> and <EM>d=2</EM>
+            that includes the boundary vertices of the star.  We know
+            just one example for a non-confinable vertex, namely the
+            center of a regular hexagon.
+        </P>
+        <P>
+            We also call an interior vertex <EM>defective</EM> if some
+            of the edges attached to it are parallel.  It is
+            <A HREF="bibliography.html">
+                well known
+            </A>
+            that this causes the dimension of <EM>S</EM> to increase
+            beyond its generic value.
+        </P>
+        <P>
+            The figures nearby illustrate the effects of defectiveness
+            and non-confinability:
+        </P>
+        <UL>
+            <LI>
+                Figure 1 shows that a defective 6-star may be
+                confinable.
+            </lI>
+            <LI>
+                Figure 2 shows that the regular 6-star is not
+                confinable.
+            </LI>
+            <LI>
+                Figure 3 shows that the generic dimension for <EM>r=2
+                </EM> and <EM>d=3</EM> on a 6-star is 12.
+            </LI>
+            <LI>
+                Figure 4 shows that the generic dimension for <EM>r=2
+                </EM> and <EM>d=3</EM> on a defective but confinable
+                6-star with three pairs of parallel edges is 13.  (The
+                dimension is of course also 13 on a regular 6-star.)
+            </LI>
+        </UL>
+        <IMG SRC="dependence/F1.gif" border = "1">
+        <IMG SRC="dependence/F2.gif" border = "1">
+        <IMG SRC="dependence/F3.gif" border = "1">
+        <IMG SRC="dependence/F4.gif" border = "1">
+        <HR>
+        <P>
+            [25-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

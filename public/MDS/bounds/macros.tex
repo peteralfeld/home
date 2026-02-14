@@ -1,0 +1,434 @@
+\def\comment#1{}
+
+\parindent=0pt
+\parskip=4pt
+\baselineskip=11pt
+
+\newbox\TestBox
+\def\Remove #1 {\setbox\TestBox=\hbox{#1}%
+        \leavevmode\rlap{\vrule height 3.5pt depth-1.75pt width\wd\TestBox}%
+        \box\TestBox\ }
+\def\strike{\Remove}
+\def\Replaceby #1{{\bf #1}}
+\def\replace{\Replaceby}
+
+
+
+%%%  carl comments:  the initial definitions are designed to pick up just the
+%%% nickname of the reference which, in his setup, is the first argument of
+%%% the reference. I propose to make it the \def\rl{...} material I now use
+%%% for labeled references.
+%%% If the zwei-read scheme is maintained, then one would start off with the
+%%% empty definition of the five \ref[A-Z], and only give their full definition
+%%% just prior to the second pass.
+%
+% On inquiry, Peter was quite happy with a two-pass scheme, thus avoiding
+% this initial reading of the references. So, we skip this initial material.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%  block of old stuff now omitted
+% \newcount\refnumb\refnumb=0
+% 
+% \def\ref#1#2#3#4{\global\advance\refnumb by 1
+% \expandafter\xdef\csname cpl#1\endcsname{\the\refnumb}}
+% 
+% \def\shtref#1#2{\global\advance\refnumb by 1
+% \expandafter\xdef\csname cpl#1\endcsname{\the\refnumb}}
+% 
+% 
+% \input peter.3  %% these are the references
+%%%%%%%%%%%%%%%%%%%%%%%%%%%  end of block
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   block of new stuff
+% Here is the basic setup for the purpose of correct forward referencing,
+% needed in particular if the references are read in only at the end of the
+% paper. (It is taken verbatim from carl's format.tex file.)
+% For this, it may be necessary to run the job twice. In any case, the
+% following sets up the necessary file work:
+% (1) a conditional \input, to cover the first time when the file \jobname.aux
+%     does not yet exist (this may be of use elsewhere):
+\newread\testfl
+\def\inputifthere#1{\immediate\openin\testfl=#1
+\ifeof\testfl\gdef\condfile{null}\else\gdef\condfile{#1}\fi%
+\input\condfile}
+% (2) make sure there is an empty  null.tex  file to read, just in case:
+\newwrite\nll
+\immediate\openout\nll=null.tex\closeout\nll
+% (3) bring in  \jobname.aux  if it exists, then set it up for writing:
+% (Recall that  \jobname  expands to the name of the file TeX thinks it is
+% working on.)
+\inputifthere{\jobname.aux}
+\newwrite\mem
+\immediate\openout\mem=\jobname.aux
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  end of block
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% block of stuff modified
+%%% \refref is used to refer to a reference; could replace by  \cite, to make 
+% it more like LaTeX. Note the possibility of nonalpha stuff in a nickname.
+%%% Also, much of it is used in other contexts, hence, following the rule
+% that redundancy should be minimized, make those parts separate macros.
+
+
+% This is the guy that places the label whose actual value is encoded in
+% \griff,  making a big mark instead in case the label is undefined:
+\def\plazieres{\expandafter\ifx\csname\griff\endcsname\relax%
+{\vrule height15pt width15pt depth0pt}%
+\else {\csname\griff\endcsname}\fi}
+
+
+% This is the guy that defines and records labels whose name is contained in 
+% \griff and whose value is contained in \inhalt :
+\def\definieres{\expandafter\xdef\csname\griff\endcsname{\inhalt}
+\def\blankkk{ }\expandafter\immediate\write\mem{%
+\string\expandafter\def\string\csname%
+\blankkk\griff\string\endcsname{\inhalt}}}
+
+% This is the guy used to refer to a reference:
+\def\refref#1{\edef\griff{rfl#1}[\plazieres]}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% end of block of stuff modified
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   block modified
+%% Here he sets up automatic sequencing of proclaim items and equations.
+%% He uses the same mechanism for generating nicknames for them, but doesn't
+%% seem to have a means for forward referencing. Will propose my mechanism
+%% for him, as that will also obviate the two passes through the references.
+
+\newcount\proclaimnumber
+\def\cp#1{\global\advance\proclaimnumber by 1
+\edef\griff{cpl#1}\edef\inhalt{\the\proclaimnumber}\definieres
+{\bf\inhalt}}
+\def\cpref#1{\edef\griff{cpl#1}\plazieres}
+
+\newcount\equationnumber
+\def\eq#1{\global\advance\equationnumber by 1
+\edef\griff{eql#1}\edef\inhalt{\the\equationnumber}\definieres
+\eqno(\inhalt)}
+\def\eqref#1{\edef\griff{eql#1}(\plazieres)}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  end of block modified
+
+
+
+\def\today{\ifcase\month\or January\or February\or March\or April\or
+May\or June\or July\or August\or September\or October\or November\or
+December\fi \space\number\day, \number\year}
+
+\def\query#1{\global\advance\fnumb by
+1{\footnote{${}^{-\the\fnumb-}$}{{\rm #1}}}} \newcount\fnumb
+
+\newcount\figurenumb\figurenumb=0
+\def\fp#1{\global\advance\figurenumb by 1
+\expandafter\xdef\csname fpl#1\endcsname{\the\figurenumb}
+{\bf\the\figurenumb}}
+\def\figref#1{\expandafter\ifx\csname fpl#1\endcsname\relax
+ {{\vrule height15pt width15pt depth0pt}}
+ \else
+   {\csname fpl#1\endcsname}\fi}
+
+\comment{Parameters of \figure:
+ #1 caption
+ #2 horizontal size (in inches)
+ #3 vertical size (in inches)
+ #4 file name
+ #5 identifying phrase}
+
+
+\def\figure#1#2#3#4#5{
+\midinsert
+\smallskip
+\FIGPLOT{#4}{{\bf Figure\fp{#5}.} #1}{#2}{#3}
+\smallskip
+\endinsert
+}
+
+\newdimen\figoffset
+\def\FIGPLOT#1#2#3#4{%
+  % Arg 1 = EPS file to plot
+  % Arg 2 = figure caption
+  % Arg 3 = width in inches
+  % Arg 4 = height in inches
+      \vskip #4in%
+      \vskip\baselineskip%
+      \figoffset=\hsize%
+      \advance\figoffset by -#3in%
+      \divide\figoffset by 2%
+      \advance\figoffset by -\parindent
+      \hskip\figoffset%
+      \NormalGraph{#3}{#4}{#1}%
+      \hskip-\figoffset%
+      \vskip\baselineskip%
+      \tolerance=6000
+%     \emergencystretch=3pt%
+      \centerline{#2.}
+}
+\def\NormalGraph#1#2#3{%
+      \special{%
+  language "PostScript",
+  position "bottom left",
+  literal "/SX {#1 72 mul BoxWidth div} def
+    /SY {#2 72 mul BoxHeight div} def
+    1 SX sub BoxLLX mul
+    1 SY sub BoxLLY mul
+    translate
+    SX SY scale
+    \the\mag()pop 1000 div dup scale",
+  include "#3"
+}}
+
+
+
+
+
+
+
+\def\boxit#1{\lower8pt\vbox{\hrule height2pt \hbox{\vrule width2pt
+\kern8pt \vbox{\kern8pt\hbox{$\displaystyle
+#1$}\kern8pt}\kern8pt\vrule width2pt}\hrule height2pt }}
+
+\def\Bezier{B\'ezier}
+
+\def\d{\hbox{d}}
+
+\def\smatrix#1{\left[\matrix{#1}\right]}
+\def\R{\hbox{I\kern-.2em\hbox{R}}}
+\def\C{\hbox{I\kern-.6em\hbox{C}}}
+\def\sect#1{\bigskip{\lg #1}\nobreak\medskip}
+\def\set#1{\left\{#1\right\}}
+\def\ip#1#2{\left<#1,#2\right>}
+
+\def\rdots{ \mathinner {\mkern 1mu\raise 1pt \vbox {\kern 7pt \hbox
+{.}}\mkern 2mu \raise 4pt \hbox {.}\mkern 2mu\raise 7pt \hbox
+{.}\mkern 1mu}}
+
+
+\font\lg=cmbx10 at 12pt
+\font\huge=cmbx10 at 18pt
+\font\sm=cmtt10 at 8pt
+
+
+% -*-TeX-*-
+% <TEX.INPUTS>LISTING.TEX.1,  4-Nov-86 16:19:19, Edit by BEEBE
+% Implement the listing macro from the TeXbook (p. 381)
+% Usage:
+%	\input listing	% define these macros
+%	\listing{filename}	 % produce a line-numbered verbatim listing
+%
+\newcount\lineno
+\def\uncatcodespecials{\def\do##1{\catcode`##1=12 }\dospecials}
+\def\setupverbatim{\tt
+  \lineno=0%
+  \def\par{\leavevmode\endgraf}%
+
+  %? The following does not work--is there a TeXbook error?
+  %? \catcode`\`=\active{\catcode`\`=\active\gdef`{\relax\lq}}%
+
+  \overfullrule0pt	% do not mark long lines with overfull box rule
+  \obeylines
+  \uncatcodespecials
+  \obeyspaces
+  \everypar{\advance\lineno by 1 \llap{\sevenrm\the\lineno\ \ }}%
+}%
+{\obeyspaces\global\let =\ }% let active space=control space
+\def\listing#1{\begingroup\setupverbatim\baselineskip=9pt\parskip=0pt\input#1 \endgroup\smallskip}%
+
+
+
+\def\beginemail{\bigskip
+\begingroup\tt \frenchspacing \raggedright \obeylines \obeyspaces
+\baselineskip=10pt \parskip=0pt}
+
+\def\endemail{\endgroup}
+
+
+\def\h{\hfill}
+
+\def\remark#1{#1\par}
+\def\electrosubmitted{This is a review text file submitted electronically 
+                      to MR.\par}
+\def\beginrev{}
+\def\reviewer{\par{\bf Reviewer: }}
+\def\reviewernum{\par{\bf Reviewer number: }}
+\def\address{\par{\bf Address: }\par
+  \begingroup\leftskip=16pt\parskip=0pt\obeylines}
+\def\author{\endgroup\par{\bf Author: }}
+\def\shorttitle{\par{\bf Short title: }}
+\def\mcno{\par{\bf Control number: }}
+\def\mmrno{}
+\def\rpclass{\par{\bf Primary classification: }}
+\def\rsclass{\par{\bf Secondary classification(s): }}
+\def\revtext{\par{\bf Review text: }\smallskip}
+\def\remarks#1{}                                     
+\def\endrev{}
+
+
+\def\pt{\smallskip\item{$\bullet$}}
+
+\def\ppt{\itemitem{$-$}}
+
+ \newcount\prbnumb % ........count reference numbers \prbnumb = 0
+
+ \def\prb#1#2{{{\global\advance\prbnumb by 1}\medskip \item{{\lg
+-\the\prbnumb-}}{\bf (#1.)} #2}}
+
+\def\rank{\hbox{rank}}
+
+\def\span{\hbox{span}}
+
+\def\disc{\smallskip \noindent {\lg Discussion:}\nobreak\smallskip\nobreak}
+
+\def\where{\quad\hbox{where}\quad}
+
+\def\and{\quad\hbox{and}\quad}
+
+%\def\or{\quad\hbox{or}\quad}
+
+\def\O{{\cal O}}
+
+\def\implies{\qquad\Longrightarrow\qquad}
+
+\newcount\figurenumb\figurenumb=0
+\def\fp#1{\global\advance\figurenumb by 1
+\expandafter\xdef\csname fpl#1\endcsname{\the\figurenumb}
+{\bf\the\figurenumb}}
+\def\figref#1{\expandafter\ifx\csname fpl#1\endcsname\relax
+ {{\vrule height15pt width15pt depth0pt}}
+ \else
+   {\csname fpl#1\endcsname}\fi}
+
+\comment{Parameters of \figure:
+ #1 caption
+ #2 horizontal size (in inches)
+ #3 vertical size (in inches)
+ #4 file name
+ #5 identifying phrase}
+
+
+\def\figure#1#2#3#4#5{
+\midinsert
+\bigskip
+\FIGPLOT{#4}{{\bf Figure\fp{#5}.} #1}{#2}{#3}
+\endinsert}
+
+\def\Doublefigure#1#2#3#4#5#6{
+\midinsert
+\smallskip
+\doubleFIGPLOT{#4}{#5}{{\bf Figure\fp{#6}.} #1}{#2}{#3}
+\smallskip
+\endinsert}
+
+\def\figure#1#2#3#4#5{
+\midinsert
+\bigskip
+\FIGPLOT{#4}{{\bf Figure\fp{#5}.} #1}{#2}{#3}
+\endinsert}
+
+\newdimen\figoffset
+
+\input epsf.sty
+
+
+\def\FIGPLOT#1#2#3#4{%
+  % Arg 1 = EPS file to plot
+  % Arg 2 = figure caption
+  % Arg 3 = width in inches
+  % Arg 4 = height in inches
+%%:      \vskip #4in%
+%%:      \vskip\baselineskip%
+%%:      \figoffset=\hsize%
+%%:      \advance\figoffset by -#3in%
+%%:      \divide\figoffset by 2%
+%%:      \advance\figoffset by -\parindent
+%%:      \hskip\figoffset%
+%%:      \NormalGraph{#3}{#4}{#1}%
+%%:      \hskip-\figoffset%
+
+%%: [28-Sep-1999] New code that works with both dvialw and dvips, and 
+%%:               always preserves aspect ratio: the height argument
+%%:		  is ignored to achieve this, and the plot is always
+%%:		  centered on the line; it is is wider than the line,
+%%:		  it will extend into the margins equally.
+    \allowbreak			%% page break before figure is okay
+%%    \bigskip			%% this much space before (and later, after) figure
+    \epsfframefalse		%% change to \epsfframefalse to turn off frames
+    \epsfclipon			%% clipping ensures that the figure cannot extend 
+				%% outside its BoundingBox		
+    \noindent			%% suppress paragraph indentation
+    \centerline{\hss\hbox{\epsfxsize=#3in\epsffile{#1}}\hss}% plot the centered figure
+    \nobreak			%% forbid page break 
+    \nobreak
+%%:   \vskip\baselineskip%
+%%:      \tolerance=6000
+%%:     \emergencystretch=3pt%
+    \smallskip			%% this much space between figure and caption
+    \centerline{#2.}		%% centered figure caption
+%%    \bigskip			%% this much space after (and earlier, before) figure
+    \allowbreak			%% page break after figure is okay
+}
+%%: \def\NormalGraph#1#2#3{%
+%%:       \special{%
+%%:   language "PostScript",
+%%:   position "bottom left",
+%%:   literal "/SX {#1 72 mul BoxWidth div} def
+%%:     /SY {#2 72 mul BoxHeight div} def
+%%:     1 SX sub BoxLLX mul
+%%:     1 SY sub BoxLLY mul
+%%:     translate
+%%:     SX SY scale
+%%:     \the\mag()pop 1000 div dup scale",
+%%:   include "#3"
+%%: }}
+
+\def\doubleFIGPLOT#1#2#3#4#5{%
+  % Arg 1 = EPS file to plot
+  % Arg 2 = 2nd EPS file to plot
+  % Arg 3 = figure caption
+  % Arg 4 = width in inches
+  % Arg 5 = height in inches
+%%:      \vskip #5in%
+%%:      \vskip\baselineskip%
+%%:      \figoffset=\hsize%
+%%:      \advance\figoffset by -#3in%
+%%:      \divide\figoffset by 2%
+%%:      \advance\figoffset by -\parindent
+%%:      \hskip\figoffset%
+%%:      \NormalGraph{#3}{#5}{#1}%
+%%:      \hskip-\figoffset%
+
+%%: [28-Sep-1999] New code that works with both dvialw and dvips, and 
+%%:               always preserves aspect ratio: the height argument
+%%:		  is ignored to achieve this, and the plot is always
+%%:		  centered on the line; it is is wider than the line,
+%%:		  it will extend into the margins equally.
+    \allowbreak			%% page break before figure is okay
+%%    \bigskip			%% this much space before (and later, after) figure
+    \epsfframefalse		%% change to \epsfframefalse to turn off frames
+    \epsfclipon			%% clipping ensures that the figure cannot extend 
+				%% outside its BoundingBox		
+    \noindent			%% suppress paragraph indentation
+    \centerline{\hss\hbox{\epsfxsize=#4in\epsffile{#1}~\hfill\epsfxsize=#4in\epsffile{#2}}\hss}% plot the centered figure
+    \nobreak			%% forbid page break 
+    \nobreak
+%%:   \vskip\baselineskip%
+%%:      \tolerance=6000
+%%:     \emergencystretch=3pt%
+    \smallskip			%% this much space between figure and caption
+    \centerline{#3.}		%% centered figure caption
+%%    \bigskip			%% this much space after (and earlier, before) figure
+    \allowbreak			%% page break after figure is okay
+}
+%%: \def\NormalGraph#1#2#3{%
+%%:       \special{%
+%%:   language "PostScript",
+%%:   position "bottom left",
+%%:   literal "/SX {#1 72 mul BoxWidth div} def
+%%:     /SY {#2 72 mul BoxHeight div} def
+%%:     1 SX sub BoxLLX mul
+%%:     1 SY sub BoxLLY mul
+%%:     translate
+%%:     SX SY scale
+%%:     \the\mag()pop 1000 div dup scale",
+%%:   include "#3"
+%%: }}
+
+\def\ww{{\bf WeBWorK}}
+
+    \def\LaTeX{L\kern-.36em\raise.3ex\hbox{\sc \uppercasesc a}\kern-.15em\TeX}%
+
+    \def\LaTeX{L\kern-.36em\raise.3ex\hbox{\rm a}\kern-.05em\TeX}%

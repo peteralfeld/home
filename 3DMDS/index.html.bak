@@ -1,0 +1,759 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          MDS in three variables.
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+
+<H1><FONT COLOR = "red"> 3D MDS </FONT></H1>
+
+This page describes a trivariate version of the <a href =
+"../MDS">bivariate MDS code</a> described elsewhere.
+Familiarity with that code and the associated mathematical concepts is
+assumed.
+
+<p> Send questions to Peter Alfeld at
+<BR>
+<IMG SRC="http://www.math.utah.edu/~alfeld/images/image.gif">
+
+
+<H1> List of Contents </H1>
+
+<UL>
+
+<li><a href = "#downloading"> Downloading the Code </a></li>
+<li><a href = "#version"> Version Number and Status Label</a></li>
+<li><a href = "#configs">Configurations</a></li>
+<li><a href = "#guide">User's Guide</a></li>
+<li><a href = "#available">Available Configurations</a></li>
+<li><a href = "#import"> Importing Configurations </a></li>
+<li><a href = "#output">Standard Output</a></li>
+<li><a href = "#select"> Selecting Polynomial and Smoothness Degrees </a></li>
+<li><a href = "#indices"> Display of Domain Point Indices</a></li>
+<li><a href = "#select"> Selecting points for the minimal determining set. </a></li>
+<li><a href = "#rotate">Rotating the Configuration</a></li>
+<li><a href = "#zoom">Zooming In and Out</a></li>
+<li><a href = "#selective"> Displaying Domain Points Selectively </a></li>
+<li><a href = "#super"> Defining Super Splines </a></li>
+<li><a href = "#special"> Imposing Special Conditions </a></li>
+<li><a href = "#macros"> Macro Elements </a></li>
+<li><a href = "#bounds"> Bounds on the Dimension </a></li>
+<li><a href = "#print"> Saving and Printing </a></li>
+<li><a href = "#saveMDS"> Saving Minimal Determining Sets </a></li>
+<li><a href = "#misc">Miscellaneous Controls</a></li>
+<li><a href = "#key">Key Board Commands</a></li>
+</ul>
+
+
+
+
+<a name = "downloading">
+
+<H2> Downloading the Code </H2>
+
+The code can be invoked by the above applet.  You can also download this
+<a href="message"><font size="+1"><b>message</b></font></a> and unfold
+it on a Unix system with the command <em> source message</em>.  You
+can also download the following set of (binary) java class files:
+
+<OL>
+<li><a href="http://www.math.utah.edu/~alfeld/java-classes/tv.class">
+tv.class</a> </li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/config.class">
+config.class</a></li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/line.class">
+line.class</a></li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/dialog.class">
+dialog.class</a></li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/ct.class">
+ct.class</a></li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/dct.class">
+dct.class</a></li>
+
+<li> <a href="http://www.math.utah.edu/~alfeld/java-classes/ms.class">
+ms.class</a></li>
+
+
+
+</OL>
+
+Invoke the package with the Unix command <em>java tv</em> or its equivalent.
+
+<a name = "version">
+<H2> Version Number and Status Label</H2>
+
+The version number of the code is indicated in the top row of the
+control panel.  It increases whenever there are changes in this
+software.  Next to the version number the top row also contains a status
+label that gives some information about the current state of the
+spline space being investigated.
+
+<a name = "configs">
+<H2>Configurations</h2>
+
+ We use the word <b>configuration</b> for what
+is otherwise and variously called "tetrahedral decomposition",
+"three-dimensional triangulation", "tetrahedralization", etc:
+
+A <b>configuration</b> is a finite set of non-degenerate tetrahedra 
+satisfying these conditions:
+
+<ol>
+
+<li> The interiors of the tetrahedra are pairwise disjoint. </li>
+
+<li> The intersection of any two tetrahedra in the configuration is a
+common face, edge, or vertex of the two tetrahedra, or it is
+empty. </li>
+
+<li> The union of all the tetrahedra in the configuration is
+homeomorphic to a ball. </li>
+
+</ol>
+
+<a name = "guide">
+<H2>User's Guide</H2>
+
+
+The trivariate code is under development and features will be added as
+needed.   Following is a list of major differences and similarities
+between the 2D and the 3D packages:
+
+
+<OL>
+
+<LI>Both codes use integer arithmetic modulo the prime number <BR><center><font
+size ="+2"><em>P=2<sup>31</sup>-1= 2147483647</em></font></center> to analyze
+the linear system of smoothness conditions. (Floating point arithmetic
+cannot resolve nearly as reliably the dependence of the dimension on
+the geometry of the underlying configuration.)</li>
+
+<LI>Both packages can be used through a browser, but they both work
+better and offer more facilities (increased memory, saving your work,
+printing) if downloaded and used directly.  </li>
+
+
+
+<li>The major difficulty for the 3D package is the proper visualization of
+the domain points.  There tend to be many more than in the 2D
+context, and they are distributed in three dimensional space, rather
+than just in the plane.  To assist in that endeavor the 3D software
+offers the following features that are not present in the 2D software:
+<UL>
+<li> Drawing subsets of the set of the domain points </li>
+<li> Zooming in on a part of the Bezier Net.</li>
+<li> Rotating the configuration in space.</li>
+<li> Displaying dynamically the indices of the domain point currently
+closest to the cursor.</li>
+<li> Using color to help indicate the location of the domain points.
+"Paleness" of the color increases from vertices to edges to faces to
+the interior of tetrahedra. Color indicates the status of a domain
+point, as follows:
+<UL> 
+<LI> <font color="red">Red</font>: Point is in the determining set. </li>
+<LI> <font color="blue">Blue</font>: Point is determined by other points already chosen for the
+determining set.</li>
+<LI> <font color="green">Green</font>: The status of the point is not yet determined.</li>
+<li> Inactive points that do not enter the smoothness conditions are
+drawn as small gray disks.</li>
+</ul>
+</li>
+</ul></li>
+<LI> A file can be generated that allows visualization of the configuration and its B-net via <a href="http://www.geomview.org/">Geomview</a>. </li>
+
+</OL>
+
+
+<a name = "available">
+<h2>Available Configurations</H2>
+
+The menu in the middle of the second line of the control panel lets
+you select a configuration.  The first item lets you import your own
+configuration from a file (or URL).  For details see the next section.
+The following configurations are provided directly in the code:
+
+<ul>
+
+<li> A <b>single tetrahedron</b>.</li>
+
+<li> <b>Two tetrahedra</b> sharing a common face.</li>
+
+<li> a <b>3-orange</b>, three tetrahedra sharing an interior edge.</li>
+
+<li> a split of a cube into six tetrahedra about a space
+diagonal, an analog of the two dimensional <b>type-I</b>
+triangulation.</li>
+
+<li> The 3D <b>Clough-Tocher</b> Split.</li>
+
+<li> The 3D <b>Morgan-Scott</b> split. </li>
+
+<li> The regular <b>octahedron</b>.</li>
+
+<li> The <b>double Clough-Tocher Split.</b> The CT split is applied to
+the overall tetrahedron, and then to each of the four
+subtetrahedra. </li>
+
+<li> The <b>Worsey-Farin</b> split.  The CT split is applied to the overall 
+tetrahedron, and to each of its faces. This gives a Powell-Sabin type split of a Tetrahedron.</li>
+
+<li> An analog of the 2D </b>type-II</b> triangulation, a tessellation
+of a cubic by 24 tetrahedra sharing an interior point.</li>
+
+<li> "generic" versions of the preceding five configurations.</li>
+
+<li> A slight modification of <b>Rudin's example</b>.  This is a configuration
+consisting of 41 tetrahedra and 14 points.  It is the simplest example
+of an unshellable triangulation in the sense that no unshellable
+triangulation with fewer tetrahedra exists. "unshellable" means that
+the configuration cannot be built by adding one tetrahedron at a time,
+maintaining at each stage a configuration. (Removing any one tetrahedron
+from the configuration leaves a set of tetrahedra whose union is
+homeomorphic to a ball.)  For details see Mary E. Rudin, An unshellable
+triangulation of a tetrahedron, Bulletin of the AMS, 64 (1958),
+90--91.  Many arguments concerning configurations are based on
+shelling, and this example may serve as a counter example.  Note
+that the configuration has no interior points. In this example the
+angle of one degree used by Rudin is replaced by an angle of
+approximately 12 degrees.  The angle can be increased up to 19 degrees
+without some of the tetrahedra beginning to overlap.)  </li>
+
+</ul>
+
+<a name = "import">
+<H2> Importing Configurations </H2>
+
+Selecting the first item of the configuration menu brings up a dialog
+box that lets you enter a file name or a URL from which to read a
+configuration. To use a file you will need to use the downloaded
+version of the code, the browser version can only read a URL.  Select
+"file" or "www", enter the file or URL name, and click on "LOAD".  The
+data in the file are integers separated by spaces or commas, with no
+blank lines, and the data written in lines as follows:
+
+<UL>
+
+<LI> first line: <b> V </b> and <b>N</b> where <b>V</b> is the number of 
+vertices and <b>N</B> is the number of tetrahedra. </LI>
+
+<LI> For each vertex, one line containing the coordinates of the
+vertex.  These must be small integers.  (Specifically, computing exact
+rational barycentric coordinates of a vertex with respect to an opposite
+tetrahedron via Cramer's Rule must not lead to an overflow
+in 32 bit integer arithmetic.) If an overflow occurs the code will
+print a message to standard output, and the drawing window will turn gray.
+</li>
+
+<LI> For each tetrahedron one line giving the indices of its vertices,
+starting with <b>0</b> and running through <b>V-1</b>.</li>
+
+
+</UL>
+
+
+For example, the data file for the built-in Clough-Tocher split is
+
+<BR>
+
+<pre>
+5 4
+8 24 24
+8 0 24
+-8 12 12
+0 12 0
+2 12 15
+1 2 3 4
+0 2 3 4
+0 1 3 4
+0 1 2 4
+</pre>
+
+<BR>
+
+<B>Note:</b> Errors in the data file can give rise to mysterious
+effects in the MDS code.  Similar effects can be caused by entering
+collections of tetrahedra whose union is not homeomorphic to a ball.
+The code proceeds by checking smoothness conditions across interior
+faces.  Conditions along edges and at points are contained in the face
+conditions.  For example, the code is unable to handle the case of just two
+tetrahedra sharing only an edge or a vertex.  If an improperly defined
+configuration is entered the code may (or may not) detect that
+situation.  If an anomalous condition is detected the drawing window
+will appear gray.  (It's a gray area, because you may know what you
+are trying to do, but the code may not behave as you expect or would
+like.)
+ 
+<BR><BR> To see the effect you can use the following data which define
+two tetrahedra sharing a common edge:
+
+<pre>
+6 2
+0 1 0
+0 0 0
+1 0 0 
+1 1 0
+0 0 1
+1 1 1
+0 1 2 4
+0 2 3 5
+</pre>
+
+
+<a name = "output">
+<h2>Standard Output</H2>
+
+The code provides information to standard output which is directed to
+your terminal, or to the java console if the code is used via a
+browser.  That information includes data on the combinatorics and
+geometry of the configuration, and of the system of smoothness
+conditions.  If a gray condition is present it contains information on
+that condition, including any java
+generated error messages.
+
+<a name = "select">
+<h2> Selecting Polynomial and Smoothness Degrees </h2>
+
+This is analogous to the 2D software.</li>
+
+<a name = "indices">
+<h2> Display of Domain Point Indices</h2>
+
+By default the indices of the domain point are displayed in the upper
+right corner of the drawing window.  For example, suppose we consider
+the Clough-Tocher split with vertices V0, V1, V2, V3, and centroid V4.
+(All numbering in Java starts at zero).  The domain point with the indices
+i0, i1, i2, i3, i4 is the point
+
+<BR><BR>
+<em>P<sub>i0i1i2i3i4</sub>=(i0V0 + i1V1 +i2V2 + i3V3 + i4V4)/d</em>
+<BR><BR>
+
+Naturally, at most 4 of the subscripts can be non-zero.
+
+The button "coords" turns this feature on and off.
+The indices can also be displayed close to the cursor, the button
+labeled "dynamic" switches between these two modes. The domain point
+whose indices are being displayed can be marked as the cursor moves
+around.  The button "Dps" turns this feature on and off.
+The display of the indices sometimes becomes corrupted, to clear the
+screen (in this and other circumstances) hit the space bar.
+
+<a name = "select">
+<h2> Selecting points for the minimal determining set. </h2>
+
+(Left) clicking on a green point selects the point for inclusion in
+the MDS.  Clicking on a red point deselects that point.  Clicking on a
+blue or (small) black point has no effect (except possibly causing
+initialization of the linear system).
+
+<BR><BR>
+Domain points may be selected in groups for inclusion or exclusion in
+the MDS.  Such groups may be associated with vertices, edges, faces,
+or tetrahedra.  A point is <em>eligible</em> if it is either included
+in the growing MDS, or it is still available for inclusion.  (Implied
+points and inactive points are not eligible.)  Eligible points are red
+or green.  The following modes are available. Select them with the
+menu at the beginning of the third row.
+
+<OL>
+
+<LI><b>Point</b> The default mode in which one point is selected at a
+time.  This mode is indicated by a white background, the other modes 
+have a light green background.</li>
+
+<LI><b>Vertex</b> Select a vertex by clicking on it.  (A blue square is
+drawn around it to indicate your selection.) Then click on an eligible
+point P.  All points that have a distance no greater than P from the
+vertex, and that have the same status (color) as P, are processed as
+is they have been clicked.  (P itself is processed first.) </LI>
+
+<LI><b>Edge</b> Similar to vertex mode except that you start by
+selecting an edge by clicking on a domain point in its interior. The
+selected edge is drawn in blue .  </li>
+
+<li><b>Face</b> Similar to edge and vertex mode, except you start by
+selecting a face by clicking on a domain point in its interior.</li>
+
+<li><b>Tetrahedron</b> Click on an eligible domain point in the
+interior of the tetrahedron.  That point, and all points with the same
+status in the tetrahedron (including its boundary) are processed
+immediately.</li>
+
+<li><b>Hull</b> Click on an eligible point P.  All points with the
+same status in the convex hull of the vertices that correspond to
+nonzero indices of P are processed immediately.  (Thus you can easily
+determine whole lines, faces, and tetrahedra, but you can't include,
+for example, all points up to distance r from an edge.)</li>
+
+<li><b>visible</b> Click on an eligible point P.  All points that are
+being drawn (or would be drawn in a window that shows the entire
+configuration) and have the same status as P are processed.  P itself
+is processed immediately.  This is useful when displaying domain
+points selectively as described elsewhere in this guide.  </li>
+
+</OL>
+
+<a name = "rotate">
+<H2>Rotating the Configuration</H2>
+
+The right mouse button is used for rotating the configuration.
+Right click somewhere, keep the button down, and drag the mouse.  You
+will see an outline of the configuration following your mouse
+movements.  Releasing the mouse button will cause a full new picture
+to be drawn.  Right clicking without mouse movement causes a display of
+the outline which may be useful for reminding yourself of the underlying
+geometry.  The initial view of the configuration can be restored by
+pressing on the button labeled "identity".  (The underlying rotation
+matrix becomes the identity matrix.)
+
+<a name = "zoom">
+<H2>Zooming In and Out</H2>
+
+The middle mouse button is the zoom button.  To zoom in on a
+rectangular part of the drawing click on a corner of the rectangle,
+keep the middle button down, drag the mouse to the diagonally opposite
+corner, and release the button.  To zoom out double click the middle
+button anywhere in the drawing window.  To show the entire
+configuration in the drawing window click on "size" in the Control
+Panel.
+
+<a name = "selective">
+<H2> Displaying Domain Points Selectively </H2>
+
+Clicking on the Button "selections" adds a row to the Control Window
+(or removes it).  The buttons and menus in that row can be used to
+select a set of domain points for display. The blue menu has three
+modes, "All", "Some", and "None", which are self explanatory.  The four
+dark red menus can be used to select up to four vertices.  If they are
+blank they have no effect.  The green menu selects one of the
+relations ">=", "=", or "<=".  The magenta menu selects a number from
+zero to d.  Domain points are displayed if and only if the sum of
+their indices corresponding to the selected vertices satisfies the
+relation (selected by the green menu) with the number selected by the
+magenta menu.  For example, suppose one face in the underlying
+configuration has vertices V2, V4, and V5, and we are concerned with
+C1 conditions across that face.  To display all the domain points
+involved we would select V2, V4, and V5 with three of the red menus
+(in any sequence, and with any of those menus), we would select ">="
+with the green menu, and we would select "d-1" with the magenta menu.
+To display the 4 ball around vertex V0, say, we would select V0 with
+any of the red menus (leaving the others blank), select ">=" with the
+green menu, and select d-4 with the magenta menu.  To display all
+domain points in a single tetrahedron, face, or edge, we would select
+the vertices of that tetrahedron, face, or edge, select "=", and
+select d.
+All the selections become effective by clicking on the "draw" button
+next to the "selections" button.
+
+Next to the draw button are three buttons labeled "V", "E", "F", and
+"all", respectively.  Clicking on one of these will display the
+domains at vertices, in the interior of edges, in the interior of
+faces, or all domain points, respectively.  The effect is immediate
+*you don't need to click on "draw").  The selections are particularly
+useful for imposing supersmoothness conditions.
+
+<BR><BR>
+There is a secondary way to remove points from the drawing.  After
+clicking on "Remove" in the Control Window, clicking on a single point
+P in the drawing window will remove all points whose indices don't
+have non-zero values where P has a zero index.  Clicking on "Undeleted"
+will undo these selections.
+
+<BR><BR> Regardless of which domain points are displayed, the analysis
+of the minimal determining set of course takes into account all of the
+domain points.
+
+<a name = "super">
+<H2> Defining Super Splines </H2>
+
+Smoothness requirements can be increased around vertices or edges and
+across faces.  The resulting splines are called "super splines".
+
+<BR><BR>
+
+The fifth row of the control panel is dedicated to controlling super
+spline mode (including special conditions, see the next section).  To
+enter that mode click on the button labeled "Super".  (To exit it
+click on "Super" or on "initialize".)  The mode is indicated by a
+light blue background in the drawing window.  To increase smoothness
+around a vertex (left) click on the vertex, to increase it around an
+edge click on an interior domain point of that edge, and to increase
+smoothness across a face, click on an interior domain point of that
+face. Clicking on an interior domain point of a tetrahedron has no
+effect.  Supersmoothness is graphically indicated as follows:
+
+<UL>
+<LI> <B>Vertex:</B> There is a red circle around the vertex for every
+degree of Supersmoothness beyond <em>r</em>. </LI>
+<LI> <B>Edge:</B> There is one red line indicating the edge or
+parallel to the edge for each degree of supersmoothness beyond
+<em>r</em>.</LI>
+<LI> <B>Face:</B> Supersmoothness across a face is indicated by drawing it in red.
+The larger the degree of supersmoothness the darker the shade of red.</li>
+</UL>
+
+The Button "Undo Super" removes the most recently imposed supersmoothness
+conditions.  It's particularly useful for correcting mistakes.
+
+<BR><BR> The Button "list Super" causes a list of the supersmoothness
+conditions to be printed to standard output.  The most recently
+imposed supersmoothness condition is displayed in the Status Label.
+
+<BR><BR> The Button "Clear Super" removes all supersmoothness conditions.  
+
+<BR><BR> The button "start Over" labels all domain points as yet
+undetermined.  This will not effect currently imposed supersmoothness
+conditions (and in fact will leave intact the current internal MDS).
+
+
+
+</UL>
+
+<a name = "special">
+<H2> Imposing Special Conditions </H2>
+
+"special conditions" are individual supersmoothness conditions.  They
+are of the familiar Bezier form, equating the value of a Bezier
+coordinate with the value of a subpolynomial on the opposing
+tetrahedron.  The corresponding domain point is the "tip" of the
+condition.  (In principle any spline space could be built by setting
+<em>r=0</em> and imposing suitable special conditions.)
+
+To impose a special condition proceed as follows:
+
+<OL>
+
+<li> Click on "Special". </li>
+
+<li> Select an interior face by clicking on one of its interior domain points.
+The face is outlined in orange. (Special conditions, and some supersmoothness conditions, cannot be imposed if the polynomial degree is less than 3.)
+</li>
+
+<li> Click on the tip of the smoothness condition (or several
+conditions associated with the same interior face).  </lI>
+
+<li> To exit special mode click again on "special" or on "initialize". </li>
+
+<li> To remove the most recently imposed special condition click on "Undo Special". </li>
+
+<li> To remove all special conditions click on "Clear Special".  
+
+</OL>
+
+Special conditions come in two flavors, depending on the side on which
+their tip is located.  Both flavors can be imposed.  If the conditions
+are "supported" (in the sense that all relevant lower order conditions
+are present) the two flavors are equivalent (in the sense that
+imposing either one or both has the same effect on the dimension and
+on any minimal determining set).  If they are unsupported the two
+flavors may be independent (in the sense that their combined presence
+lowers the dimension by 2).
+
+Special conditions, and the location of their tips, are indicated by
+shades of purple.  A good way to become familiar with them is to use
+the configuration consisting of two neighboring tetrahedra and
+setting <em>r=0</em>.
+
+<a name = "macros">
+<H2> Macro Elements </H2>
+Special control panels are available to analyze macro elements.
+Currently available splits are the single and double Clough-Tocher
+splits.  To invoke a panel select the appropriate configuration and
+then click on the button labeled "macros" next to the configuration
+menu.
+
+
+The control panels themselves are described on separate pages:
+
+<OL>
+
+<li><a href = "ctmacro/index.html">The (single) Clough Tocher Split</a></li>
+<li><a href = "dctmacro/index.html">The double Clough Tocher Split</a></li>
+<li>The Morgan-Scott Split</a></li>
+
+
+</OL>
+
+The panels work on the symmetric and the generic versions of these
+splits, althoug usually one will want to use the symmetric version.
+
+<a name = "bounds">
+<H2><a href="bounds/index.html"> Bounds on the Dimension</a> </H2>
+
+It's an ongoing research project to obtain upper and lower bounds on
+the dimension of (trivariate) spline spaces.  The button "bounds" in
+the top row of the control panel will display the best currently known
+bounds on the dimension to be displayed in the Status text field, and
+to standard input.  Clicking on the headline of this section
+leads to extensive tables listing various bounds and dimensions.
+
+<a name = "print">
+<H2> Saving and Printing </H2>
+
+If the code is downloaded and used locally (as opposed to via a
+browser) an additional line is present in the control window.  
+The first button in that line is labeled "Print".  It allows printing
+of the drawing window, and saving a postscript version of that window
+to a file.
+
+<BR><BR> The text field in that row lets you specify a file name to
+which the status of a session can be saved, by clicking on "Save".
+Clicking on "Restore" will restore the status of your work, including
+any partial choice of the minimal determining set, and let you
+continue your work.  (Clicking on "Save" will also generate a file with
+the extension ".cmb" that describes the combinatorics and geometry of
+the configuration, and that can be used to import the configuration as
+described elsewhere.)
+
+<BR><BR> A Geomview (with the extension ".off")
+file can be obtained by pressing the button labeled gv.  This works
+only in the downloaded version.  The Geomview shows the same picture
+as the drawing window.  In addition transparent triangular faces can
+be turned on or off with the button to the left of gv.
+
+<a name = "saveMDS">
+<H2> Saving Minimal Determining Sets </H2>
+
+In the downloaded version, the two buttons "Write Dps" and "Read Dps"
+can be used to save and restore complete or partial Minimal
+Determining Sets.  When writing Dps the indices of the points
+currently selected for the minimal determining set are   written to a
+file with the extension .MDS.  The name of the file is the string
+listed in the text field of the fourth row. When reading the Dps the
+linear algebra is initialized if necessary, points are removed from
+the current MDS if such are present, and then the indices are read
+into the code and selected for the minimal determining set.  If one of
+the stored points is actually implied by those read previously it is
+skipped, and a message is written to standard output.  This may occur
+if the .MDS file is created with a different program, or if the
+indices are read in after modifying supersmoothness conditions.  Note
+that the internal numbering of the domain points must be consistent
+with the labeling in the .MDS file.  The internal labeling depends on
+the configuration and the value of d.  It does not depend on the
+smoothness conditions.
+
+
+<a name = "misc">
+<H2>Miscellaneous Controls</H2>
+
+<OL> 
+
+<LI> "Quit"  exits the system.  If used as an applet, clicking
+on the applet a second time has a similar effect.</lI>
+
+<LI> "initialize"  initializes the linear algebra and computes
+an internal MDS.  Clicking on any green domain point for the first
+time has the same effect.</LI>
+
+<LI> "Complete"  initializes the linear algebra if necessary,
+and displays the internal MDS.</li>
+
+<li> "reset" removes any supersmoothness conditions, and resets the
+linear algebra. <?LI>
+
+<li> "grid" toggles the drawing of the grid formed by the domain
+points. </li>
+
+<li> "Vtcs" toggles the labeling of the vertices. </li>
+
+<li> The text window labeled "diameter" and its two buttons can be used
+to change the size of the displayed domain points. </li>
+
+<li> "listDps" causes a list of the domain points to be printed to
+standard output.</li>
+
+<li> "show A" displays some properties of the underlying matrix,
+specifically its dimensions and its density.  The message "A Ok!"
+means that the row sums of the matrix are zero, as they should be.
+(If they are not zero you get an error message that hopefully you will
+never see. It contains the word "catastrophic".) </li>
+
+<li> "hidden" toggles the display of hidden lines.  To get a feeling
+for the geometry of a configuration it may be helpful to set r=0 or
+d=1, and rotate and display the configuration.  Lines behind other
+lines are broken where the lines cross.
+</li>
+
+<li> "listEqs" causes a list of all smoothness conditions to be
+written standard output and also to a file in stand alone mode.  The
+file name has the extension ".eqs".  Its name is given in the text
+field in the fourth row of the control panel.  Note that the
+coefficients in the equations are modulo the prime <b>P</b>.  In most
+cases the equation can be taken verbatim, but for complicated
+geometries and high degrees of smoothness the displayed coefficients
+may be residual rather than the actual configurations.  The equations
+are listed during initialization of the linear algebra.  If you need
+them right away click on "Initialize" after clicking on
+"listEqs". </li>
+
+<li> "DP labels" toggles the printing in the drawing window of the
+internal numbering  applied to the domain points. </li>
+</li>
+
+<li>The buttons labeled "Front" and "Back" move the drawing window 
+to the front or back, respectively, of the windows on the screen. </li>
+
+</OL>
+
+<a name = "key">
+<H2>Key Board Commands</H2>
+
+
+At present the following key board commands are available:
+
+<OL>
+
+<li> -space- or -enter-, clear the screen of clutter or debris like 
+corrupted domain point indices displays.</li>
+
+<li><b>d</b> decrease d by 1. </li>
+
+<li><b>D</b> increase d by 1. </li>
+
+<li><b>r</b> decrease r by 1. </li>
+
+<li><b>R</b> increase r by 1. </li>
+
+<li><B>S</B> undo all zooming. </li>
+
+<li><b>p</b> print the drawing window. Equivalent to pressing
+"Print".  You can try this in the browser version, but it may not work.</li>
+
+<LI> <b>u</b> undoes a deletion of points, equivalent to pressing
+"undelete". </LI>
+
+<li> <b>c</b> (control) move the control window on top of everything
+else on the screen.  (You can move the drawing window back on top by
+clicking on "Front" in the control window.) 
+</li>
+
+<li> <b>g</b> Toggle the drawing of the B-grid on and off. </li>
+
+
+</OL>
+
+
+</BODY>
+</HTML>

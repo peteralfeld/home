@@ -1,0 +1,379 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Residual Arithmetic
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+
+
+
+
+<H2>Residual Arithmetic, r=3, d=10</h2>
+
+<p> The following table illustrates the performance of residual arithmetic.
+The dimension of the spline space on the generic double Clough-Tocher
+split, for <em>r=3</em> and <em>d=10</em> is 184.  It was computed
+using three consecutive prime numbers.  The table gives the top one of
+those prime numbers, and the color indicates the result, as follows:
+
+<UL>
+
+<li>
+<Table><tr><td bgcolor=#ffa0a0><b> Red:</b></td></tr></table> All
+entries in the linear system have at least one of their residuals
+equal to zero.  This makes Gaussian Elimination impossible and the
+matrix is considered to have rank 0.
+</li>
+
+<lI>
+<Table><tr><td bgcolor=#a0a0ff><b> Purple:</b></td></tr></table> 
+The computed dimension is too high.  Some non-zero numbers in the linear
+system are treated as being zero.
+</li>
+
+<lI>
+<Table><tr><td bgcolor=#a0ffff><b> Cyan:</b></td></tr></table> 
+The dimension is computed correctly.  However, some entries in the
+linear systems have a mixture of zero and non-zero residuals.  The
+program recognizes this as a potential problem.  Numbers with mixed
+residuals are considered non-zero, but they cannot serve as pivots.
+</li>
+
+<LI>
+<Table><tr><td bgcolor=#a0ffa0><b> Green:</b></td></tr></table> 
+The dimension is computed correctly and all non-zero entries in the linear system have three non-zero residuals.  This is the expected and desired situation.
+The smallest triple of primes having these properties are <em>2423, 2437, 2441</em>.
+</li>
+</UL>
+
+<Center>
+
+<TABLE>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#ffa0a0><b>5<!-- dim = 466 --></td><td bgcolor=#a0a0ff><b>7<!-- dim = 288 --></td><td bgcolor=#a0a0ff><b>11<!-- dim = 207 --></td><td bgcolor=#a0a0ff><b>13<!-- dim = 202 --></td><td bgcolor=#a0a0ff><b>17<!-- dim = 198 --></td><td bgcolor=#a0ffff><b>19<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>23<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>29<!-- dim = 185 --></td><td bgcolor=#a0a0ff><b>31<!-- dim = 185 --></td><td bgcolor=#a0a0ff><b>37<!-- dim = 185 --></td><td bgcolor=#a0ffff><b>41<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>43<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>47<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>53<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>59<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>61<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>67<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>71<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>73<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>79<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>83<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>89<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>97<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>101<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>103<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>107<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>109<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>113<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>127<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>131<!-- dim = 197 --></td><td bgcolor=#a0ffff><b>137<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>139<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>149<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>151<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>157<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>163<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>167<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>173<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>179<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>181<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>191<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>193<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>197<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>199<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>211<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>223<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>227<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>229<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>233<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>239<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>241<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>251<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>257<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>263<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>269<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>271<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>277<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>281<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>283<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>293<!-- dim = 184 --></td>
+
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>307<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>311<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>313<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>317<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>331<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>337<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>347<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>349<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>353<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>359<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>367<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>373<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>379<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>383<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>389<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>397<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>401<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>409<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>419<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>421<!-- dim = 184 --></td>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>431<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>433<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>439<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>443<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>449<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>457<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>461<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>463<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>467<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>479<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>487<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>491<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>499<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>503<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>509<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>521<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>523<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>541<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>547<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>557<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>563<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>569<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>571<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>577<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>587<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>593<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>599<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>601<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>607<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>613<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>617<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>619<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>631<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>641<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>643<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>647<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>653<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>659<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>661<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>673<!-- dim = 197 --></td>
+
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>677<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>683<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>691<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>701<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>709<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>719<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>727<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>733<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>739<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>743<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>751<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>757<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>761<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>769<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>773<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>787<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>797<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>809<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>811<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>821<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>823<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>827<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>829<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>839<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>853<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>857<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>859<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>863<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>877<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>881<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>883<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>887<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>907<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>911<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>919<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>929<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>937<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>941<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>947<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>953<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>967<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>971<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>977<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>983<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>991<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>997<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1009<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1013<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1019<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1021<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1031<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1033<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1039<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1049<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1051<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1061<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1063<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1069<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1087<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1091<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1093<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1097<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1103<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1109<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1117<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1123<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1129<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1151<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1153<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1163<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1171<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1181<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1187<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1193<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1201<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1213<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1217<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1223<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1229<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1231<!-- dim = 184 --></td>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1237<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1249<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>1259<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>1277<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>1279<!-- dim = 197 --></td><td bgcolor=#a0ffff><b>1283<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1289<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1291<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1297<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1301<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1303<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1307<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1319<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1321<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1327<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1361<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1367<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1373<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1381<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1399<!-- dim = 184 --></td>
+
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1409<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1423<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1427<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1429<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1433<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1439<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1447<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1451<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1453<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1459<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1471<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1481<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1483<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1487<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1489<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1493<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1499<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1511<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1523<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1531<!-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1543<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1549<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1553<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1559<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1567<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1571<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1579<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1583<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1597<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1601<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1607<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1609<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1613<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1619<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1621<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1627<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1637<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1657<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1663<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1667<!-- dim = 184 --></td>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1669<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1693<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1697<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1699<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1709<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1721<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1723<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1733<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1741<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1747<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1753<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1759<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1777<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1783<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1787<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1789<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1801<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1811<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1823<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1831<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1847<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1861<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1867<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1871<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1873<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1877<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1879<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1889<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1901<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1907<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1913<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1931<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1933<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1949<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1951<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1973<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1979<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1987<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1993<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>1997<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>1999<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2003<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2011<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2017<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2027<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2029<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2039<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2053<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2063<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2069<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2081<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2083<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2087<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2089<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2099<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2111<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2113<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2129<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2131<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2137<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>2141<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2143<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2153<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2161<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2179<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2203<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2207<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2213<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2221<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2237<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2239<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2243<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2251<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>2267<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>2269<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>2273<!-- dim = 197 --></td><td bgcolor=#a0ffff><b>2281<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2287<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2293<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2297<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>2309<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2311<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2333<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2339<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2341<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2347<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2351<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2357<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2371<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2377<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2381<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2383<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2389<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2393<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2399<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2411<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2417<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2423<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2437<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>2441<!-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>2447<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2459<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2467<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>2473<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2477<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2503<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2521<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2531<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2539<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2543<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2549<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2551<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2557<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2579<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2591<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2593<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2609<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2617<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>2621<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2633<!-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>2647<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2657<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2659<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2663<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2671<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2677<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2683<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2687<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2689<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2693<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2699<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2707<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2711<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2713<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2719<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2729<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2731<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2741<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2749<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2753<!-- dim = 184 --></td>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>2767<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2777<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2789<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2791<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2797<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2801<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2803<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2819<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2833<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2837<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2843<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2851<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2857<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2861<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2879<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2887<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2897<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2903<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2909<!-- dim = 184 --></td><td bgcolor=#a0a0ff><b>2917<!-- dim = 197 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0a0ff><b>2927<!-- dim = 197 --></td><td bgcolor=#a0a0ff><b>2939<!-- dim = 197 --></td><td bgcolor=#a0ffff><b>2953<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2957<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2963<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2969<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2971<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>2999<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3001<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3011<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3019<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3023<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3037<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3041<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3049<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3061<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3067<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3079<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3083<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3089<!-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>3109<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3119<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3121<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3137<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3163<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3167<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3169<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3181<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3187<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3191<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3203<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3209<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3217<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3221<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3229<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3251<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3253<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3257<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3259<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3271<!-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>3299<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3301<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3307<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3313<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3319<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3323<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3329<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3331<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3343<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3347<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3359<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3361<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3371<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3373<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3389<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3391<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3407<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3413<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3433<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>3449<!-- dim = 184 --></td>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>5003<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5009<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5011<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5021<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5023<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5039<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5051<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5059<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5077<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5081<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5087<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>5099<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5101<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5107<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5113<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5119<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5147<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5153<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5167<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>5171<!-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffff><b>10007<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10009<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10037<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10039<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10061<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10067<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10069<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10079<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10091<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10093<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10099<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10103<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10111<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10133<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10139<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10141<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10151<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>10159<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10163<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>10169<!-- dim = 184 --></td
+>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>20011<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20021<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20023<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20029<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20047<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20051<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20063<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20071<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>20089<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>20101<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>20107<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20113<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20117<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20123<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20129<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20143<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20147<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20149<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20161<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>20173<!-- dim = 184 --></td
+>
+
+<!-- true dimension = 184-->
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>40009<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40013<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40031<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40037<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>40039<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>40063<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>40087<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40093<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40099<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40111<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40123<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40127<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40129<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40151<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40153<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40163<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40169<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>40177<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>40189<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>40193<!-- dim = 184 --></td
+>
+
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>80021<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80039<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80051<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80071<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80077<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80107<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80111<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80141<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80147<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80149<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80153<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80167<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80173<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80177<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80191<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80207<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80209<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80221<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80231<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>80233<!-- dim = 184 --></td
+>
+
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>160001<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160009<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160019<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160031<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160033<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160049<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160073<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160079<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160081<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160087<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160091<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160093<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160117<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160141<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160159<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160163<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160169<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160183<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160201<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>160207<!
+-- dim = 184 --></td>
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>320009<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320011<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320027<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320039<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320041<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320053<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320057<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320063<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320081<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320083<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320101<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320107<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320113<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320119<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>320141<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>320143<!-- dim = 184 --></td><td bgcolor=#a0ffff><b>320149<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320153<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320179<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>320209<!
+-- dim = 184 --></td>
+
+
+<!-- true dimension = 184-->
+
+<TR><td bgcolor=#a0ffa0><b>640007<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640009<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640019<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640027<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640039<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640043<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640049<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640061<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640069<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640099<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640109<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640121<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640127<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640139<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640151<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640153<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640163<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640193<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640219<!-- dim = 184 --></td><td bgcolor=#a0ffa0><b>640223<!
+-- dim = 184 --></td>
+
+
+
+<TR><td colspan=2 bgcolor=#a0ffa0><b>1000003<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000033<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000037<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000039<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000081<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000099<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000117<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000121<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000133<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000151<!-- dim = 184 --></td></tr>
+
+<tr><td colspan=2 bgcolor=#a0ffa0><b>1000159<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000171<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000183<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000187<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000193<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000199<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000211<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000213<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000231<!-- dim = 184 --></td><td colspan=2 bgcolor=#a0ffa0><b>1000249<!-- dim = 184 --></td>
+
+
+</TABLE>
+</Center>
+
+<H3>Notes</H3>
+
+<UL>
+<li>The Table contains all primes through 3449, and selected ranges of larger primes.</li>
+<li>
+The linear system being analyzed comprises 324 equations in 448 variables.  Its rank is 282.  
+</li>
+<li>It's  not surprising that for the small prime numbers illustrated in the table the computed dimension is not always correct.  </li>
+<li> On the other hand, note that the dimension is often computed correctly even though the residuals suggest that there is a problem.
+</li>
+<li>
+For large prime numbers the residuals are all non-zero, as one would expect.
+</li>
+<li> It is remarkable that the primes for which the dimension is overestimated occur in blocks.
+</li>
+</UL>
+
+
+    <HR>
+    [15-Mar-1999]
+</BODY>
+</HTML>

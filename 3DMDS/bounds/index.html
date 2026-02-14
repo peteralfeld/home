@@ -1,0 +1,246 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          Bounds and Dimensions
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+<H1><FONT COLOR = "red"> Bounds on the Dimensions of Trivariate Spline Spaces </FONT></H1>
+
+
+The Tables referenced below give the dimensions, and bounds on those
+dimensions for various configurations, and a range of values of
+<em>r</em> and <em>d</em>.  The bounds can be computed with 
+the 3DMDS package. Three bounds are given.  Details of these bounds
+will be described elsewhere, but here is an outline.
+
+<OL> 
+<LI> <b>l.b.</b> A lower bound obtained by counting domain points and
+smoothness conditions while building the configuration by adding one
+tetrahedron at a time, joining it at 1, 2, or 3 faces.  The lower
+bound may be less than the dimension of the polynomial space.  In that
+case of course it can be easily augmented by setting it to the
+polynomial dimension.  However, the smaller value is shown since this
+is a better indication of the quality of the bounds.  Lower bounds below the 
+polynomial dimension are marked in Gray.
+
+
+</li>
+
+<li> <b> c.o.b. </b> A complex upper bound obtained as follows: Pick a
+plane P that is not parallel to any (interior) face of any of the
+tetrahedra.  Intersect each face with that plane and translate the
+intersections (without changing their slopes) so that they contain the
+origin.  Pick another line L in P that is not parallel to any of the
+given lines and that does not contain the origin.  Compute the
+intersections of L with the intersections.  On the resulting line
+analyze the univariate spline space obtained by associating a
+univariate polynomial with each tetrahedra and making those
+polynomials join smoothly across the points on L corresponding to the
+interior faces of those tetrahedra.  Use those dimensions of
+univariate spaces to obtain the upper bound on the trivariate space.
+</li>
+
+<li> <b> s.o.b. </b> A simple upper bound obtained by counting 
+domain points and smoothness conditions when building the
+triangulation.
+
+</li>
+
+</OL>
+
+
+
+In the tables, <b>background</b> colors indicate the following circumstances:
+
+<UL>
+
+<LI><Font size = "+2" Color = #aaffaa> <b>Green</b> </font> (Green)
+The spline space is actually polynomial. </li>
+
+<LI><Font size = "+2" Color = #ffffaa> <b>Yellow</b> </font> (Yellow)
+The dimension is greater than the polynomial dimension. </li>
+
+<LI><Font size = "+2" Color = #ffaaaa> <b>Red</b> </font> (Red)
+The bound gives the true dimension. </li>
+
+<LI><Font size = "+2" Color = #dddddd> <b>Gray</b> </font> (Gray)
+The lower bound is lower than the polynomial dimension. </li>
+
+<LI><Font size = "+2" Color = #aaffff> <b>Cyan</b> </font> (Cyan)
+The upper bound overestimates the dimension but it is better than the
+other upper bound. </li>
+
+<LI><Font size = "+2" Color = #ddddff> <b>Light Blue</b> </font> (Light Blue)
+Some of the domain points do not enter any smoothness conditions. </li>
+
+
+</UL>
+
+
+<P>&nbsp;
+
+Tables are available for the following configurations:
+
+<P>
+
+
+ 
+
+<OL>
+
+<li> <a href = "2T.html" ><b>Two tetrahedra</b></a>  sharing a common face.</li>
+
+<li> a <a href = "3orange.html" ><b>3-orange</b></a> , three tetrahedra sharing an interior edge.</li>
+
+<li> a split of a cube into six tetrahedra about a space
+diagonal, an analog of the two dimensional <a href = "rTI.html" ><b>type-I</b></a> 
+triangulation.</li>
+
+<li> The 3D <a href = "CT.html" ><b>Clough-Tocher</b></a>  Split.</li>
+
+<li> The 3D <a href = "rMS.html" ><b>Morgan-Scott</b></a>  split. </li>
+
+<li> The regular <a href = "rOct.html" ><b>octahedron</b></a> .</li>
+
+<li> The <a href = "rWF.html" ><b>Worsey-Farin</b></a>  split.  The CT split is applied to the overall 
+tetrahedron, and to each of its faces. This gives a Powell-Sabin type split of a Tetrahedron.</li>
+
+<li> The <a href = "rdCT.html" ><b>double Clough-Tocher Split.</b></a>  The CT split is applied to
+the overall tetrahedron, and then to each of the four
+subtetrahedra. </li>
+
+<li> An analog of the 2D <a href = "rTIV.html" ><b>type-II</b></a>  triangulation, a tessellation
+of a cubic by 24 tetrahedra sharing an interior point. This is sometimes called a "type IV" split.</li>
+
+<li> A generic version of the <a href = "gMS.html" ><b>Morgan-Scott split</b></a> .</li>
+
+<li> A <a href = "gOct.html" ><b>generic Octahedron.</b></a> </li>
+
+<li> A generic version of the <a href = "gWF.html" ><b>Worsey-Farin split.</b></a>  </li>
+
+<li> A generic version of the <a href = "gdCT.html" ><b>double Clough-Tocher split.</b></a>  </li>
+
+<li> A <a href = "gtIV.html" ><b>generic type IV split</b></a> .</li>
+
+<li> A slight modification of <a href = "Rudin.html" ><b>Rudin's example</b></a> .  This is a configuration
+consisting of 41 tetrahedra and 14 points.  It is the simplest example
+of an unshellable triangulation in the sense that no unshellable
+triangulation with fewer tetrahedra exists. "unshellable" means that
+the configuration cannot be built by adding one tetrahedron at a time,
+maintaining at each stage a configuration. (Removing any one tetrahedron
+from the configuration leaves a set of tetrahedra whose union is
+homeomorphic to a ball.)  For details see Mary E. Rudin, An unshellable
+triangulation of a tetrahedron, Bulletin of the AMS, 64 (1958),
+90--91.  Many arguments concerning configurations are based on
+shelling, and this example may serve as a counter example.  Note
+that the configuration has no interior points. In this example the
+angle of one degree used by Rudin is replaced by an angle of
+approximately 12 degrees.  The angle can be increased up to 19 degrees
+without some of the tetrahedra beginning to overlap.)  </li>
+
+<li> The <a href = "MSface.html" ><b>Morgan-Scott Face Split</b></a> , a tetrahedron where each face
+has been split by the symmetric Morgan-Scott Split and every vertex on
+the boundary of the tetrahedron connected to the centroid. Meant for
+Macro design. </li>
+
+
+<li> The same as before, with the <a href = "WMSface.html" ><b>Wang version of the Morgan-Scott
+Split</b></a>  on the faces.</li>
+
+<li> The <a href = "dCTface.html" ><b>double Clough-Tocher Face Split</b></a> , similar to the
+previous splits and the Worsey-Farin Element, except that each face is
+split by the double Clough-Tocher split. A macro control panel is
+available for this split.</li>
+
+<li> An <a href = "8cell.html" ><b>8-cell</b></a> .  Following bivariate notions, a cell is a
+configuration with one interior vertex such that all boundary
+vertices are connected to the interior vertex by an edge.  The are
+two topologically different cells consisting of 8 tetrahedra.  One is
+the octahedron, and this is the other one.</li>
+
+<li><a href = "aPS.html" ><b>aligned Powell-Sabin</b></a> . Two Worsey-Farin Splits next to each other
+such that the two edges meeting at the centroid of the common face are
+collinear. Note that V4-V8-V9 are collinear.  V3-V4-V8 are also aligned.</li>
+
+
+<li><a href = "uPS.html" ><b>unaligned Powell-Sabin</b></a> . A version of the previous
+configuration.  Two Worsey-Farin Splits next to each other such that
+the two edges meeting at the centroid of the common face are not
+collinear.  V4-V8-V9 are collinear, but V3-V4-V8 are not.</li>
+
+<li><a href = "gPS.html" ><b> generic Powell-Sabin</b></a> . A generic version of the previous
+configuration.  Two Worsey-Farin Splits next to each other such that
+the two edges meeting at the centroid of the common face are not
+collinear.  V4-V8-V9 are not collinear.</li>
+
+<li><a href = "inverted.html" ><b>inverted</b></a> .  A partition of a tetrahedron into 11 subtetrahedra: 4 vertex tetrahedra, 6 edge tetrahedra, and one inverted tetrahedron.
+</li>
+
+<li><a href = "t60.html" ><b>T60</b></a>  A partition of a tetrahedron into 60
+tetrahedra.  A geometrically unconstrained C<sup>1</sup> cubic macro
+element can be built on this split.</li>
+
+<li><a href = "t504.html" ><b>T504.</b></a>  A partition of a tetrahedron into 504
+tetrahedra.  A geometrically unconstrained C<sup>1</sup> quadratic
+macro element can be built on this split.</li>
+
+<li><a href = "sWP.html" ><b>symmetric Worsey-Piper</b></a> .  Each face of a tetrahedron is
+split into 6 triangles, using the centroid of the face, and the
+midpoints of the edges.  Thus the Powell-Sabin 6-split is applied to
+each face.  The tetrahedron is then split into 24 subtetrahedra all
+sharing the barycenter of the tetrahedron.</li>
+
+<li><a href = "gWP.html" ><b>generic Worsey-Piper</b></a> .  A less symmetric version of the
+previous split.  The union of the 24 tetrahedra is still a
+tetrahedron, but the split points are no longer in the centers of the
+edges, faces, and the overall tetrahedron.</li>
+
+<li><a href = "sMScone.html" ><b>symmetric MS cone</b></a> . The planar Morgan-Scott split coned to three dimensions.
+Thus the spline space decouples into d+1 bivariate spline spaces.  This configuration can be used
+to illustrate the fact that in order to obtain the dimension in three variables for any sufficiently large value
+of d one has to get the dimension of bivariate spaces for all values of d.</li>
+
+<li><a href = "gMScone.html"><b>generic MS cone</b></a> . A similar configuration built on the generic planar Morgan-Scott split. </li>
+
+</OL>
+
+
+The columns in the tables contain the following information:
+
+<UL>
+
+
+ <LI><b>r</B> is the degree of smoothness.  (No supersplines are illustrated at present.) </LI>
+ <LI><b>d</B> is the polynomial degree. </LI>
+ <LI><b>pol</B> the dimension of the polynomial space, listed for reference and comparison. </LI>
+ <LI><b>l.b.</B> is the above mentioned lower bound. </LI>
+ <LI><b>dim</B> is the computed dimension. </LI>
+ <LI><b>c.u.b.</B> is the complex upper bound. </LI>
+ <LI><b>s.u.b.</B> is the simple upper bound. </LI>
+
+ <LI><b>M</B> is the initial number of equations. </LI>
+ <LI><b>N</B> is the initial number of unknowns. </LI>
+ <LI><b>rank</B> is the rank of the initial linear system. </LI>
+ <LI><b>MDS</B> is the number of active points (excluding those who do not enter any smoothness conditions at all) which need to be in a minimal determining set.  This is also the number of rows in the reduced linear system.</li>
+ <LI><b>delta</B> is the density of the reduced system, measured in percent. </LI>
+ <LI><b>mods</B> is the number of times a residual was computed in the generation of this particular line. </LI>
+</UL>
+</BODY>
+</HTML>

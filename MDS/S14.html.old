@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            The generic dimension of S14
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+<BR CLEAR="ALL">
+
+
+        <H2>
+            The Generic Dimension of S<sup>1</sup><sub>4</sub>
+        </H2>
+
+
+       <IMG SRC="S14/Fig1.gif" ALIGN="RIGHT">
+
+
+
+       <P> This page illustrates an actual proof using the
+       Bernstein-B&eacute;zier form.  It concerns the space of
+       <em>C<sup>1</sup> quartics</em> for which a minimal determining
+       set is constructed in reference 8 of the <a
+       href="bibliography.html">bibliography.</a> There it is shown
+       that 
+       <p><IMG SRC="S14/S1.gif">(1) 
+       <p> where <em>V</em> is the
+       number of vertices and <em>sigma</em> is the number of <a
+       href="dependence.html"><em>singular vertices</em></a> in the
+       triangulation.  <p> Here we show that <em>generically</em>
+       <p><IMG SRC="S14/S2.gif">(2)
+
+       <p> The proof is by induction in the number of vertices.
+       Clearly (2) holds for the case of just one triangle.
+       Suppose (2) holds for <em>V</em> vertices and assume our
+       triangulation <em>T</em> has <em>V+1</em> vertices.  Then consider a
+       boundary vertex <em>v</em> which is such that
+       removing its star <em>S<sub>v</sub></em> (i.e., the set of all triangles having
+       <em>v as a vertex</em>) leaves a triangulation.
+       (As an exercise you may want to show that it is always possible
+       to find such a boundary vertex.)  The triangulation remaining
+       after removing  <em>S<sub>v</sub></em> has <em>V</em>
+       vertices and a minimal determining set of <em>6V-3</em> points
+       by the induction hypotheses.  We have to show that we can
+       expand this set to a minimal determining set on all of
+       <em>T</em> by adding 6 points in <em>S<sub>v</sub></em>.
+       Since we are considering the generic
+       case only we may assume that no pair of edges on any vertex is
+       parallel.
+
+       <p> Figure 1. nearby illustrates the situation.  The vertex
+       <em>v</em> is indicated by the red MDS symbol (a plus sign in a
+       circle).  B&eacute;zier ordinates at the points marked with
+       green triangles are implied by the continuity and
+       differentiability conditions across the bottom of
+       <em>S<sub>v</sub></em> where it joins the remaining triangles of
+       <em>T</em>. Internal smoothness conditions determine
+       B&eacute;zier ordinates at the points marked with red
+       triangles.  The points marked with yellow MDS symbols must be
+       in the minimal determining set since they enter no smoothness
+       conditions at all.  Finally, setting the B&eacute;zier
+       ordinates at the two points marked with blue MDS signs implies
+       all remaining B&ezier; ordinates.  There is a total of six new
+       points in the minimal determining set.  It's clear that adding
+       these points form a determining set.  To see that it is minimal
+       it suffices to check that for each of the new points $P$ one can
+       construct a cardinal spline where the B&eacute;zier ordinate
+       corresponding to <em>P</em> is 1 and all others are zero.
+ 
+
+<H3>A nontrivial exercise</H3>
+
+       <p>Ask yourself how the above proof fails if some pairs of
+       edges sharing a vertex are parallel.  Then ask yourself how to
+       fix the problem.  If you are impatient read reference 8 in the
+       <a href="bibliography.html">bibliography.</a>
+
+        <P>
+            [15-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

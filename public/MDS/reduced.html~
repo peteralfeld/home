@@ -1,0 +1,201 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Reduced Polynomial Degree
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+
+        <H2>
+            Reduced Polynomial Degree
+        </H2>
+
+   A polynomial of degree $d$ in <a href="bform.html">Bernstein
+   B&eacute;zier form </a>  
+<P>
+<IMG SRC = "e3.gif">
+<p> may of course actually be of a degree less than $d$.  When it is
+that fact is not readily apparent in the B-form.  However, the MDS
+code described on these pages allows for the imposition of additional
+conditions on the coefficients of <em>p</em> that force it to be of a
+lesser degree than <em>d</em>.  These conditions are derived and
+illustrated on this
+page.
+
+<p> A polynomial of degree <em>d</em> will be of degree <em>d-1</em> if <em>d+1</em>
+independent derivatives of order <em>d</em> vanish.  Similar
+conditions can be obtained to force <em>p</em> of degree even less
+than <em>d-1</em>.  For simplicity we only described the conditions
+used to obtain the degree <em>d-1</em>.
+
+<p> The MDS code forces <em>p</em> to satisfy the conditions
+<p> <IMG SRC = "r1.gif">
+<p> where
+<p> <IMG SRC = "r2.gif">
+
+<p>It's easy to see (and discussed <a href="bform.html">elsewhere</a>)
+that
+<p> <IMG SRC="r3.gif">
+<p> where
+<p> <IMG SRC="r4.gif">
+
+<p> Similarly,
+<p> <IMG SRC="r5.gif">
+<p> where
+<p> <IMG SRC="r6.gif">
+
+<p> Thus we obtain, for example, that 
+<p> <IMG SRC="r7.gif">
+<p> and
+<p> <IMG SRC="r8.gif">
+
+
+
+<p> Repeating this process gives rise to the conditions
+<p> <IMG SRC = "r9.gif">
+<p> where <em>I</em> is the identity operator and the shift operators <em>E</em> and <em>F</em> are defined by
+<p> <IMG SRC="r10.gif">
+
+<p> Obviously we can ignore the constant factor in these homogeneous conditions.
+Since the operators <em>E</em> and <em>F</em> commute we obtain the conditions
+<p> <IMG SRC="r11.gif"> (*)
+<p> where
+<p> <IMG SRC="r2.gif">
+
+<p> There is just one more subtlety. The coefficients multiplying the
+B&eacute;zier coefficients in these equations are in fact integers.
+However, because of the binomial coefficients they are defined as
+rational numbers and I did not see a straightforward way of evaluating
+them in residual arithmetic.  To overcome this problem the MDS code
+actually implements the conditions (*) multiplied with <em>i!j!</em>.
+They therefore take the form 
+<p> <IMG SRC="r12.gif">
+
+<p> (A similar trick is used for implementing the cross-boundary
+smoothness conditions.)
+
+<p> <a href="redexamples.html">Click here to see some examples of reduced polynomial degrees.</a>
+
+        <HR>
+        [05-Jan-2000]
+    </BODY>
+</HTML>
+

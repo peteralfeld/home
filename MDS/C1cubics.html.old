@@ -1,0 +1,307 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            C1 Cubics
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TD colspan = 4>
+                    <APPLET CODE="MDS.class"
+                        WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                        <B>
+                    </APPLET>
+                </TD>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+        <HR>
+        <H2>
+            C<SUP>1</SUP> Cubics.
+        </H2>
+        <P>
+            This page describes the two best known and most famous unsolved
+            problems in <a href="Srd.html">bivariate splines.</a>
+        </P>
+        <P>
+            Let <EM>S</EM> be our ordinary
+            <A HREF="Srd.html">
+                spline space
+            </A>
+            with
+
+        </P>
+        <P>
+            <B> <EM>r=1</EM></B> &nbsp;and&nbsp; <B> <EM>d=3</EM></B>
+        </P>
+        <P>
+            This space is of great interest for applications because it
+            provides <EM>the smallest polynomial degree</EM> for which
+            the dimnesnion of <EM>S</EM> always exceeds the number of
+            vertices in the triangulation. Thus one can hope to be able
+            to interpolate to given function values at the vertices of
+            the triangulation.
+        </P>
+            <BR CLEAR="RRIGHT">
+            <IMG SRC="S13MS.gif" ALIGN = "RIGHT">
+        <P>
+            As an exercise you may want to show that
+        </P>
+        <P>
+            <FONT COLOR="#ff0000" SIZE="+1">
+                <B> dim <EM>S &gt; 3V<SUB>B</SUB> + 2 V<SUB>I</SUB>
+                + sigma</EM> &nbsp;</B>
+            </FONT>
+            (*)
+        </P>
+        <P>
+            where
+        </P>
+        <UL>
+            <LI>
+                <EM>V<SUB>B</SUB></EM> is the number of boundary
+                vertices,
+            </LI>
+            <LI>
+                <EM>V<SUB>I</SUB></EM> is the number of interior
+                vertices,
+            </LI>
+            <LI>
+                and <EM>sigma</EM> is the number of
+                <A HREF="dependence.html">
+                    <EM>singular vertices</EM>
+                </A>
+            </li>
+        </UL>
+        of the underlying
+        <A HREF="triangulation.html">
+            triangulation.
+        </A>
+        <P>
+            It is widely <B>conjectured</B> that actually
+        </P>
+        <P>
+            <FONT COLOR="#ff0000" size ="+1">
+                <B>dim <EM>S = 3V<SUB>B</SUB> + 2 V<SUB>I</SUB> + 1 +
+                sigma</EM></B>
+            </FONT>
+            &nbsp; &nbsp; (**)
+        </P>
+        <P>
+            If you can prove this statement (or find a counterexample,
+            perhaps with the MDS applet above) you will be instantly famous,
+            at least among the people who care about multivariate spline
+            spaces!
+        </P>
+        <P>
+            So what's the difficulty?  It's hard to localize things.
+            All kinds of apparently obvious induction arguments fail
+            because whatever you do in one triangle affects what happens
+            everywhere else.  The main difficulty seems to be that
+            adding triangles can actually decrease the dimension of <EM>
+            S</EM>. For example, adding a fill, i.e., joining a new
+            triangle on two edges to the triangulation, increases
+            <EM>V<SUB>I</SUB></EM> by 1 and <em>decreases</em>
+            <EM>V<SUB>B</SUB> 
+            </EM> by 1.  Thus the conjectured dimension decreases by 1.
+        </P>
+        <P>
+            I have recently been looking into the possibility of using
+            techniques for proving (**) that were developed for the
+            solution of the famous Four Color Map problem.  You can
+            <A HREF="http://www.math.utah.edu/~alfeld/talks/S13/4CMP.html">
+                examine slides of a recent talk
+            </A>
+            on this connection.
+            <BR CLEAR = "RIGHT">
+            <IMG SRC="S13regHex.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            Another famous open question is
+        </P>
+        <P>
+            <FONT COLOR="#ff0000" size ="+1">
+                <B>Is it always possible to find a function in <EM>S
+                </EM> that assumes given values at the vertices of the
+                triangulation?</B>
+            </FONT>
+        </P>
+        <P>
+            In other words, is it possible for all triangulations and
+            all sets of function values to interpolate at the vertices of the
+            triangulation? At first it seems obvious that this must be
+            possible since the dimension of <EM>S</EM> exceeds twice the
+            number of vertices.  But it is conceivable, even though no such
+            case is known, that for <EM>some</EM> triangulations the
+            interpolation conditions and the smoothness conditions are
+            inconsistent.
+        </P>
+        <P>
+            One way of approaching a proof of (**) is to be a little
+            more specific and try to prove that one can always set 3
+            coefficients at and around a boundary vertex, 2 at and
+            around an interior vertex, and then determine the whole
+            space by imposing one more point, e.g., the central control
+            point of a particular triangle.  The advantage of making the
+            stronger statement is that for an induction proof one has a
+            stronger induction hypothesis to work with. The Figures on
+            this page nearby show several attempts in that direction,
+            with blue domain points around boundary vertices, green
+            points around interior vertices, and the final point (and
+            the points implied by it) being red.
+            <BR CLEAR = "RIGHT">
+            <IMG SRC="S13genHex.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            It turns out that this approach works on the Morgan-Scott
+            split, and on a generic hexagon, but not on a <b>regular</b>
+            hexagon, as indicated by the Figures!  On the regular
+            hexagon three points are imposed on every boundary vertex
+            except the one on the very left.  In the 1-disk around that
+            vertex only two points can be imposed (after imposing three
+            points around each of the other boundary vertices).
+        </P>
+        <P>
+            Here is summary of what is and is not known about S:
+        </P>
+        <UL>
+            <LI>
+                The lower bound (*) holds.
+            </li>
+            <LI>
+                The equality (**) holds <b>generically</b>, as shown by <a
+		href="bibliography.html">Billera and Whiteley.</a>  
+                This means that if
+                it does not hold then an arbitrarily small change in the
+                location of the vertices will force it to hold.
+            </li>
+            <LI>
+                Billera also showed that if there is a triangulation
+                for which (**) does not 
+                hold, then the dimension is also non-generic in the case
+                that <EM>d=2</EM>.
+            </LI>
+            <LI>
+                In the case that <EM>d&gt;3</EM> (and <EM>r=1)</EM> )
+                singular vertices are the only configurations for which
+                the dimension of <EM>S</EM> is not generic.
+            </li>
+            <li> 
+                While the dimesnion is known generically, it is not
+                known whether the above stated <b>interpolation problem</b>
+                can always be solved even just generically.
+            </li>
+        </UL>
+        <P>
+            [15-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

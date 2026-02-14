@@ -1,0 +1,196 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            The Morgan-Scott Idea
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            The Morgan-Scott Idea
+        </H2>
+        <P>
+            <IMG SRC="ms/ms1.gif" ALIGN="RIGHT">
+        </P>
+        <P>
+            The main idea in the
+            <A HREF="bibliography.html">
+                1975 paper
+            </A>
+            by Morgan and Scott can be paraphrased in terms of the
+            Bernstein-B&eacute;zier form as follows:
+        </P>
+        <P>
+            Divide the domain points into sufficiently large globs
+            around vertices and edges, and inside the interior of
+            triangles such that the globs don't overlap.  Then analyze
+            the smoothness conditions first around vertices and then
+            around edges.  The situation is illustrated in the nearby
+            Figure.
+        </P>
+        <P>
+            Globs around vertices are indicated in red, edge globs in
+            green, and points in the interior of triangles in magenta.
+            The radius of the vertex globs is 2, and each one of them
+            can be analyzed locally as if it was the B&eacute;zier net
+            on the vertex star for <EM>r=1</EM> and <EM>d=2.</EM>.
+        </P>
+        <P>
+            Once the vertex globs have been analyzed one can add the
+            green points on each vertex and the green points on one side
+            of that edge to the minimal determining set. Again, the
+            analysis is strictly local.  The magenta points are then
+            also included.
+        </P>
+        <P>
+            For this approach to work the edge globs must have a radius
+            of <EM>r</EM> and the vertex globs must be large enough to
+            separate the edge globs.  It turns out that they must have a
+            radius of <EM>2r</EM>. The vertex globs themselves must not
+            overlap, and so the degree <EM>d</EM> must be greater than
+            <EM>4r</EM>.
+            <BR CLEAR = "RIGHT">
+            <IMG SRC="ms/ms2.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            The above analysis is described in detail in
+            <A HREF="bibliography.html">
+                papers 6, 7, and 10
+            </A>.
+            The analysis was later refined to give dimension statements
+            for <EM>d &gt; 3r+1</EM>, see
+            <A HREF="bibliography.html">
+                papers 13 and 14.
+            </A>
+        </P>
+        <P>
+            As a further illustration consider the Figure nearby which
+            shows the division of the domain points on the Clough-Tocher
+            split for the case <EM>r=3</EM> and <EM>d=16.</EM> Again,
+            vertex globs are red and points deep in the interior of the
+            triangles are magenta.  For clarity the colors for globs
+            around interior edges (Cyan) differs from those next to
+            boundary edges (Green).  The underlying gray shaded
+            quadrilaterals show the extent of the smoothness conditions.
+        </P>
+        <P>
+            [15-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

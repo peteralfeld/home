@@ -1,0 +1,429 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          Cells
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+<H1><FONT COLOR = "red"> Cells </FONT></H1>
+
+<b> Note, this page describes work in progress!</b>
+<p>
+
+  Clicking on the button labeled <b>cells</b> on the Control panel
+  brings up the Cell Control Panel.  This page describes that panel.
+
+<p>
+A <em>cell</em> is a configuration with one interior vertex such that all
+tetrahedra share that vertex.  Cells are interesting in their own
+right, but they are particularly important because understanding the
+dimension of spline spaces on cells for all values of <em>d</em> would
+make it possible to determine the  dimension of spline spaces on
+general configurations for <em>d</em> sufficiently large.
+<p>
+
+The cell package produces <em>abstract configurations</em> which are
+lists of 4-tuples representing tetrahedra.  The elements of the four
+tuple represent points (usually on the sphere), and a particular
+assignment of coordinates to these points define a configuration, a
+particular <em>realization</em> of that particular abstract
+configuration.
+<p>
+
+  An (abstract) configuration is equivalent to an (abstract)
+triangulation of the sphere.  Associated with each vertex of that
+triangulation is its degree.  We also associate with each vertex the
+sequence of degrees of its neighboring vertices traversed in order.
+Such <em>degree sequences</em> are equivalent if they are
+identical after possibly changing the starting vertex and reversing
+the direction of the sequence.
+<p>
+The package considers several levels of <em>sameness</em> of two cells:
+
+<OL>
+
+<li> The two cells have the same numbers of boundary vertices. </em>
+
+<li> The two cells have the same number of vertices for each degree.
+Thus the histograms of the degrees are identical.</li>
+
+<li> The two cells have identical sets of degree sequences.</li>
+
+<li> One abstract configuration can be obtained from the other by
+relabeling the vertices and permuting the list of tetrahedra. </li>
+
+<li> One configuration can be obtained from the other by an affine
+transformation of the locations of the vertices.</li>
+
+</ol>
+
+The cell package is currently unable to check for sameness 4.  It does
+recognize sameness 3.  Interestingly, no configuration has yet been
+found that has sameness 2 but not sameness 3.  Any such configuration
+would have to have at least 20 boundary vertices.  It would be
+remarkable if sameness 2 implied sameness 3, and it would be
+interesting to find a proof or a counter example.  
+
+<p>
+The following table lists the number of cells of sameness 1 (but not
+sameness 2) where <em>V</em> is the total number of boundary vertices
+(excluding the interior vertex).  In constructing this table the
+package considers two cells equivalent if they have sameness 3.
+Using instead sameness 4 would increase the numbers of cells for a given 
+value of <em>V</em>.
+
+<table>
+<font size = "+1">
+
+<tr></tr>
+
+<tr>
+<td align = "right"><b>V</b>:</td>
+<td align = "right">5</td>
+<td align = "right">6</td>
+<td align = "right">7</td>
+<td align = "right">8</td>
+<td align = "right">9</td>
+<td align = "right">10</td>
+<td align = "right">11</td>
+<td align = "right">12</td>
+<td align = "right">13</td>
+<td align = "right">14</td>
+<td align = "right">15</td>
+<td align = "right">16</td>
+<td align = "right">17</td>
+<td align = "right">18</td>
+<td align = "right">19</td>
+</tr>
+
+<tr>
+<td align = "right">number of cells: </td>
+<td align = "right">1</td>
+<td align = "right">1</td>
+<td align = "right">2</td>
+<td align = "right">5</td>
+<td align = "right">13</td>
+<td align = "right">33</td>
+<td align = "right">85</td>
+<td align = "right">199</td>
+<td align = "right">437</td>
+<td align = "right">936</td>
+<td align = "right">1,878</td>
+<td align = "right">3,674</td>
+<td align = "right">6,910</td>
+<td align = "right">12,638</td>
+<td align = "right">22,536</td>
+</tr>
+</font>
+</table>
+
+</BODY>
+</HTML>
+
+<H2>The Cell Control Panel</H2>
+
+<OL>
+<LI><b>Row 1:</b>
+
+<ul>
+
+<li> The <b>status field</B> indicates certain conditions, in particular:
+
+<UL>
+   <li> <b>no cells loaded</b> Currently the only cell known to the system is
+the Clough-Tocher split.</li>
+
+   <li> <b>area OK </b> The realization is considered a triangulation of the unit sphere, and the areas of the spherical triangles add to 4 pi.</li>
+
+   <li> <b> bad area</b> The areas of the spherical triangles add to
+   the given value which is distinct from 4 pi.  Unfortunately the
+   current realization algorithm works poorly, and this error may
+   occur.</li>
+
+</ul>
+</li>
+</UL>
+</LI>
+
+<LI><b>Row 2:</b>
+<UL>
+<li> <b> Hide</b> causes the Cell Control Window to disappear.  To make it 
+reappear click on <b>cells</b> in the main control panel.</li>
+
+<li> <b>Load</b> loads all cells with up to as many boundary vertices
+as given in the adjacent menu. These abstract cells have been
+recomputed and are downloaded from the net.  Downloading sets with a
+large number of vertices can take a substantial amount of time.  The
+largest file, of cells with up to 18 boundary vertices has a size of
+388 megaBytes.  </li>
+
+<lI> The menu let's you choose the number of boundary vertices of the
+cell.  This is equivalent to choosing the number of vertices in the 
+corresponding triangulation of a sphere. (The total number of vertices
+includes the interior vertex of the cell.) </li>
+
+<li> The text field row lets you specify the index number
+of the desired cell.  The green buttons scroll up and down in the
+list.  The red buttons do the same, but also display each new
+cell.</li>
+
+<li> <b>Show</b> causes the cell to be realized and drawn.</li>
+
+</UL>
+</li>
+
+
+<li><b>Row 3:</b> The controls in this row let you select certain
+cells, by specifying minimum and maximum degrees and minimum and
+maximum numbers of vertices.
+<UL>
+<li> The first text field and its scroll buttons determine the minimum
+degree you want each vertex to have.  The second text field determines
+the maximum degree.  Clicking on the yellow button toggles between
+"inclusive" where the minimum and maximum degrees need not be assumed,
+and "sharp where vertices of the specified minimum and maxim degrees
+must actually be present.</li>
+<li> The third and fourth text fields specify the minimum and maximum
+number of vertices (on the surface) that you want your configuration
+to have.
+</li>
+</ul>
+</li>
+
+<li><b>Row 4: </b>
+
+<UL>
+<li> <b>Report</b> causes a description of the cell to be printed to standard output.</li>
+
+<li> The remaining items in the fourth row can be used to modify the realization of the cell, as follows: 
+
+ <UL>
+
+<li> <b> nice </b> decreases the areas of the large boundary triangles to provide a more balanced look.</li>
+
+<li> <b>center</b> computes the average of the boundary points, makes this the new center of the sphere, and renormalizes the boundary points. </li>
+
+<li> <b>reset</b> restores the original realization.</li>.
+
+<li> The region surrounding a particular boundary vertex can be enlarged by 
+entering the index of that vertex in the text field.  The center of the sphere is moved halfway towards that vertex, and then the location of all vertices is renormalizes.</li>
+</UL>
+</li>
+</ul>
+</li>
+</ol>
+
+
+<H2>Vertex Splitting</h2>
+
+The cells are constructed using the technique of <em>vertex
+splitting</em>. A new cell is spawned by splitting one vertex of the
+parent cell.  All cells can be constructed in this way starting with
+the Clough-Tocher split.
+
+<H2> Examples</H2>
+
+
+The original cell (<b>cell 0</b>) is described by this report:
+
+<pre>
+4 triangles: 
+0: 1 2 3
+1: 2 3 4
+2: 1 3 4
+3: 1 2 4
+5 vertices: 
+0: 4
+1: 3 - 0 -> 3(2) 3(3) 3(4) 
+2: 3 - 0 -> 3(1) 3(3) 3(4) 
+3: 3 - 0 -> 3(1) 3(2) 3(4) 
+4: 3 - 0 -> 3(2) 3(3) 3(1) 
+Points:
+0: 0.0 0.0 0.0 ... 0.0
+1: 0.0 0.0 1.0 ... 1.0
+2: 0.866 0.0 -0.4999 ... 1.0
+3: -0.433 0.75 -0.4999 ... 1.0
+4: -0.433 -0.7499 -0.4999 ... 1.0
+areas:
+0: 1 2 3 3.5218
+1: 2 3 4 2.0008
+2: 1 3 4 3.5218
+3: 1 2 4 3.5218
+ total area = 12.5663
+</pre>
+
+The interior point (always) has index 0, and there are four boundary
+points labeled 1, 2, 3, 4.  There are four boundary triangles whose
+vertices are defined by the listed indices.  There is a total of 5
+vertices.  The interior vertex, 0, has degree 4.  The boundary
+vertices all have degree 3.  They all have degree sequences 3-3-3.
+The numbers in parentheses indicate the indices of the actual
+neighbors.  The numbers enclosed by - and -> (in this case all zeros)
+are codes that identify the degree sequence The coordinates of the
+points and their norms are given.  The areas of the individual
+spherical triangles, and the sum of these areas are also listed.
+
+<p>
+<b>Cell 1</b> is obtained by splitting vertex 1:
+
+<pre>
+
+6 triangles: 
+0: 2 3 5
+1: 2 3 4
+2: 1 3 4
+3: 1 2 4
+4: 1 2 5
+5: 1 3 5
+6 vertices: 
+0: 5
+4: 3 - 7 -> 4(2) 4(3) 4(1) 
+5: 3 - 7 -> 4(2) 4(3) 4(1) 
+1: 4 - 5 -> 4(3) 3(4) 4(2) 3(5) 
+2: 4 - 5 -> 4(3) 3(5) 4(1) 3(4) 
+3: 4 - 5 -> 4(2) 3(5) 4(1) 3(4) 
+Points:
+0: 0.0 0.0 0.0 ... 0.0
+1: -0.25 -0.433 0.866 ... 1.0
+2: 0.866 0.0 -0.4999 ... 1.0
+3: -0.433 0.75 -0.4999 ... 1.0
+4: -0.433 -0.7499 -0.4999 ... 1.0
+5: 0.25 0.433 0.866 ... 1.0
+areas:
+0: 2 3 5 2.2604
+1: 2 3 4 2.0008
+2: 1 3 4 2.5575
+3: 1 2 4 2.5575
+4: 1 2 5 1.595
+5: 1 3 5 1.595
+ total area = 12.5663
+ splitting history: 
+0 1: 2 3 2 3 4
+</pre>
+
+Thus vertex 1 is split into vertex 1 and the new vertex 5, and
+neighbors 2 and 3 of the old vertex 1 are now attached to both vertex 1
+and 5.
+
+<p>
+The splitting history described how this cell was obtained from the
+original cell.  The given numbers indicate:
+<UL>
+<li> 0: index of the split, starting at 0. </li>
+<li> 1: index of the vertex that is being split. </li>
+<li> 2: number <em> k </em> of edges being attached to the new vertex. The first and last of these are attached to both the old and new vertex. </li>
+<li> 3: degree of the old vertex prior to splitting.</li>
+<li> The next <em>k</em> numbers are the indices (in order) of the
+vertices attached to the new vertex.</li>
+<li> The remaining numbers are the indices of the vertices attached (only) to the old vertex.</li>
+</ul>
+
+<b>Cell 2</b> is obtained by splitting vertex 1 twice, and is the
+asymmetric 8-cell (with 8 tetrahedra):
+
+
+<pre>
+8 triangles: 
+0: 2 3 5
+1: 2 3 4
+2: 3 4 6
+3: 1 2 4
+4: 1 2 5
+5: 1 3 5
+6: 1 3 6
+7: 1 4 6
+7 vertices: 
+0: 6
+5: 3 - 17 -> 4(2) 5(3) 5(1) 
+6: 3 - 17 -> 5(3) 4(4) 5(1) 
+2: 4 - 23 -> 5(3) 3(5) 5(1) 4(4) 
+4: 4 - 23 -> 4(2) 5(3) 3(6) 5(1) 
+1: 5 - 38 -> 4(2) 4(4) 3(6) 5(3) 3(5) 
+3: 5 - 38 -> 4(2) 3(5) 5(1) 3(6) 4(4) 
+Points:
+0: 0.0 0.0 0.0 ... 0.0
+1: 0.0019 -0.3915 0.9201 ... 1.0
+2: 0.866 0.0 -0.4999 ... 1.0
+3: -0.433 0.75 -0.4999 ... 1.0
+4: -0.433 -0.7499 -0.4999 ... 1.0
+5: 0.25 0.433 0.866 ... 1.0
+6: -0.4849 -0.4449 0.7528 ... 0.9999
+areas:
+0: 2 3 5 2.2604
+1: 2 3 4 2.0008
+2: 3 4 6 2.009
+3: 1 2 4 2.5726
+4: 1 2 5 1.2507
+5: 1 3 5 1.1831
+6: 1 3 6 0.8861
+7: 1 4 6 0.4033
+ total area = 12.5663
+ splitting history: 
+0 1: 2 3 2 3 4
+1 1: 2 4 3 4 2 5
+</pre>
+
+<b>Cell 3</b> is the Octahedron.  Vertex 1 is split twice, but the
+second time three of its neighbors are attached to the new vertex.
+Two of those, and the remaining neighbor, are attached to the old
+vertex.
+
+<pre>
+8 triangles: 
+0: 2 3 5
+1: 2 3 4
+2: 1 3 4
+3: 2 4 6
+4: 2 5 6
+5: 1 3 5
+6: 1 4 6
+7: 1 5 6
+7 vertices: 
+0: 6
+1: 4 - 15 -> 4(3) 4(4) 4(6) 4(5) 
+2: 4 - 15 -> 4(3) 4(5) 4(6) 4(4) 
+3: 4 - 15 -> 4(2) 4(5) 4(1) 4(4) 
+4: 4 - 15 -> 4(2) 4(3) 4(1) 4(6) 
+5: 4 - 15 -> 4(2) 4(3) 4(1) 4(6) 
+6: 4 - 15 -> 4(2) 4(4) 4(1) 4(5) 
+Points:
+0: 0.0 0.0 0.0 ... 0.0
+1: -0.4656 -0.2888 0.8365 ... 0.9999
+2: 0.866 0.0 -0.4999 ... 1.0
+3: -0.433 0.75 -0.4999 ... 1.0
+4: -0.433 -0.7499 -0.4999 ... 1.0
+5: 0.25 0.433 0.866 ... 1.0
+6: -0.0173 -0.5476 0.8365 ... 1.0
+areas:
+0: 2 3 5 2.2604
+1: 2 3 4 2.0008
+2: 1 3 4 2.2224
+3: 2 4 6 2.2224
+4: 2 5 6 1.5165
+5: 1 3 5 1.5165
+6: 1 4 6 0.5235
+7: 1 5 6 0.3034
+ total area = 12.5663
+ splitting history: 
+0 1: 2 3 2 3 4
+1 1: 3 4 4 2 5 3
+</pre>
+
+</body>
+</html>

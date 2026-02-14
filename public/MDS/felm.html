@@ -1,0 +1,265 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Finite Elements
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            Finite Elements
+        </H2>
+        <P>
+            <IMG SRC="felm/quintic.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            The key ingredient of finite elements is that the
+            interpolant is determined uniquely on each triangle by data
+            on that triangle.  There are two ways widely used to make
+            this possible:
+        </P>
+        <UL>
+            <LI>
+                Choosing a sufficiently large polynomial degree
+            </LI>
+            <LI>
+                Subdividing the triangle.
+            </LI>
+        </UL>
+        <P>
+            We illustrate both techniques.
+        </P>
+        <H3>
+            Quintic Elements
+        </H3>
+        <P>
+            This element is quintic on each triangle.  The coefficients
+            at the points marked with red stars are obtained by
+            interpolating to function values and partial derivatives to
+            second order at each vertex.  The points marked green are
+            obtained either by interpolating to a perpendicular cross
+            boundary derivative at the midpoint of edge edge, or by the
+            requirement that perpendicular cross-boundary derivatives
+            (CBDs) be cubic along each edge.
+        </P>
+        <P>
+            The result is a scheme that's piecewise quintic, globally
+            <EM>C <SUP>1</SUP></EM>, and that reproduces quintic (if one
+            interpolates to CBDS) or quartic (if one enforces a cubic
+            CBD) polynomials exactly.
+        </P>
+        <P>
+            An interpolant constructed like this on every triangle of a
+            triangulation will lie in a subspace of <EM>S</EM> with <EM>
+            r=1</EM> and <EM>d=5.</EM>.  It will only be a subspace
+            since the interpolant is <EM>twice</EM> differentiable at
+            every vertex of the triangulation.
+            <IMG SRC="http://www.math.utah.edu/~alfeld/MDS/felm/ct.gif"
+                ALIGN = "RIGHT">
+        </P>
+        <H3>
+            The Clough-Tocher Element
+        </H3>
+        <P>
+            This element is obtained by dividing each triangle in the
+            triangulation about its centroid into three subtriangles
+            called <EM>microtriangles</EM>.  On each micro triangle the
+            interpolant is cubic.
+        </P>
+        <P>
+            The Figure nearby shows an ordinary minimal determining set.
+            Coefficients at the three red points at each vertex of the
+            macrotriangle are obtained by interpolating to function
+            values and gradients at the vertices of the triangle.  The
+            green points in the minimal determining set are obtained
+            similarly as in the quintic element, either by interpolating
+            to perpendicular CBDs at the centers of the edges, or by
+            requiring that the perpendicular CBDs be linear along each
+            edge.
+        </P>
+        <P>
+            The result is a schemed that's piecewise cubic, it requires
+            only function and first order derivative values, and it
+            reproduces quadratic or linear functions exactly.
+        </P>
+        <A HREF="felm/dct.gif">
+            <IMG SRC="felm/dctsmall.gif" ALIGN = "RIGHT">
+        </A>
+        <H3>
+            A double Clough-Tocher <EM>C <SUP>2</SUP></EM> Element
+        </H3>
+        <P>
+            I gained my first serious experience with the Bernstein-B
+            &eacute;zier form when I designed this element (see item 22
+            on my
+            <A HREF="http://www.math.utah.edu/~alfeld/biblio.html">
+                Bibliography.
+            </A>
+            ) Click on the small image to see a larger and clearer
+            version.
+        </P>
+        <P>
+            The macrotriangle is split about its centroid into three
+            subtriangles each of which is again split about its
+            centroid, called a <EM>subcentroid</EM>, into three
+            subtriangles, for a total of 9 microtriangles.  The scheme
+            is piecewise quintic and internally and globally twice
+            differentiable.  It is significant in the design of the
+            scheme that the triples of
+            vertex-centroid-subcentroid are colinear.
+        </P>
+        <P>
+            The development in the original paper is different, but it
+            can be described in the terms of a minimal determining set
+            as follows:
+        </P>
+        <OL>
+            <LI>
+                Pick the green points to interpolate to function values
+                and derivatives through second order at the vertices of
+                the macrotriangle.
+            </li>
+            <LI>
+                Pick the red points to enforce global smoothness, by
+                making the first order perpendicular CBD <EM>cubic</EM>
+                along each edge of the macro triangle and the second CBD
+                Derivative <EM>linear.</EM>
+            </li>
+            <LI>
+                Pick the blue points such that the interpolant is <EM>
+                quartic</EM> along each edge from a vertex to the
+                centroid.
+            </li>
+            <LI>
+                Pick the cyan points to make the interpolant <EM>cubic
+                </EM> along each edge from the centroid to a
+                subcentroid.
+            </li>
+            <LI>
+                Finally, pick the coefficient at the magenta point in
+                the minimal determining set (i.e., the centroid), such
+                that the sum of tangential fourth order derivatives on
+                the lines from the vertices to the centroid equals zero.
+            </li>
+        </OL>
+        <P>
+            The result is a globally twice differentiable interpolation
+            scheme that requires only data of the same order as the
+            degree of smoothness, and that reproduces cubic polynomials
+            exactly.
+        </P>
+        <P>
+            [15-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

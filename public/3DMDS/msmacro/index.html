@@ -1,0 +1,188 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          Morgan-Scott Macros
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tvApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/java-classes"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+
+
+
+
+
+
+<BR>
+<H1><FONT COLOR = "red"> Macro Elements on the Morgan-Scott Split </FONT></H1>
+
+<P>
+The Morgan-Scott Macro Panel lets you impose symmetric
+super smoothness conditions on the Morgan-Scott split and then check if
+a macro element can be built with those conditions.
+
+<P>
+To obtain the macro panel select the configuration "Morgan-Scott",
+and clock on the button "macro elements" in the control panel.  
+The buttons on the macro panel have the following effects:
+
+<P>
+
+<UL>
+<LI><B>Hide</B> cause the macro panel to disappear. To make it
+reappear click again on "macro elements".
+
+<P>
+</LI>
+<LI><B>Draw</B> causes the current smoothness conditions to be drawn
+initially, or if the linear algebra in the drawing window has been
+initialized.  (Otherwise the smoothness conditions are drawn
+automatically whenever they are changed.) 
+
+<P>
+</LI>
+<LI><B>Init</B> initializes the linear algebra (and exits super
+selection mode) in the drawing window.
+
+<P>
+</LI>
+<LI><B>Set</B> initializes the linear algebra if necessary and
+attempts to set the natural data that go with the current set of
+smoothness conditions and the current polynomial degree.
+
+<P>
+</LI>
+<LI><B>Clear</B> removes all super smoothness conditions. 
+
+<P>
+</LI>
+<LI>The status window gives information about the current analysis in
+some situations.
+
+<P>
+</LI>
+</UL>
+
+<P>
+Super smoothness conditions can be imposed using the text fields 
+in the second row of the macro panel, and the buttons to either side
+of those text fields.  The text fields lists the <B>additional</B>
+degree of smoothness.  So if all the text fields show zero then 
+the spline is the ordinary space without super smoothness conditions
+at all.
+
+<P>
+The types of smoothness conditions that can be imposed are listed
+below.  To understand the labels on the macro panel recall the
+labeling of the vertices: <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img1.gif"
+ ALT="$ V_0$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img2.gif"
+ ALT="$ V_1$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img3.gif"
+ ALT="$ V_2$">, and <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img4.gif"
+ ALT="$ V_3$"> are
+the boundary vertices, and <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img5.gif"
+ ALT="$ V_4$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img6.gif"
+ ALT="$ V_5$">, <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img7.gif"
+ ALT="$ V_6$">, and <IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img8.gif"
+ ALT="$ V_7$"> are
+the interior vertices, with <IMG
+ WIDTH="47" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img9.gif"
+ ALT="$ V_{i+4}$"> being opposite 
+<IMG
+ WIDTH="26" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img10.gif"
+ ALT="$ V_i$">, <IMG
+ WIDTH="111" HEIGHT="40" ALIGN="MIDDLE" BORDER="0"
+ SRC="img11.gif"
+ ALT="$ i=0,1,2,3$">.  
+
+<P>
+The following groups of super smoothness conditions are available:
+
+<P>
+
+<UL>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img12.gif"
+ ALT="$ V_{0} $"> boundary vertex 
+</LI>
+<LI><IMG
+ WIDTH="28" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img13.gif"
+ ALT="$ V_{4} $"> interior vertices
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img14.gif"
+ ALT="$ E_{01} $"> boundary edges
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img15.gif"
+ ALT="$ E_{04$">  edges from a boundary vertex to an interior vertex
+</LI>
+<LI><IMG
+ WIDTH="40" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img16.gif"
+ ALT="$ E_{45} $"> edges connecting two interior vertices
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img17.gif"
+ ALT="$ F_{014} $"> a face containing two boundary vertices
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img18.gif"
+ ALT="$ F_{015} $"> a face containing one boundary vertex
+</LI>
+<LI><IMG
+ WIDTH="46" HEIGHT="41" ALIGN="MIDDLE" BORDER="0"
+ SRC="img19.gif"
+ ALT="$ F_{045} $"> a face containing no boundary vertices
+
+<P>
+</LI>
+</UL>
+
+<P>
+<H2>Natural Data</H2>
+
+<P>
+The natural data are the same as for the Clough-Tocher split.
+
+<P>
+</BODY>
+</HTML>
+

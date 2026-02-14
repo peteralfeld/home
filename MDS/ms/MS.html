@@ -1,0 +1,428 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-118374315-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-118374315-1');
+</script>
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Dimensions on the Morgan-Scott Split
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            Dimensions on the Morgan-Scott Split
+        </H3>
+
+<p> The table on this page illustrates in more detail the dependence
+of the dimension of a spline space on the geometry of the underlying
+triangulation.    We consider two configurations of the Morgan-Scott split <a
+href="bibliography.html"> (Morgan and Scott, 1975) </a> as illustrated
+in the nearby figure.
+
+<p> The split shown in the figure is <a
+href="dependence.html">symmetric</a>, the second <em>generic</em>.
+Specifically, in the symmetric split,
+<p><b>
+V<sub>4</sub> = (V<sub>1</sub> + 2 V<sub>2</sub> + 2 V<sub>3</sub>)/5, &nbsp;
+<p>V<sub>5</sub> = (2V<sub>1</sub> + V<sub>2</sub> + 2 V<sub>3</sub>)/5, &nbsp;
+<p>V<sub>6</sub> = (2V<sub>1</sub> + 2V<sub>2</sub> +
+V<sub>3</sub>)/5.</b>
+
+<p> It is essential that these equalities hold <em>exactly</em> and
+the MDS code does make sure of that.
+
+<p> By comparison, in the generic version,
+
+<p><b>V<sub>4</sub> = (10V<sub>1</sub> + 20V<sub>2</sub> +20V<sub>3</sub>)/50, &nbsp;
+<p>V<sub>5</sub> = (21V<sub>1</sub> + 10V<sub>2</sub> +22V<sub>3</sub>)/53, &nbsp;
+<p>V<sub>6</sub> = (20V<sub>1</sub> + 17V<sub>2</sub> + 10V<sub>3</sub>)/47.</b>
+
+<p> The following table gives the dimension of the spline space on
+these triangulations for <em>r</em> ranging up to 9.  <em>d</em> runs from <em>r+1</em> 
+<em>2r+1</em> which includes all cases where the generic dimension 
+exceeds <a
+href="bibliography.html">Schumaker's 1979 lower bound</a> (cyan boxes) or the dimension on the
+symmetric split exceeds the generic dimension (pink boxes).
+
+
+
+
+<CENTER>
+<TABLE Border = 5 CELLPADDING=5 CELLSPACING=5>
+
+<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+
+
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 1 </b></td>
+<td align=right bgcolor = #ffffaa><B> 2</b></td>
+<td align=right bgcolor = #aaffff><B>6 </b></td> 
+<td align=right bgcolor = #aaffff><B>6 </b></td> 
+<td align=right bgcolor = #aaffff><B>6 </b></td> 
+<td align=right><B>7 </b></td> 
+<td align=right bgcolor = #aaffff><B>6 </b></td> 
+<td align=right bgcolor = #aaffaa><B>7 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>7 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>6 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 18 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 18 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 1 </b></td>
+<td align=right bgcolor = #ffffaa><B> 3</b></td>
+<td align=right><B>16 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>17 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>16 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 27 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 37 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 3</b></td>
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>10 / 3 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 45 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 37 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 4</b></td>
+<td align=right bgcolor = #aaffff><B>15 </b></td> 
+<td align=right><B>16 </b></td> 
+<td align=right><B>17 </b></td> 
+<td align=right><B>18 </b></td> 
+<td align=right><B>18 </b></td> 
+<td align=right bgcolor = #aaffaa><B>16 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>16 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>16 / 1 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 63 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 63 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 2 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right><B>30 </b></td> 
+<td align=right><B>31 </b></td> 
+<td align=right><B>32 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>30 </b></td> 
+<td align=right><B>30 </b></td> 
+<td align=right><B>30 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 81 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 96 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 4</b></td>
+<td align=right bgcolor = #aaffff><B>15 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>15 / 3 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 81 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 63 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 1 </b></td> 
+<td align=right><B>22 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 108 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 96 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 6</b></td>
+<td align=right><B>31 </b></td> 
+<td align=right><B>32 </b></td> 
+<td align=right><B>33 </b></td> 
+<td align=right><B>36 </b></td> 
+<td align=right><B>34 </b></td> 
+<td align=right bgcolor = #aaffaa><B>32 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>32 / 1 </b></td> 
+<td align=right><B>31 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 135 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 136 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 3 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right><B>51 </b></td> 
+<td align=right><B>52 </b></td> 
+<td align=right><B>53 </b></td> 
+<td align=right><B>56 </b></td> 
+<td align=right><B>54 </b></td> 
+<td align=right><B>51 </b></td> 
+<td align=right><B>51 </b></td> 
+<td align=right><B>51 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 162 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 183 </b></td></tr> 
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td></tr>
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 5</b></td>
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td> 
+<td align=right bgcolor = #aaffff><B>21 / 3 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 126 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 96 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 6</b></td>
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 2 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 1 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td> 
+<td align=right bgcolor = #aaffff><B>28 / 6 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 162 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 136 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 7</b></td>
+<td align=right bgcolor = #aaffff><B>36 / 3 </b></td> 
+<td align=right bgcolor = #aaffaa><B>37 / 2 </b></td> 
+<td align=right bgcolor = #aaffaa><B>38 / 1 </b></td> 
+<td align=right><B>40 </b></td> 
+<td align=right><B>39 </b></td> 
+<td align=right bgcolor = #aaffaa><B>37 / 4 </b></td> 
+<td align=right bgcolor = #aaffaa><B>37 / 4 </b></td> 
+<td align=right bgcolor = #aaffff><B>36 / 3 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 198 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 183 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 8</b></td>
+<td align=right><B>51 </b></td> 
+<td align=right><B>53 </b></td> 
+<td align=right><B>55 </b></td> 
+<td align=right><B>59 </b></td> 
+<td align=right><B>57 </b></td> 
+<td align=right bgcolor = #aaffaa><B>52 / 1 </b></td> 
+<td align=right bgcolor = #aaffaa><B>52 / 1 </b></td> 
+<td align=right><B>51 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 234 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 237 </b></td></tr> 
+ <tr><td align=right bgcolor = #ffffaa><B> 4 </b></td>
+<td align=right bgcolor = #ffffaa><B> 9</b></td>
+<td align=right><B>76 </b></td> 
+<td align=right><B>78 </b></td> 
+<td align=right><B>80 </b></td> 
+<td align=right><B>84 </b></td> 
+<td align=right><B>82 </b></td> 
+<td align=right><B>76 </b></td> 
+<td align=right><B>76 </b></td> 
+<td align=right><B>76 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 270 </b></td>  
+<td align=right bgcolor = #aaaaff><B> 298 </b></td></tr> 
+
+
+
+ <tr> <td align=right><B> 1 </b></td><td align=right><B> 2</b></td>  <td align=right><B> 6 </b></td>   <td align=right><B> 6 </b></td>   <td align=right><B> 6 </b></td>   <td align=right><B> 7 </b></td>   <td align=right><B> 6 </b></td>   <td align=right bgcolor = #aaffff><B> 7/1 </b></td>   <td align=right bgcolor = #aaffff><B> 7/1 </b></td>   <td align=right ><B> 6 </b></td>  <td align=right><B> 18 </b></td>  <td align=right><B> 18 </b></td></tr> 
+ <tr> <td align=right><B> 1 </b></td><td align=right><B> 3</b></td>  <td align=right><B> 16 </b></td>   <td align=right><B> 16 </b></td>   <td align=right><B> 16 </b></td>   <td align=right><B> 17 </b></td>   <td align=right><B> 16 </b></td>   <td align=right><B> 16 </b></td>   <td align=right ><B> 16 </b></td>   <td align=right ><B> 16 </b></td>  <td align=right><B> 27 </b></td>  <td align=right><B> 37 </b></td></tr> 
+
+
+<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+ <tr> <td align=right><B> 2 </b></td><td align=right><B> 3</b></td>  <td align=right bgcolor = #aaffff><B> 10/3 </b></td>   <td align=right bgcolor = #aaffff><B> 10/2 </b></td>   <td align=right bgcolor = #aaffff><B> 10/1 </b></td>   <td align=right bgcolor = #aaffff><B> 10/1 </b></td>   <td align=right><B> 10 </b></td>   <td align=right bgcolor = #aaffff><B> 10/3 </b></td>   <td align=right bgcolor = #aaffff><B> 10/3 </b></td>   <td align=right bgcolor = #aaffff><B> 10/3 </b></td>  <td align=right><B> 45 </b></td>  <td align=right><B> 37 </b></td></tr> 
+ <tr> <td align=right><B> 2 </b></td><td align=right><B> 4</b></td>  <td align=right><B> 15 </b></td>   <td align=right><B> 16 </b></td>   <td align=right><B> 17 </b></td>   <td align=right><B> 18 </b></td>   <td align=right><B> 18 </b></td>   <td align=right bgcolor = #aaffff><B> 16/1 </b></td>   <td align=right bgcolor = #aaffff><B> 16/1 </b></td>   <td align=right bgcolor = #aaffff><B> 16/1 </b></td>  <td align=right><B> 63 </b></td>  <td align=right><B> 63 </b></td></tr> 
+ <tr> <td align=right><B> 2 </b></td><td align=right><B> 5</b></td>  <td align=right><B> 30 </b></td>   <td align=right><B> 31 </b></td>   <td align=right><B> 32 </b></td>   <td align=right><B> 33 </b></td>   <td align=right><B> 33 </b></td>   <td align=right><B> 30 </b></td>   <td align=right ><B> 30 </b></td>   <td align=right ><B> 30 </b></td>  <td align=right><B> 81 </b></td>  <td align=right><B> 96 </b></td></tr> 
+<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+ <tr> <td align=right><B> 3 </b></td><td align=right><B> 4</b></td>  <td align=right bgcolor = #aaffff><B> 15/3 </b></td>   <td align=right bgcolor = #aaffff><B> 15/2 </b></td>   <td align=right bgcolor = #aaffff><B> 15/1 </b></td>   <td align=right bgcolor = #aaffff><B> 15/1 </b></td>   <td align=right><B> 15 </b></td>   <td align=right bgcolor = #aaffff><B> 15/3 </b></td>   <td align=right bgcolor = #aaffff><B> 15/3 </b></td>   <td align=right bgcolor = #aaffff><B> 15/3 </b></td>  <td align=right><B> 81 </b></td>  <td align=right><B> 63 </b></td></tr> 
+ <tr> <td align=right><B> 3 </b></td><td align=right><B> 5</b></td>  <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/2 </b></td>   <td align=right bgcolor = #aaffff><B> 21/1 </b></td>   <td align=right><B> 22 </b></td>   <td align=right><B> 21 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>  <td align=right><B> 108 </b></td>  <td align=right><B> 96 </b></td></tr> 
+ <tr> <td align=right><B> 3 </b></td><td align=right><B> 6</b></td>  <td align=right><B> 31 </b></td>   <td align=right><B> 32 </b></td>   <td align=right><B> 33 </b></td>   <td align=right><B> 36 </b></td>   <td align=right><B> 34 </b></td>   <td align=right bgcolor = #aaffff><B> 32/1 </b></td>   <td align=right bgcolor = #aaffff><B> 32/1 </b></td>   <td align=right ><B> 31 </b></td>  <td align=right><B> 135 </b></td>  <td align=right><B> 136 </b></td></tr> 
+ <tr> <td align=right><B> 3 </b></td><td align=right><B> 7</b></td>  <td align=right><B> 51 </b></td>   <td align=right><B> 52 </b></td>   <td align=right><B> 53 </b></td>   <td align=right><B> 56 </b></td>   <td align=right><B> 54 </b></td>   <td align=right><B> 51 </b></td>   <td align=right ><B> 51 </b></td>   <td align=right ><B> 51 </b></td>  <td align=right><B> 162 </b></td>  <td align=right><B> 183 </b></td></tr> 
+<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+ <tr> <td align=right><B> 4 </b></td><td align=right><B> 5</b></td>  <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/2 </b></td>   <td align=right bgcolor = #aaffff><B> 21/1 </b></td>   <td align=right bgcolor = #aaffff><B> 21/1 </b></td>   <td align=right><B> 21 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>   <td align=right bgcolor = #aaffff><B> 21/3 </b></td>  <td align=right><B> 126 </b></td>  <td align=right><B> 96 </b></td></tr> 
+ <tr> <td align=right><B> 4 </b></td><td align=right><B> 6</b></td>  <td align=right bgcolor = #aaffff><B> 28/6 </b></td>   <td align=right bgcolor = #aaffff><B> 28/4 </b></td>   <td align=right bgcolor = #aaffff><B> 28/2 </b></td>   <td align=right bgcolor = #aaffff><B> 28/1 </b></td>   <td align=right><B> 28 </b></td>   <td align=right bgcolor = #aaffff><B> 28/6 </b></td>   <td align=right bgcolor = #aaffff><B> 28/6 </b></td>   <td align=right bgcolor = #aaffff><B> 28/6 </b></td>  <td align=right><B> 162 </b></td>  <td align=right><B> 136 </b></td></tr> 
+ <tr> <td align=right><B> 4 </b></td><td align=right><B> 7</b></td>  <td align=right bgcolor = #aaffff><B> 36/3 </b></td>   <td align=right bgcolor = #aaffff><B> 37/2 </b></td>   <td align=right bgcolor = #aaffff><B> 38/1 </b></td>   <td align=right><B> 40 </b></td>   <td align=right><B> 39 </b></td>   <td align=right bgcolor = #aaffff><B> 37/4 </b></td>   <td align=right bgcolor = #aaffff><B> 37/4 </b></td>   <td align=right bgcolor = #aaffff><B> 36/3 </b></td>  <td align=right><B> 198 </b></td>  <td align=right><B> 183 </b></td></tr> 
+ <tr> <td align=right><B> 4 </b></td><td align=right><B> 8</b></td>  <td align=right><B> 51 </b></td>   <td align=right><B> 53 </b></td>   <td align=right><B> 55 </b></td>   <td align=right><B> 59 </b></td>   <td align=right><B> 57 </b></td>   <td align=right bgcolor = #aaffff><B> 52/1 </b></td>   <td align=right bgcolor = #aaffff><B> 52/1 </b></td>   <td align=right ><B> 51 </b></td>  <td align=right><B> 234 </b></td>  <td align=right><B> 237 </b></td></tr> 
+ <tr> <td align=right><B> 4 </b></td><td align=right><B> 9</b></td>  <td align=right><B> 76 </b></td>   <td align=right><B> 78 </b></td>   <td align=right><B> 80 </b></td>   <td align=right><B> 84 </b></td>   <td align=right><B> 82 </b></td>   <td align=right><B> 76 </b></td>   <td align=right ><B> 76 </b></td>   <td align=right ><B> 76 </b></td>  <td align=right><B> 270 </b></td>  <td align=right><B> 298 </b></td></tr> 
+
+
+</TABLE>
+</CENTER>
+
+
+        <P>
+            [18-Mar-1999]
+        </P>
+    </BODY>
+</HTML>

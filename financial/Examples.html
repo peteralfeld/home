@@ -1,0 +1,46 @@
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples </title>
+    <link rel="stylesheet" href="FI.css">
+</head>
+<body>
+  <H1> A Financial Calculator - Examples</H1>
+
+<P> 
+
+  <H2> Example 1: 20 year mortgage </H2>
+
+  You take out a mortgage of $500,000, and plan to pay it back within 20 years, paying an interest rate of 7.2%.  What will be your monthly payment.  You set
+
+<P>  Enter N = 240 (20 times 12), I = .6 (7.2 divided by 12), A = 500000 (the amount you borrow, notice that there is no dollar sign and no commas separating groups of 3 digits), and F = 0 (you don't owe anything, and you have no savings, after 20 years).  To find your payment click on the Compute button corresponding to P (the monthly payment).  You will find that your monthly payment will be $3,936.75.
+
+  <H2> Example 2: Things change </H2>
+
+  Suppose you have just entered the data in the preceding example.   You find out that actually the rates just increased and instead of 0.6 percent per month you will need to pay 0.7 percent.
+
+  <P> Click on the second text field, enter 0.7, hit return, and click on the fourth <wb>Compute</wb>.  You find out that instead of $3,936.75 you will have to make payments of $4,307.52 per month.
+
+  Note that the interest rate increased by 16.7 percent, from 0.6 to 0.7, but your payment increased only by 9.4 percent, from $3,936 to $4,308.
+
+  <H2> Example 3: Saving for College </H2>
+
+<P>  Suppose that starting at the birth of your granddaughter  you start putting aside $100 every month, to go towards her College expenses. Your savings account pays 4 percent per year, compounded monthly.  How much money will be available when your granddaughter starts College at the age of 18?
+
+<P>
+ Enter N = 216 (18 times 12), I = -4/12 = -0.33333, A =0.0 (You start with an empty account) and P = 100.  Clicking on the <wb>Compute</wb> in the fifth row shows that the future value is -$31,559.23.  Since in the context of a loan calculator the future value is your debt at that time this means that your daughter will have $31,559 available.
+
+  <H2> Example 4: Inflation </H2>
+
+<P>  Suppose you start with a retirement account of $1,000,000.  Your account pays 6 percent interest, but you anticipate that inflation will be 4 percent per year for the next 20 years.  You also plan to take $40,000 out of your account each year.   How much money will be left in your account after 20 years?
+
+<P>  It's tempting to assume that the effective interest rate of your account is 2% = 6%-4%.   This is pretty close, but not quite right.  Every year you multiply your account with 1.06 because of your interest and you divide by 1.04 because of inflation.  1.06/1.04 = 1.019231.  So your effective gain per year is 1.9231 percent.
+
+<P>  You enter N=20 (in this example we use years instead of months), I = 1.9231, A=-1000000,P=-40000, and find that your future value is -$499214.07.  That's not the whole story, however.  Because of inflation your balance after 20 years is 499,214.07/1.04**100 =$149,252.
+
+<P>  This example is also unrealistic in that the withdrawal rater in this case is assumed to be constant.  The calculator is not capable of handling varying withdrawals. 
+</body>
+</html>
+

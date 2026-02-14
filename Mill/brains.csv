@@ -1,0 +1,11 @@
+Name,groupScore,N3,N4,mobility1Score,mobility2Score,flyBonus,pieceDiffMultiplier,millScore,doubleMillScore,nearMillFilled,nearMillReady,nearMillGuaranteed
+Arwen,62,13,33,178,4,78,552,18,1000,10,98,626
+Bilbo,47,13,31,153,4,33,480,24,1000,12,52,531
+Celebrian,79,16,48,184,4,92,733,22,1000,10,116,713
+Dwalin,37,11,29,145,3,30,452,24,1000,15,54,508
+Eowyn,81,15,49,267,4,89,741,28,1000,12,57,856
+Frodo,55,13,32,166,4,56,516,21,1000,11,75,579
+Galadriel,50,15,30,10,4,300,1000,100,500,10,20,30
+Hamfast,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000,1000
+Indis,0,0,0,0,0,0,0,0,0,0,0,0
+Jolly,-62,-13,-33,-178,-4,-78,-552,-18,-1000,-10,-98,-626

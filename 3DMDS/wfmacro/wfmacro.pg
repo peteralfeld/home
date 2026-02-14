@@ -1,0 +1,120 @@
+##DESCRIPTION
+##Arithmetic
+##ENDDESCRIPTION
+
+##KEYWORDS('algebra')
+
+DOCUMENT();        # This should be the first executable line in the problem.
+
+loadMacros(
+"PG.pl",
+"PGbasicmacros.pl",
+"PGchoicemacros.pl",
+"PGanswermacros.pl",
+"PGauxiliaryFunctions.pl"
+);
+
+TEXT(&beginproblem);
+
+TEXT(EV2(<<EOT));
+
+<H1><FONT COLOR = "red"> Macro Elements on the Worsey-Farin Split </FONT></H1>
+
+
+
+  The Worsey-Farin Macro Panel lets you impose symmetric
+super smoothness conditions on the Worsey-Farin split and then check if
+a macro element can be built with those conditions.
+
+  Because of the split faces of the macro tetrahedron the panel works
+somewhat differently than the other panels.  We refer to the vertices
+of the macro tetrahedron as its {\it corners} and the centroids of its
+faces as the {\it face centroids}.  Note that both corners and face
+centroids are boundary vertices of the macro tetrahedron.
+
+   To obtain the macro panel select the configuration "Worsey-Farin",
+and clock on the button "macro elements" in the control panel.  
+The buttons on the macro panel have the following effects:
+
+\begin{itemize}
+
+\item  {\bf Hide} cause the macro panel to disappear. To make it
+reappear click again on "macro elements".
+
+\item {\bf Draw} causes the current smoothness conditions to be drawn
+initially, or if the linear algebra in the drawing window has been
+initialized.  (Otherwise the smoothness conditions are drawn
+automatically whenever they are changed.) 
+
+\item {\bf Init} initializes the linear algebra (and exits super
+selection mode) in the drawing window.
+
+\item  {\bf V} initializes the linear algebra if necessary and
+attempts to set the data in the corner balls.  If \(R\) is the 
+smoothness around the corners, then the corresponding number of data is
+\[M_V=4{R+3 \choose 3}.\]  (The code actually also includes any inactive points
+(that do not enter any smoothness conditions) since these must be imposed.)
+
+\item {\bf E} imposes the natural data for the six boundary edges 
+connecting the corners, given the vertex data.   Of these there are
+\[M_E = 6\sum_{\rho=0}^E (d-2R+\rho-1)(\rho+1) \]
+where \(E\) is the degree of smoothness imposed around those edges.
+This number is the same as for the Clough-Tocher and Morgan-Scott Splits.
+
+\item{\bf F} imposes additionally all points in the boundary faces of
+the macro tetrahedron and the first \(r\) layers moving inwards, given
+the vertex and edge data.  A general formula for the {\it natural}
+number of such data is currently unknown, and the code will simply
+report the total number of conditions that have been imposed.
+
+\item  {\bf Clear} removes all super smoothness conditions. 
+
+\item The status window gives information about the current analysis in
+some situations.
+
+\end{itemize}
+
+Super smoothness conditions can be imposed using the text fields 
+in the second row of the macro panel, and the buttons to either side
+of those text fields.  The text fields lists the {\bf additional}
+degree of smoothness.  So if all the text fields show zero then 
+the spline is the ordinary space without super smoothness conditions
+at all.
+
+The following groups of super smoothness conditions are available:
+
+\begin{itemize}
+
+\item \(  V_{0} \) corner
+\item \(  V_{4} \) centroid               
+\item \(  V_{5} \) face centroid
+\item \(  E_{01} \) edges connecting corners
+\item \(  E_{04\)}  edges connecting corners and the centroid
+\item \(  E_{05} \) edges connecting corners and face centroids.
+\item \(  E_{45} \) edges connecting the centroid and face centroids
+\item \(  F_{014} \) a face containing two corners and the centroid
+\item \(  F_{045} \) a face containing a corner, the centroid, and a face centroid
+
+\end{itemize}
+
+
+
+
+
+
+
+</BODY>
+</HTML>
+
+
+
+EOT
+
+
+
+
+
+
+
+
+ENDDOCUMENT();        # This should be the last executable line in the problem.

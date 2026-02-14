@@ -1,0 +1,451 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            The Bernstein B&eacute;zier Form
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <CENTER>
+            <TABLE BORDER=0 CELLPADDING=1>
+                <TR>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/~alfeld/">
+                            <FONT size = "-1">
+                                <B> Peter Alfeld</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.math.utah.edu/">
+                            <FONT size = "-1">
+                                <B> Department of Mathematics</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.science.utah.edu/">
+                            <FONT size = "-1">
+                                <B> College of Science</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                            <FONT size = "-1">
+                                <B> University of Utah</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TR>
+            <TR>
+                <TD colspan = "2">
+                    <A HREF="bform.html">
+                        <FONT size = "-1">
+                            <B> The Bernstein B&eacute;zier Form</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="index.html">
+                        <FONT size = "-1">
+                            <B> Home Page</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                    <A HREF="examples.html">
+                        <FONT size = "-1">
+                            <B> Examples</B>
+                        </FONT>
+                    </A>
+                </TD>
+                <TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="Srd.html">
+                            <FONT size = "-1">
+                                <B> Spline Spaces and Minimal
+                                Determining Sets</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="guide.html">
+                            <FONT size = "-1">
+                                <B> User's Guide</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="residual.html">
+                            <FONT size = "-1">
+                                <B>Residual Arithmetic</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD COLSPAN="2">
+                        <A HREF="triangulation.html">
+                            <FONT size = "-1">
+                                <B>Triangulations</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="how.html">
+                            <FONT size = "-1">
+                                <B>How does it work?</B>
+                            </FONT>
+                        </A>
+                        &nbsp;&nbsp;
+                    </TD>
+                    <TD>
+                        <A HREF="bibliography.html">
+                            <FONT size = "-1">
+                                <B>Bibliography</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+    <HR>
+
+
+        <H2>
+            The Bernstein B&eacute;zier Form
+        </H2>
+        <P>
+            A bivariate polynomial <EM>p</EM> of degree <EM>d</EM> is a
+            function of the form
+        </P>
+        <P>
+            <IMG SRC="e1.gif">
+            (1)
+        </P>
+        <P>
+            where <EM>x</EM> and <EM>y</EM> are the independent
+            variables and the <EM>a<SUB>ij</SUB></EM> are the
+            coefficients. <EM>i</EM> and <EM>j</EM> are non-negative
+            integer indices.
+        </P>
+        <P>
+            There are many alternative ways to write <EM>p</EM>. If the
+            relevant domain of <EM>p</EM> is a <B> triangle</B> (as it
+            is in many applications (like the finite element method or
+            the design of surfaces) then the Bernstein-B&eacute;zier form is
+            particularly appropriate.
+            <IMG SRC="DP4.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            Let's denote the relevant triangle by <EM>T</EM>. Denote the
+            vertices of <EM>T</EM> by <EM>V<SUB>1 </SUB></EM>, 
+            <EM>V<SUB>2</SUB></EM> and <EM>V<SUB>3</SUB></EM>.  Any point
+            <EM>P</EM> in the plane can be expressed in terms of <EM>
+            barycentric coordinates</EM> <EM>b<SUB>1</SUB></EM>, 
+            <EM>b<SUB>2</SUB></EM> and <EM>b<SUB>3</SUB></EM> defined by
+        </P>
+        <P>
+            <IMG SRC="e2.gif">
+            (2)
+        </P>
+        <P>
+            The Bernstein-B&eacute;zier form of <EM>p</EM> is given by
+        </P>
+        <P>
+            <IMG SRC="e3.gif">
+            (3)
+        </P>
+        <P>
+            The <EM>c<SUB>ijk</SUB></EM> are the <EM>B&eacute;zier ordinates
+            </EM> (or <EM>B&eacute;zier coefficients)</EM> of <EM>p</EM> and
+            the integers <EM>d!/(i!j!k!) <EM></EM></EM> are convenient
+            normalizing factors.
+        </P>
+        <P>
+            Note that the sum of the subscripts <EM>i</EM>, <EM> j</EM>,
+            and <EM>k</EM> is equal rather than less than or equal to
+            <EM>d</EM>, and that there are as many coefficients in (3) as
+            there are in (1).
+        </P>
+        <P>
+            It can be easily verified that (3) does indeed define a
+            polynomial of degree <EM>d</EM> and that any polynomial of
+            the form <EM>(1)</EM> can be written uniquely in the 
+            form <EM>(3)</EM>.
+        </P>
+        <P>
+            With each B&eacute;zier ordinate we associate a <EM> domain point
+            </EM><BR CLEAR="RIGHT">
+            <IMG SRC="DP6.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            <IMG SRC="e4.gif">
+            (4)
+        </P>
+        <P>
+            These points form a regular triangular array of <EM>
+            (d+2)(d+1)/2</EM> points in the triangle <EM>T</EM>. They are
+            illustrated for <EM>d=4</EM> and <EM>d=6</EM> in the Figures
+            nearby (which show the domain points as small green dots).
+        </P>
+        <H4>
+            Control Points
+        </H4>
+        <P>
+            The domain points are combined with the B&eacute;zier ordinates for
+            form <B> Control Points</B> <EM>(P<SUB>ijk</SUB>,
+            c<SUB>ijk</SUB> )</EM><BR CLEAR="ALL">
+        </P>
+        <P>
+            <IMG SRC="2T.gif" ALIGN = "RIGHT">
+        </P>
+        <A name = "smooth">
+        <H3>
+            Smoothness Conditions
+        </H3>
+        <P>
+            A major application ( <B>the</B> major application in these
+            pages) of the Bernstein--B&eacute;zier is the analysis of
+            smoothness conditions between polynomials on neighboring
+            triangles.  The power of the Bernstein--B&eacute;zier form stems
+            from the fact that algebraic (smoothness) conditions can be
+            expressed, interpreted, and analyzed <B>geometrically.</B>
+          <p>Suppose we are given two triangles, <EM>T</EM> with vertices
+            <EM>V<SUB>1</SUB></EM>, <EM>V<SUB>2</SUB></EM>, and <EM>V
+           <SUB>3</SUB></EM>, and <EM>U</EM> with vertices <EM>V<SUB>0
+            </SUB></EM>, <EM>V<SUB>1 </SUB></EM>, and <EM>V<SUB>2
+            </SUB></EM>.  Thus the triangles <EM>T</EM> and <EM>U</EM>
+            share the edge <EM>e<SUB>12</SUB></EM> with vertices <EM>V
+           <SUB>1 </SUB></EM> and <EM>V<SUB>2</SUB></EM>, as indicated
+            in the nearby figure.
+        </P>
+        <P>
+            We write the polynomial <EM>p</EM> on <EM>T</EM> in the form
+            (3) and the polynomial <EM>q</EM> on <EM>U</EM> as
+        </P>
+        <P>
+            <IMG SRC="e5.gif">
+            (4)
+        </P>
+        <P>
+            where the bar indicates barycentric coordinates and B&eacute;zier
+            ordinates with respect to the triangle <EM> U.</EM>
+        </P>
+        <H4>
+            Continuity Conditions
+        </H4>
+        <P>
+            We ask under what conditions do the polynomials <EM> p</EM>
+            and <EM>q</EM> coincide along the edge <EM>e<SUB>12</SUB>
+            </EM>.  Along that edge <EM>b<SUB>3 </SUB></EM> is zero.
+            Similarly, on <EM>U</EM> the barycentric coordinate
+            multiplying <EM>V<SUB>0 </SUB></EM> is zero.
+        </P>
+        <P>
+            Thus
+        </P>
+        <P>
+            <IMG SRC="e6.gif">
+            (6)
+        </P>
+        <P>
+            It follows that equating the two restrictions along e<SUB>
+            12</SUB> gives the condition
+        </P>
+        <P>
+            <IMG SRC="e7.gif">
+            (7)
+        </P>
+        <P>
+            which is true if and only if
+        </P>
+        <P>
+            <IMG SRC="e8.gif">
+            (8)
+        </P>
+        <P>
+            We have thus obtained the geometric criterion:
+        </P>
+        <P>
+            <B> The polynomials on the two triangles will join
+            continuously if and only if the control points above the
+            common edge coincide.</B>
+        </P>
+        <P>
+            Since we always want at least continuity between neighboring
+            polynomial pieces we do not distinguish the domain points
+            along an edge shared by two neighboring triangles.
+        </P>
+        <H4>
+            Differentiability Conditions
+        </H4>
+        <P>
+            Differentiability conditions are more subtle.  We ask for
+            conditions under which first order derivatives of <EM>p</EM>
+            and <EM>q</EM> join continuously across <EM>e<SUB>12</SUB>
+            </EM>.  Thus we differentiate both <EM>p</EM> and <EM>q</EM>,
+            restrict each to <EM>e<SUB>12</SUB></EM>, and equate
+            coefficients.  However, the barycentric coordinates are not
+            independent variables (since they add to 1) and so we cannot
+            differentiate with respect to them.
+        </P>
+        <P>
+            Instead we consider <EM>directional derivatives</EM>. Let
+            <EM>e</EM> denote a <EM>direction</EM>, i.e., a vector in
+            the plane.  (Often this is an edge of a triangle which
+            accounts for the notation <EM>e</EM> .) We denote
+            differentiation in the direction <EM>e</EM> with <EM>D</EM>.
+            Thus
+        </P>
+        <P>
+            <IMG SRC="e9.gif">
+            (9)
+        </P>
+        <P>
+            Reorganizing the sum gives the derivative in
+            Bernstein-B&eacute;zier form:
+        </P>
+        <P>
+            <IMG SRC="e10.gif">
+            (10)
+        </P>
+        <P>
+            where
+        </P>
+        <P>
+            <IMG SRC="e11.gif">
+            (11)
+        </P>
+        <P>
+            Note that since the barycentric coordinates are linear
+            functions their derivatives are constants.
+        </P>
+        <P>
+            Doing the same on the triangle <EM>U</EM> and then equating
+            coefficients gives rise to the algebraic conditions
+        </P>
+        <P>
+            <IMG SRC="e12.gif">
+            (12)<BR CLEAR="RIGHT">
+        </P>
+        <P>
+            <IMG SRC="quads.gif" ALIGN = "RIGHT">
+        </P>
+        <p>
+            For each <em>i</em> and <em>j</em>, equation (12) relates four
+            coefficients whose domain points form a quadrilateral in the domain
+            and whose control points form a quadrilateral in space.
+        </p>
+        <P>
+            The quadrilaterals of domain points are illustrated in the
+            nearby figure for the case <EM>d=3</EM>.  The quadrilaterals
+            themselves are gray, the domain points corresponding to the
+            right hand side of (12) are red, those on the left hand
+            side are green, and domain points not relevant to the
+            smoothness conditions are blue.
+        </P>
+        <P>
+            The coefficients <EM>A<SUB>1</SUB></EM>, <EM>A<SUB>2
+            </SUB></EM>, and <EM>A<SUB>3</SUB></EM> can be derived
+            algebraically.  But much insight can be gained, and the
+            power of the Bernstein-B&eacute;zier form can be appreciated, by
+            the following <EM>geometric</EM> argument:
+        </P>
+        <P>
+            The coefficients in (12) are independent of the polynomial
+            degree <EM>d</EM>.  Consider them in particular for the case
+            <EM>d=1</EM> where the polynomials <EM>p</EM> and <EM>q</EM>
+            are <EM> linear.</EM> Two linear functions join
+            differentiably if and only if they are identical. Note that
+            for general <EM>d</EM>
+        </P>
+        <P>
+            <IMG SRC="e13.gif">
+            (13)
+        </P>
+        <P>
+            Thus the control points at the vertices of <EM>T</EM> lie on
+            the graph of the function <EM>p</EM>. It follows that the
+            piecewise linear function will be differentiable if and only
+            if the control points at the vertices of <EM>T</EM> and <EM>
+            U</EM> lie in the same plane!
+        </P>
+        <P>
+            <IMG SRC="high.gif" ALIGN = "RIGHT">
+        </P>
+        <P>
+            If <EM>d&gt;1</EM> we still have the same algebraic
+            relationships between the control points at the vertices
+            of the gray quadrilaterals.  However, the small
+            quadrilaterals are <EM>similar</EM> to the quadrilateral
+            formed by <EM>T</EM> and <EM> U</EM>. The geometric
+            interpretation of the algebraic conditions is therefore the
+            same:  The control points at the vertices of the gray
+            quadrilaterals must be in the same plane for each
+            quadrilateral!. The planes may differ from quadrilateral to
+            quadrilateral, but each quadrilateral of control points
+            (in three dimesnional space must be planar.  We have thus
+            obtained the geometric 
+            criterion:
+        </P>
+        <P>
+            <B> The polynomials on the two triangles will join
+            differentiably if and only if for each quadrilateral there
+            is a plane in 3-space that contains the four control points at
+            the vertices of the quadrilateral.</B>
+        </P>
+        <P>
+            It is now also clear that the <EM>A<SUB>i</SUB></EM> in
+            (12) are the barycentric coordinates of <EM>V<SUB>0 </SUB>
+            </EM> with respect to <EM>T,</EM> i.e.,
+        </P>
+        <P>
+            <IMG SRC="e14.gif">
+            (14)
+        </P>
+        <H4>
+            Higher order Differentiability
+        </H4>
+        <P>
+            Higher order differentiability does not possess a geometric
+            interpretation that is quite as striking as the first order
+            differentiability conditions. Algebraically the
+            <EM>r</EM>-th 
+            order conditions are given by
+        </P>
+        <BR CLEAR="RIGHT">
+        <P>
+            <IMG SRC="e15.gif">
+            (15)
+        </P>
+        <P>
+            They also involve quadrilaterals, but they are larger than
+            in the first order ( <EM>C <SUP>1</SUP></EM> ) case and they
+            overlap.
+        </P>
+        <P>
+            The nearby figure illustrates these conditions for the case
+            where the polynomials <EM>d=5</EM> and the degree of
+            smoothness <EM>r=3</EM>.
+        </P>
+        <P>
+            The overlapping quadrilaterals are again drawn in gray.  The
+            coefficients entering the Right hand side of (14) are marked
+            in red.  Coefficients not entering any smoothness conditions
+            are marked in blue.  Coefficients determined by the first order
+            conditions are green, those determined by the second order 
+            conditions are cyan, and those determined by the third
+            order conditions, magenta.
+        </P>
+        <HR>
+        [15-Mar-1999]
+    </BODY>
+</HTML>
+

@@ -1,0 +1,199 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Examples
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            Examples
+        </H2>
+        <P>
+            We illustrate the use of this software with
+            several examples.  Brief descriptions are given here, for
+            details click on the relevant head line.
+        </P>
+        <H3>
+            <A HREF="dependence.html">
+                Data Dependence of Dimensions
+            </A>
+        </H3>
+        <P>
+            The greatest obstacle in multivariate spline research is the
+            fact that the dimension of spline spaces (and also for
+            example the solvebility of interpolation problems and the
+            composition of minimal determining sets) depends on not just
+            the <EM>topolgy</EM> of the
+            <A HREF="triangulations.html">
+                triangulation
+            </A>
+            but also its &gt;em&gt;geometry</EM>.  An arbitrarily small
+            change in the location of the vertices (without changing the
+            way triangles are connected) can change the dimension of a
+            spline space!  This is in complete contrast to to the
+            univariate case (of splines in one variable defined on a
+            partition of an interval).
+        </P>
+        <H3>
+            <A HREF="C1cubics.html">
+                <EM>C <SUP>1</SUP> Cubics</em>
+            </A>
+        </H3>
+        <P>
+            The case of <EM>r=1, d=3</EM> is of particular interest for
+            applications, and it leads to some famous and difficult open
+            problems.
+        </P>
+        <H3><a href="S14.html">
+           The Generic Dimension of S<sup>1</sup><sub>4</sub></a></H3>
+           The generic dimension of <em>S<sup>1</sup><sub>4</sub></em>
+           equals <em>6V-3</em>.  This can be easily verified using
+           the Bernstein-B&eacute;zier form. 
+
+        <H3>
+            <A HREF="ms.html">
+                The Morgan Scott Idea
+            </A>
+        </H3>
+        <P>
+            One of the fundamental aspects of
+            <A HREF="Srd.html">
+                multivariate splines
+            </A>
+            is that things get easier as the polynomial degree
+            increases.  In particular, if <EM>d &gt; 4r+1</EM> a minimal
+            determining set can be found by considering vertices, edges,
+            and interiors of triangles individually.
+        </P>
+        <H3>
+            <A href="felm.html">
+               Finite Elements
+            </a>
+        </H3>
+  <p> Finite elements are special cases of multivariate splines.  Their
+  key attribute is that on each triangle they can be defined completely
+  in terms of data or parameters given on that triangle.  They are
+  usual used for the solution of differential equations in which case
+  the coefficients are unknowns that are found by assembling and
+  solving a larger linear system.  Finite elements being local causes
+  this system to be (<em>sparse</em>
+
+  <p> When the function and derivative values are given one can use
+  finite element for interpolation, and that is how they will be
+  presented on this page.
+
+        <HR>
+        [15-Mar-1999]
+    </BODY>
+</HTML>

@@ -1,0 +1,248 @@
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            The Bernstein B&eacute;zier Form and Minimal Determining
+            Sets
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <META name = "description" content = "This page describes the
+        Bernstein-Bezier form of a bivariate polynomial and offers an
+        interactive applet for its exploration">
+    <META name = "keywords" content = "Peter Alfeld, Bernstein-Bezier
+        Form, Triangulations, Splines, Minimal Determining Set, Finite
+        Elements">
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <P>
+            <FONT size = "+2" color = "#ff0000">
+                <B>New:</B>
+                <A HREF="papers">
+                    <B>Papers</B>
+                </A>
+            </FONT>
+            that make significant use of the software described in these
+            pages.
+        </P>
+        <H1>
+            The Bernstein B&eacute;zier Form and Minimal Determining
+            Sets.
+        </H1>
+        <P>
+            The applet on this page lets you explore the <B> Bernstein-B
+            &eacute;zier form</B> of a bivariate polynomial.  In
+            particular it allows you to construct <B>minimal determining
+            sets</B> for bivariate spline spaces defined on
+            triangulations.  It's great for teaching the Bernstein-B
+            &eacute;zier form, and it can also serve as a research tool.
+        </P>
+        <P>
+            You do need a
+            <A HREF="http://www.math.utah.edu/~alfeld/java.html">
+                Java
+            </A>
+            compatible browser.
+            <IMG SRC="ct31.gif" ALIGN="RIGHT" HSPACE="10" VSPACE="10">
+        </P>
+        <P>
+            If you can't wait to read the instructions and documentation
+            click on the applet at the top of the page.  Then start
+            clicking on the control panel and the drawing window that
+            will pop up.  In particular click on the points in the
+            triangles.
+        </P>
+        <P>
+            To whet your appetite, here is an example.  The colorful
+            triangle nearby, like most of the figures on these pages,
+            were obtained with the applet.  It shows the well known <B>
+            Clough-Tocher finite element</B> as it can be used for
+            interpolation.  You see one large (macro) triangle that has
+            been divided into three smaller micro triangles.  Bold black
+            lines indicate the boundaries of the triangles.  Each of the
+            micro triangles is covered by a triangular mesh drawn with
+            thin black lines.  The points marked with colored squares
+            and circles indicate coefficients of a bivariate cubic
+            polynomial defined on each micro triangle.  The gray
+            quadrilaterals indicate smoothness conditions across the
+            boundaries between micro triangles, each involving four of
+            the coefficients.  The red crosses are determined by the
+            interpolation conditions, the green crosses are determined
+            by the requirement to maintain differentiability across the
+            boundaries of individual macro triangles, and the filled red
+            and green circles are determined by internal smoothness
+            conditions.
+        </P>
+        <P>
+            This is only the tip of a large iceberg.  If you want to
+            find out more follow the links below.  If you are new to the
+            Bernstein-B&eacute;zier form, splines, and minimal
+            determining sets, follow the links in the given sequence,
+            otherwise, or if you are impatient, skip around as you wish!
+        </P>
+        <UL>
+            <LI>
+                <A HREF="bform.html">
+                    The Bernstein B&eacute;zier Form
+                </A>
+            </li>
+            <LI>
+                <A HREF="triangulation.html">
+                    Triangulations
+                </A>
+            </li>
+            <LI>
+                <A HREF="Srd.html">
+                    Spline Spaces and Minimal Determining Sets
+                </A>
+            </li>
+            <LI>
+                <A HREF="guide.html">
+                    User's Guide
+                </A>
+            </li>
+            <LI>
+                <A HREF="how.html">
+                    How it Works
+                </A>
+            </li>
+            <LI>
+                <A HREF="residual.html">
+                    Residual Arithmetic
+                </A>
+            </li>
+            <LI>
+                <A HREF="examples.html">
+                    Examples
+                </A>
+            </li>
+            <LI>
+                <A HREF="papers">
+                    Papers that have made significant use of this
+                    software, and more interactive applets.
+                </A>
+            </li>
+        </UL>
+        [06-Jul-2000]
+   </BODY>
+</HTML>
+

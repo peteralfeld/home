@@ -1,0 +1,47 @@
+\magnification=1440\hsize=9truein\hoffset -0.5truein
+
+$${\partial^{i+j}  p \over \partial \left(V_1-V_2\right)^i \left(V_1-V_2\right)^j} \left(V_1\right) = 0 \eqno{r1}$$
+
+\bigskip
+
+$$i+j = d, \qquad i = 0,\ldots,d. \eqno{r2}$$
+
+\bigskip
+
+$${\partial p \over \partial \left(V_1-V_2\right)}(P) = 
+\sum_{i+j+k=d-1}{(d-1)! \over i!j!k!} \hat c_{ijk} b_1^i b_2 ^j b_3^k \eqno{r3}$$
+
+\bigskip
+
+$$\hat c_{ijk} = d\left(c_{i+1jk} - c_{ij+1k}\right) \eqno{r4}$$
+
+\bigskip
+
+$${\partial p \over \partial \left(V_1-V_3\right)}(P) = 
+\sum_{i+j+k=d-1}{(d-1)! \over i!j!k!} \hat c_{ijk} b_1^i b_2^j b_3^k \eqno{r5}$$
+
+\bigskip
+
+$$\hat c_{ijk} = d\left(c_{i+1jk} - c_{ijk+1}\right) \eqno{r6}$$
+
+\bigskip
+
+$${\partial p \over \partial \left(V_1-V_2\right)}\left(V_1\right) = d\left(c_{d00} - c_{d-1,1,0}\right)  \eqno{r7}$$
+
+\bigskip
+$${\partial p \over \partial \left(V_1-V_3\right)}\left(V_1\right) = d\left(c_{d00} - c_{d-1,0,1}\right) . \eqno{r8}$$
+
+\bigskip
+$${\partial^{i+j}  p \over \partial \left(V_1-V_2\right)^i \left(V_1-V_2\right)^j} \left(V_1\right) = {d!\over(d-i-j)!} (I-E)^i (I-F)^j c_{d000} =0 \eqno{r9}$$
+
+$$E c_{ijk} = c_{i-1,j+1,k} \quad\hbox{and}\quad 
+F c_{ijk} = c_{i-1,j,k+1}\eqno{r10}$$
+
+$$\sum_{\mu = 0}^i \sum_{\nu=0}^n (-1)^{i+j-\mu-\nu}{i\choose \mu} {j \choose \nu}  E^\mu F^\nu c_{d000} = 0.\eqno{r11}$$
+
+\bigskip
+
+$$\sum_{\mu = 0}^i \sum_{\nu=0}^j \left((-1)^{i+j-\mu-\nu}\prod_{s=\mu+1}^is \prod_{s=i-\mu+1}^is \prod_{s=\nu+1}^j s  \prod_{s=j-\nu+1}^j s\right)
+   c_{d-\mu-\nu,\mu,\nu} = 0.\eqno{r12}$$
+
+\bye

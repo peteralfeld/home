@@ -1,0 +1,386 @@
+<DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            Bibliography
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class"
+                            WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        <HR>
+        <H2>
+            <BIBLIOGRAPHY>
+        </H2>
+        <P>
+            This is an annotated and chronologically ordered list of
+            research papers that pertain directly to the subject of
+            these pages, i.e., multivariate splines defined on
+            triangulations, the Bernstein&eacute;zier form, and minimal
+            determining sets.  It does not include literature on other
+            notions of splines, splines on special triangulations,
+            approximation order, subdivision schemes, parametric
+            splines, and a host of other topics.  Nor does it include
+            expository or survey articles.
+        </P>
+        <P>
+            <A HREF="http://www.cs.wisc.edu/~deboor/bib/bib.html">
+                Click here
+            </A>
+            for a vast on-line and searchable bibliography on
+            approximation theory in general, maintained by
+            <A HREF="http://www.cs.wisc.edu/~deboor/">
+                Carl de Boor
+            </A>
+            and
+            <A HREF="http://atlas.math.vanderbilt.edu/~schumake/">
+                Larry Schumaker.
+            </A>
+        </P>
+        <P>
+            In the discussions below, <em>S</em> is the <a
+            href="Srd.html">spline space</a> of functions that are
+            globally <em>r</em> times differentiable and on each
+            triangle can be represented as a polynomial of degree
+            <em>d</em>.
+        </P>
+
+        <OL>
+            <LI>
+                <FONT SIZE="+2">
+                    1973.
+                </FONT>
+                <b>G. Strang, </b> <EM>Piecewise polynomials and the finite
+                element method</EM>, <B>Bull.  Amer.  Math.  Soc.  79,
+                1128--1137</B>. Strang made a conjecture on the
+                dimension of <EM>S</EM> for the case of
+                <A HREF="C1cubics.html">
+                    <EM>C<SUP>1</SUP></EM> cubics <EM>(r=1, d=3)</EM>
+                </A>
+                that turned out to be wrong but started the whole
+                subject.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1975.
+                </FONT> 
+                <b>Morgan, J., and R. Scott,
+                </b> <EM>A Nodal Basis for C<SUP>1</SUP> Piecewise
+                Polynomials of Degree n &gt;=5 </EM>, <B>Math.  Comp.
+                29, 736-740.</B> In this fundamental paper Morgan and
+                Scott settle the dimension of <em>S</em> for
+                <EM>r=1</EM> and <EM>d&gt;=5</EM>.  The 
+                Bernstein-B&eacute;zier form was unknown at the time
+                but much later progress depended substantially on
+                translating this paper into the language of the
+                Bernstein-B&eacute;zier form.
+            <p></li>
+            <LI>
+                <A name = "LLS1979">
+                <FONT SIZE="+2">
+                    1979.
+                </FONT>
+                <b>Schumaker, L.L., </b> <EM> 
+                <A href="Srd.html#dimension">
+                Lower bounds</a> for the dimension of
+                spaces of piecewise polynomials in two variables,</EM>
+                <B> in W. Schempp and Zeller, K. (ed.), Multivariate
+                Approximation Theory, Birkhauser Verlag, 396--412</B>.
+                This paper gives very general lower bounds on the dimension
+                of <em>S</em>.  Using the Bernstein-B&eacute;zier
+                form it is easy to find a determining set which gives an
+                upper bound on the dimension. In later work, for
+                values of <em>d</em> sufficiently much larger than
+                <em>r</em>,  those upper
+                bounds were shown to equal Schumaker's lower bounds,
+                thus establishing the exact dimension.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1979.
+                </FONT>
+                <b>Farin, G., </b> <EM>Subsplines ueber Dreiecken</EM>, <B>
+                Dissertation, Braunschweig, Germany</B>. Farin pioneered
+                the use of the Bernstein-B&eacute;zier form.  A revision
+                of his thesis later appeared under the title 
+                <EM>B&eacute;zier polynomials over triangles and the
+                construction of piecewise C<SUP>r</SUP>-polynomials
+                </EM> as report TR/92, Dept.  Mathematics, Brunel
+                University, Uxbridge, Middlesex, UK, 1980.
+            <p></li>
+            <LI>
+                <A name = "LLS1984">
+                <FONT SIZE="+2">
+                    1984.
+                </FONT>
+                <b>Schumaker, L.L., </b> <EM>Bounds on the dimension of spaces
+                of multivariate piecewise polynomials</EM>, <B>Rocky
+                Mountain J. of Mathematics 14, 251-264.</B> This
+                augments the previous paper by giving (disparate) upper
+                bounds on the dimension, and extended the upper and
+                lower bounds to rectilinear partitions (which are more
+                general than triangulations.
+            <p></li>
+            <LI>
+                <FONT size = "+2">
+                    1987.
+                </FONT>
+                <b>Alfeld, P. and Schumaker, L.L., </b> <EM>The dimension of
+                bivariate spline spaces of smoothness r for degree d
+                &gt;=4r+1</EM>, <B>Constructive Approximation 3,
+                189--197</B> We introduced the concept of a minimal
+                determining set (although it is called an <EM>
+                annihilating set</EM> in this paper.) The construction
+                is explicit, except that only the number of points
+                (rather than their precise selection) is established in
+                the <EM>2r</EM> disks around interior vertices of the
+                triangulation.
+            <p></li>
+            <LI>
+                <FONT size = "+2">
+                    1987.
+                </FONT>
+                <b>Alfeld, P., Piper, B., and Schumaker, L.L., </b> <EM>
+                Minimally Supported Bases for Spaces of Bivariate
+                Piecewise Polynomials of Smoothness r and Degree d
+                &gt;=4r+1$</EM>, <B>Computer Aided Geometric Design 4,  
+                105--124</B> This augments the preceding paper by
+                specifying the points in the <EM>2r</EM> disks around
+                interior vertices, but only for
+                <EM>r=1,2,3.</EM>
+            <p></li>
+            <a name="APS">
+            <LI>
+                <FONT size = "+2">
+                    1987.
+                </FONT>
+                <b>Alfeld, P., Piper, B., and Schumaker, L.L., </b> <EM>An
+                Explicit Basis for C<SUP>1</SUP> Quartic Bivariate
+                Splines</EM>, <B>SIAM J. Num.Anal.  24, 891--911</B> We
+                specify an explicit minimal determining set in the case
+                <EM>r=1</EM> and <EM>d=4</EM>, and in the process
+                establish that for <em>r&gt;3</em> 
+                <A href="dependence.html">singular vertices</a> are the
+                only configurations that cause non-generic dimensions.
+            <p></li>
+            <LI>
+                <FONT size = "+2">
+                    1988.
+                </FONT>
+                <b>Billera, L.,, </b> <EM>Homology of smooth splines:  generic
+                triangulations and a conjecture by Strang</EM>, <B>
+                Trans.  A.M.S.  310, 325--340.</B> Using a sophisticated
+                body of machinery Billera derives a linear system that
+                describes <EM>C<SUP>1</SUP></em> splines.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1988.
+                </FONT>
+                <b>Schumaker, L.L., </b> <EM>Dual bases for spline spaces on
+                cells</EM>, <B> Computer Aided Geom.  Design 5,
+                277--284.</B> Schumaker gives an explicit minimal
+                determining set for spline spaces defined on the star of
+                a vertex, for all values of <EM>d</EM> and <EM>r</EM>.
+            <p></li>
+            <LI>
+                <FONT size = "+2">
+                    1990.
+                </FONT>
+                <b>Alfeld, P., and Schumaker, L.L., 1990, </b> <EM>On the
+                Dimension of Bivariate Spline Spaces of Smoothness r and
+                Degree d=3r+1</EM>, <B>Numer.  Math. 57, 651-661</B> We
+                specify explicit minimal determining sets essentially in
+                the generic case.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1991.
+                </FONT>
+                <b>Whiteley, W., </b> <EM>A matrix for splines</EM>, <B>in
+                Progress in Approximation Theory P. Nevai and A. Pinkus
+                (eds.), Academic Press, Boston, 821--828.</B> Using
+                extremely sophisticated techniques Whiteley analyzes the
+                matrix derived by Billera and establishes the generic
+                dimension for the case <EM>r=1</EM> and all <em>d</em> 
+                (and thus in particular
+                for the cases <EM>d=2</EM> and <EM>d=3</EM> where no
+                previous such result was available.)
+            <p></li>
+            <a name="Hong">
+            <LI>
+                <FONT SIZE="+2">
+                    1991.
+                </FONT>
+                <b>Hong, D., </b> <EM>Spaces of bivariate spline functions over
+                triangulations</EM>, <B>J.  Approx.  Th.  Applic.  7,
+                56--75</B>. Hong constructs a minimal determining set
+                for the case that <EM>d &amp;gt&amp;=3r+2.
+            <p></li>
+            <a name="IS">
+            <LI>
+                <FONT SIZE="+2">
+                    1991.
+                </FONT>
+                <b>Ibrahim, A., and Schumaker, L.L., </b> <EM>Super
+                spline spaces of smoothness r and degree d &gt;= 3r+2</em>
+                Constr. Approx.,  7,  401--423,</b>
+                The result derived here is slightly more general
+                than Hong's result in that it applies to &quot;super
+                &quot; splines, i.e., splines that are smoother than
+                elsewhere at the vertices of the triangulation.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1993.
+                </FONT>
+                <b>Alfeld, P., Schumaker L.L., and Whiteley, W. </b> <EM>The
+                generic dimension of the space of C<SUP>1</SUP> splines
+                of degree d &gt;= 8 on tetrahedral decompositions</EM>,
+                <B>SIAM JNA, v.  30, pp.  889--920, 1993</B> Combining
+                the MDS technology and the vertex splitting techniques
+                we obtain generic dimension formulas for <EM>r=1</EM>
+                and <EM>d &gt;= 8</EM> in the <EM>trivariate case</EM>.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1996.
+                </FONT>
+                <b>Alfeld, P., </b> <EM>Upper and Lower Bounds on the Dimension
+                of Multivariate Spline Spaces</EM>, <B>SIAM JNA, v.  33,
+                No.  2, pp.  571--588,</B>. The paper gives upper and
+                lower bounds for spline spaces in an arbitrary number of
+                variables.
+            <p></li>
+            <LI>
+                <FONT SIZE="+2">
+                    1998.
+                </FONT>
+                <b>Alfeld, P., and Schumaker, L.L.,</b>
+                <EM>Non-Existence of Star-Supported Spline Bases,</em>
+                <B>to appear in the SIAM J. on Mathematical Analysis.</b>
+                In this forthcoming paper we show that when <em>d &lt;
+                3r+2</em> then <em>S</em> does not in general possess
+                a basis of 
+                splines each of which is supported only on the star of
+                a vertex. (It had bee shown earlier by Hong, Ibrahim
+                and Schumaker that if <em>d > 3r+1</em> such bases
+                always exist).
+            <p></li>
+        </OL>
+        [25-Mar-1999]
+    </BODY>
+</HTML>

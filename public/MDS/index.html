@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<HTML>
+    <HEAD>
+        <TITLE>
+            The Bernstein B&eacute;zier Form and Minimal Determining
+            Sets
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H1>
+            The Bernstein B&eacute;zier Form and Minimal Determining
+            Sets.
+        </H1>
+        <P>
+            The software described in these pages lets you explore the <B> Bernstein-B
+            &eacute;zier form</B> of a bivariate polynomial.  In
+            particular it allows you to construct <B>minimal determining
+            sets</B> for bivariate spline spaces defined on
+            triangulations.  It's great for teaching the Bernstein-B
+            &eacute;zier form, and it can also serve as a research tool.
+        </P>
+
+	<H2>Downloading and Using the Software</H2> 
+            To use the software download this <a href="MDS.zip">zip file</a>, put it into and empty directory, and unzip the files.  Connect to the directory and type <pre>java MDS</pre>   <p>Start
+            clicking on the control panel and the drawing window that
+            will pop up.  In particular click on the points in the
+            triangles.
+        </P>
+
+            <IMG SRC="ct31.gif" ALIGN="RIGHT" HSPACE="10" VSPACE="10">
+        <P>
+            To whet your appetite, here is an example.  The colorful
+            triangle nearby, like most of the figures on these pages,
+            were obtained with the software.  It shows the well known <B>
+            Clough-Tocher finite element</B> as it can be used for
+            interpolation.  You see one large (macro) triangle that has
+            been divided into three smaller micro triangles.  Bold black
+            lines indicate the boundaries of the triangles.  Each of the
+            micro triangles is covered by a triangular mesh drawn with
+            thin black lines.  The points marked with colored squares
+            and circles indicate coefficients of a bivariate cubic
+            polynomial defined on each micro triangle.  The gray
+            quadrilaterals indicate smoothness conditions across the
+            boundaries between micro triangles, each involving four of
+            the coefficients.  The red crosses are determined by the
+            interpolation conditions, the green crosses are determined
+            by the requirement to maintain differentiability across the
+            boundaries of individual macro triangles, and the filled red
+            and green circles are determined by internal smoothness
+            conditions.
+        </P>
+        <P>
+            This is only the tip of a large iceberg.  If you want to
+            find out more follow the links below.  If you are new to the
+            Bernstein-B&eacute;zier form, splines, and minimal
+            determining sets, follow the links in the given sequence,
+            otherwise, or if you are impatient, skip around as you wish!
+        </P>
+        <UL>
+            <LI>
+                <A HREF="bform.html">
+                    The Bernstein B&eacute;zier Form
+                </A>
+            </li>
+            <LI>
+                <A HREF="triangulation.html">
+                    Triangulations
+                </A>
+            </li>
+            <LI>
+                <A HREF="Srd.html">
+                    Spline Spaces and Minimal Determining Sets
+                </A>
+            </li>
+            <LI>
+                <A HREF="guide.html">
+                    User's Guide
+                </A>
+            </li>
+            <LI>
+                <A HREF="how.html">
+                    How it Works
+                </A>
+            </li>
+            <LI>
+                <A HREF="residual.html">
+                    Residual Arithmetic
+                </A>
+            </li>
+            <LI>
+                <A HREF="examples.html">
+                    Examples
+                </A>
+            </li>
+        </UL>
+         [15-May-2020]
+    </BODY>
+</HTML>

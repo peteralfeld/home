@@ -1,0 +1,3175 @@
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<HTML>
+    <HEAD>
+        <TITLE>
+            MDS User's Guide
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~pa/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TD colspan = 4>
+                        <APPLET CODE="MDS.class" WIDTH = 700 HEIGHT = 55
+                            VSPACE = 5>
+                            <B>
+                        </APPLET>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD colspan = "2">
+                        <A HREF="bform.html">
+                            <FONT size = "-1">
+                                <B> The Bernstein B&eacute;zier Form</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="index.html">
+                            <FONT size = "-1">
+                                <B> Home Page</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                        <A HREF="examples.html">
+                            <FONT size = "-1">
+                                <B> Examples</B>
+                            </FONT>
+                        </A>
+                    </TD>
+                    <TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H1>
+            MDS User's Guide
+        </H1>
+        <H4>
+            Version 139, March 2014.
+        </H4>
+        <UL>
+            <LI>
+                <A HREF="guide.html#drawan">
+                    The Drawing and Analysis Modes
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#analysis">
+                    The Analysis Mode
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#activate">
+                    To activate the applet.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#quit">
+                    Quitting.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#pol">
+                    The polynomial degree and the degree of smoothness.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#mds">
+                    Constructing a Minimal Determining Set.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#groups">
+                    Adding and removing points in groups.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#color">
+                    Adding Color
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#Resize">
+                    Resizing the Drawing Window
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#multiple">
+                    Having more than one drawing window.
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#edit">
+                    Editing a Triangulation
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#enumerate">
+                    Enumerating Triangulations
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#felm">
+                    Designing Finite Elements
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#misc">
+                    Miscellaneous Options
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#progress">
+                    Progress Indicators
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#keyboard">
+                    Keyboard Commands
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#text">
+                    Text Output
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#calc">
+                    The Srd Calculator
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#custom">
+                    Designing a Custom Triangulation
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#import">
+                    Importing a Triangulation
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#drawing">
+                    The Drawing Mode
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#manual">
+                    Manual Control of Symbol Size
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#Saving">
+                    Saving Your Work
+                </A>
+            </LI>
+            <LI>
+                <A href = "#ps">
+                    Saving high resolution postscript images
+                </A>
+            </LI>
+            </LI>
+            <LI>
+                <A HREF="guide.html#interface">
+                    Interfacing with Other Codes
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#super">
+                    Super Splines
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#reduced">
+                    Reduced Polynomial Degree
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#bounds">
+                    Computing Bounds
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#standalone">
+                    Running Standalone and Downloading the Code
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#print">
+                    Printing Triangulations
+                </A>
+            </LI>
+            </LI>
+            <LI>
+                <A HREF="guide.html#Polynomial">
+                    Assigning Polynomials
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#Derivative">
+                    Examining Derivative Spaces
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#Divergence">
+                    Vector Analysis
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#memory">
+                    Memory Problems
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#performance">
+                    Performance
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#game">
+                    The MDS Game
+                </A>
+            </LI>
+            <LI>
+                <A HREF="guide.html#write">
+                    Write to me
+                </A>
+            </LI>
+        </UL>
+        <P>
+            To understand what the applet does you need to understand
+            the
+            <A HREF="bform.html">
+                <B>Bernstein-B&eacute;zier form</B>
+            </A>
+            of a polynomial and the concepts of
+            <A HREF="Srd.html">
+                <B>spline spaces and their minimal determining sets</B>
+            </A>.
+
+        </P>
+        <H2>
+            <A NAME="drawan">
+            </A>
+            The Drawing and Analysis Modes
+        </H2>
+        <P>
+            The main use of the applet is to analyze minimal determining
+            sets.  In the first few incarnations of this code that
+            constituted the only possible use of the software.  However,
+            during the Spring Semester of 1999 my numerical graduate
+            class persuaded me to add a variation of the Analysis mode
+            that can be run as a two player game that's quite difficult
+            and sophisticated and that I hope you will enjoy.  It's
+            described
+            <A HREF="guide.html#game">
+                below
+            </A>
+            at the end of this User's Guide.  There is also a
+            <A HREF="guide.html#drawing">
+                drawing mode
+            </A>
+            described below which can be used to label domain points in
+            various ways (without any analysis done by the code).
+        </P>
+        <H2>
+            <A NAME="analysis">
+            </A>
+            The Analysis Mode
+        </H2>
+        <P>
+            As an illustration, the Figure nearby shows the <EM>
+            Clough-Tocher Split</EM>, a set of three triangles that
+            share an interior vertex.  The partial minimal determining
+            set shown is for the case that <EM>r=1</EM> and <EM>d=6.
+            </EM>
+            <IMG SRC="ct.gif" ALIGN = "RIGHT">
+            Crosses in circles indicate points in the minimal
+            determining set, filled colored circles indicate points that
+            have been determined, and white circles indicate points
+            whose status has not yet been determined.  Boxes indicate
+            points that do not enter any smoothness conditions.  Other
+            symbols may be substituted in the
+            <A HREF="#drawing">
+                drawing mode.
+            </A>
+        </P>
+        <H3>
+            <A NAME="activate">
+            </A>
+            Activating the Software.
+        </H3>
+        <P>
+            Click in the box on the top of this page (or download the
+            byte code and run it
+            <A HREF="guide.html#standalone">
+                standalone,
+            </A>
+            see below).
+        </P>
+        <P>
+            Two windows will pop up, the <B>control panel</B>, and a <B>
+            drawing window.</B> The initial triangulation consist of
+            three triangles sharing an interior vertex (the
+            Clough-Tocher split).  If for some reason you can't get the
+            applet to work click here for a static image of the
+            <A HREF="control.gif">
+                control panel
+            </A>
+            and here for
+            <A HREF="initial.gif">
+                an image of the initial drawing window.
+            </A>
+            (The eighth row of the control panel will not show up if you
+            are using the applet rather than a standalone version of the
+            code.  This is because Java will not let the applet write on
+            <B>your</B> machine, and I won't let it write on <B>my</B>
+            machine.  See below for information on how to save your
+            work.)
+        </P>
+        <P>
+            If you click on the above applet to make the control panel
+            and drawing windows disappear you can recover them in the
+            state you dismissed them by clicking on the applet again,
+            but only in the same browser section!
+        </P>
+        <P>
+            You can also
+            <A HREF="#standalone">
+                download the byte file and run the program standalone.
+            </A>
+            On a Unix system you'd invoke the program with the command
+            <B>java MDS</B>.  On my system the program is more
+            responsive in that mode, I can run it with a specified
+            amount of memory, it handles
+            <A HREF="#memory">
+                memory problems
+            </A>
+            more gracefully, and I can
+            <A HREF="guide.html#Saving">
+                save my work.
+            </A>.
+        </P>
+        <H3>
+            <A NAME="quit">
+            </A>
+            Quitting.
+        </H3>
+        <P>
+            To quit click on the upper left button (labeled Quit) of the
+            control panel, or type 'x' in any drawing window.
+        </P>
+        <H3>
+            <A NAME="pol">
+            </A>
+            The polynomial degree and the degree of smoothness.
+        </H3>
+        <P>
+            You can change the values of <EM>r</EM> (the degree of
+            smoothness) and <EM>d</EM> (the polynomial degree)in the
+            third row of the control panel.  There is one red textfield
+            for <EM>r</EM> and one for <EM>d</EM>.  To edit any text
+            field move the cursor into the textfield and click (always
+            the left mouse button) or highlight part of the text.  Then
+            type the insertion or replacement string.  A change in any
+            text window becomes <B>effective only after you hit Enter
+            </B> (or Return) on you keyboard.  The contents of the
+            textfields can also be incremented or decremented (by 1) by
+            clicking on the &quot;&gt;&quot; and &quot;&lt;&quot;
+            buttons next to the textfield.
+        </P>
+        <H3>
+            <A NAME="mds">
+            </A>
+            Constructing a Minimal Determining Set.
+        </H3>
+        <P>
+            Suppose you want to construct a minimal determining set. You
+            do this in stages adding one or more points at a time. Let's
+            refer to the points you have already selected as <B> the
+            current set.</B> The current set is always a subset of a
+            minimal determining set, and eventually it becomes equal to
+            one.  To add a point to the current set just click on the
+            domain point.  The first time you do this some linear
+            algebra will be initialized and any points that do not enter
+            the smoothness conditions are added.  The symbols you see
+            have the following meaning:
+        </P>
+        <P>
+            <IMG SRC="symbols.gif" ALIGN="RIGHT" BORDER=1 VSPACE=10
+                HSPACE=10>
+        </P>
+        <UL>
+            <LI>
+                a plus sign in a circle:  The point is in the current
+                set.
+            </LI>
+            <LI>
+                a white outlined circle:  The status of that point is as
+                yet undetermined.
+            </LI>
+            <LI>
+                a filled in circle:  That point is implied to be zero by
+                the smoothness conditions, based on the points that are
+                in the current set.
+            </LI>
+            <LI>
+                a filled in box:  That point does not enter any
+                smoothness conditions and is therefore in any minimal
+                determining set.  It's also in the current set.
+            </LI>
+            <LI>
+                an outlined white box:  That point does not enter any
+                smoothness conditions and is not included in the current
+                set, because the linear algebra has not been
+                initialized, or it has been taken out for some counting
+                or marking purposes.
+            </LI>
+        </UL>
+        <P>
+            Points in the current set can also be taken out, by clicking
+            on them.  Any points that are implied by the larger set, but
+            not by the smaller, revert to their outlined status.
+        </P>
+        <H3>
+            <A NAME="groups">
+            </A>
+            Adding and removing points in groups.
+        </H3>
+        <P>
+            The menu in the fifth row of the control panel can be used
+            to determine the effect of clicking on a point, according to
+            the following options:
+        </P>
+        <UL>
+            <LI>
+                <B>point.</B> (the default) Add or remove one point at a
+                time.
+            </LI>
+            <LI>
+                <B>edge.</B> Select an edge by clicking on any domain
+                point in its interior.  Then add or remove in lines
+                parallel to that edge by clicking on a domain point in
+                the interior of the line farthest from the edge.  (At
+                present this works only in the MDS mode, not in the
+                drawing mode.)
+            </LI>
+            <LI>
+                <B>ring.</B> Add or remove all points in the ring
+                containing the target point.  To pick the center of the
+                ring click on that vertex first (in ring mode).  The
+                default center for the predefined vertex stars is the
+                interior point.
+            </LI>
+            <LI>
+                <B>disk.</B> This works similarly to the ring option.
+            </LI>
+            <LI>
+                <B>triangle.</B> Click on an interior point of a
+                triangle to add or remove the entire triangle, or the
+                interior point of an edge to add or remove that edge, or
+                a vertex to add or remove that vertex.
+            </LI>
+            <LI>
+                <B>All.</B> Clicking on an as yet unmarked point causes
+                the current set to be completed to form the internal
+                minimal determining set.  This is equivalent to clicking
+                on the Complete button.  Clicking on any other point
+                causes the current set to be replaced by the empty set.
+                Thus one can start over without reinitializing the
+                linear algebra.
+            </LI>
+            <LI>
+                <B>Replace</B> This is effective only in the
+                <A HREF="#drawing">
+                    Draw Mode
+                </A>,
+                see below.  Since it is just too frustrating to be
+                clicking on points and wondering why this has no effect,
+                in the MDS mode this option works like the &quot;point
+                &quot; mode has been selected.
+            </LI>
+        </UL>
+        <B>NOTE:</B> Remember to switch back to point mode when done
+        with one of the other modes.  You can do this by using the menu
+        on the control panel or simply by typing a period in the drawing
+        window.
+        <H3>
+            <A NAME="color">
+            </A>
+            Adding Color
+        </H3>
+        <P>
+            The current color can be changed using the second menu in
+            the fifth row of the control panel.  The default is black.
+        </P>
+        <H3>
+            <A NAME = "Resize">
+            </A>
+            Resizing the Drawing Window
+        </H3>
+        <P>
+            By default, the drawing window is 601 by 601 pixels.  There
+            are three ways to get drawing windows of different sizes:
+        </P>
+        <OL>
+            <LI>
+                At the beginning of the session by typing <B>java MDS m
+                n</B> to get drawing windows of size m by n pixels.
+            </LI>
+            <LI>
+                Resizing a particular drawing window using the standard
+                system on your computer.  This change will effect only
+                that particular window.  The locations of the vertices
+                will be rescaled.  This may change the geometry of your
+                triangulation.  You can, however, select or import new
+                triangulations in that window which will then be drawn
+                with the intended geometry.
+            </LI>
+            <LI>
+                Using the buttons and text fields in the top row of the
+                control panel.  Any such change will apply to subsequent
+                drawing windows, and the current configuration will be
+                redrawn from scratch.  Width and height can be changed
+                in steps of 100 pixels, precise dimensions can be
+                entered in the text fields, and the max button will
+                cause the window to have the maximum size available on
+                your computer.
+            </LI>
+        </OL>
+        <H3>
+            <A NAME="multiple">
+            </A>
+            Having more than one drawing window.
+        </H3>
+        <P>
+            You can have several drawing windows at once.  The control
+            window always corresponds to one particular drawing window.
+            The drawing windows are numbered.  You pick which one is
+            currently associated with the control window by changing the
+            number in the text field in the second row of the control
+            panel, the one preceded by the string &quot;T =&quot;.  You
+            can increase or decrease that number by clicking &quot;&gt;
+            &quot; or &quot;&lt; &quot; on the buttons next to it.  You
+            can also edit the contents of the text window.  The most
+            convenient way of associating the control panel with a given
+            triangulation is to type &quot;c &quot; or &quot;C&quot; in
+            the relevant drawing window.
+        </P>
+        <H3>
+            <A NAME="edit">
+            </A>
+            Editing a Triangulation
+        </H3>
+        <P>
+            A rudimentary editing facility is available.  Clicking on
+            the button labeled <EM>Edit</EM> in the fourth row of the
+            <A HREF="control.gif">
+                Control Window
+            </A>
+            brings up an
+            <A HREF="edit.gif">
+                Editing Window.
+            </A>
+            At the same time the current triangulation changes into a
+            simple line drawing with the vertices being labeled.
+        </P>
+        <P>
+            The coordinates of individual points can be changed using
+            the textfields in the second row of the Editing Window.
+        </P>
+        <P>
+            In the third row the indices of three points can be chosen.
+            Clicking on the button <EM>Align</EM> will change the
+            coordinates of the third point <EM>P</EM> to move it close
+            to being in one line with the first two points <EM>P1</EM>
+            and <EM> P2</EM>.  The program first moves P to the pixel
+            closest to the projection of <EM>P</EM> onto the line <EM>L
+            </EM> through the first two points.  It then searches the
+            neighborhood of that pixel for a pixel that is actually on
+            <EM>L</EM>.  It avoids making points coincide.  The search
+            may be unsuccessful, for example if <EM>P</EM> is in between
+            <EM>P1</EM> and <EM>P2</EM> and the differences of the <EM>x
+            </EM> and <EM>y</EM> coordinates of <EM>P1</EM> and <EM>P2
+            </EM> are two distinct prime numbers.  You may be able to
+            make the alignment possible by changing slightly the
+            coordinates of <EM>P1</EM> or <EM>P2</EM> first.  Pairs of
+            parallel edges sharing a vertex are drawn in red.
+        </P>
+        <P>
+            The Buttons in the top row do the following:
+        </P>
+        <UL>
+            <LI>
+                <EM>Hide</EM> finishes the editing process and hides the
+                editing window.  (It can be recalled by clicking the
+                button <EM>Edit</EM> on the Control Window.)
+            </LI>
+            <LI>
+                <EM>Redraw</EM> Redraws the current triangulation and
+                puts it into edit mode.
+            </LI>
+            <LI>
+                <EM>Undo</EM> Undoes the latest change.  This can be
+                repeated.
+            </LI>
+            <LI>
+                <EM>Finish</EM> Puts the current triangulation back into
+                MDS mode.
+            </LI>
+        </UL>
+        <H3>
+            <A NAME="enumerate">
+            </A>
+            Enumerating Triangulations.
+        </H3>
+        <P>
+            This mode lets you enumerate triangulations with certain
+            attributes and study their properties.  It can be invoked
+            from the menu in the fourth row.
+            <A HREF="many/index.html">
+                Much more information can be found here.
+            </A>
+        </P>
+        <H3>
+            <A NAME="felm">
+            </A>
+            Triangular Finite Elements
+        </H3>
+        <P>
+            This mode allows the design of triangular finite elements.
+            <A HREF="felm">
+                Much more information can be found here.
+            </A>
+        </P>
+        <H3>
+            <A NAME="misc">
+            </A>
+            Miscellaneous Options
+        </H3>
+        <P>
+            The following is a list of options available on the control
+            panel.  not yet discussed:
+        </P>
+        <UL>
+            <LI>
+                <B>First Row:</B> Pressing on the button labeled &quot;
+                Calc.  &quot; in the upper right corner of the control
+                panel invokes (or hides) the
+                <A HREF="guide.html#calc">
+                    <B>Srd Calculator</B>
+                </A>
+                which is described below.
+            </LI>
+            <LI>
+                <B>Second Row:</B>
+                <UL>
+                    <LI>
+                        <B>New.</B> Clicking on this button brings up a
+                        new drawing window, with the parameters set to
+                        the same value as they are in the current
+                        drawing window.
+                    </LI>
+                    <LI>
+                        <B>Hide!</B> Hides the drawing window currently
+                        associated with the control panel.
+                    </LI>
+                    <LI>
+                        <B>Show!</B> Opens the drawing window currently
+                        associated with the control panel, and puts it
+                        on top of all others.
+                    </LI>
+                    <LI>
+                        <B>Redraw!</B> Redraws the contents of the
+                        current drawing window.
+                    </LI>
+                    <LI>
+                        <B>Reset!</B> Resets the contents of the current
+                        drawing window.  The triangulation and the
+                        values of <EM>r</EM> and <EM>d</EM> remain
+                        unchanged.  Starting a new MDS requires
+                        reinitialization of the linear algebra.
+                    </LI>
+                    <LI>
+                        <B>Init!</B> Resets the contents of the current
+                        drawing window and initializes the linear
+                        algebra, without starting the construction of a
+                        MDS.  The triangulation and the values of <EM>r
+                        </EM> and <EM>d</EM> remain unchanged.
+                    </LI>
+                    <LI>
+                        <B>Size!</B> Resizes the current drawing window
+                        such that the current triangulation just fits.
+                        This is particularly useful for the custom
+                        drawing mode.
+                    </LI>
+                    <LI>
+                        <B>Lines</B> Causes an analysis of the set of
+                        all lines connecting pairs of vertices
+                        (segments).  Writes the following information to
+                        standard output:  Equations for all segments,
+                        lists of segments lying in the same line, lists
+                        of parallel segments, and list of points where
+                        more than two segments intersect.
+                    </LI>
+                </UL>
+            </LI>
+            <LI>
+                <B>Third Row.</B> The first item in the third row lets
+                you choose the Analysis Mode (the default) or the
+                <A HREF="#drawing">
+                    Drawing Mode
+                </A>
+                described below.  Otherwise the third row is dedicated
+                to the control of <EM>r</EM> and <EM>d</EM>.
+            </LI>
+            <LI>
+                <B>Fourth Row:</B>
+                <UL>
+                    <LI>
+                        <B>Symbols</B> The first menu in this row lets
+                        you choose the symbol to be used for drawing in
+                        the drawing mode.
+                    </LI>
+                    <LI>
+                        <B>MDS.</B> Assigns the currently chosen color
+                        to all points in the current set.
+                    </LI>
+                    <LI>
+                        <B>DET</B> Assigns the currently chosen color to
+                        all points determined by the smoothness
+                        conditions.
+                    </LI>
+                    <LI>
+                        <B>NON</B> Assigns the currently chosen color to
+                        all points not entering any smoothness
+                        conditions (those marked with square boxes).
+                    </LI>
+                    <LI>
+                        The menu in the fourth row provides a choice of
+                        built-in triangulations.  These can also be
+                        chosen by hitting the function keys indicated in
+                        parentheses.
+                        <UL>
+                            <LI>
+                                Custom Triangulation
+                                <A HREF="guide.html#custom">
+                                    (see below)
+                                </A>
+                                (F1)
+                            </LI>
+                            <LI>
+                                a single triangle (F2)
+                            </LI>
+                            <LI>
+                                two neighboring triangles (F3)
+                            </LI>
+                            <LI>
+                                The Clough-Tocher split (the default)
+                                (F4)
+                            </LI>
+                            <LI>
+                                a singular vertex (F5)
+                            </LI>
+                            <LI>
+                                a generic 4 star (F6)
+                            </LI>
+                            <LI>
+                                a generic 5 star (F7)
+                            </LI>
+                            <LI>
+                                a defective hexagon (F8).  &quot;
+                                Defective &quot; means that the interior
+                                edges of this hexagon from three
+                                parallel pairs.  This cause degenerate
+                                dimensions, but the vertex is in fact
+                                <A HREF="dependence.html#confine">
+                                    confinable.
+                                </A>
+                            </LI>
+                            <LI>
+                                A regular hexagon in the traditional
+                                sense (F9).  This vertex is not
+                                confinable.
+                            </LI>
+                            <LI>
+                                a generic hexagon (F10)
+                            </LI>
+                            <LI>
+                                the symmetric Morgan-Scott split.  (F11)
+                            </LI>
+                            <LI>
+                                the generic Morgan-Scott split.  (F12)
+                            </LI>
+                            <LI>
+                                Wang's Morgan-Scott split.  (F12)
+                            </LI>
+                            <LI>
+                                Diener's Morgan-Scott split.  ( <EM>
+                                Instability in the dimension of spaces
+                                of bivariate piecewise polynomials of
+                                degree 2r and smoothness order r.</EM>
+                                SIMA J. Numer.  Anal., 27 (1990), pp.
+                                543-551)
+                            </LI>
+                            <LI>
+                                a regular hexagon as it appears in a
+                                type I triangulation.  The applet
+                                recognizes this vertex as
+                                non-confinable.  The reason for
+                                including this configuration which
+                                behaves identically to the regular
+                                hexagon is that type-I triangulations
+                                are a good source of counterexamples,
+                                see for example the last entry in the
+                                <A HREF="bibliography.html">
+                                    bibliography.
+                                </A>
+                            </LI>
+                            <LI>
+                                Two adjacent Clough-Tocher splits
+                            </LI>
+                            <LI>
+                                The symmetric double Clough-Tocher Split
+                            </LI>
+                            <LI>
+                                The generic double Clough-Tocher Split
+                            </LI>
+                            <LI>
+                                The symmetric Powell-Sabin 6 Split
+                            </LI>
+                            <LI>
+                                The generic Powell-Sabin 6 Split
+                            </LI>
+                            <LI>
+                                The (symmetric) Powell-Sabin 12 Split
+                            </LI>
+                            <LI>
+                            Two adjacent generic Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+                             Two aligned Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+3 generic Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+3 aligned Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+7 generic Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+7 aligned Powell-Sabin 12 splits
+                            </LI>
+                            <LI>
+2 aligned Powell-Sabin 6 splits
+                            </LI>
+2 generic Powell-Sabin 6 splits
+                            <LI>
+The Morgan-Scott Split with the central triangle split by Clough-Tocher
+                            </LI>
+                            <LI>
+The 1-split, a 4-celol with each triangle split by Clough-Tocher 
+                           </LI>
+
+                            <LI>
+                                <B>Cells or Vertex Stars.</B> This
+                                brings up a
+                                <A HREF="cell.gif">
+                                    separate control window
+                                </A>
+                                which lets you construct a cell or
+                                vertex star, i.e., a triangulation with
+                                one interior vertex and no flaps. <EM>E
+                                </EM> is the number of boundary vertices
+                                (and interior edges) and <EM>e</EM> is
+                                the number of distinct slopes assumed by
+                                the interior edges.  You can also make
+                                one or more edges degenerate at a
+                                boundary vertex (i.e., make the two
+                                boundary edges emanating from the vertex
+                                parallel) by entering the index of the
+                                boundary vertex in the textfield
+                                provided.
+                            </LI>
+                            <LI>
+                                <B>Regular Triangulations.</B> This
+                                brings up a
+                                <A HREF="regular.gif">
+                                    separate control window
+                                </A>
+                                which lets you investigate spline spaces
+                                on regular triangulations.  These are
+                                obtained by starting a rectangular net
+                                and drawing in one set of diagonals
+                                (giving a type-I triangulation) or
+                                drawing in both sets of diagonals
+                                (giving a type-II triangulation).  The
+                                regular versions as well as generic
+                                versions (where no vertex has a pair of
+                                parallel edges attached) are available.
+                                Computations take a long time for large
+                                triangulations and can be triggered
+                                manually, after all settings are right,
+                                or automatically, after each change.
+                            </LI>
+                            <LI>
+                                <B>Enumerate.</B> Selecting the item has
+                                the same effect as pressing the
+                                Enumerate Button.  The mode is
+                                <A HREF="guide.html#enumerate">
+                                    described here.
+                                </A>
+                            </LI>
+                        </UL>
+                    </LI>
+                    <LI>
+                        <B>Complete</B> Constructs a complete minimal
+                        determining set starting with those points that
+                        have already been chosen.
+                    </LI>
+                </UL>
+            </LI>
+            <LI>
+                <B>Fifth Row:</B>
+                <UL>
+                    <LI>
+                        <B>(Un)Mark Edges</B> Toggle, causes parallel
+                        pairs of edges sharing a vertex to be drawn in
+                        red.
+                    </LI>
+                    <LI>
+                        <B>Label Vs</B> Toggle, shows or hides the
+                        internal numbering of the vertices.  Interior
+                        vertices can be omitted or included by typing
+                        <EM>l</EM>.
+                    </LI>
+                    <LI>
+                        <B>Label BPs</B> Toggle, shows or hides the
+                        internal numbering of the Domain Points
+                    </LI>
+                    <LI>
+                        <B>quadrilaterals</B> toggles the drawing of the
+                        quadrilaterals symbolizing the smoothness
+                        conditions.
+                    </LI>
+                    <LI>
+                        <B>grid</B> toggles the grind in each triangle
+                        on and off.
+                    </LI>
+                </UL>
+            </LI>
+            <LI>
+                <B>Sixth Row</B>
+                <UL>
+                    <LI>
+                        <B>label</B>
+                    </LI>
+                        Turns a label at the bottom of the drawing
+                        window on or off.  That label contains a count
+                        of the points in the current set, and a
+                        statement of the dimension of the spline space.
+                        The label is active only after the linear
+                        algebra is initialized.  When present it changes
+                        whenever the current set changes.
+                    </LI>
+                    <LI>
+                        <B>Header</B> Turns a headline in the drawing
+                        window on or off.  The text of that headline can
+                        be chosen in the textfield next to the button.
+                    </LI>
+                </UL>
+            </LI>
+            <LI>
+                <B>Seventh Row</B> The applet uses
+                <A HREF="residual.html">
+                    <B>residual integer arithmetic</B>
+                </A>
+                modulo one or more
+                <A HREF="primes.html">
+                    prime numbers.
+                </A>
+                Ordinarily you will not need to use the controls in the
+                <B> seventh row</B>.  However, you may be interested in
+                a fascinating topic, or you may have a crucial
+                application.  So here is a brief description of the
+                functions of the items in this row:
+                <UL>
+                    <LI>
+                        The <B>Default</B> button establishes these
+                        defaults:  use one prime only, and let it be the
+                        largest prime that can be expressed as an
+                        integer in Java, i.e.,
+                        <CENTER>
+                            <EM> p = 2 <SUP>31</SUP> -1 = 2,147,483,647
+                            </EM>
+                        </CENTER>
+                    </LI>
+                    <LI>
+                        The first text field with its decrement and
+                        increment buttons sets the number of primes
+                        being used.  The minimum (and the default) is 1,
+                        and the maximum is determined by the memory of
+                        your machine.  The time the program takes for
+                        its analysis is roughly proportional to the
+                        number of prime numbers being used, and 1
+                        (large) prime number is enough for almost all
+                        purposes.
+                    </LI>
+                    <LI>
+                        The second text window contains the largest
+                        prime being used.  It should almost always equal
+                        the default value.  However, you can reduce it
+                        to see how the applet works with smaller prime
+                        numbers.  If you enter a composite number it
+                        will be replaced by the next smaller prime
+                        number.  Numbers less than 2 are replaced by 2.
+                        The familiar green buttons allow easy increments
+                        and decrements of the current top prime number.
+                    </LI>
+                    <LI>
+                        The <B>Check</B> button initiates a check of the
+                        residual that so far have been computed.  The
+                        check requires that at least two prime numbers
+                        be used, and it is carried out automatically at
+                        the end of the
+                        <A HREF="how.html">
+                            initialization phase.
+                        </A>
+                        The results of the check are indicated at the
+                        label next to the check button.
+                    </LI>
+                    <LI>
+                        The label at the end of the seventh row
+                        indicates the status of the residual arithmetic.
+                        There are these possibilities:
+                        <OL>
+                            <LI>
+                                The Label is white if no statement can
+                                be made.  This is the case when only one
+                                prime number is being used or the linear
+                                algebra has not yet been initialized.
+                            </LI>
+                            <LI>
+                                The Label is green with a statement <B>
+                                PRIMES OK</B>.  This means the
+                                <A HREF="residual.html">
+                                    residuals in all
+                                    <A HREF="how.html">
+                                        matrix entries
+                                    </A>
+                                    are either all zero or all non-zero.
+                                </LI>
+                                <LI>
+                                    The label is red and shows three
+                                    numbers like
+                                    <CENTER>
+                                        <B> 2 15 29</B>
+                                    </CENTER>
+                                    This means the
+                                    <A HREF="how.html">
+                                        system matrix
+                                    </A>
+                                    contains 29 non-zero entries, 15 of
+                                    which have some zero residuals.  The
+                                    maximum number of zero residuals is
+                                    2.  If a situation like this occurs
+                                    the background of the drawing window
+                                    changes from white to pink.  In the
+                                    unlikely case that this happens with
+                                    the default top prime (2 <SUP>31
+                                    </SUP> -1) <B>I'd like to hear from
+                                    you!</B>
+                                </A>.
+                                So far to my knowledge this event has
+                                never occurred!
+                                <A HREF="all.gif">
+                                    The situation is illustrated for
+                                    small prime numbers in this screen
+                                    image
+                                </A>
+                                (which also shows what part of my screen
+                                looked like during the development of
+                                this applet and these pages.
+                            </LI>
+                        </OL>
+                    </LI>
+                </UL>
+            </LI>
+            <LI>
+                <B>Eighth Row</B> The eight row is present only in
+                <A HREF="guide.html#standalone">
+                    standalone mode
+                </A>.
+                It contains controls for
+                <A HREF="guide.html#Saving">
+                    saving and restoring your work.
+                </A>
+            </LI>
+        </UL>
+        <H3>
+            <A NAME="progress">
+            </A>
+            Progress Indicators
+        </H3>
+        <P>
+            During certain time consuming process the drawing window
+            indicates what's happening.  The word <B>Initializing</B> is
+            present during the initialization of the
+            <A HREF="how.html">
+                linear algebra
+            </A>,
+            and a moving colored bar indicates progress.  In particular
+            the bars indicate:
+        </P>
+        <UL>
+            <LI>
+                <B>
+                <FONT COLOR="990000">
+                    Red
+                </FONT>
+                </B> on <B>
+                <FONT COLOR="009999">
+                    Cyan
+                </FONT>
+                </B>:  The smoothness conditions are being set up.
+            </LI>
+            <LI>
+                <B>
+                <FONT COLOR="999900">
+                    Yellow
+                </FONT>
+                </B> on <B>
+                <FONT COLOR="990000">
+                    Red
+                </FONT>
+                </B>:  The linear system is being reduced to <B>
+                triangular</B> form.
+            </LI>
+            <LI>
+                <B>
+                <FONT COLOR="009900">
+                    Green
+                </FONT>
+                </B> on <B>
+                <FONT COLOR="999900">
+                    Yellow
+                </FONT>
+                </B>:  The linear system is being reduced to <B>
+                diagonal</B> form.
+            </LI>
+            <LI>
+                <B>
+                <FONT COLOR="000099">
+                    Blue
+                </FONT>
+                </B> on <B>
+                <FONT COLOR="990099">
+                    Magenta
+                </FONT>
+                </B>:  The system is checking for
+                <A HREF="residual.html">
+                    zero residuals
+                </A>.
+            </LI>
+        </UL>
+    </H3>
+    <H3>
+        <A NAME="keyboard">
+        </A>
+        Keyboard Commands
+    </H3>
+    <P>
+        Several Keyboard commands are available in each drawing window.
+        The list below will be extended in the near future.  The idea is
+        that essentially one should be able to control each drawing
+        window without using the control panel at all.
+        <CENTER>
+            <TABLE>
+                <TR>
+                    <TD>
+                        <B> D</B>
+                    </TD>
+                    <TD>
+                        increment <EM>d</EM> by 1
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> d</B>
+                    </TD>
+                    <TD>
+                        decrement <EM>d</EM> by 1
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> R</B>
+                    </TD>
+                    <TD>
+                        increment <EM>r</EM> by 1
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> r</B>
+                    </TD>
+                    <TD>
+                        decrement <EM>r</EM> by 1
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 0</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT SIZE="+2">
+                            <B>black</B>
+                        </FONT>
+                        (the default)
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 1</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#aa0000" SIZE="+2">
+                            <B> red</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 2</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#00aa00" SIZE="+2">
+                            <B> green</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 3</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#0000aa" SIZE="+2">
+                            <B> blue</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 4</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#00aaaa" SIZE="+2">
+                            <B> cyan</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 5</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#ff00ff" SIZE="+2">
+                            <B> magenta</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> 6</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT COLOR="#aaaa00" SIZE="+2">
+                            <B> yellow</B>
+                        </FONT>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>7</B>
+                    </TD>
+                    <TD>
+                        make current color
+                        <FONT SIZE="+2">
+                            <B> White</B>
+                        </FONT>
+                        Note:  use this color with caution and only for
+                        special effects because the background of the
+                        drawing is white and the interior of circle and
+                        square outlines is also white.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>RETURN</B>
+                    </TD>
+                    <TD>
+                        redraw the net
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> o,O</B>
+                    </TD>
+                    <TD>
+                        restart
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> p</B>
+                    </TD>
+                    <TD>
+                        Turn position indication during Custom Design
+                        <B>OFF</B>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> P</B>
+                    </TD>
+                    <TD>
+                        Turn position indication during Custom Design
+                        <B>ON</B>
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> q,Q</B>
+                    </TD>
+                    <TD>
+                        hide window
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> x,X</B>
+                    </TD>
+                    <TD>
+                        exit system
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> c,C</B>
+                    </TD>
+                    <TD>
+                        associate the control panel with this window and
+                        put it on top
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>.</B>
+                    </TD>
+                    <TD>
+                        point mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> /</B>
+                    </TD>
+                    <TD>
+                        edge mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> @</B>
+                    </TD>
+                    <TD>
+                        ring mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> #</B>
+                    </TD>
+                    <TD>
+                        disk mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> $</B>
+                    </TD>
+                    <TD>
+                        triangle mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B> all mode</B>
+                    </TD>
+                    <TD>
+                        all mode
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>F1-F12</B>
+                    </TD>
+                    <TD>
+                        choose a triangulation (see above)
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>l</B>
+                    </TD>
+                    <TD>
+                        label the vertices, toggle between omitting and
+                        including boundary vertices
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>S</B>
+                    </TD>
+                    <TD>
+                        Enter
+                        <A HREF="guide.html#super">
+                            Super spline
+                        </A>
+                        mode.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>I</B>
+                    </TD>
+                    <TD>
+                        Initialize MDS computation.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>m</B> or <B>M</B>
+                    </TD>
+                    <TD>
+                        List the current set to standard output.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>u</B> or <B>U</B>
+                    </TD>
+                    <TD>
+                        Undo the previous step in designing a custom
+                        triangulation.  This can be repeated.  Can also
+                        be used to undo the last step taken in the
+                        drawing mode, but in that case the command can
+                        be used only once.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>z</B>
+                    </TD>
+                    <TD>
+                        Toggle the listing in the drawing window of the
+                        indices of the domain point that the cursor is
+                        currently pointing to.  This feature is useful
+                        when working with b-nets of very many domains
+                        that are close together.  The default is off.
+                        This is an experimental feature.  The display
+                        sometimes gets confused, and can be restored by
+                        redrawing the net, e.g., by hitting the return
+                        key.
+                    </TD>
+                </TR>
+                <TR>
+                    <TD>
+                        <B>&lt;</B> and <B>&gt;</B>
+                    </TD>
+                    <TD>
+                        Decrease or increase the current symbol Size.
+                    </TD>
+                </TR>
+            </TABLE>
+        </CENTER>
+        If the keyboard command is not recognized a message is sent to
+        standard output.
+    </P>
+    <H3>
+        <A NAME="text">
+        </A>
+        Text Output
+    </H3>
+    <P>
+        At present, textual information (to standard output) is very
+        sparse.  When a triangulation is completed it is described.  The
+        dimensions and rank of the original matrix is stated and a list
+        of the prime numbers used is given.
+    </P>
+    <P>
+        For example, the default Clough-Tocher split with <EM>r=1</EM>
+        and <EM>d=3</EM> causes this description:
+    </P>
+<PRE><b>
+MDS:  Version 3.0, November 1998   run # 1308
+ New Triangulation
+4 Vertices
+0:   (300,383)
+1:   (524,525)
+2:   (300,100)
+3:   (76,525)
+3 Triangles:
+0: 3 1 0
+1: 3 0 2
+2: 0 1 2
+3 boundary edges:
+0: 1 3
+1: 2 3
+2: 1 2
+3 interior edges:
+0: 0 1 --- 3 2
+1: 0 3 --- 1 2
+2: 0 2 --- 3 1
+3 boundary vertices:  1 2 3
+1 interior vertices:  0
+ interior vertex 0 E = 3 e = 3
+r = 1 d = 3 lower bound = 12
+19 Bezier Points
+ using 1 primes: 
+0 2147483647
+ The original matrix is 9 by 19 and has rank 7
+ The dimension of the spline space = 12
+</b>
+</PRE>
+    <P>
+        Most of this information is readily understood taking into
+        account the fact that the interior vertex of the Clough-Tocher
+        split is vertex 0.  The vertices coincide with specific pixels
+        whose coordinates are integers, with the origin in the upper
+        left corner, x increasing to the right, and y increasing
+        downwards.  An interior edge is described by the pair of indices
+        of its vertices, and the indices of the remaining vertices of
+        the attached triangles.  For example, &quot;0 1 --- 3 2&quot;
+        means the interior edge is the edge shared by the triangles (0,
+        1, 3) and (0,1,2).
+    </P>
+    <P>
+        For each interior vertex <EM>v</EM>, <EM>E</EM> is the number of
+        edges attached to <EM>v</EM>, and <EM>e</EM> is the number of
+        different slopes these edges have.  For example, the four edges
+        emanating from a singular vertex form two parallel pairs, so
+        <EM>E=4</EM> and <EM>e=2</EM>.
+    </P>
+    <P>
+        The
+        <A HREF="Srd.html#dimension">
+            lower bound
+        </A>
+        given is known to equal the exact dimension of the spline space
+        whenever <EM>d&gt;3r+1</EM>.
+    </P>
+    <P>
+        Typing &quot;s&quot; (for statistics) in the drawing window
+        causes information like this (obtained after clicking on &quot;
+        complete&quot; in the default setup) to be displayed:
+    </P>
+<PRE><b>
+ checking ... 
+7 equations 12 active variables
+ equations OK ... 
+ fill = 29/84 (34%)
+ total of 597 Residuals
+ The likelihood of no accidentally zero residuals is 99.999%
+    </b>
+</PRE>
+    <P>
+        This means the reduced system has 7 equations in 23 active
+        variables.  29 entries in that matrix are non-zero.  The phrase
+        &quot;equations OK&quot; is a leftover from the debugging days -
+        it means the coefficients in each equation add to zero.  They
+        must since the function that equals 1 everywhere is a spline all
+        of whose B&eacute;zier coefficients are 1.  Please let me know
+        it you ever get a message that the equations are not OK!  The
+        &quot;total number of residuals&quot; is the number of times a
+        residual was computed since the last initialization of the
+        linear algebra.
+    </P>
+    <P>
+        The word &quot;fill&quot; indicates the number of non-zero
+        entries in the matrix compared to the total number of entries.
+    </P>
+    <P>
+        In the above example a total number of 597 residual has been
+        computed so far.  (That number can easily climb into the
+        millions.)
+    </P>
+    <P>
+        When only one prime number is used the likelihood that none of
+        the computed residuals of non-zero matrix entries is zero is
+        displayed.  This is based on the assumption that all residuals
+        are equally likely.  The likelihood is usually close to 100% if
+        the default prime of 2 <SUP>31</SUP> -1 is used.  You may find
+        it interesting to examine this likelihood for small prime
+        numbers.  When several prime numbers are used the likelihood of
+        an accidentally zero residual actually increases, but the
+        likelihood of a correct minimal determining set increases, so
+        the likelihood statement is omitted.  For more information
+        <A HREF="residual.html">
+            check the page on residual arithmetic.
+        </A>
+    </P>
+    <H3>
+        <A NAME="calc">
+        </A>
+        The Srd Calculator
+    </H3>
+    <P>
+        Dimensions and
+        <A HREF="Srd.html#dimension">
+            lower bounds on the dimension
+        </A>
+        can be computed by using the
+        <A HREF="calc.gif">
+            <B>Srd Calculator</B>.
+        </A>
+        The calculator does not require analysis of a linear system,
+        saving a potentially large amount of time, and you may find it
+        interesting to compare the lower bound with the actual dimension
+        of your spline space.
+    </P>
+    <P>
+        It is a separate window that can be invoked by clicking on the
+        button in the upper right corner of the control panel.
+        Essentially it computes a lower bound on the dimension of the
+        current triangulation of the form
+    </P>
+    <P>
+        <EM>dim S &lt;= A V <SUB>B</SUB> + B V <SUB>I</SUB> C + sigma
+        </EM> (*)
+    </P>
+    <P>
+        which is
+        <A href = "Srd.html#dimension">
+            explained here.
+        </A>
+        The bound equals the true dimension whenever
+    </P>
+    <P>
+        <EM>d &gt; 3r+1</EM>
+    </P>
+    <P>
+        and in many other situations also.  It becomes less reliable as
+        the polynomial degree decreases.
+    </P>
+    <P>
+        When the calculator is brought up it shows the lower bound (*)
+        for the current triangulation and the current values of <EM>r
+        </EM> and <EM>d</EM>.  The lower bound is displayed in the lower
+        right corner of the calculator window.  Usually That expression
+        gets updated automatically whenever the triangulation (or <EM>r
+        </EM> or <EM>d</EM> ) changes.  However, the values of <EM>r
+        </EM>, <EM>d</EM>, <EM>V <SUB>B </SUB></EM>, and <EM>V <SUB>I
+        </SUB></EM> can be changed on the calculator panel itself, and
+        the values of <EM>A</EM>, <EM>B <EM> and</EM> C</EM> will change
+        accordingly.
+    </P>
+    <P>
+        This facility is most useful for examining the dependence of
+        <EM>A</EM>, <EM>B</EM>, and <EM>C</EM> on <EM>r</EM> and <EM>d.
+        </EM> It is less useful to change <EM>V <SUB>B</SUB></EM> and
+        <EM>V <SUB>I</SUB></EM> since the resulting value of the lower
+        bound does not apply to any particular triangulation.
+    </P>
+    <P>
+        A little more subtle is the value of <EM>e <SUB>V</SUB></EM>
+        that can be changed in the right most text field in row 2.  If
+        it is white with no text in it it has no effect on the number in
+        the third row of the panel.  However, if you enter a number then
+        the number sigma in the third row will equal
+    </P>
+    <P>
+        <IMG SRC = "sigma.gif">
+    </P>
+    <P>
+        You may find it interesting to study the dependence of <EM>
+        sigma</EM> on <EM>r</EM>, <EM>d</EM>, and <EM>e <SUB>V</SUB>
+        </EM>, but the lower bound in the fourth row will have a very
+        arcane meaning.
+    </P>
+    <P>
+        The <B>Hide</B> button hides the calculator window.  (You can
+        recover it by pressing on the <B>Calc.</B> button in the control
+        window.) The <B>Get</B> button synchronizes the calculator with
+        the current triangulation (the one associated with the control
+        panel).
+    </P>
+    <P>
+        Every update of the calculator also causes an appropriate line
+        of text to be written.
+    </P>
+    <H3>
+        <A NAME="custom">
+        </A>
+        Designing a Custom Triangulation
+    </H3>
+    <P>
+        <IMG SRC="custom.gif" ALIGN="RIGHT">
+        The image nearby shows the domain points for <EM>C <SUP>1</SUP>
+        </EM> cubic on a custom designed triangulation.  The dimension
+        of this space in general is believed to be <EM>3V <SUB>B</SUB> +
+        2V <SUB>I </SUB> + 1</EM> plus the number of singular vertices.
+        The example shows 3 domain points associated with each boundary
+        vertex, 2 with each interior vertex, and one additional point
+        (the lone blue plus sign in the center of one of the interior
+        triangles).
+    </P>
+    <P>
+        You can design your own triangulation by selecting the three
+        vertices of the first triangle and then adding <EM> flaps</EM>
+        (new triangles joined to the old triangulation along one edge)
+        and <EM>fills</EM> (new triangles joined along two edges).
+        Follow these steps:
+    </P>
+    <OL>
+        <LI>
+            Select custom mode by using the menu on the control panel or
+            by typing F1.
+        </LI>
+        <LI>
+            Draw the first triangle by moving the mouse to the intended
+            locations of the vertices and clicking there.  To facilitate
+            precision, once you have placed the first vertex the
+            coordinates of the mouse position relative to the first
+            vertex will appear in the drawing window.  You can turn this
+            option off by typing <EM>p</EM> (for position) and turn it
+            back on by typing <EM>P</EM>.
+        </LI>
+        <LI>
+            Add <B>flaps</B> by moving the mouse to the midpoint of the
+            newly to be interior edge and dragging the mouse to the
+            intended location of the new boundary vertex.  Once you let
+            go of the mouse button that vertex cannot be moved.  The
+            location of the new vertex is indicated as described above.
+        </LI>
+        <LI>
+            Add a <B>fill</B> by clicking on the newly to be interior
+            vertex.
+        </LI>
+        <LI>
+            If you do not like the triangle you just added type &quot;u
+            &quot; to <B>undo</B> your choice.  If necessary this
+            process can be repeated until all triangles are gone.  You
+            can also abort adding a flap by moving the mouse outside the
+            drawing window.
+        </LI>
+        <LI>
+            When you are finished with your triangulation type &quot;f
+            &quot; or &quot;F&quot; in the drawing window.  You can now
+            use this triangulation like any of the others.
+        </LI>
+        <LI>
+            To return to the design mode click on the button labeled
+            &quot;Again&quot; in the control panel.
+        </LI>
+    </OL>
+    <H2>
+        <A NAME="import">
+        </A>
+        Importing a Triangulation
+    </H2>
+    <P>
+        Pressing the button labeled &quot;import&quot; opens a new
+        window that lets you load a triangulation from a file (only in
+        stand-alone mode) or a URL.  The file needs to contain the
+        following data:  V and N on the first line, followed by V lines
+        containing the coordinates of the points, one point per line,
+        followed by N lines containing the indices of the vertices of
+        each triangle, one triangle per line.  The integers must be
+        separated by blanks, and the lines must not contain other data.
+        For example, the file for the CT split would be:
+    </P>
+<PRE>
+4 3
+302 88
+80 514
+521 514
+301 372
+2 0 3
+2 3 1
+3 0 1
+</PRE>
+    The Save Button saves such files with the extension .cmb
+    <H2>
+        <A NAME="drawing">
+        </A>
+        The Drawing Mode
+    </H2>
+    <P>
+        <IMG SRC="draw.gif" ALIGN = "RIGHT">
+    </P>
+    <P>
+        The drawing mode is invoked with the menu in the third row.  You
+        can first do some analysis in the analysis mode and then switch
+        to the drawing mode to change some of the symbols.  However, if
+        you switch from drawing mode to analysis mode then the drawing
+        window gets reinitialized, so beware!
+    </P>
+    <P>
+        Several symbols can be used.  They are selected by the menu in
+        the fourth row and illustrated in the Figure nearby.  Everything
+        on the control panel works as in the Analysis mode when it makes
+        sense.  (For example, it does not make sense to ask the applet
+        to color all the points in the minimal determining set.)
+    </P>
+    <P>
+        In the single point mode (selected by the first menu in the
+        fifth row) clicking on a point that has already been labeled
+        with the currently selected symbol causes that symbol to be
+        replaced with a circle.  (This is like removing a point.) In the
+        ring, disk, and triangle modes points are marked with the
+        selected symbol regardless of their prior status.  In the &quot;
+        all&quot; mode all points as yet unmarked (indicated by single
+        thickness circles) are marked with the currently selected
+        symbol.  In the &quot;replace&quot; mode all points marked as
+        the selected point are marked with the selected symbol.  Changes
+        made in any but the point mode can be undone by typing &quot;u
+        &quot;.
+    </P>
+    <H2>
+        <A name = "manual">
+            Manual Control of Symbol Size
+        </H2>
+        Normally the size of the symbols drawn in the drawing window is
+        determined automatically and depends on the current density of
+        domain points.  However, it can be set manually for special
+        purposes.  Click on the button labeled <B>Symbols</B> (in the
+        second row of the main control window).  A new window, the <EM>
+        size control window</EM>, appears.  The symbol size (in pixels)
+        is displayed in its text field.  It can be changed with the two
+        arrow buttons or by entering a new size in the text field.
+        Clicking on &quot;Default&quot; in the size control window
+        replaces the symbol size with its usual automatically computed
+        value.  Clicking on <B>automatic</B> in the size control window,
+        or again on <B>Symbols</B> in the main control window, causes
+        the size control window to disappear and symbol size control to
+        revert to automatic.  While manual control is in effect the
+        symbol size will not change if the density of the domain point
+        changes, for example in response to changing the value of <EM>d
+        </EM> or picking a new configuration.  The current triangulation
+        is redrawn whenever the current value of its symbol size is
+        changed manually.
+        <H2>
+            <A NAME="Saving">
+            </A>
+            Saving Your Work
+        </H2>
+        <P>
+            It is possible to save your work, but for security reasons
+            Java will not let <B>my</B> applet write on <B>your</B>
+            machine (and I won't let <B>you</B> write on <B> my</B>
+            machine).  You need to download the byte code as described
+            in the next section.  If you run that code (directly rather
+            than via a browser) on your system there will be an eighth
+            row on the control panel (shown on
+            <A HREF="control.gif">
+                on this static image)
+            </A>
+            which lets you specify a file name and read and write to
+            that filename.
+        </P>
+        <P>
+            The individual items in the 8-th row do the following:
+        </P>
+        <UL>
+            <LI>
+                <B> Saving Mode Menu.</B> In the automatic saving mode
+                the file name is determined automatically, as I'll
+                describe in a moment.  In the manual mode (the default)
+                you can specify the file name arbitrarily.  The default
+                name, used in this guide, is <EM>current</EM>.  You will
+                need the manual mode to restore a triangulation from a
+                file you saved in an earlier <B>run</B>.  Also note that
+                if you use a file name more than once then each save
+                overwrites the preceding save.
+            </LI>
+            <LI>
+                Clicking on the <B>SAVE</B> button causes three versions
+                of your current triangulation to be saved in specified
+                files.
+                <OL>
+                    <LI>
+                        <B>current</B>:  a binary file which contains
+                        the data describing the triangulation and the
+                        spline space.  Thus <EM>r</EM> and <EM>d</EM>
+                        and any superspline conditions are saved, but
+                        the current set, or specifications of color and
+                        symbols, are not.
+                    </LI>
+                    <LI>
+                        <B>current.tri</B>:  The same information as <B>
+                        current</B> itself, but in human readable rather
+                        than machine readable form.
+                    </LI>
+                    <LI>
+                        <B>current.obj</B>:  Another binary file which
+                        allows to continue your work exactly where you
+                        left off.  This file is readable only by the
+                        code that wrote it, not by any improved future
+                        versions.  If you rely on this feature
+                        significantly you may want to keep a separate
+                        copy of the MDS code around to process your
+                        saved files.  The resulting files are very
+                        large, and reading and writing them takes a long
+                        time (comparable to computing a minimal
+                        determining set from scratch).  Thus the feature
+                        is currently disabled for triangulations where
+                        the working matrix has more than 100,000
+                        entries.
+                    </LI>
+                </OL>
+            </LI>
+            <LI>
+                Next to the SAVE button is a text field in which you can
+                specify a <B>directory</B>.  The default directory name
+                is an empty string which means files are written in the
+                directory that contains your byte code.  Any other
+                directory names are specified relative to that
+                directory.  On a Unix system you can also specify
+                directories starting at the root directory, or use
+                &quot;..&quot; for the parent directory.  However, for
+                example using &quot;~&quot; for one's home directory
+                does not work on my system.
+            </LI>
+            <LI>
+                Next to the directory textfield there is a group of the
+                familiar green &quot;&lt;&quot; and &quot;&gt;&quot;
+                buttons surrounding a text field.  The text field
+                contains the file name.  The two green buttons lets you
+                scroll back and forth through the file names you have
+                used so far (during this run).  In the manual mode those
+                file names are anything you choose.  In the automatic
+                mode they look like:
+<PRE><b>T.run=877.save=0.gdCT.r=1.d=2</b>
+</PRE>
+                <P>
+                    The individual parts have the following meanings:
+                </P>
+                <OL>
+                    <LI>
+                        <B>T.</B> All file names begin like this, to
+                        facilitate singling them out easily for listing,
+                        copying, or deleting.
+                    </LI>
+                    <LI>
+                        <B>run=877</B> This indicates the run number of
+                        the code.  It is incremented by 1 every time
+                        anyone starts up the code.
+                    </LI>
+                    <LI>
+                        <B>save=0</B> indicates the save number for that
+                        particular run, starting at 0.
+                    </LI>
+                    <LI>
+                        <B>gdCT</B> indicates the triangulation.
+                    </LI>
+                    <LI>
+                        <B>r=1</B> and <B>d=2</B> state the values of r
+                        and d.
+                    </LI>
+                </OL>
+            </LI>
+            <LI>
+                The <B>RESTORE Button</B> reads the triangulation from
+                the currently specified file and restores it in a new
+                drawing window.
+            </LI>
+            <LI>
+                The <B>Object button</B> reads the file <B>current.obj
+                </B> and allows you to continue your work exactly where
+                you left off.
+            </LI>
+        </UL>
+        <B>Notes:</B> Any restoration takes place in a new drawing
+        window.  Thus you can explore different branches using the <B>
+        Object</B> button, or retract your steps without loosing your
+        work using the <B>Restore</B> button.
+        <A name = "ps">
+            <H2>
+                Saving High Resolution Postscript Images
+            </H2>
+            Pressing the button
+            <FONT COLOR="red">
+                <B>ps</B>
+            </FONT>
+            on the control panel brings up a new panel that lets you
+            save the contents of the drawing window as a high resolution
+            postscript image.  The text field on the postscript panel
+            lets you specify a file name, the
+            <FONT COLOR="red">
+                <B>save</B>
+            </FONT>
+            button actually saves the file, and the
+            <FONT COLOR="red">
+                <B>ColorMode</B>
+            </FONT>
+            button toggles between full color mode and gray scale (which
+            may be required by some publishers).  The menu on the
+            postscript panel lets you specify several image sizes and
+            aspect ratios, as follows:
+            <UL>
+                <LI>
+                    <B>full letter</B> (default).  The image is scaled
+                    to fill US letter size (8.5 by 11 inches)
+                    completely.
+                </LI>
+                <LI>
+                    <B>screen letter</B>.  The aspect ratio of the
+                    drawing window is preserved, but otherwise as much
+                    space as possible is used on letter size paper.
+                </LI>
+                <LI>
+                    <B>screen</B>.  The screen size is used, with one
+                    pixel corresponding to 1 point (and 72 points
+                    corresponding to one inch).  Thus very small or very
+                    large images independent can be obtained independent
+                    of the paper size.
+                </LI>
+                <LI>
+                    <B>square letter</B>.  As large a square as possible
+                    (8.5 by 8.5 inches) on letter paper is filled.
+                </LI>
+                <LI>
+                    <B>legal</B>.  US legal paper (8.5 by 11 inches) is
+                    filled.
+                </LI>
+                <LI>
+                    <B>11x17</B>.  11 by 17 inches are filled.
+                </LI>
+                <LI>
+                    <B>17x22</B>.  17 by 22 (four letter sheets) inches
+                    are filled.
+                </LI>
+                <LI>
+                    <B>A4</B>.  European A4 (210 by 297 millimeters) is
+                    filled.
+                </LI>
+                </LI>
+            </UL>
+            <H2>
+                <A NAME="interface">
+                </A>
+                Interfacing with Other Codes
+            </H2>
+            <P>
+                The buttons labeled &quot;CODE&quot;, &quot;DOUBLE
+                &quot;, and &quot;QUADRUPLE&quot;, in the bottom row of
+                the control panel computes data in floating point form
+                and save them to a file <EM>s.code</EM> where s is the
+                string determined by the other items in this row.
+                Saving the &quot;CODE&quot;, information can also be
+                invoked by typing <EM>w</EM> or <EM> W</EM> in the
+                drawing window. The bars in the drawing window in turn
+                show progress in setting up the floating point
+                equations, reducing the system to triangular form, and
+                then reducing it to diagonal form.  The primary contents
+                of the s.code is the matrix <EM>C</EM> where
+                <CENTER>
+                    <EM> d = Cc,</EM>
+                </CENTER>
+                <EM>c</EM> is the vector of coefficients whose domain
+                points are in the minimal determining set and <EM>d</EM>
+                is the vector of coefficients that's determined by the
+                smoothness conditions.
+            </P>
+            <P>
+                The files s.code differ in subtle ways.  Click on the
+                links below to see the file for the cubic C <SUP>1</SUP>
+                CT scheme.
+            </P>
+            <UL>
+                <LI>
+                    <A HREF=CT.code>
+                        <B>&quot;CODE&quot;</B>
+                    </A>:
+                    These data are computed using ordinary floating
+                    point arithmetic.
+                </LI>
+                <LI>
+                    <A HREF=CT.double>
+                        <B>&quot;DOUBLE&quot;</B>
+                    </A>:
+                    For these data the MDS code internally uses
+                    arbitrary precision rational arithmetic.  The
+                    entries of <EM>C</EM> are printed as floating point
+                    numbers that are precise to 16 digits.  They are
+                    also given as exact rational numbers.  Computing
+                    this information takes much longer than computing
+                    the &quot;CODE&quot; version.  However, subsequent
+                    computations involving <EM>C</EM> are likely to be
+                    more accurate.
+                </LI>
+                <LI>
+                    <A HREF=CT.quadruple>
+                        <B>&quot;QUADRUPLE&quot;</B>
+                    </A>:
+                    These data re essentially the same as those obtained
+                    by &quot;DOUBLE&quot;, except they are printed to
+                    quadruple precision (32 digits).
+                </LI>
+            </UL>
+            <P>
+                The buttons &quot;DOUBLE&quot; and &quot;QUADRUPLE&quot;
+                also produce a file
+                <A HREF=CT.explicit>
+                    <B>s.explicit</B>
+                </A>
+                which contains an exact rational representation of the
+                determined coefficients in terms of those corresponding
+                to the minimal determining set.
+            </P>
+            <H2>
+                <A NAME="super">
+                </A>
+                Super Splines
+            </H2>
+            <P>
+                <EM>Super splines</EM> are splines that satisfy
+                additional smoothness conditions.  (They thus form a
+                <EM>subspace</EM> of an ordinary spline space.)
+            </P>
+            <P>
+                To examine a super spline space do the following:
+            </P>
+            <OL>
+                <LI>
+                    Bring up the triangulation you want and set <EM>r
+                    </EM> and <EM>d</EM> as usual.
+                </LI>
+                <LI>
+                    Enter Super spline mode by clicking on the red
+                    button marked &quot;Super&quot;, on the left in the
+                    third row of the control panel.  Or achieve the same
+                    effect by typing <EM>S</EM> (in the drawing window).
+                </LI>
+                <LI>
+                    To increase smoothness around a vertex click on the
+                    vertex.  Each time you click the smoothness
+                    requirements are increased by one.  They are
+                    indicated by yellow quadrilaterals.
+                </LI>
+                <LI>
+                    To increase smoothness requirements across an edge
+                    click close to the center of the edge.  These
+                    additional conditions are indicated by Cyan
+                    quadrilaterals.
+                </LI>
+                <LI>
+                    You can also increase smoothness requirements by
+                    typing <EM> +</EM> or decrease them by typing <EM>-
+                    </EM>.  These typed commands apply to the last
+                    object (vertex or edge) selected by clicking.
+                </LI>
+                <LI>
+                    You can also impose additional individual smoothness
+                    conditions which are indicated by magenta
+                    quadrilaterals.  To do so proceed as follows:
+                    <UL>
+                        <LI>
+                            Click on the button labeled &quot;Special
+                            &quot; in the third row.
+                        </LI>
+                        <LI>
+                            To impose a condition whose quadrilateral is
+                            across the interior of an interior edge
+                            click first in the middle of that edge and
+                            then on a domain point to the side of that
+                            edge.
+                        </LI>
+                        <LI>
+                            If one of the vertices of the quadrilateral
+                            is a vertex of the triangulation, in other
+                            words, if the quadrilateral is at the end of
+                            an interior edge, first click on that vertex
+                            and then on the appropriate point in the
+                            interior of the edge.
+                        </LI>
+                        <LI>
+                            Finally, to impose a C <SUP>d</SUP>
+                            condition across an edge, double-click on an
+                            interior domain point on that edge.
+                        </LI>
+                    </UL>
+                </LI>
+                <LI>
+                    To initiate the MDS analysis click on <EM>Init!</EM>
+                    in the second row of the control panel, again click
+                    on SUPER, or type <EM> I</EM> I.
+                </LI>
+                <LI>
+                    To modify the supersmoothness conditions return to
+                    superspline mode by clicking on the &quot;Again
+                    &quot; button next to the &quot;Super&quot; button.
+                </LI>
+            </OL>
+            <P>
+                <B>Notes:</B>
+            </P>
+        <LI>
+            Once you enter Super spline mode you cannot exit it without
+            resetting.
+        </LI>
+        <LI>
+            You remain in super spline mode (and maintain the current
+            additional smoothness conditions) if you change <EM>d</EM>
+            or <EM>r</EM>.  However, there is no <EM>intelligent</EM>
+            adjustment in the degrees of the additional smoothness
+            conditions.
+        </LI>
+            <H2>
+                <A NAME="reduced">
+                </A>
+                Reduced Polynomial Degree
+            </H2>
+            <P>
+                It is possible to impose
+                <A HREF="reduced.html">
+                    additional conditions
+                </A>
+                that force the splines to have a reduced polynomial
+                degree on selected triangles.  This option is treated
+                like a superspline condition although it is conceptually
+                different.  To reduce the polynomial degree on a certain
+                triangle by 1 enter superspline mode and click close to
+                the center for the triangle.  The triangle will be drawn
+                in green, and the (reduced) polynomial degree will be
+                drawn in red, close to the center of the triangle.  That
+                red number may be partially obscured by the B-net which
+                is also drawn.  The <EM>+</EM> and <EM>-</EM> keys work
+                as they do for the superspline conditions, <EM>+</EM>
+                increase the polynomial degree (up to <EM>d</EM> ) and
+                <EM>-</EM> decreases it.  Here are are some
+                <A HREF="redexamples.html">
+                    examples
+                </A>
+                of polynomials with lesser degrees than meets the eye.
+            </P>
+            <H2>
+                <A Name = "bounds">
+                    Computing Bounds
+                </A>
+            </H2>
+            <P>
+                Pressing the button labeled <EM>Bounds</EM> in the sixth
+                row of the control panel turns the computation of bounds
+                on and off.  The best available current bounds are
+                displayed at the top of the drawing window.  The feature
+                is on by default.  This is an active research topic
+                under current investigation.
+            </P>
+            <H2>
+                <A NAME="standalone">
+                </A>
+                Running Standalone and Downloading the Code
+            </H2>
+            <P>
+                Alternatively, on a Unix system you can download the
+                single file
+                <A HREF="message">
+                    <B> message</B>
+                </A>,
+                put it into an empty directory, and type <TT>source
+                message</TT>.  This will unbundle the class files and
+                bring up the MDS code.  Alternatively, you can download
+                the zip file
+                <A HREF="MDS.zip">
+                    MDS.zip
+                </A>
+                which has all required class files.
+            </P>
+            <P>
+                Details of how to run the byte code on your machine
+                depend on your operating system.  On my (Unix) machine
+                the command
+                <CENTER>
+<PRE>java MDS
+</PRE>
+                </CENTER>
+                invokes the program.  You need to be connected to the
+                directory containing the byte code.  Type
+                <CENTER>
+<PRE>man java
+</PRE>
+                </CENTER>
+                to obtain information on options you may be able to
+                specify.  For example, on my system the command
+                <CENTER>
+<PRE>java -ms128m -mx128m MDS
+</PRE>
+                </CENTER>
+                will cause the program to run with 128 Mbytes of memory
+                allocated to it (in place of the default 16Mbytes).
+            </P>
+            <H2>
+                <A NAME="print">
+                </A>
+                Printing Triangulations
+            </H2>
+            <P>
+                You can save the image of a triangulation to a
+                postscript file or directly print that image.  To do so
+                click on the Print button in the first row of the
+                control panel or type Control-P in the drawing window.
+                This facility works only in the standalone mode.  If run
+                from an applet, a security exception occurs.
+            </P>
+            <H2>
+                <A NAME="Polynomial">
+                </A>
+                Assigning Polynomials
+            </H2>
+            For test purposes (e.g., checking polynomial precisions)
+            polynomial coefficients can be assigned on one triangle. The
+            software can the compute the coefficients of the same
+            polynomial on all other triangles.  To use this feature
+            click on
+            <FONT COLOR="red">
+                <B>Polynomial</B>
+            </FONT>
+            in the control panel, fill in the coefficients in the new
+            Polynomial panel, and click on <B>Assign</B> in the
+            Polynomial Panel.  The resulting coefficients will show in
+            the drawing window.
+            <H2>
+                <A NAME="Derivative">
+                </A>
+                Examining Derivative Spaces
+            </H2>
+            <P>
+                This facility is currently [June 2012] under development
+                and does not have all the features associated with the
+                regular spline spaces.
+            </P>
+            <P>
+                Let D denote a directional derivative, and S a spline
+                space being examined by the software.  Clicking on the
+                orange button labeled <B>Derivative</B> in the main
+                control panel brings up a new drawing window and a new
+                control window that let you examine the space of
+                functions Ds where s is in S. The drawing window shows
+                the coefficients of s as usual, and the coefficients of
+                Ds as triangles.  Those triangles are clickable, and
+                their color indicate their status.  Green means they can
+                be set, red they have been set, and gray they are
+                implied by other coefficients (of s or Ds) that have
+                been set.  The control window let's you pick the
+                direction of differentiation.  It can be chosen as a
+                linear combination of edges in the triangulation, or as
+                a vector in 2-space.  The coefficients and vertices can
+                be labeled, and the original equations can be printed.
+            </P>
+            <P>
+                Clicking on the orange button <B>All D</B> in the main
+                control window brings up a similar control panel that
+                lets you examine B&eacute;zier nets for all derivatives.
+                You can pick two directions, again in terms of Cartesian
+                Coordinates, or as a linear combination of two edges.
+                These directions are designated <I>x</I> and <I>y</I>
+                although they can be in any direction.
+            </P>
+            <P>
+                On both panels the following buttons have these effects:
+            </P>
+            <UL>
+                <LI>
+                    <B>Exit</B> exits and removes all windows related to
+                    derivative spaces.
+                </LI>
+                <LI>
+                    <B>dim?</B> prints dimension statements to standard
+                    output.
+                </LI>
+                <LI>
+                    <B>Reset</B> reinitializes the linear algebra
+                </LI>
+                <LI>
+                    <B>Restart</B> removes all points currently marked
+                    as having been set.  Under normal circumstances the
+                    visible effects of Reset and Restart should be
+                    identical.
+                </LI>
+                <LI>
+                    <B>ListEqs</B> labels domain points and derivative
+                    triangles in the drawing windows, and lists the
+                    original equations.
+                </LI>
+                <LI>
+                    <B>Label Vertices</B> toggles the labeling of
+                    vertices.
+                </LI>
+                <LI>
+                    Similarly, <B>Label Variables</B> toggles the
+                    labeling of domain points and derivative triangles.
+                </LI>
+                <LI>
+                    <B>Redraw</B> redraws all drawing windows.  You can
+                    redraw an individual drawing window by focusing on
+                    it and hitting the Enter key.
+                </LI>
+                <LI>
+                    <B>Go</B> recomputes the directions and
+                    reinitializes the linear algebra.  Use it after
+                    changing the direction(s).
+                </LI>
+            </UL>
+            <P>
+                Additional buttons on the All Derivatives panel include:
+            </P>
+            <UL>
+                <LI>
+                    <B>All</B> Show all drawing windows
+                </LI>
+                <LI>
+                    <B> None</B> Hide all drawing windows
+                </LI>
+                <LI>
+                    <B> Show Master</B> One of the drawing windows
+                    serves as the master that does all the calculations.
+                    It is the first drawing window made visible, and it
+                    is distinguished by having a different background
+                    color.  Clicking on this button puts the master
+                    window on top of all windows.  It shows how many
+                    conditions have been imposed.</L>
+                </LI>
+                <LI>
+                    <B> edges</B> prints a list of edges, including
+                    their cartesian coordinates, to standard output.
+                </LI>
+                <LI>
+                    Individual derivatives buttons (labeled, <B>S</B>,
+                    <B>Sx</B>, etc.) make individual drawing windows
+                    visible or invisible.  The buttons are green for
+                    visible windows, and yellow for invisible ones.
+                    Clicking on a green button twice brings the
+                    associated window to the top.
+                </LI>
+            </UL>
+            <H2>
+                <A NAME="Divergence">
+                </A>
+                Vector Analysis
+            </H2>
+            This works similarly as single derivative analysis and is
+            currently under development.
+            <P>
+                We consider a vector field whose components are two splines <I>P</I> and <I>Q</I>.
+                The divergence and <I>curl</I> of the field are defined
+                by
+            </P>
+            <P>
+                <I>div</I> (<I>P</I>,<I>Q</I>) = <I>P</I><SUB><I>x</I></SUB> + <I>Q</I><SUB><I>y</I></SUB> and
+            </P>
+            <P>
+                <I>curl</I> (<I>P</I>,<I>Q</I>) = -<I>P</I><SUB><I>y</I></SUB> + <I>Q</I><SUB><I>x</I></SUB>,
+                respectively.
+            </P>
+            <P>
+                Clicking on the Button labeled <B>Vector Analysis</B> in
+                the control panel brings up a new vector control panel
+                and a new vector drawing window.  They let you analyze
+                the vector field based on the spline defined in the
+                current triangulation, including any supersmoothness
+                conditions.  Any change in the current triangulation has
+                no effect on the vector windows once they are produced.
+            </P>
+            <P>
+                The original definitions of <I>div</I> and <I>curl</I>
+                are with respect to the <I>x</I> and <I>y</I> directions
+                but those can be changed in the first row of the vector
+                control window.  The text fields there can be used to
+                enter a new direction which replaces the <I>x</I>
+                direction.  The replacement of the <I>y</I> direction is
+                perpendicular to the new <I>x</I> direction.  For
+                simplicity we well refer to the new directions also as
+                <I>x</I> and <I>y</I> directions.
+            </P>
+            <P>
+                The coefficients of the vector components, and those of
+                <I>div</I> and <I>curl</I>, can be set in the vector
+                drawing window.  The circular domain points there
+                correspond to the coefficients of <I>P</I> and <I>Q</I>,
+                and the triangles correspond to the coefficients of <I>
+                div</I> and <I>curl</I>.  Left clicking on a domain
+                point or a triangle sets <I>P</I> or <I>div</I>,
+                respectively, and right clicking sets <I>Q</I> or <I>
+                curl</I>, respectively. Clicking the middle button has the same effect
+                as first clicking left and then clicking right. 
+                <I>P</I> is represented by blue,
+                <I>Q</I> by green, <I>div</I> by red, and <I>curl</I> by
+                yellow.  A
+                saturated color indicates that the coefficient is
+                available, a pastel color that it has been assigned, and
+                gray indicates that it has been implied.
+            </P>
+            <P>
+                The controls in the control window have the following
+                effects:
+            </P>
+            <UL>
+                <LI>
+                    Changing the direction causes the vector drawing
+                    window to disappear.  Pressing on <B>Go</B> causes
+                    it to reappear.
+                </LI>
+                <LI>
+                    <B>Exit</B> causes both the vector control and
+                    drawing windows to disappear.
+                </LI>
+                <LI>
+                    <B>dims?</B> states the dimensions of the spaces
+                    involved: <I>div</I>, <I>curl</I>, ''both'', and the
+                    vector field.  ''both'' is the subspace of the
+                    vector field for which <I>div</I> and <I>curl</I>
+                    are both zero.  The dimension of the vector field
+                    equals twice the dimension of the original spline
+                    space, which forms each of the components.  These
+                    numbers also appear in the drawing window.
+                </LI>
+                <LI>
+                    <B>status</B> writes the current status of the
+                    coefficients to the console and the drawing window.
+                    They are of the form
+                    <P>
+                  <pre>  P:  p/D Q:  q/D <I>div</I>:  s/E <I>curl</I> t/F   dim(H) = h </pre>
+                    </P>
+                    <P>
+                        where
+                    </P>
+                    <UL>
+                        <LI>
+                            p is the number of points set for the first
+                            component, P
+                        </LI>
+                        <LI>
+                            D is the dimension of the space containing P
+                            or Q
+                        </LI>
+                        <LI>
+                            q is the number of points set for the first
+                            component, Q
+                        </LI>
+                        <LI>
+                            s is the number of coefficients set for <I>
+                            div</I>
+                        </LI>
+                        <LI>
+                            E is the dimension of the space containing
+                            <I>div</I>
+                        </LI>
+                        <LI>
+                            t is the number of coefficients set for <I>
+                            curl</I>
+                        </LI>
+                        <LI>
+                            F is the dimension of the space containing
+                            <I>curl</I>
+                        </LI>
+                        <LI>
+                            h is the dimension of the space of vector
+                            fields with zero <I>div</I> and zero <I>curl
+                            </I>.<?LI>
+                        </LI>
+                    </UL>
+                    That same information is updated in both windows
+                    every time a coefficient is set in the drawing
+                    window.
+                </LI>
+                <LI>
+                    <B>Reset</B> resets the linear algebra for the
+                    vector field.  This should not be necessary.
+                </LI>
+                <LI>
+                    <B>List Equations</B> lists the equations on the
+                    console.  The coefficients of <I>P</I> are of the
+                    form <I>p<SUB>i<SUB></I>, those of <I>Q</I> are of
+                    the form <I>q<SUB>i<SUB></I>, those of <I>div</I>
+                    of the form <I>D<SUB>i<SUB></I>, and those of <I>
+                    curl</I> are of the form <I>E<SUB>i<SUB></I>.  The
+                    indices can be shown in the drawing window by
+                    clicking on <B>Label Variables</B> in the control
+                    window.<?I>
+                </LI>
+                <LI>
+                    <B>List Edges</B> lists the edges as vectors on the
+                    console.  This may be useful for picking an <I>x</I>
+                    direction.  The vertex indices can be shown in the
+                    vector drawing window by clicking on <B>Label Vs</B>
+                    in the vector control window.
+                </LI>
+                <LI>
+                    <B>Redraw</B> redraws the vector drawing window
+                    without the status message.
+                </LI>
+                <LI>
+                    The buttons in the third row of the vector control
+                    window comprise <B>Restart</B> and three pairs of
+                    Buttons with related purposes:
+                    <UL>
+                        <LI>
+                            <B>Restart</B> unassigns all coefficients
+                        </LI>
+                        <LI>
+                            <B>Set Boundary</B> sets the boundary
+                            coefficients in both <I>div</I>, and <I>curl
+                            </I>, just <I>div</I>, or just <I>curl</I>,
+                            respectively.  Any previous assignments are
+                            undone.
+                        </LI>
+                        <LI>
+                            <B>set</B> sets both <I>div</I> and <I>curl
+                            </I>, just <I>div</I>, or just <I>curl</I>,
+                            respectively.  Any previous assignments to
+                            the coefficients of <I>P</I> and <I>Q</I>
+                            are undone.
+                        </LI>
+                    </UL>
+                </LI>
+</UL>
+                    <H2>
+                        <A NAME="performance">
+                        </A>
+                        Performance
+                    </H2>
+                    <P>
+                        The following table gives an indication of the
+                        capabilities of the code.  The underlying
+                        triangulation is the generic double
+                        Clough-Tocher split with <EM>d=2r</EM> for <EM>
+                        r=1,2,...,10</EM>.  The columns in the table
+                        have the following meaning:
+                    </P>
+                    <UL>
+                        <LI>
+                            <B>r, d</B> the values of <EM>r</EM> and
+                            </EM> d</EM> (naturally)
+                        </LI>
+                        <LI>
+                            <B>m</B> The original number of smoothness
+                            conditions.
+                        </LI>
+                        <LI>
+                            <B>n</B> The number of domain points
+                            involved in smoothness conditions.
+                        </LI>
+                        <LI>
+                            <B>rank</B> The rank of the original matrix.
+                        </LI>
+                        <LI>
+                            <B>dim</B> The dimension of the spline
+                            space.  In this case <EM> dim = n-rank.</EM>
+                            If <EM>d</EM> is large enough so that there
+                            are points not entering any smoothness
+                            conditions one would have to add the number
+                            of those points to obtain the dimension.
+                        </LI>
+                        <LI>
+                            <B>fill</B> The percentage of points in the
+                            reduced matrix that are non-zero.
+                        </LI>
+                        <LI>
+                            <B>save</B> The amount of disk space in
+                            kiloBytes taken up by the .obj file storing
+                            this triangulation, after initialization of
+                            the linear algebra.
+                        </LI>
+                    </UL>
+                    <CENTER>
+                        <TABLE BORDER=6 CELLPADDING = 6>
+                            <TR>
+                                <TD COLSPAN="8" ALIGN = "CENTER">
+                                    <B>generic double-Clough-Tocher
+                                    split, d = 2r</B>
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    <B>r</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>d</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>m</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>n</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>rank</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>dim</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>fill</B>
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    <B>save</B>
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    1
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    2
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    24
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    22
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    16
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    6
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    82%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    8
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    2
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    4
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    84
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    79
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    61
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    18
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    80%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    28
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    3
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    6
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    180
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    172
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    138
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    34
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    79%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    87
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    4
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    8
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    312
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    301
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    244
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    67
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    82%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    240
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    5
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    10
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    480
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    466
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    381
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    85
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    82%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    504
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    6
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    12
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    684
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    667
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    547
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    120
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    86%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    984
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    7
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    14
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    924
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    904
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    745
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    159
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    83%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,728
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    8
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    16
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,200
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,177
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    972
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    205
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    86%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    2,864
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    9
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    18
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,512
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,486
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,231
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    255
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    80%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    4,464
+                                </TD>
+                            </TR>
+                            <TR>
+                                <TD ALIGN="CENTER">
+                                    10
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    20
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,860
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,831
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    1,518
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    313
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    76%
+                                </TD>
+                                <TD ALIGN="CENTER">
+                                    6,856
+                                </TD>
+                            </TR>
+                        </TABLE>
+                    </CENTER>
+                    <H2>
+                        <A NAME="game">
+                        </A>
+                        The MDS Game
+                    </H2>
+                    The mode menu (the second item in the third row of
+                    the control panel) lets you select a game mode in
+                    which you can construct a MDS taking turns against
+                    an opponent who's trying to determine more points
+                    than you.
+                    <P>
+                        To explain the rules we need to distinguish
+                        between <EM> points</EM> you or your opponent
+                        add to the current set, and points that count
+                        towards your victory.  Let's call the latter
+                        <EM> cookies</EM> to avoid confusion.
+                    </P>
+                    <P>
+                        The rules are as follows:
+                    </P>
+                    <OL>
+                        <LI>
+                            You get a cookie for every domain point
+                            whose B &eacute; zier ordinate is determined
+                            by a point you add to the current set.
+                        </LI>
+                        </LI>
+                            The player ending up with the largest number
+                            of Cookies wins.
+                        </LI>
+                        <LI>
+                            You and your opponent take turns
+                        </LI>
+                        <LI>
+                            You turn is over if you get at least one
+                            cookie, or after you add the second point of
+                            your move to the current set.  The program
+                            indicates whose move it is.
+                        </LI>
+                    </OL>
+                    <H3>
+                        Notes
+                    </H3>
+                    <UL>
+                        <LI>
+                            The reason for not simply alternating adding
+                            one point is that this would give a
+                            significant advantage to the player who is
+                            going to add the last point, since that
+                            would turn all remaining points into
+                            cookies.  With the above rules, it is not
+                            clear a priori who will make the last move.
+                        </LI>
+                        <LI>
+                            Points added and cookies gained are marked
+                            in red for the first player, and green for
+                            the second.
+                        </LI>
+                        <LI>
+                            The program also displays the current score,
+                            the final result, and the number of points
+                            still to be added to the current set (so you
+                            can plan your strategy).
+                        </LI>
+                        <LI>
+                            To avoid confusion, the facilities to remove
+                            points, to change colors, and to add points
+                            in groups, are disabled in the game mode
+                        </LI>
+                        <LI>
+                            Inactive points play no role in the game,
+                            and therefore are not displayed.
+                        </LI>
+                        <LI>
+                            The game can of course be played on any
+                            triangulation, and for any values of <EM>r
+                            </EM> and <EM>d</EM>.  You may also wish to
+                            explore playing with small prime numbers
+                            where the usual rules may not apply due to
+                            accidentally zero residuals.
+                        </LI>
+                    </UL>
+                    Have fun!
+                    <H2>
+                        <A NAME="write">
+                        </A>
+                        Write to me
+                    </H2>
+                    <P>
+                        Please write to me
+                    </A>
+                    if you encounter any bugs or you like to make
+                    suggestions for additional features.
+                    <P>
+                        <IMG SRC = "../images/image.gif">
+                    </P>
+                    <HR>
+                    [22-Jun-2012]
+                </BODY>
+            </HTML>

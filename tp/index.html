@@ -1,0 +1,146 @@
+ 
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+          Tensor Product Subspaces
+        </TITLE>
+        <LINK REV="made">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+
+                        <APPLET CODE="tpApplet.class"
+                            CODEBASE="http://www.math.utah.edu/~pa/tp"
+                            WIDTH = 500 HEIGHT = 55 VSPACE = 5>
+                        </APPLET>
+
+
+
+
+<H1><FONT COLOR = "red"> Tensor Product Subspaces </FONT></H1>
+
+
+<Font Size="+2">
+<UL>
+<LI><a href = "guide.pdf">pdf User's Guide</a></LI>
+<LI><a href = "message">Download and "source message"</a></LI>
+</LI>
+</Font>
+</UL>
+
+<H2></H2>
+
+This software lets you investigate subspaces of tensor product spaces
+defined on two- or three-dimensional domains.  Familiarity with the
+concepts of spline spaces, minimal determining sets, and the
+Bernstein-B&eacute;zier form is assumed.  I also assume that you are
+familiar with the
+<A href = "http://www.math.utah.edu/~pa/MDS/"> 2D </a> and
+<A href = "http://www.math.utah.edu/~pa/3DMDS/"> 3D </a> software, at
+least to the point that here I can focus on the aspects that are
+different in the tensor product software.
+
+
+<H2>Invoking the software</H2>
+
+You can see what the software does by clicking on the applet at the
+top of this page.  However, this forces you to start from scratch for 
+each new investigation.  If you want to be able to save the state of
+your work, and return to it where you left off, you need to download
+the software.
+
+<H2>Downloading the software</H2>
+
+The easiest way to obtain the software is to download 
+<a href=message>this file</a> to a file called <I>message</I>, store
+it in an empty directory, and then unpack it by giving the Unix
+Command
+<pre>source message</pre> 
+
+<p> You can also obtain the software by downloading this <a href="tp.zip"> zip file </a>
+and unzipping it in an empty directory.
+
+<p>Alternatively, you can download the following individual class files.
+These are binary files and may not show up properly when your browser
+tries to display them, but you should be able download them.  Make 
+sure you name those files exactly as indicated:
+<a href = "LA.class"> LA.class</a>, 
+<a href = "control.class"> control.class</a>, 
+<a href = "hash.class"> hash.class</a>, 
+<a href = "slice.class"> slice.class</a>, 
+<a href = "space.class"> space.class</a>, 
+<a href = "tp.class"> tp.class</a>.
+
+
+
+
+<H2>Running the Software</H2>
+
+The most common way to run the software is to give the command
+
+<pre>java tp</pre>
+
+This will ordinarily let you continue where you last quit and saved.
+It is possible to store a state of investigation in a file, say the
+file <i>discovery</i>.  To continue work on the state give the command
+<pre>java tp discovery</pre>
+
+tp stores the state of an investigation in a file with the extension
+<i>.tp</i>. When you click on the <i>quit and save</i> button the
+software saves the current state in the file <i>tpkeepit.tp</i>.  When
+you start it up the next time without specifying a different file name
+it will read that file and start from there. You specify just the file
+name, not the extension.
+
+If the old state cannot be restored (because the specified file does
+not exist, or because you have a new version of tp that is inconsistent
+with older .tp files) the software starts from a default state.  If 
+you invoke the software from the applet it always starts in that
+state.
+
+<P>
+For complicated problems you may want to cause your system to
+dedicate additional memory to your job, by giving a command like
+
+<pre>java -ms1024m -mx1024m tp </pre>
+
+If you are running java on a PC under Windows it may be necessary to
+tell java explicitly where to look for the class files, as in
+
+<pre>java -cp . tp </pre>
+
+<H2>User's Guide</H2>
+
+For detailed instructions on how to use this software consult
+<a href="guide.pdf"> this pdf file</a> (which is also included in the 
+above mentioned
+message file).
+
+Following are gif versions of the Figures in the User's guide.
+
+<p>After starting the software you  will see two windows: the control window and a drawing window
+showing a cubical grid with domain points.
+
+
+
+<H3>The Control Panel:</H3>
+
+<IMG src="control.gif">
+
+
+<H3>The 3D Window:</H3>
+
+<IMG src="space.gif">
+
+
+<h3>The 2D Window:</h3>
+
+<IMG src="slice.gif">
+
+
+
+</Body>
+
+</HTML>
+ 

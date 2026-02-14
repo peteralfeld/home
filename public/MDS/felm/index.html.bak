@@ -1,0 +1,223 @@
+
+
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+
+<HTML>
+    <HEAD>
+        <TITLE>
+            Designing Finite Elements
+        </TITLE>
+        <LINK REV="made" HREF="mailto:USERNAME@HOSTNAME">
+    </HEAD>
+    <BODY BGCOLOR="ffffff">
+        <P>
+            <CENTER>
+                <TABLE BORDER=0 CELLPADDING=1>
+                    <TR>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/~alfeld/">
+                                <FONT size = "-1">
+                                    <B> Peter Alfeld</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.math.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> Department of Mathematics</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.science.utah.edu/">
+                                <FONT size = "-1">
+                                    <B> College of Science</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="http://www.utah.edu/HTML_Docs/UofU_Home.html">
+                                <FONT size = "-1">
+                                    <B> University of Utah</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = 4>
+                            <APPLET CODE="MDS.class"
+                                CODEBASE="http://www.math.utah.edu/~alfeld/java-classes"
+                                WIDTH = 700 HEIGHT = 55 VSPACE = 5>
+                                <B>
+                            </APPLET>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD colspan = "2">
+                            <A HREF="../bform.html">
+                                <FONT size = "-1">
+                                    <B> The Bernstein B&eacute;zier Form
+                                    </B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../index.html">
+                                <FONT size = "-1">
+                                    <B> Home Page</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../examples.html">
+                                <FONT size = "-1">
+                                    <B> Examples</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../Srd.html">
+                                <FONT size = "-1">
+                                    <B> Spline Spaces and Minimal
+                                    Determining Sets</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../guide.html">
+                                <FONT size = "-1">
+                                    <B> User's Guide</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../residual.html">
+                                <FONT size = "-1">
+                                    <B>Residual Arithmetic</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                    <TR>
+                        <TD COLSPAN="2">
+                            <A HREF="../triangulation.html">
+                                <FONT size = "-1">
+                                    <B>Triangulations</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                        <TD>
+                            <A HREF="../how.html">
+                                <FONT size = "-1">
+                                    <B>How does it work?</B>
+                                </FONT>
+                            </A>
+                            &nbsp;&nbsp;
+                        </TD>
+                        <TD>
+                            <A HREF="../bibliography.html">
+                                <FONT size = "-1">
+                                    <B>Bibliography</B>
+                                </FONT>
+                            </A>
+                        </TD>
+                    </TR>
+                </TABLE>
+            </CENTER>
+        </P>
+        <HR>
+        <H2>
+            Designing Finite Elements
+        </H3>
+
+<p> To design triangular finite elements click on the red button
+leabled <em>fin. El.</em> next to the triangulation menu or choose
+<em>finite elements</em> on that menu.
+
+<p> A ccontrol panel will pop up.  It lets you choose
+<em>m</em> which is the number of interior edges attached to each
+vertex of the macro traingle.  <em>m=2k</em> if <em>m</em> is even,
+and <em>m = 2k-1</em> if <em>m</em> is odd.  You can increment
+<em>m</em> in steps of 1, or <em>k</em> in steps of 1, which means
+incrementing <em>m</em> in steps of 2.  As you change <em>m</em> and
+<em>k</em> the split of the macrotrinagle changes accordingly.  Choose
+<em>d</em> and <em>r</em> suitably using the control panel or the
+drawing window.
+
+<p> To impose supersmoothness conditions press <em>SUPER</em> or
+<em>SPECIAL</em> on the finite element conrtol panel.  Additional rows
+will appear on that panel.  The can be used to impose supersmoothness
+conditions in appropriate groups, to save time and to make it easier
+for situations where <em>m</em>, <em>d</em>, and <em>r</em> are large.
+WHether your press <em>SUPER</em> or <em>SPECIAL</em> affects
+whether in the drawing windo you can impose ordinary vertex and edge
+superspline conditions, or special conditions as described in the
+User's Guide.  In either case, in the finite element control panel you
+can impose both kinds of conditions.
+
+<p> The colors of the textfields indicate the kind of superspline
+conditions that can be imposed, as follows:
+<U>
+<LI> Cyan: Ertex COnditions</LI>
+<LI> Blue: Edge COnditions<?LI>
+<LI>Gray: SPecial COnditions <?LI>
+</UL>
+
+<p> The best way to familarize yourself with the controls is probably
+to click on them and see what they do.  However, here is a
+description:
+<U>
+
+<LI> The first texfield in the second row controls suipersmoothness at
+the vertices of the macro triangle. </LI>
+
+<LI> The remainder of that row controls the imposition of individual
+smoothness conditions.  You can choose the type:
+<UL>
+<LI> BV-i</LI> Edge from a boundary vertex to an interior vertex, the
+greater i the more that vertex is removed from the boundary.</lI>
+<LI>
+<LI> interior i</LI> Edges along the line from the outermost
+Clough-Tocher point towards the centroid, the greater i the farther
+you are in the interior of the triangle.</LI>
+<LI> inner T. In the case that <em>m</em> is even, the three edges of
+the innermost triangle.
+</LI>
+</UL> Order is the order of the smoothnes condition, greater than
+<em>r</rm> and less than or equal to </em>d</em>.  Location is the
+location of the smoothness condition along the edge.
+</LI>
+
+<LI>
+ The (cyan) vertex textfield in each row controls the super smoothness
+ at the interior vertices.  As you progress thorugh the rows you
+ proceed towards the center.
+</LI>
+
+<LI>
+The first (blue) edge field in each row controls smoothness conditions
+across edges emanating from the boundary vertices, again moving
+inwards as you approach the center.
+</LI>
+
+
+<LI>The second edge field controls smoothness conditions across edges
+that do not have a boundary vertex. </LI>
+
+
+</UL>
+
+To exit the setup mode exit Superspline mode as usual or click on
+SUper in the finite element control panel.
+
+
+
+            <P>
+                [08-Feb-2000]
+            </P>
+        </BODY>
+    </HTML>
