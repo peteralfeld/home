@@ -44,7 +44,7 @@ import {
 } from './shared.js';
 
 let defaultBrainList = null;
-const version = "Mill version of 2/11/26";
+const version = "Mill version of 2/15/26";
 let Cores = (navigator.hardwareConcurrency - 2) || 4;
 const emptyBoard = [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 const editorParams = [
@@ -3322,12 +3322,12 @@ function importBrains(fileContent) {
 function updateEngineButton() {
     const btn = document.getElementById("engineToggle");
     if (useCppEngine) {
-        btn.innerHTML = "<h1>Mill v. 28 C++</h1>";
+        btn.innerHTML = "<h1>Mill v. 29 C++</h1>";
         btn.style.backgroundColor = "#e0e0e0";
         btn.style.color = "blue";
     }
     else {
-        btn.innerHTML = "<h1>Mill v. 28 JS</h1>";
+        btn.innerHTML = "<h1>Mill v. 29 JS</h1>";
         btn.style.backgroundColor = "#ffffcc";
         btn.style.color = "navy";
     }
