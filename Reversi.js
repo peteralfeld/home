@@ -11,24 +11,27 @@ let eligibleColor = "rgb(255,255,0)";
 let gridColor = "rgb(255,255,255)";
 let backgroundColor = "rgb(0,0,0)";
 
-let S = 30;   // Scaling factor for 2D
+let S = 20;   // Scaling factor for 2D
 let N = 4;    // Board size
 
 // 0 = empty, 1 = Red, 2 = Green
 let gameCube = []; 
+let activePlayer = 1; // 1 = Red, 2 = Green. Explicitly tracked (needed for Passing).
+
 let currentSlices = { X: 0, Y: 0, Z: 0 };
 let validMoves = []; 
 
 // History Management
-let moveHistory = []; // Stores copies of gameCube
-let currentMoveIndex = 0; // Where we are in the timeline (0 = start)
+// Stores objects: { cube: [...], player: 1 }
+let moveHistory = []; 
+let currentMoveIndex = 0; 
 
 // Visualization Settings
 let showHints = true;
 let showAxes = true;
 let gridMode = 1; // 0=None, 1=Ortho(XYZ), 2=All 26
-let playerBallSize = 0.25; // Diameter relative to cell spacing (0.25 means radius 0.125)
-let hintBallSize = 0.15;   // Diameter
+let playerBallSize = 0.25; 
+let hintBallSize = 0.15;   
 
 // --- 3D GLOBAL VARIABLES ---
 let scene, camera, renderer, controls;
@@ -65,7 +68,7 @@ function log(msg) {
         const line = document.createElement('div');
         line.textContent = msg;
         box.appendChild(line);
-        box.scrollTop = box.scrollHeight; // Auto-scroll
+        box.scrollTop = box.scrollHeight; 
     }
     console.log(msg);
 }
@@ -74,7 +77,8 @@ function log(msg) {
 
 function initGameData() {
     gameCube = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
-    
+    activePlayer = 1; // Reset to Red
+
     const mid = (N / 2) - 1;
     currentSlices = { X: mid, Y: mid, Z: mid };
 
@@ -90,7 +94,7 @@ function initGameData() {
 
     // Initialize History
     moveHistory = [];
-    saveHistoryState(); // Save initial state (Index 0)
+    saveHistoryState(); 
     currentMoveIndex = 0;
 
     updateGameState();
@@ -99,11 +103,17 @@ function initGameData() {
 function saveHistoryState() {
     // Deep copy the cube
     const cubeCopy = JSON.parse(JSON.stringify(gameCube));
+    
     // If we are not at the end of history, truncate the future
     if (currentMoveIndex < moveHistory.length - 1) {
         moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
-    moveHistory.push(cubeCopy);
+    
+    // Save Board AND Current Player (Crucial for Pass logic)
+    moveHistory.push({
+        cube: cubeCopy,
+        player: activePlayer
+    });
     currentMoveIndex = moveHistory.length - 1;
     updateNavUI();
 }
@@ -112,10 +122,14 @@ function loadHistoryState(index) {
     if (index < 0 || index >= moveHistory.length) return;
     
     currentMoveIndex = index;
-    // Restore Cube
-    gameCube = JSON.parse(JSON.stringify(moveHistory[index]));
+    // Restore Cube and Player
+    const state = moveHistory[index];
+    gameCube = JSON.parse(JSON.stringify(state.cube));
+    activePlayer = state.player;
     
-    updateGameState();
+    // We update game state but suppress "Auto-Pass" logic to prevent history corruption
+    // while viewing old states.
+    updateGameState(true); 
     redrawAllSlices();
     update3D();
     updateNavUI();
@@ -132,17 +146,7 @@ function resetGame() {
     if(box) box.innerHTML = "";
     log("--- RESETTING GAME ---");
     initGameData();
-    // Reset view options to defaults? Optional. Keeping current prefs is usually better.
-    update3D(); // Rebuild scene
-}
-
-function getCurrentPlayer() {
-    let count = 0;
-    for(let x=0; x<N; x++) 
-        for(let y=0; y<N; y++) 
-            for(let z=0; z<N; z++) 
-                if(gameCube[x][y][z] !== 0) count++;
-    return (count % 2 === 0) ? 1 : 2; 
+    update3D(); 
 }
 
 function getScores() {
@@ -177,10 +181,9 @@ function checkDirection(x, y, z, dx, dy, dz, player) {
     return false; 
 }
 
-function updateGameState() {
-    validMoves = [];
-    const player = getCurrentPlayer();
-    
+// Helper: Calculate moves for any player without side effects
+function getValidMovesForPlayer(player) {
+    let moves = [];
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
             for(let z=0; z<N; z++) {
@@ -200,42 +203,88 @@ function updateGameState() {
                     }
                     if (isValid) break;
                 }
-                if (isValid) validMoves.push(`${x},${y},${z}`);
+                if (isValid) moves.push(`${x},${y},${z}`);
             }
         }
     }
+    return moves;
+}
+
+function updateGameState(isViewOnly = false) {
+    // 1. Calculate moves for the ACTIVE player
+    validMoves = getValidMovesForPlayer(activePlayer);
     
-    // Update Score Board
-    const scores = getScores();
     const infoDiv = document.getElementById('game-info');
+
+    // 2. CHECK FOR PASS or GAME OVER
+    // Only perform this logic if we are NOT just viewing history
+    // (We only auto-pass if we are at the "tip" of the timeline)
+    if (!isViewOnly && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
+        const opponent = activePlayer === 1 ? 2 : 1;
+        const opponentMoves = getValidMovesForPlayer(opponent);
+
+        if (opponentMoves.length === 0) {
+            // --- GAME OVER ---
+            const scores = getScores();
+            let winner = "DRAW";
+            if (scores.red > scores.green) winner = "RED WINS!";
+            else if (scores.green > scores.red) winner = "GREEN WINS!";
+            
+            log(`GAME OVER: ${winner} (Red: ${scores.red}, Green: ${scores.green})`);
+            if(infoDiv) infoDiv.innerHTML += `<div style="color:blue; font-weight:bold; margin-top:5px;">${winner}</div>`;
+            return; // Stop here
+
+        } else {
+            // --- PASS ---
+            const pName = activePlayer === 1 ? "Red" : "Green";
+            log(`${pName} has no moves. Passing...`);
+            
+            // Switch Player
+            activePlayer = opponent;
+            
+            // Save state (Passing counts as a turn change in history)
+            saveHistoryState();
+            
+            // Recursively update to set up the next player
+            updateGameState();
+            return; 
+        }
+    }
+
+    // 3. Update Score Board
+    const scores = getScores();
     if (infoDiv) {
-        const pName = player === 1 ? "Red" : "Green";
-        const color = player === 1 ? redColor : greenColor;
+        const pName = activePlayer === 1 ? "Red" : "Green";
+        const color = activePlayer === 1 ? redColor : greenColor;
+        
         infoDiv.innerHTML = `
-            <div style="margin-bottom: 5px;">Turn: <span style="color:${color}; font-weight:bold">${pName}</span></div>
-            <div style="font-size: 0.9em;">Red: ${scores.red} | Green: ${scores.green}</div>
+            <div style="margin-bottom: 1px;">
+                <span style="color:${color}; font-weight:bold">${pName}</span>
+                <span style="color: ${redColor}; font-size: 0.9em;"> ${scores.red} </span>
+                <span>&nbsp;|&nbsp;</span>
+                <span style="color: ${greenColor}; font-size: 0.9em;"> ${scores.green} </span>
+            </div>
         `;
     }
 }
 
 function executeMove(x, y, z) {
-    // If we are looking at history, we can't play unless we are at the HEAD
-    // But typical behavior is to branch new history. 
-    // Since saveHistoryState truncates future, this works naturally.
-    
-    const player = getCurrentPlayer();
-    gameCube[x][y][z] = player;
-    
-    log(`Move: ${player===1?"Red":"Green"} to (${x},${y},${z})`);
+    if (currentMoveIndex < moveHistory.length - 1) {
+        log("Cannot move from history. Click '>' to go to latest move.");
+        return;
+    }
+
+    gameCube[x][y][z] = activePlayer;
+    log(`Move: ${activePlayer===1?"Red":"Green"} to (${x},${y},${z})`);
 
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             for (let dz = -1; dz <= 1; dz++) {
                 if (dx===0 && dy===0 && dz===0) continue;
-                if (checkDirection(x, y, z, dx, dy, dz, player)) {
+                if (checkDirection(x, y, z, dx, dy, dz, activePlayer)) {
                     let i = x + dx, j = y + dy, k = z + dz;
-                    while (gameCube[i][j][k] !== player) {
-                        gameCube[i][j][k] = player;
+                    while (gameCube[i][j][k] !== activePlayer) {
+                        gameCube[i][j][k] = activePlayer;
                         i += dx; j += dy; k += dz;
                     }
                 }
@@ -243,8 +292,11 @@ function executeMove(x, y, z) {
         }
     }
     
-    saveHistoryState(); // Commit to history
-    updateGameState();
+    // Switch Player
+    activePlayer = (activePlayer === 1 ? 2 : 1);
+
+    saveHistoryState(); 
+    updateGameState(); // This will trigger Pass logic if next player is stuck
     redrawAllSlices();
     update3D(); 
 }
@@ -285,7 +337,6 @@ function drawSlice(canvas, axis, sliceIndex) {
             const cy = offset + (j * step);
 
             if (val !== 0) {
-                // In 2D we stick to full circles for clarity
                 const radius = step * 0.35; 
                 ctx.fillStyle = (val === 1) ? redColor : greenColor;
                 ctx.beginPath();
@@ -371,9 +422,7 @@ function init3D() {
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // Setup Groups
     gridGroup = new THREE.Group();
-    // Center the grid
     const offset = (N - 1) / 2;
     gridGroup.position.set(-offset, -offset, -offset);
     scene.add(gridGroup);
@@ -382,9 +431,7 @@ function init3D() {
     stoneGroup.position.set(-offset, -offset, -offset); 
     scene.add(stoneGroup);
     
-    // Axes Helper
     axesHelper = new THREE.AxesHelper(N);
-    // Position axes at corner of grid
     axesHelper.position.set(-offset - 1, -offset - 1, -offset - 1);
     scene.add(axesHelper);
 
@@ -394,44 +441,30 @@ function init3D() {
 }
 
 function update3DGrid() {
-    // Clear old grid
     while(gridGroup.children.length > 0) gridGroup.remove(gridGroup.children[0]);
 
-    if (gridMode === 0) return; // No Grid
+    if (gridMode === 0) return; 
 
     const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
     const points = [];
 
-    // Orthogonal Grid (Mode 1 & 2)
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
-            // X-lines
             points.push(new THREE.Vector3(0, i, j), new THREE.Vector3(N-1, i, j));
-            // Y-lines
             points.push(new THREE.Vector3(i, 0, j), new THREE.Vector3(i, N-1, j));
-            // Z-lines
             points.push(new THREE.Vector3(i, j, 0), new THREE.Vector3(i, j, N-1));
         }
     }
 
-    // All 26 Directions (Mode 2 only)
     if (gridMode === 2) {
-        // We connect every point to its neighbors. 
-        // To avoid duplicate lines, we only draw forward-facing vectors.
         for (let x = 0; x < N; x++) {
             for (let y = 0; y < N; y++) {
                 for (let z = 0; z < N; z++) {
                     const origin = new THREE.Vector3(x,y,z);
-                    // Check neighbors in positive directions to avoid dupes
-                    // Vectors: (1,0,0), (0,1,0), (0,0,1) are already done above.
-                    // We need diagonals.
                     const diags = [
-                        [1,1,0], [1,-1,0], 
-                        [1,0,1], [1,0,-1], 
-                        [0,1,1], [0,1,-1], 
-                        [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1] 
+                        [1,1,0], [1,-1,0], [1,0,1], [1,0,-1], 
+                        [0,1,1], [0,1,-1], [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1] 
                     ];
-                    
                     diags.forEach(d => {
                         const nx = x + d[0], ny = y + d[1], nz = z + d[2];
                         if (nx >=0 && nx < N && ny >=0 && ny < N && nz >=0 && nz < N) {
@@ -450,42 +483,28 @@ function update3DGrid() {
 
 function update3D() {
     if (!stoneGroup) return;
-    
-    // 1. Update Axes Visibility
     if (axesHelper) axesHelper.visible = showAxes;
 
-    // 2. Rebuild Grid if mode changed (checked roughly via simple flag or just rebuild)
     update3DGrid(); 
 
-    // 3. Rebuild Stones
     while(stoneGroup.children.length > 0) stoneGroup.remove(stoneGroup.children[0]);
 
-    // Calculate radii based on sliders (slider value 0.1 to 1.0 represents Diameter)
-    // So Radius = Diameter / 2
     const pRadius = playerBallSize / 2;
     const hRadius = hintBallSize / 2;
 
     const stoneGeo = new THREE.SphereGeometry(pRadius, 32, 32);
     const hintGeo = new THREE.SphereGeometry(hRadius, 16, 16);
     
-    // Glassy Materials
     const glassParams = { 
-        roughness: 0.1, 
-        metalness: 0.1, 
-        transparent: true, 
-        opacity: 0.8 // Slightly more opaque than hints
+        roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.8 
     };
     
     const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, ...glassParams });
     const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, ...glassParams });
     const hintMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffff00, 
-        transparent: true, 
-        opacity: 0.5,
-        roughness: 0.2 
+        color: 0xffff00, transparent: true, opacity: 0.5, roughness: 0.2 
     });
 
-    // Draw Stones
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
             for(let z=0; z<N; z++) {
@@ -500,7 +519,6 @@ function update3D() {
         }
     }
 
-    // Draw Hints
     if (showHints) {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
@@ -513,7 +531,7 @@ function update3D() {
 }
 
 function on3DClick(event) {
-    if (!showHints) return; // Can't click what you can't see
+    if (!showHints) return; 
 
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -525,7 +543,7 @@ function on3DClick(event) {
     for (let i = 0; i < intersects.length; i++) {
         const obj = intersects[i].object;
         if (obj.userData.isHint) {
-//            log(`Clicked 3D Hint at (${obj.userData.x}, ${obj.userData.y}, ${obj.userData.z})`);
+            log(`Clicked 3D Hint at (${obj.userData.x}, ${obj.userData.y}, ${obj.userData.z})`);
             executeMove(obj.userData.x, obj.userData.y, obj.userData.z);
             return; 
         }
@@ -553,7 +571,7 @@ function initLayout() {
     root.style.padding = `${S}px`;
     root.style.fontFamily = 'sans-serif';
 
-    // --- COLUMN 1: CONTROLS (Mill Style) ---
+    // --- COLUMN 1: CONTROLS ---
     const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
         
         // 1. Status / Info Box
@@ -562,20 +580,20 @@ function initLayout() {
             style: `background-color: rgb(200,255,255); color: navy; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid navy;`
         }, "Initializing..."),
 
-        // 2. Status Log (Scrolling)
+        // 2. Status Log
         el('div', { 
             id: 'status-box',
             style: `background-color: rgb(200,255,255); color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
         }),
 
-        // 3. Main Game Controls
+        // 3. Reset
         el('button', { 
             text: 'Reset Game', 
             style: 'background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px;',
             onclick: () => resetGame() 
         }),
 
-        // 4. History Navigation
+        // 4. History
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
             el('button', { text: '<', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
             el('input', { 
@@ -585,9 +603,10 @@ function initLayout() {
             el('button', { text: '>', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
         ),
 
-//        createSpacer(0),
-//        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-		    // 5. Configuration (S and N)
+        createSpacer(5),
+        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
+
+        // 5. Config
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
             el('input', { 
@@ -604,10 +623,11 @@ function initLayout() {
                 el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
             )
         ),
-//        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-//		    el('div', { text: 'Visualization', style: 'font-weight: bold; text-align: center;' }),
 
-        // 6. Toggles (Colored Buttons)
+        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
+        el('div', { text: 'Visualization', style: 'font-weight: bold; text-align: center;' }),
+
+        // 6. Toggles
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
                 text: 'Hints', 
@@ -632,7 +652,7 @@ function initLayout() {
             })
         ),
 
-        // 7. Grid Menu
+        // 7. Grid
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
@@ -646,19 +666,23 @@ function initLayout() {
         ),
 
         // 8. Sliders
-        el('div', { style: 'font-size: 0.9em; margin-top: 5px;' }, "PBS"),
-        el('input', { 
-            type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
-            style: 'width: 100%;',
-            oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
-        }),
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
+            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Ball:"),
+            el('input', { 
+                type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
+                style: 'width: 100%;',
+                oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
+            })
+        ),
 
-        el('div', { style: 'font-size: 0.9em;' }, "Hint Ball Size"),
-        el('input', { 
-            type: 'range', min: '0.05', max: '0.5', step: '0.05', value: hintBallSize,
-            style: 'width: 100%;',
-            oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
-        })
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
+            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Hint:"),
+            el('input', { 
+                type: 'range', min: '0.05', max: '0.5', step: '0.05', value: hintBallSize,
+                style: 'width: 100%;',
+                oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
+            })
+        )
     );
 
     // --- COLUMN 2: SLICES ---
