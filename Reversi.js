@@ -1,5 +1,5 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
-import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls';
+import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
 
 // Three-dimensional Reversi by Peter Alfeld. 
 // Players are Red (1) and Green (2). Red starts.
@@ -10,34 +10,55 @@ let greenColor = "rgb(0,255,0)";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
 let backgroundColor = "rgb(0,0,0)";
+let millBoardColor = "rgb(245,234,221)"; 
+let millTitleBg = "#ffffcc";
+let millTitleColor = "navy";
 
-let S = 20;   // Scaling factor for 2D
-let N = 4;    // Board size
+let S = 40;   // Scaling factor for 2D
+let N = 8;    // Board size
 
 // 0 = empty, 1 = Red, 2 = Green
 let gameCube = []; 
-let activePlayer = 1; // 1 = Red, 2 = Green. Explicitly tracked (needed for Passing).
+let categoryMap = []; 
+let activePlayer = 1; 
 
 let currentSlices = { X: 0, Y: 0, Z: 0 };
 let validMoves = []; 
+let bestMoves = []; 
 
 // History Management
-// Stores objects: { cube: [...], player: 1 }
 let moveHistory = []; 
 let currentMoveIndex = 0; 
 
 // Visualization Settings
 let showHints = true;
-let showAxes = true;
-let gridMode = 1; // 0=None, 1=Ortho(XYZ), 2=All 26
+let showAxes = false; 
+let showCategories = false; 
+let showValues = false;     
+let gridMode = 1; 
 let playerBallSize = 0.25; 
-let hintBallSize = 0.15;   
+let hintBallSize = 0.125; 
+
+// Camera Settings
+let cameraPersp, cameraOrtho;
+let orthographicMode = false;
+
+// --- BRAIN SETTINGS ---
+const DefaultBrain = {
+    name: "Standard",
+    weights: {
+        0: 20, 1: 100, 2: 40, 3: 1000, 4: -10, 
+        5: -20, 6: 100, 7: -5, 8: 10, 9: -2
+    }
+};
+let currentBrain = DefaultBrain;
 
 // --- 3D GLOBAL VARIABLES ---
 let scene, camera, renderer, controls;
 let stoneGroup, gridGroup, axesHelper; 
 let raycaster, mouse; 
 let animationId = null;
+let overlay3D = null; 
 
 // --- 1. HELPER FUNCTIONS ---
 function el(tag, attrs = {}, ...children) {
@@ -58,10 +79,6 @@ function el(tag, attrs = {}, ...children) {
     return element;
 }
 
-function createSpacer(height) {
-    return el('div', { style: `height: ${height}px; width: 100%;` });
-}
-
 function log(msg) {
     const box = document.getElementById('status-box');
     if (box) {
@@ -73,16 +90,52 @@ function log(msg) {
     console.log(msg);
 }
 
+function printToOverlay(msg) {
+    if (overlay3D) {
+        overlay3D.textContent = msg;
+    }
+}
+
+// "Smart Input" behavior (like in Mill.js)
+function setupSmartInput(inputEl, validateAndApply) {
+    inputEl.dataset.lastValid = inputEl.value;
+    inputEl.addEventListener('focus', function() {
+        this.dataset.lastValid = this.value;
+        this.value = '';
+    });
+    inputEl.addEventListener('blur', function() {
+        if (this.value.trim() === '') {
+            this.value = this.dataset.lastValid;
+        } else {
+            let val = parseInt(this.value);
+            if (Number.isFinite(val)) {
+                let finalVal = validateAndApply(val);
+                if (finalVal !== undefined && finalVal !== null) {
+                    this.value = finalVal;
+                    this.dataset.lastValid = finalVal;
+                }
+            } else {
+                this.value = this.dataset.lastValid;
+            }
+        }
+    });
+    inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            this.blur();
+        }
+    });
+    return inputEl;
+}
+
 // --- 2. GAME LOGIC ---
 
 function initGameData() {
     gameCube = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
-    activePlayer = 1; // Reset to Red
+    activePlayer = 1; 
 
     const mid = (N / 2) - 1;
     currentSlices = { X: mid, Y: mid, Z: mid };
 
-    // Starter Pattern
     const centerIndices = [mid, mid + 1];
     for (let x of centerIndices) {
         for (let y of centerIndices) {
@@ -92,48 +145,420 @@ function initGameData() {
         }
     }
 
-    // Initialize History
+    initGeometry();
     moveHistory = [];
     saveHistoryState(); 
     currentMoveIndex = 0;
-
+    bestMoves = []; 
     updateGameState();
 }
 
-function saveHistoryState() {
-    // Deep copy the cube
-    const cubeCopy = JSON.parse(JSON.stringify(gameCube));
+function initGeometry() {
+    categoryMap = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
+    const isEnd = (v) => (v === 0 || v === N - 1);
     
-    // If we are not at the end of history, truncate the future
+    const distToCorner = (x, y, z) => {
+        let minD = 999;
+        const corners = [0, N-1];
+        corners.forEach(cx => {
+            corners.forEach(cy => {
+                corners.forEach(cz => {
+                    const d = Math.max(Math.abs(x - cx), Math.abs(y - cy), Math.abs(z - cz));
+                    if (d < minD) minD = d;
+                });
+            });
+        });
+        return minD;
+    };
+
+    const isEdge = (x, y, z) => {
+        let ends = 0;
+        if (isEnd(x)) ends++;
+        if (isEnd(y)) ends++;
+        if (isEnd(z)) ends++;
+        return ends === 2;
+    };
+
+    const distToEdge = (x, y, z) => {
+        let minD = 999;
+        for(let i=0; i<N; i++) {
+            for(let j=0; j<N; j++) {
+                for(let k=0; k<N; k++) {
+                    if (isEdge(i,j,k)) {
+                        const d = Math.max(Math.abs(x - i), Math.abs(y - j), Math.abs(z - k));
+                        if (d < minD) minD = d;
+                    }
+                }
+            }
+        }
+        return minD;
+    };
+
+    const distToFace = (x, y, z) => {
+        const dx = Math.min(x, (N-1) - x);
+        const dy = Math.min(y, (N-1) - y);
+        const dz = Math.min(z, (N-1) - z);
+        return Math.min(dx, dy, dz);
+    };
+
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) {
+                let cat = 0; 
+                let ends = 0;
+                if (isEnd(x)) ends++;
+                if (isEnd(y)) ends++;
+                if (isEnd(z)) ends++;
+
+                let dCorner = distToCorner(x, y, z);
+                let dEdge = distToEdge(x, y, z);
+                let dFace = distToFace(x, y, z);
+
+                if (ends === 3) cat = 3; 
+                else if (ends === 2 && dCorner === 1) cat = 4; 
+                else if (dCorner === 1) cat = 5; 
+                else if (ends === 2) cat = 6; 
+                else if (dEdge === 1) cat = 7; 
+                else if (ends === 1) cat = 8; 
+                else if (dFace === 1) cat = 9; 
+                else cat = 0; 
+
+                categoryMap[x][y][z] = cat;
+            }
+        }
+    }
+}
+
+function checkDirection(board, x, y, z, dx, dy, dz, player) {
+    const opponent = player === 1 ? 2 : 1;
+    let i = x + dx;
+    let j = y + dy;
+    let k = z + dz;
+    let foundOpponent = false;
+
+    while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
+        const cell = board[i][j][k];
+        if (cell === opponent) {
+            foundOpponent = true;
+        } else if (cell === player) {
+            return foundOpponent; 
+        } else {
+            return false;
+        }
+        i += dx; j += dy; k += dz;
+    }
+    return false; 
+}
+
+function getValidMovesForPlayer(board, player) {
+    let moves = [];
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) {
+                if (board[x][y][z] !== 0) continue; 
+                let isValid = false;
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            if (dx===0 && dy===0 && dz===0) continue;
+                            if (checkDirection(board, x, y, z, dx, dy, dz, player)) {
+                                isValid = true;
+                                break; 
+                            }
+                        }
+                        if (isValid) break;
+                    }
+                    if (isValid) break;
+                }
+                if (isValid) moves.push({x, y, z}); 
+            }
+        }
+    }
+    return moves;
+}
+
+function simulateMove(board, move, player) {
+    const newBoard = JSON.parse(JSON.stringify(board));
+    const {x, y, z} = move;
+    newBoard[x][y][z] = player;
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                if (dx===0 && dy===0 && dz===0) continue;
+                if (checkDirection(newBoard, x, y, z, dx, dy, dz, player)) {
+                    let i = x + dx, j = y + dy, k = z + dz;
+                    while (newBoard[i][j][k] !== player) {
+                        newBoard[i][j][k] = player;
+                        i += dx; j += dy; k += dz;
+                    }
+                }
+            }
+        }
+    }
+    return newBoard;
+}
+
+function staticEvaluation(board, player) {
+    let opponent = (player === 1) ? 2 : 1;
+    let score = 0;
+    const w = currentBrain.weights;
+    
+    let counts = { p: {}, o: {} };
+    for(let i=0; i<=9; i++) { counts.p[i]=0; counts.o[i]=0; }
+    let pStones = 0, oStones = 0;
+
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) {
+                let val = board[x][y][z];
+                if (val === 0) continue;
+                let cat = categoryMap[x][y][z];
+                if (val === player) { pStones++; counts.p[cat]++; } 
+                else { oStones++; counts.o[cat]++; }
+            }
+        }
+    }
+
+    score += (pStones - oStones) * w[2]; 
+    for(let i=3; i<=9; i++) {
+        score += (counts.p[i] - counts.o[i]) * w[i];
+    }
+
+    if (w[0] !== 0) {
+        const pMoves = getValidMovesForPlayer(board, player).length;
+        const oMoves = getValidMovesForPlayer(board, opponent).length;
+        score += (pMoves - oMoves) * w[0];
+    }
+    return score;
+}
+
+// --- BUTTON HANDLERS ---
+function doStaticEval() {
+    const val = staticEvaluation(gameCube, activePlayer);
+    let msg = `Static Value (${activePlayer===1?"Red":"Green"}): ${val}`;
+    printToOverlay(msg);
+    log(msg); // Print to status box too
+}
+
+function doListMoves() {
+    bestMoves = []; 
+    const moves = getValidMovesForPlayer(gameCube, activePlayer);
+    if (moves.length === 0) {
+        printToOverlay("No moves available.");
+        log("No moves available.");
+        return;
+    }
+    const ranked = moves.map(m => {
+        const nextBoard = simulateMove(gameCube, m, activePlayer);
+        const score = staticEvaluation(nextBoard, activePlayer);
+        return { move: m, score: score };
+    });
+    ranked.sort((a, b) => b.score - a.score);
+    const bestScore = ranked[0].score;
+    bestMoves = ranked.filter(r => r.score === bestScore).map(r => r.move);
+
+    let txt = `--- Available Moves (${ranked.length}) ---\nBest Score: ${bestScore} (${bestMoves.length} moves)\n`;
+    log(`--- Available Moves (${ranked.length}) ---`);
+    log(`Best Score: ${bestScore} (${bestMoves.length} moves)`);
+    
+    ranked.forEach(item => {
+        const isBest = item.score === bestScore;
+        const mark = isBest ? " ★" : "";
+        let lineStr = `(${item.move.x},${item.move.y},${item.move.z}) : ${item.score}${mark}`;
+        txt += lineStr + `\n`;
+        log(lineStr);
+    });
+    
+    printToOverlay(txt);
+    update3D();
+    redrawAllSlices();
+}
+
+function toggleFullscreen() {
+    const container = document.getElementById('view3d-container');
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function toggleCamera() {
+    orthographicMode = !orthographicMode;
+    if (orthographicMode) {
+        cameraOrtho.position.copy(cameraPersp.position);
+        cameraOrtho.quaternion.copy(cameraPersp.quaternion);
+        camera = cameraOrtho;
+    } else {
+        cameraPersp.position.copy(cameraOrtho.position);
+        cameraPersp.quaternion.copy(cameraOrtho.quaternion);
+        camera = cameraPersp;
+    }
+    controls.object = camera;
+    updateCameraFrustum();
+}
+
+function updateCameraFrustum() {
+    if (!renderer) return;
+    const w = renderer.domElement.width;
+    const h = renderer.domElement.height;
+    const aspect = w / h;
+    const frustumSize = N * 1.8; 
+    
+    if (cameraPersp) {
+        cameraPersp.aspect = aspect;
+        cameraPersp.updateProjectionMatrix();
+    }
+    if (cameraOrtho) {
+        cameraOrtho.left = frustumSize * aspect / -2;
+        cameraOrtho.right = frustumSize * aspect / 2;
+        cameraOrtho.top = frustumSize / 2;
+        cameraOrtho.bottom = frustumSize / -2;
+        cameraOrtho.updateProjectionMatrix();
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    if (renderer && camera) {
+        const isFS = !!document.fullscreenElement;
+        const w = isFS ? window.innerWidth : 23 * S;
+        const h = isFS ? window.innerHeight : 23 * S;
+        renderer.setSize(w, h);
+        updateCameraFrustum();
+        if (controls && controls.handleResize) controls.handleResize();
+    }
+});
+
+// KEYBOARD COMMANDS
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === ' ' || e.key === 'Escape') {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+            e.preventDefault();
+        }
+        return;
+    }
+
+    switch(e.key) {
+        case '4': case '6': case '8':
+            N = parseInt(e.key);
+            if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
+            resetGame();
+            break;
+        case 'a':
+            gridMode = (gridMode + 1) % 3;
+            if(document.getElementById('grid-select')) document.getElementById('grid-select').value = gridMode;
+            update3D();
+            break;
+        case 'A':
+            showAxes = !showAxes;
+            if(document.getElementById('btn-axes')) document.getElementById('btn-axes').style.backgroundColor = showAxes ? 'green' : 'grey';
+            update3D();
+            break;
+        case 'c':
+            showCategories = !showCategories;
+            showValues = false;
+            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = showCategories ? 'green' : 'grey';
+            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = 'grey';
+            update3D();
+            break;
+        case 'v':
+            showValues = !showValues;
+            showCategories = false;
+            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = showValues ? 'green' : 'grey';
+            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = 'grey';
+            update3D();
+            break;
+        case 'S':
+            doStaticEval();
+            break;
+        case 'M':
+            doListMoves();
+            break;
+        case 'B':
+            playerBallSize = Math.min(0.9, playerBallSize + 0.05);
+            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+            update3D();
+            break;
+        case 'b':
+            playerBallSize = Math.max(0.1, playerBallSize - 0.05);
+            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+            update3D();
+            break;
+        case 'H':
+            hintBallSize = Math.min(0.5, hintBallSize + 0.025);
+            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+            update3D();
+            break;
+        case 'h':
+            hintBallSize = Math.max(0.05, hintBallSize - 0.025);
+            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+            update3D();
+            break;
+        case '<':
+            loadHistoryState(currentMoveIndex - 1);
+            break;
+        case '>':
+            loadHistoryState(currentMoveIndex + 1);
+            break;
+        case 'F':
+        case 'f':
+            toggleFullscreen();
+            break;
+        case 'I':
+        case 'i':
+            toggleCamera();
+            if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
+            break;
+        case '.':
+            printToOverlay("");
+            break;
+        case '?':
+            printToOverlay(
+`Commands:
+4, 6, 8 : Set board size
+a       : Cycle grid mode
+A       : Toggle Axes
+c       : Toggle Categories
+v       : Toggle Clues (Values)
+S       : Compute Static Value
+M       : List sorted Moves
+B / b   : Increase/Decrease Player ball size
+H / h   : Increase/Decrease Hint ball size
+< / >   : History back/forward
+F / f   : Toggle Fullscreen
+I / i   : Toggle Infinity (Orthographic) mode
+.       : Clear text
+?       : Show this help
+Esc/Spc : Exit Fullscreen`);
+            break;
+    }
+});
+
+// --- STATE MANAGEMENT ---
+
+function saveHistoryState() {
+    const cubeCopy = JSON.parse(JSON.stringify(gameCube));
     if (currentMoveIndex < moveHistory.length - 1) {
         moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
-    
-    // Save Board AND Current Player (Crucial for Pass logic)
-    moveHistory.push({
-        cube: cubeCopy,
-        player: activePlayer
-    });
+    moveHistory.push({ cube: cubeCopy, player: activePlayer });
     currentMoveIndex = moveHistory.length - 1;
     updateNavUI();
 }
 
 function loadHistoryState(index) {
     if (index < 0 || index >= moveHistory.length) return;
-    
     currentMoveIndex = index;
-    // Restore Cube and Player
     const state = moveHistory[index];
     gameCube = JSON.parse(JSON.stringify(state.cube));
     activePlayer = state.player;
-    
-    // We update game state but suppress "Auto-Pass" logic to prevent history corruption
-    // while viewing old states.
     updateGameState(true); 
     redrawAllSlices();
     update3D();
     updateNavUI();
-    log(`Jumped to Move ${index}`);
 }
 
 function updateNavUI() {
@@ -144,9 +569,10 @@ function updateNavUI() {
 function resetGame() {
     const box = document.getElementById('status-box');
     if(box) box.innerHTML = "";
-    log("--- RESETTING GAME ---");
+    printToOverlay(""); 
     initGameData();
-    update3D(); 
+    initGeometry(); 
+    initLayout();   
 }
 
 function getScores() {
@@ -160,128 +586,63 @@ function getScores() {
     return { red: r, green: g };
 }
 
-function checkDirection(x, y, z, dx, dy, dz, player) {
-    const opponent = player === 1 ? 2 : 1;
-    let i = x + dx;
-    let j = y + dy;
-    let k = z + dz;
-    let foundOpponent = false;
-
-    while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
-        const cell = gameCube[i][j][k];
-        if (cell === opponent) {
-            foundOpponent = true;
-        } else if (cell === player) {
-            return foundOpponent; 
-        } else {
-            return false;
-        }
-        i += dx; j += dy; k += dz;
-    }
-    return false; 
-}
-
-// Helper: Calculate moves for any player without side effects
-function getValidMovesForPlayer(player) {
-    let moves = [];
-    for(let x=0; x<N; x++) {
-        for(let y=0; y<N; y++) {
-            for(let z=0; z<N; z++) {
-                if (gameCube[x][y][z] !== 0) continue; 
-
-                let isValid = false;
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dz = -1; dz <= 1; dz++) {
-                            if (dx===0 && dy===0 && dz===0) continue;
-                            if (checkDirection(x, y, z, dx, dy, dz, player)) {
-                                isValid = true;
-                                break; 
-                            }
-                        }
-                        if (isValid) break;
-                    }
-                    if (isValid) break;
-                }
-                if (isValid) moves.push(`${x},${y},${z}`);
-            }
-        }
-    }
-    return moves;
-}
-
 function updateGameState(isViewOnly = false) {
-    // 1. Calculate moves for the ACTIVE player
-    validMoves = getValidMovesForPlayer(activePlayer);
-    
+    validMoves = getValidMovesForPlayer(gameCube, activePlayer).map(m => `${m.x},${m.y},${m.z}`); 
     const infoDiv = document.getElementById('game-info');
 
-    // 2. CHECK FOR PASS or GAME OVER
-    // Only perform this logic if we are NOT just viewing history
-    // (We only auto-pass if we are at the "tip" of the timeline)
     if (!isViewOnly && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
         const opponent = activePlayer === 1 ? 2 : 1;
-        const opponentMoves = getValidMovesForPlayer(opponent);
+        const opponentMoves = getValidMovesForPlayer(gameCube, opponent);
 
         if (opponentMoves.length === 0) {
-            // --- GAME OVER ---
             const scores = getScores();
             let winner = "DRAW";
             if (scores.red > scores.green) winner = "RED WINS!";
             else if (scores.green > scores.red) winner = "GREEN WINS!";
-            
-            log(`GAME OVER: ${winner} (Red: ${scores.red}, Green: ${scores.green})`);
+            log(`GAME OVER: ${winner}`);
             if(infoDiv) infoDiv.innerHTML += `<div style="color:blue; font-weight:bold; margin-top:5px;">${winner}</div>`;
-            return; // Stop here
-
+            return; 
         } else {
-            // --- PASS ---
             const pName = activePlayer === 1 ? "Red" : "Green";
             log(`${pName} has no moves. Passing...`);
-            
-            // Switch Player
             activePlayer = opponent;
-            
-            // Save state (Passing counts as a turn change in history)
             saveHistoryState();
-            
-            // Recursively update to set up the next player
             updateGameState();
             return; 
         }
     }
 
-    // 3. Update Score Board
     const scores = getScores();
     if (infoDiv) {
         const pName = activePlayer === 1 ? "Red" : "Green";
         const color = activePlayer === 1 ? redColor : greenColor;
-        
         infoDiv.innerHTML = `
-            <div style="margin-bottom: 1px;">
+            <div style="font-size: 1.4em; text-align: center;">
                 <span style="color:${color}; font-weight:bold">${pName}</span>
-                <span style="color: ${redColor}; font-size: 0.9em;"> ${scores.red} </span>
-                <span>&nbsp;|&nbsp;</span>
-                <span style="color: ${greenColor}; font-size: 0.9em;"> ${scores.green} </span>
+                <span>&nbsp;&nbsp;&nbsp;</span>
+                <span style="color: ${redColor}; font-weight:bold;">${scores.red}</span>
+                <span style="font-weight:bold; color: black;">&nbsp;|&nbsp;</span>
+                <span style="color: ${greenColor}; font-weight:bold;">${scores.green}</span>
             </div>
         `;
     }
 }
 
 function executeMove(x, y, z) {
+    if (showCategories || showValues) return; 
+
     if (currentMoveIndex < moveHistory.length - 1) {
-        log("Cannot move from history. Click '>' to go to latest move.");
-        return;
+        moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
 
     gameCube[x][y][z] = activePlayer;
-    log(`Move: ${activePlayer===1?"Red":"Green"} to (${x},${y},${z})`);
-
+    bestMoves = []; 
+    
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             for (let dz = -1; dz <= 1; dz++) {
                 if (dx===0 && dy===0 && dz===0) continue;
-                if (checkDirection(x, y, z, dx, dy, dz, activePlayer)) {
+                if (checkDirection(gameCube, x, y, z, dx, dy, dz, activePlayer)) {
                     let i = x + dx, j = y + dy, k = z + dz;
                     while (gameCube[i][j][k] !== activePlayer) {
                         gameCube[i][j][k] = activePlayer;
@@ -292,11 +653,9 @@ function executeMove(x, y, z) {
         }
     }
     
-    // Switch Player
     activePlayer = (activePlayer === 1 ? 2 : 1);
-
     saveHistoryState(); 
-    updateGameState(); // This will trigger Pass logic if next player is stuck
+    updateGameState(); 
     redrawAllSlices();
     update3D(); 
 }
@@ -336,15 +695,23 @@ function drawSlice(canvas, axis, sliceIndex) {
             const cx = offset + (i * step);
             const cy = offset + (j * step);
 
+            const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
+
             if (val !== 0) {
                 const radius = step * 0.35; 
                 ctx.fillStyle = (val === 1) ? redColor : greenColor;
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
                 ctx.fill();
-            } else if (showHints && validMoves.includes(`${x},${y},${z}`)) {
-                const radius = step * 0.15; 
+            } else if (isBest) {
+                const radius = step * 0.30; 
                 ctx.fillStyle = eligibleColor;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+                ctx.fill();
+            } else if (showHints && validMoves.includes(`${x},${y},${z}`) && !showCategories && !showValues) {
+                const radius = step * 0.15; 
+                ctx.fillStyle = (activePlayer === 1) ? "rgb(127,0,0)" : "rgb(0,127,0)";
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
                 ctx.fill();
@@ -370,8 +737,6 @@ function handleCanvasClick(event, axis) {
         const moveKey = `${x},${y},${z}`;
         if (validMoves.includes(moveKey)) {
             executeMove(x, y, z);
-        } else {
-            log("Invalid move");
         }
     }
 }
@@ -387,16 +752,14 @@ function redrawAllSlices() {
 
 function init3D() {
     const container = document.getElementById('view3d-container');
+    container.style.position = 'relative'; 
     const size = 23 * S;
 
     if (animationId) {
         cancelAnimationFrame(animationId);
         animationId = null;
     }
-    
-    if (renderer) {
-        renderer.dispose();
-    }
+    if (renderer) renderer.dispose();
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); 
@@ -404,17 +767,33 @@ function init3D() {
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
 
-    camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    camera.position.set(N*1.5, N*1.5, N*2.5);
+    const aspect = size / size;
+    cameraPersp = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+    cameraPersp.position.set(N*0.8, N*0.8, N*1.5); 
+
+    const frustumSize = N * 1.8;
+    cameraOrtho = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 0.1, 1000);
+    cameraOrtho.position.set(N*0.8, N*0.8, N*1.5);
+
+    camera = orthographicMode ? cameraOrtho : cameraPersp;
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(size, size);
     container.appendChild(renderer.domElement);
+
+    if (overlay3D) {
+        overlay3D.remove();
+    }
+    overlay3D = document.createElement('div');
+    overlay3D.style.cssText = 'position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; pointer-events: none; z-index: 10; text-shadow: 1px 1px 2px #000; white-space: pre-wrap;';
+    container.appendChild(overlay3D);
     
     renderer.domElement.addEventListener('click', on3DClick);
 
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; 
+    controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 4.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -431,7 +810,30 @@ function init3D() {
     stoneGroup.position.set(-offset, -offset, -offset); 
     scene.add(stoneGroup);
     
-    axesHelper = new THREE.AxesHelper(N);
+    axesHelper = new THREE.Group();
+    const lineHelper = new THREE.AxesHelper(N);
+    axesHelper.add(lineHelper);
+
+    const makeLabel = (txt, color) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color;
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(txt, 32, 32);
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(1.5, 1.5, 1.5);
+        return sprite;
+    };
+
+    const xLab = makeLabel('X', '#ff0000'); xLab.position.set(N + 0.5, 0, 0); axesHelper.add(xLab);
+    const yLab = makeLabel('Y', '#00ff00'); yLab.position.set(0, N + 0.5, 0); axesHelper.add(yLab);
+    const zLab = makeLabel('Z', '#0000ff'); zLab.position.set(0, 0, N + 0.5); axesHelper.add(zLab);
+
     axesHelper.position.set(-offset - 1, -offset - 1, -offset - 1);
     scene.add(axesHelper);
 
@@ -442,7 +844,6 @@ function init3D() {
 
 function update3DGrid() {
     while(gridGroup.children.length > 0) gridGroup.remove(gridGroup.children[0]);
-
     if (gridMode === 0) return; 
 
     const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
@@ -484,26 +885,77 @@ function update3DGrid() {
 function update3D() {
     if (!stoneGroup) return;
     if (axesHelper) axesHelper.visible = showAxes;
-
     update3DGrid(); 
 
     while(stoneGroup.children.length > 0) stoneGroup.remove(stoneGroup.children[0]);
 
     const pRadius = playerBallSize / 2;
     const hRadius = hintBallSize / 2;
-
     const stoneGeo = new THREE.SphereGeometry(pRadius, 32, 32);
     const hintGeo = new THREE.SphereGeometry(hRadius, 16, 16);
+    const bestMoveGeo = new THREE.SphereGeometry(hRadius * 2, 16, 16);
+
+    if (showCategories) {
+        const catColors = [
+            0x444444, 0xFFFFFF, 0xFFFFFF, 0xFFD700, 
+            0x8B0000, 0xFF0000, 0x0000FF, 0xFFA500, 
+            0x008000, 0x90EE90 
+        ];
+        const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        for(let x=0; x<N; x++) {
+            for(let y=0; y<N; y++) {
+                for(let z=0; z<N; z++) {
+                    const cat = categoryMap[x][y][z];
+                    const mat = new THREE.MeshStandardMaterial({ 
+                        color: catColors[cat] || 0x888888,
+                        roughness: 0.4, transparent: true, opacity: 0.8
+                    });
+                    const mesh = new THREE.Mesh(debugGeo, mat);
+                    mesh.position.set(x,y,z);
+                    mesh.userData = { x:x, y:y, z:z }; 
+                    stoneGroup.add(mesh);
+                }
+            }
+        }
+        return; 
+    }
+
+    if (showValues) {
+        const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        for(let x=0; x<N; x++) {
+            for(let y=0; y<N; y++) {
+                for(let z=0; z<N; z++) {
+                    const cat = categoryMap[x][y][z];
+                    const weight = currentBrain.weights[cat] || 0;
+                    
+                    let col = 0x888888;
+                    if (weight > 0) {
+                        if (weight >= 500) col = 0xFFD700; 
+                        else col = 0x00FF00; 
+                    } else if (weight < 0) {
+                        col = 0xFF0000; 
+                    }
+
+                    const mat = new THREE.MeshStandardMaterial({ 
+                        color: col,
+                        roughness: 0.4, metalness: 0.1,
+                        transparent: true, opacity: 0.6
+                    });
+                    const mesh = new THREE.Mesh(debugGeo, mat);
+                    mesh.position.set(x,y,z);
+                    mesh.userData = { x:x, y:y, z:z }; 
+                    stoneGroup.add(mesh);
+                }
+            }
+        }
+        return;
+    }
+
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.2, metalness: 0.1 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.2, metalness: 0.1 });
     
-    const glassParams = { 
-        roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.8 
-    };
-    
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, ...glassParams });
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, ...glassParams });
-    const hintMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffff00, transparent: true, opacity: 0.5, roughness: 0.2 
-    });
+    const hintColorHex = (activePlayer === 1) ? 0x7f0000 : 0x007f00;
+    const hintMat = new THREE.MeshStandardMaterial({ color: hintColorHex, transparent: true, opacity: 0.8, roughness: 0.2 });
 
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
@@ -522,7 +974,11 @@ function update3D() {
     if (showHints) {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
-            const mesh = new THREE.Mesh(hintGeo, hintMat);
+            const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
+            
+            const geometry = isBest ? bestMoveGeo : hintGeo;
+            const mesh = new THREE.Mesh(geometry, hintMat);
+            
             mesh.position.set(x, y, z);
             mesh.userData = { isHint: true, x: x, y: y, z: z };
             stoneGroup.add(mesh);
@@ -531,8 +987,6 @@ function update3D() {
 }
 
 function on3DClick(event) {
-    if (!showHints) return; 
-
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -542,8 +996,8 @@ function on3DClick(event) {
 
     for (let i = 0; i < intersects.length; i++) {
         const obj = intersects[i].object;
+        if (showCategories || showValues) return;
         if (obj.userData.isHint) {
-            log(`Clicked 3D Hint at (${obj.userData.x}, ${obj.userData.y}, ${obj.userData.z})`);
             executeMove(obj.userData.x, obj.userData.y, obj.userData.z);
             return; 
         }
@@ -552,7 +1006,7 @@ function on3DClick(event) {
 
 function animate() {
     animationId = requestAnimationFrame(animate); 
-    controls.update();
+    if (controls) controls.update();
     renderer.render(scene, camera);
 }
 
@@ -571,50 +1025,67 @@ function initLayout() {
     root.style.padding = `${S}px`;
     root.style.fontFamily = 'sans-serif';
 
+    // 4. Config inputs prepared beforehand to use smart input setup
+    let scaleInput = el('input', { type: 'text', value: S, style: 'width: 30px; text-align: center;' });
+    setupSmartInput(scaleInput, (val) => {
+        let safeS = Math.max(20, Math.min(60, val));
+        S = safeS;
+        initLayout();
+        return safeS;
+    });
+
+    let historyInput = el('input', { type: 'text', value: currentMoveIndex, style: 'width: 30px; text-align: center;' });
+    setupSmartInput(historyInput, (val) => {
+        let maxIdx = Math.max(0, moveHistory.length - 1);
+        let safeVal = Math.max(0, Math.min(val, maxIdx));
+        loadHistoryState(safeVal);
+        return safeVal;
+    });
+
     // --- COLUMN 1: CONTROLS ---
     const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
         
+        // Header
+        el('div', { style: `background-color: ${millTitleBg}; color: ${millTitleColor}; padding: 5px; border-radius: 4px; border: 1px solid ${millTitleColor}; text-align: center;` },
+            el('div', { style: 'font-weight: bold; font-size: 1.2em;' }, "Reversi v. 1"),
+            el('div', { style: 'font-size: 1em; font-weight: bold;' }, "JS engine.")
+        ),
+
         // 1. Status / Info Box
         el('div', { 
             id: 'game-info',
-            style: `background-color: rgb(200,255,255); color: navy; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid navy;`
+            style: `background-color: ${millBoardColor}; padding: 10px; border-radius: 4px; border: 1px solid navy;`
         }, "Initializing..."),
 
         // 2. Status Log
         el('div', { 
             id: 'status-box',
-            style: `background-color: rgb(200,255,255); color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
+            style: `background-color: ${millBoardColor}; color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
         }),
 
-        // 3. Reset
-        el('button', { 
-            text: 'Reset Game', 
-            style: 'background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px;',
-            onclick: () => resetGame() 
-        }),
-
-        // 4. History
+        // 3. Reset & History
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { text: '<', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
-            el('input', { 
-                id: 'nav-move-num', type: 'text', value: '0', 
-                style: 'width: 40px; text-align: center;', readonly: true 
+            el('button', { 
+                text: 'Reset Game', 
+                style: 'flex: 2; background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px; cursor: pointer;',
+                onclick: () => resetGame() 
             }),
-            el('button', { text: '>', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
+            el('button', { text: '<', style: 'flex: 1; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+            historyInput,
+            el('button', { text: '>', style: 'flex: 1; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
         ),
 
-        createSpacer(5),
-        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-
-        // 5. Config
+        // 4. Config (Scale & N)
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
-            el('input', { 
-                type: 'number', min: '15', max: '40', value: S, style: 'width: 40px;',
-                onchange: (e) => { S = parseInt(e.target.value); initLayout(); }
-            }),
-            el('label', { text: 'Size:' }),
+            el('div', { style: 'display: flex; gap: 2px;' },
+                el('button', { text: '<', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
+                scaleInput,
+                el('button', { text: '>', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
+            ),
+            el('label', { text: 'N=' }),
             el('select', { 
+                id: 'size-select',
                 style: 'width: 40px;',
                 onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
             },
@@ -624,8 +1095,20 @@ function initLayout() {
             )
         ),
 
-        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-        el('div', { text: 'Visualization', style: 'font-weight: bold; text-align: center;' }),
+        // 5. Fullscreen / Infinity
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Fullscreen', 
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+                onclick: () => toggleFullscreen() 
+            }),
+            el('button', { 
+                text: orthographicMode ? 'Perspective' : 'Infinity', 
+                id: 'btn-camera',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+                onclick: () => { toggleCamera(); document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity'; }
+            })
+        ),
 
         // 6. Toggles
         el('div', { style: 'display: flex; gap: 5px;' },
@@ -649,38 +1132,54 @@ function initLayout() {
                     e.target.style.backgroundColor = showAxes?'green':'grey';
                     update3D(); 
                 } 
+            }),
+            el('button', { 
+                text: 'Cats', 
+                id: 'btn-cats',
+                style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showCategories = !showCategories;
+                    showValues = false; 
+                    document.getElementById('btn-vals').style.backgroundColor = 'grey';
+                    e.target.style.backgroundColor = showCategories?'green':'grey';
+                    update3D(); 
+                } 
+            }),
+            el('button', { 
+                text: 'Vals', 
+                id: 'btn-vals',
+                style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showValues = !showValues;
+                    showCategories = false;
+                    document.getElementById('btn-cats').style.backgroundColor = 'grey';
+                    e.target.style.backgroundColor = showValues?'green':'grey';
+                    update3D(); 
+                } 
             })
         ),
 
-        // 7. Grid
+        // 7. Grid & Analysis
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
+                id: 'grid-select',
                 style: 'flex: 1;',
                 onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
             },
-                el('option', { value: '0', text: 'None' }),
-                el('option', { value: '1', text: 'Orthogonal', selected: 'true' }),
-                el('option', { value: '2', text: 'All 26' })
-            )
-        ),
-
-        // 8. Sliders
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
-            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Ball:"),
-            el('input', { 
-                type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
-                style: 'width: 100%;',
-                oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
-            })
-        ),
-
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
-            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Hint:"),
-            el('input', { 
-                type: 'range', min: '0.05', max: '0.5', step: '0.05', value: hintBallSize,
-                style: 'width: 100%;',
-                oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
+                el('option', { value: '0', text: 'None', ...(gridMode===0 ? {selected: 'true'} : {}) }),
+                el('option', { value: '1', text: 'Orthogonal', ...(gridMode===1 ? {selected: 'true'} : {}) }),
+                el('option', { value: '2', text: 'All 26', ...(gridMode===2 ? {selected: 'true'} : {}) })
+            ),
+            el('button', { 
+                text: 'Stat', 
+                style: 'flex: 0.5; background-color: navy; color: white; border: none; padding: 3px; cursor: pointer;',
+                onclick: () => doStaticEval() 
+            }),
+            el('button', { 
+                text: 'Sort', 
+                style: 'flex: 0.5; background-color: navy; color: white; border: none; padding: 3px; cursor: pointer;',
+                onclick: () => doListMoves() 
             })
         )
     );
@@ -727,7 +1226,6 @@ function initLayout() {
 
     // --- COLUMN 3: 3D VIEW ---
     const col3 = el('div', { class: 'col-3d' },
-        el('div', { text: '3D View', style: 'text-align: center; margin-bottom: 5px;' }),
         el('div', { id: 'view3d-container' })
     );
 
