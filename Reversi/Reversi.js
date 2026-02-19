@@ -19,9 +19,20 @@ let gameCube = [];
 let currentSlices = { X: 0, Y: 0, Z: 0 };
 let validMoves = []; 
 
+// History Management
+let moveHistory = []; // Stores copies of gameCube
+let currentMoveIndex = 0; // Where we are in the timeline (0 = start)
+
+// Visualization Settings
+let showHints = true;
+let showAxes = true;
+let gridMode = 1; // 0=None, 1=Ortho(XYZ), 2=All 26
+let playerBallSize = 0.25; // Diameter relative to cell spacing (0.25 means radius 0.125)
+let hintBallSize = 0.15;   // Diameter
+
 // --- 3D GLOBAL VARIABLES ---
 let scene, camera, renderer, controls;
-let stoneGroup; 
+let stoneGroup, gridGroup, axesHelper; 
 let raycaster, mouse; 
 let animationId = null;
 
@@ -48,15 +59,26 @@ function createSpacer(height) {
     return el('div', { style: `height: ${height}px; width: 100%;` });
 }
 
+function log(msg) {
+    const box = document.getElementById('status-box');
+    if (box) {
+        const line = document.createElement('div');
+        line.textContent = msg;
+        box.appendChild(line);
+        box.scrollTop = box.scrollHeight; // Auto-scroll
+    }
+    console.log(msg);
+}
+
 // --- 2. GAME LOGIC ---
 
 function initGameData() {
-    console.log("Initializing Game Data...");
     gameCube = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
     
     const mid = (N / 2) - 1;
     currentSlices = { X: mid, Y: mid, Z: mid };
 
+    // Starter Pattern
     const centerIndices = [mid, mid + 1];
     for (let x of centerIndices) {
         for (let y of centerIndices) {
@@ -65,13 +87,53 @@ function initGameData() {
             }
         }
     }
+
+    // Initialize History
+    moveHistory = [];
+    saveHistoryState(); // Save initial state (Index 0)
+    currentMoveIndex = 0;
+
     updateGameState();
 }
 
+function saveHistoryState() {
+    // Deep copy the cube
+    const cubeCopy = JSON.parse(JSON.stringify(gameCube));
+    // If we are not at the end of history, truncate the future
+    if (currentMoveIndex < moveHistory.length - 1) {
+        moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+    }
+    moveHistory.push(cubeCopy);
+    currentMoveIndex = moveHistory.length - 1;
+    updateNavUI();
+}
+
+function loadHistoryState(index) {
+    if (index < 0 || index >= moveHistory.length) return;
+    
+    currentMoveIndex = index;
+    // Restore Cube
+    gameCube = JSON.parse(JSON.stringify(moveHistory[index]));
+    
+    updateGameState();
+    redrawAllSlices();
+    update3D();
+    updateNavUI();
+    log(`Jumped to Move ${index}`);
+}
+
+function updateNavUI() {
+    const txt = document.getElementById('nav-move-num');
+    if (txt) txt.value = currentMoveIndex;
+}
+
 function resetGame() {
-    console.log("--- RESETTING GAME ---");
+    const box = document.getElementById('status-box');
+    if(box) box.innerHTML = "";
+    log("--- RESETTING GAME ---");
     initGameData();
-    initLayout();
+    // Reset view options to defaults? Optional. Keeping current prefs is usually better.
+    update3D(); // Rebuild scene
 }
 
 function getCurrentPlayer() {
@@ -81,6 +143,17 @@ function getCurrentPlayer() {
             for(let z=0; z<N; z++) 
                 if(gameCube[x][y][z] !== 0) count++;
     return (count % 2 === 0) ? 1 : 2; 
+}
+
+function getScores() {
+    let r = 0, g = 0;
+    for(let x=0; x<N; x++) 
+        for(let y=0; y<N; y++) 
+            for(let z=0; z<N; z++) {
+                if(gameCube[x][y][z] === 1) r++;
+                if(gameCube[x][y][z] === 2) g++;
+            }
+    return { red: r, green: g };
 }
 
 function checkDirection(x, y, z, dx, dy, dz, player) {
@@ -132,17 +205,28 @@ function updateGameState() {
         }
     }
     
-    const statusBox = document.getElementById('status-box');
-    if (statusBox) {
+    // Update Score Board
+    const scores = getScores();
+    const infoDiv = document.getElementById('game-info');
+    if (infoDiv) {
         const pName = player === 1 ? "Red" : "Green";
-        statusBox.textContent = `Current Player: ${pName}`;
-        statusBox.style.color = player === 1 ? redColor : greenColor;
+        const color = player === 1 ? redColor : greenColor;
+        infoDiv.innerHTML = `
+            <div style="margin-bottom: 5px;">Turn: <span style="color:${color}; font-weight:bold">${pName}</span></div>
+            <div style="font-size: 0.9em;">Red: ${scores.red} | Green: ${scores.green}</div>
+        `;
     }
 }
 
 function executeMove(x, y, z) {
+    // If we are looking at history, we can't play unless we are at the HEAD
+    // But typical behavior is to branch new history. 
+    // Since saveHistoryState truncates future, this works naturally.
+    
     const player = getCurrentPlayer();
     gameCube[x][y][z] = player;
+    
+    log(`Move: ${player===1?"Red":"Green"} to (${x},${y},${z})`);
 
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
@@ -158,6 +242,8 @@ function executeMove(x, y, z) {
             }
         }
     }
+    
+    saveHistoryState(); // Commit to history
     updateGameState();
     redrawAllSlices();
     update3D(); 
@@ -199,12 +285,13 @@ function drawSlice(canvas, axis, sliceIndex) {
             const cy = offset + (j * step);
 
             if (val !== 0) {
+                // In 2D we stick to full circles for clarity
                 const radius = step * 0.35; 
                 ctx.fillStyle = (val === 1) ? redColor : greenColor;
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
                 ctx.fill();
-            } else if (validMoves.includes(`${x},${y},${z}`)) {
+            } else if (showHints && validMoves.includes(`${x},${y},${z}`)) {
                 const radius = step * 0.15; 
                 ctx.fillStyle = eligibleColor;
                 ctx.beginPath();
@@ -233,7 +320,7 @@ function handleCanvasClick(event, axis) {
         if (validMoves.includes(moveKey)) {
             executeMove(x, y, z);
         } else {
-            console.log("Invalid move");
+            log("Invalid move");
         }
     }
 }
@@ -269,7 +356,7 @@ function init3D() {
     camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
     camera.position.set(N*1.5, N*1.5, N*2.5);
 
-    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(size, size);
     container.appendChild(renderer.domElement);
     
@@ -284,57 +371,121 @@ function init3D() {
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    const gridGroup = new THREE.Group();
+    // Setup Groups
+    gridGroup = new THREE.Group();
+    // Center the grid
     const offset = (N - 1) / 2;
     gridGroup.position.set(-offset, -offset, -offset);
-
-    const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
-    const points = [];
-
-    for (let i = 0; i < N; i++) {
-        for (let j = 0; j < N; j++) {
-            points.push(new THREE.Vector3(0, i, j)); points.push(new THREE.Vector3(N-1, i, j));
-            points.push(new THREE.Vector3(i, 0, j)); points.push(new THREE.Vector3(i, N-1, j));
-            points.push(new THREE.Vector3(i, j, 0)); points.push(new THREE.Vector3(i, j, N-1));
-        }
-    }
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const lineSegments = new THREE.LineSegments(geometry, material);
-    gridGroup.add(lineSegments);
     scene.add(gridGroup);
 
     stoneGroup = new THREE.Group();
     stoneGroup.position.set(-offset, -offset, -offset); 
     scene.add(stoneGroup);
+    
+    // Axes Helper
+    axesHelper = new THREE.AxesHelper(N);
+    // Position axes at corner of grid
+    axesHelper.position.set(-offset - 1, -offset - 1, -offset - 1);
+    scene.add(axesHelper);
 
+    update3DGrid();
     animate();
     update3D();
+}
+
+function update3DGrid() {
+    // Clear old grid
+    while(gridGroup.children.length > 0) gridGroup.remove(gridGroup.children[0]);
+
+    if (gridMode === 0) return; // No Grid
+
+    const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+    const points = [];
+
+    // Orthogonal Grid (Mode 1 & 2)
+    for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+            // X-lines
+            points.push(new THREE.Vector3(0, i, j), new THREE.Vector3(N-1, i, j));
+            // Y-lines
+            points.push(new THREE.Vector3(i, 0, j), new THREE.Vector3(i, N-1, j));
+            // Z-lines
+            points.push(new THREE.Vector3(i, j, 0), new THREE.Vector3(i, j, N-1));
+        }
+    }
+
+    // All 26 Directions (Mode 2 only)
+    if (gridMode === 2) {
+        // We connect every point to its neighbors. 
+        // To avoid duplicate lines, we only draw forward-facing vectors.
+        for (let x = 0; x < N; x++) {
+            for (let y = 0; y < N; y++) {
+                for (let z = 0; z < N; z++) {
+                    const origin = new THREE.Vector3(x,y,z);
+                    // Check neighbors in positive directions to avoid dupes
+                    // Vectors: (1,0,0), (0,1,0), (0,0,1) are already done above.
+                    // We need diagonals.
+                    const diags = [
+                        [1,1,0], [1,-1,0], 
+                        [1,0,1], [1,0,-1], 
+                        [0,1,1], [0,1,-1], 
+                        [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1] 
+                    ];
+                    
+                    diags.forEach(d => {
+                        const nx = x + d[0], ny = y + d[1], nz = z + d[2];
+                        if (nx >=0 && nx < N && ny >=0 && ny < N && nz >=0 && nz < N) {
+                            points.push(origin, new THREE.Vector3(nx, ny, nz));
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const lineSegments = new THREE.LineSegments(geometry, material);
+    gridGroup.add(lineSegments);
 }
 
 function update3D() {
     if (!stoneGroup) return;
     
-    while(stoneGroup.children.length > 0){ 
-        stoneGroup.remove(stoneGroup.children[0]); 
-    }
+    // 1. Update Axes Visibility
+    if (axesHelper) axesHelper.visible = showAxes;
 
-    // --- UPDATED GEOMETRIES ---
-    const radius = 0.125; 
-    const stoneGeo = new THREE.SphereGeometry(radius, 16, 16);
-    // NEW: Hint geometry is half size
-    const hintGeo = new THREE.SphereGeometry(radius / 2, 16, 16);
+    // 2. Rebuild Grid if mode changed (checked roughly via simple flag or just rebuild)
+    update3DGrid(); 
+
+    // 3. Rebuild Stones
+    while(stoneGroup.children.length > 0) stoneGroup.remove(stoneGroup.children[0]);
+
+    // Calculate radii based on sliders (slider value 0.1 to 1.0 represents Diameter)
+    // So Radius = Diameter / 2
+    const pRadius = playerBallSize / 2;
+    const hRadius = hintBallSize / 2;
+
+    const stoneGeo = new THREE.SphereGeometry(pRadius, 32, 32);
+    const hintGeo = new THREE.SphereGeometry(hRadius, 16, 16);
     
-    const redMat = new THREE.MeshStandardMaterial({ 
-        color: 0xff0000, roughness: 0.2, transparent: true, opacity: 0.6 
-    });
-    const greenMat = new THREE.MeshStandardMaterial({ 
-        color: 0x00ff00, roughness: 0.2, transparent: true, opacity: 0.6
-    });
+    // Glassy Materials
+    const glassParams = { 
+        roughness: 0.1, 
+        metalness: 0.1, 
+        transparent: true, 
+        opacity: 0.8 // Slightly more opaque than hints
+    };
+    
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, ...glassParams });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, ...glassParams });
     const hintMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffff00, transparent: true, opacity: 0.6, roughness: 0.2 
+        color: 0xffff00, 
+        transparent: true, 
+        opacity: 0.5,
+        roughness: 0.2 
     });
 
-    // 1. Draw Existing Stones (Full Size)
+    // Draw Stones
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
             for(let z=0; z<N; z++) {
@@ -349,17 +500,21 @@ function update3D() {
         }
     }
 
-    // 2. Draw Hints (Half Size)
-    validMoves.forEach(moveStr => {
-        const [x, y, z] = moveStr.split(',').map(Number);
-        const mesh = new THREE.Mesh(hintGeo, hintMat);
-        mesh.position.set(x, y, z);
-        mesh.userData = { isHint: true, x: x, y: y, z: z };
-        stoneGroup.add(mesh);
-    });
+    // Draw Hints
+    if (showHints) {
+        validMoves.forEach(moveStr => {
+            const [x, y, z] = moveStr.split(',').map(Number);
+            const mesh = new THREE.Mesh(hintGeo, hintMat);
+            mesh.position.set(x, y, z);
+            mesh.userData = { isHint: true, x: x, y: y, z: z };
+            stoneGroup.add(mesh);
+        });
+    }
 }
 
 function on3DClick(event) {
+    if (!showHints) return; // Can't click what you can't see
+
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -370,7 +525,7 @@ function on3DClick(event) {
     for (let i = 0; i < intersects.length; i++) {
         const obj = intersects[i].object;
         if (obj.userData.isHint) {
-            console.log("Clicked 3D Hint:", obj.userData);
+//            log(`Clicked 3D Hint at (${obj.userData.x}, ${obj.userData.y}, ${obj.userData.z})`);
             executeMove(obj.userData.x, obj.userData.y, obj.userData.z);
             return; 
         }
@@ -398,40 +553,114 @@ function initLayout() {
     root.style.padding = `${S}px`;
     root.style.fontFamily = 'sans-serif';
 
-    // --- COLUMN 1: CONTROLS ---
-    const col1 = el('div', { class: 'col-controls', style: 'min-width: 160px; max-width: 160px;' },
-        el('h3', { text: 'Controls', style: 'margin-top:0' }),
+    // --- COLUMN 1: CONTROLS (Mill Style) ---
+    const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
+        
+        // 1. Status / Info Box
+        el('div', { 
+            id: 'game-info',
+            style: `background-color: rgb(200,255,255); color: navy; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid navy;`
+        }, "Initializing..."),
 
-        el('label', { text: 'Scale (S): ' }),
-        el('input', { 
-            type: 'number', min: '15', max: '40', value: S,
-            style: 'width: 50px; margin-bottom: 10px;',
-            onchange: (e) => {
-                S = parseInt(e.target.value);
-                initLayout(); 
-            }
+        // 2. Status Log (Scrolling)
+        el('div', { 
+            id: 'status-box',
+            style: `background-color: rgb(200,255,255); color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
         }),
-        el('br'),
 
-        el('label', { text: 'Size (N): ' }),
-        el('select', { 
-            style: 'width: 50px;',
-            onchange: (e) => {
-                N = parseInt(e.target.value);
-                resetGame(); 
-            } 
-        },
-            el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
-            el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
-            el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
+        // 3. Main Game Controls
+        el('button', { 
+            text: 'Reset Game', 
+            style: 'background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px;',
+            onclick: () => resetGame() 
+        }),
+
+        // 4. History Navigation
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+            el('button', { text: '<', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+            el('input', { 
+                id: 'nav-move-num', type: 'text', value: '0', 
+                style: 'width: 40px; text-align: center;', readonly: true 
+            }),
+            el('button', { text: '>', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
         ),
 
-        createSpacer(S),
-        el('button', { text: 'Reset Game', onclick: () => resetGame() }),
-        createSpacer(S),
-        el('div', { id: 'status-box', style: `border: 1px solid #333; padding: 5px; min-height: ${2*S}px; font-size: 0.9em; font-weight: bold;` },
-            "Initializing..."
-        )
+        createSpacer(5),
+        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
+
+        // 5. Configuration (S and N)
+        el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
+            el('label', { text: 'Scale:' }),
+            el('input', { 
+                type: 'number', min: '15', max: '40', value: S, style: 'width: 40px;',
+                onchange: (e) => { S = parseInt(e.target.value); initLayout(); }
+            }),
+            el('label', { text: 'Size:' }),
+            el('select', { 
+                style: 'width: 40px;',
+                onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
+            },
+                el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
+                el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
+                el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
+            )
+        ),
+
+        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
+        el('div', { text: 'Visualization', style: 'font-weight: bold; text-align: center;' }),
+
+        // 6. Toggles (Colored Buttons)
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Hints', 
+                id: 'btn-hints',
+                style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showHints = !showHints; 
+                    e.target.style.backgroundColor = showHints?'green':'grey';
+                    redrawAllSlices(); 
+                    update3D(); 
+                } 
+            }),
+            el('button', { 
+                text: 'Axes', 
+                id: 'btn-axes',
+                style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showAxes = !showAxes; 
+                    e.target.style.backgroundColor = showAxes?'green':'grey';
+                    update3D(); 
+                } 
+            })
+        ),
+
+        // 7. Grid Menu
+        el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
+            el('label', { text: 'Grid:' }),
+            el('select', { 
+                style: 'flex: 1;',
+                onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
+            },
+                el('option', { value: '0', text: 'None' }),
+                el('option', { value: '1', text: 'Orthogonal', selected: 'true' }),
+                el('option', { value: '2', text: 'All 26' })
+            )
+        ),
+
+        // 8. Sliders
+        el('div', { style: 'font-size: 0.9em; margin-top: 5px;' }, "Player Ball Size"),
+        el('input', { 
+            type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
+            style: 'width: 100%;',
+            oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
+        }),
+
+        el('div', { style: 'font-size: 0.9em;' }, "Hint Ball Size"),
+        el('input', { 
+            type: 'range', min: '0.05', max: '0.5', step: '0.05', value: hintBallSize,
+            style: 'width: 100%;',
+            oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
+        })
     );
 
     // --- COLUMN 2: SLICES ---
