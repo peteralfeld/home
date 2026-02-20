@@ -10,12 +10,33 @@ let greenColor = "rgb(0,255,0)";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
 let backgroundColor = "rgb(0,0,0)";
-let millBoardColor = "rgb(245,234,221)"; 
 let millTitleBg = "#ffffcc";
 let millTitleColor = "navy";
+let scoreBgColor = "#222222"; // High contrast dark background for Red/Green
 
-let S = 40;   // Scaling factor for 2D
-let N = 8;    // Board size
+let S = 40;   
+let N = 4;    
+let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
+
+// Player / AI Configuration
+let redType = 'Human';   
+let greenType = 'Human'; 
+let redDepth = 2;        
+let greenDepth = 2;
+let evalDepth = 4; 
+
+// Game State Controls
+let isPlaying = false;    
+let isAIThinking = false; 
+let isGameOver = false;
+let resetCount = 0;       // Tracks resets to trigger blinking
+
+// Toggles
+let usePruning = true;    
+let useSymmetry = true;   
+let useRandom = true;     
+let duplicateLogs = true; 
+let showDepths = false;   
 
 // 0 = empty, 1 = Red, 2 = Green
 let gameCube = []; 
@@ -25,6 +46,7 @@ let activePlayer = 1;
 let currentSlices = { X: 0, Y: 0, Z: 0 };
 let validMoves = []; 
 let bestMoves = []; 
+let lastMoveRecord = null; 
 
 // History Management
 let moveHistory = []; 
@@ -33,6 +55,7 @@ let currentMoveIndex = 0;
 // Visualization Settings
 let showHints = true;
 let showAxes = false; 
+let showHover = false;      
 let showCategories = false; 
 let showValues = false;     
 let gridMode = 1; 
@@ -59,24 +82,25 @@ let stoneGroup, gridGroup, axesHelper;
 let raycaster, mouse; 
 let animationId = null;
 let overlay3D = null; 
+let hoverTooltip = null; 
 
 // --- 1. HELPER FUNCTIONS ---
 function el(tag, attrs = {}, ...children) {
     const element = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs)) {
         if (key === 'text') element.textContent = value;
-        else if (key.startsWith('on') && typeof value === 'function') {
-            element.addEventListener(key.substring(2).toLowerCase(), value);
-        } else if (key === 'style') {
-            element.style.cssText = value; 
-        } else {
-            element.setAttribute(key, value);
-        }
+        else if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
+        else if (key === 'style') element.style.cssText = value; 
+        else element.setAttribute(key, value);
     }
     children.forEach(child => {
         if (child) element.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
     });
     return element;
+}
+
+function commas(x) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function log(msg) {
@@ -87,16 +111,17 @@ function log(msg) {
         box.appendChild(line);
         box.scrollTop = box.scrollHeight; 
     }
-    console.log(msg);
+    if (duplicateLogs) console.log(msg); 
+}
+
+function techLog(msg) {
+    console.log(msg); // Exclusively for the console
 }
 
 function printToOverlay(msg) {
-    if (overlay3D) {
-        overlay3D.textContent = msg;
-    }
+    if (overlay3D) overlay3D.textContent = msg;
 }
 
-// "Smart Input" behavior (like in Mill.js)
 function setupSmartInput(inputEl, validateAndApply) {
     inputEl.dataset.lastValid = inputEl.value;
     inputEl.addEventListener('focus', function() {
@@ -104,9 +129,8 @@ function setupSmartInput(inputEl, validateAndApply) {
         this.value = '';
     });
     inputEl.addEventListener('blur', function() {
-        if (this.value.trim() === '') {
-            this.value = this.dataset.lastValid;
-        } else {
+        if (this.value.trim() === '') this.value = this.dataset.lastValid;
+        else {
             let val = parseInt(this.value);
             if (Number.isFinite(val)) {
                 let finalVal = validateAndApply(val);
@@ -114,17 +138,84 @@ function setupSmartInput(inputEl, validateAndApply) {
                     this.value = finalVal;
                     this.dataset.lastValid = finalVal;
                 }
-            } else {
-                this.value = this.dataset.lastValid;
-            }
+            } else this.value = this.dataset.lastValid;
         }
     });
     inputEl.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            this.blur();
-        }
+        if (e.key === 'Enter') this.blur();
     });
     return inputEl;
+}
+
+function cloneBoard(board) {
+    let newB = new Array(N);
+    for(let x=0; x<N; x++) {
+        let col = new Array(N);
+        for(let y=0; y<N; y++) {
+            let row = new Array(N);
+            for(let z=0; z<N; z++) row[z] = board[x][y][z];
+            col[y] = row;
+        }
+        newB[x] = col;
+    }
+    return newB;
+}
+
+// --- SYMMETRY ENGINE (ROOT FILTERING) ---
+function applySymToCoord(x, y, z, sym) {
+    let px = x, py = y, pz = z;
+    let perm = sym % 6;
+    let inv = Math.floor(sym / 6); 
+    
+    if (inv & 1) px = (N - 1) - px;
+    if (inv & 2) py = (N - 1) - py;
+    if (inv & 4) pz = (N - 1) - pz;
+    
+    if (perm === 0) return {x: px, y: py, z: pz};
+    if (perm === 1) return {x: px, y: pz, z: py};
+    if (perm === 2) return {x: py, y: px, z: pz};
+    if (perm === 3) return {x: py, y: pz, z: px};
+    if (perm === 4) return {x: pz, y: px, z: py};
+    if (perm === 5) return {x: pz, y: py, z: px};
+}
+
+function getBoardSymmetries(board) {
+    let syms = [];
+    for (let sym = 0; sym < 48; sym++) {
+        let match = true;
+        for (let x = 0; x < N && match; x++) {
+            for (let y = 0; y < N && match; y++) {
+                for (let z = 0; z < N && match; z++) {
+                    let mc = applySymToCoord(x, y, z, sym);
+                    if (board[x][y][z] !== board[mc.x][mc.y][mc.z]) match = false;
+                }
+            }
+        }
+        if (match) syms.push(sym);
+    }
+    return syms;
+}
+
+function filterSymmetricMoves(board, validMoves) {
+    let syms = getBoardSymmetries(board);
+    if (syms.length === 1) return validMoves; 
+
+    let uniqueMoves = [];
+    for (let m of validMoves) {
+        let isRedundant = false;
+        for (let um of uniqueMoves) {
+            for (let sym of syms) {
+                let mapped = applySymToCoord(m.x, m.y, m.z, sym);
+                if (mapped.x === um.x && mapped.y === um.y && mapped.z === um.z) {
+                    isRedundant = true;
+                    break;
+                }
+            }
+            if (isRedundant) break;
+        }
+        if (!isRedundant) uniqueMoves.push(m);
+    }
+    return uniqueMoves;
 }
 
 // --- 2. GAME LOGIC ---
@@ -147,9 +238,12 @@ function initGameData() {
 
     initGeometry();
     moveHistory = [];
+    lastMoveRecord = null; 
     saveHistoryState(); 
     currentMoveIndex = 0;
     bestMoves = []; 
+    isPlaying = false; 
+    isGameOver = false;
     updateGameState();
 }
 
@@ -160,56 +254,36 @@ function initGeometry() {
     const distToCorner = (x, y, z) => {
         let minD = 999;
         const corners = [0, N-1];
-        corners.forEach(cx => {
-            corners.forEach(cy => {
-                corners.forEach(cz => {
-                    const d = Math.max(Math.abs(x - cx), Math.abs(y - cy), Math.abs(z - cz));
-                    if (d < minD) minD = d;
-                });
-            });
-        });
+        corners.forEach(cx => corners.forEach(cy => corners.forEach(cz => {
+            const d = Math.max(Math.abs(x - cx), Math.abs(y - cy), Math.abs(z - cz));
+            if (d < minD) minD = d;
+        })));
         return minD;
     };
-
     const isEdge = (x, y, z) => {
         let ends = 0;
-        if (isEnd(x)) ends++;
-        if (isEnd(y)) ends++;
-        if (isEnd(z)) ends++;
+        if (isEnd(x)) ends++; if (isEnd(y)) ends++; if (isEnd(z)) ends++;
         return ends === 2;
     };
-
     const distToEdge = (x, y, z) => {
         let minD = 999;
-        for(let i=0; i<N; i++) {
-            for(let j=0; j<N; j++) {
-                for(let k=0; k<N; k++) {
-                    if (isEdge(i,j,k)) {
-                        const d = Math.max(Math.abs(x - i), Math.abs(y - j), Math.abs(z - k));
-                        if (d < minD) minD = d;
-                    }
-                }
+        for(let i=0; i<N; i++) for(let j=0; j<N; j++) for(let k=0; k<N; k++) {
+            if (isEdge(i,j,k)) {
+                const d = Math.max(Math.abs(x - i), Math.abs(y - j), Math.abs(z - k));
+                if (d < minD) minD = d;
             }
         }
         return minD;
     };
-
     const distToFace = (x, y, z) => {
-        const dx = Math.min(x, (N-1) - x);
-        const dy = Math.min(y, (N-1) - y);
-        const dz = Math.min(z, (N-1) - z);
-        return Math.min(dx, dy, dz);
+        return Math.min(Math.min(x, (N-1) - x), Math.min(y, (N-1) - y), Math.min(z, (N-1) - z));
     };
 
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
             for(let z=0; z<N; z++) {
-                let cat = 0; 
-                let ends = 0;
-                if (isEnd(x)) ends++;
-                if (isEnd(y)) ends++;
-                if (isEnd(z)) ends++;
-
+                let cat = 0; let ends = 0;
+                if (isEnd(x)) ends++; if (isEnd(y)) ends++; if (isEnd(z)) ends++;
                 let dCorner = distToCorner(x, y, z);
                 let dEdge = distToEdge(x, y, z);
                 let dFace = distToFace(x, y, z);
@@ -221,8 +295,6 @@ function initGeometry() {
                 else if (dEdge === 1) cat = 7; 
                 else if (ends === 1) cat = 8; 
                 else if (dFace === 1) cat = 9; 
-                else cat = 0; 
-
                 categoryMap[x][y][z] = cat;
             }
         }
@@ -231,20 +303,14 @@ function initGeometry() {
 
 function checkDirection(board, x, y, z, dx, dy, dz, player) {
     const opponent = player === 1 ? 2 : 1;
-    let i = x + dx;
-    let j = y + dy;
-    let k = z + dz;
+    let i = x + dx, j = y + dy, k = z + dz;
     let foundOpponent = false;
 
     while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
         const cell = board[i][j][k];
-        if (cell === opponent) {
-            foundOpponent = true;
-        } else if (cell === player) {
-            return foundOpponent; 
-        } else {
-            return false;
-        }
+        if (cell === opponent) foundOpponent = true;
+        else if (cell === player) return foundOpponent; 
+        else return false;
         i += dx; j += dy; k += dz;
     }
     return false; 
@@ -262,8 +328,7 @@ function getValidMovesForPlayer(board, player) {
                         for (let dz = -1; dz <= 1; dz++) {
                             if (dx===0 && dy===0 && dz===0) continue;
                             if (checkDirection(board, x, y, z, dx, dy, dz, player)) {
-                                isValid = true;
-                                break; 
+                                isValid = true; break; 
                             }
                         }
                         if (isValid) break;
@@ -278,7 +343,7 @@ function getValidMovesForPlayer(board, player) {
 }
 
 function simulateMove(board, move, player) {
-    const newBoard = JSON.parse(JSON.stringify(board));
+    const newBoard = cloneBoard(board);
     const {x, y, z} = move;
     newBoard[x][y][z] = player;
     for (let dx = -1; dx <= 1; dx++) {
@@ -320,51 +385,183 @@ function staticEvaluation(board, player) {
     }
 
     score += (pStones - oStones) * w[2]; 
-    for(let i=3; i<=9; i++) {
-        score += (counts.p[i] - counts.o[i]) * w[i];
-    }
+    for(let i=3; i<=9; i++) score += (counts.p[i] - counts.o[i]) * w[i];
 
     if (w[0] !== 0) {
-        const pMoves = getValidMovesForPlayer(board, player).length;
-        const oMoves = getValidMovesForPlayer(board, opponent).length;
-        score += (pMoves - oMoves) * w[0];
+        score += (getValidMovesForPlayer(board, player).length - getValidMovesForPlayer(board, opponent).length) * w[0];
     }
     return score;
 }
 
-// --- BUTTON HANDLERS ---
-function doStaticEval() {
-    const val = staticEvaluation(gameCube, activePlayer);
-    let msg = `Static Value (${activePlayer===1?"Red":"Green"}): ${val}`;
-    printToOverlay(msg);
-    log(msg); // Print to status box too
+// --- 3. AI LOGIC (2-PLY WEB WORKER POOL) ---
+
+async function getBestMoveAI_Async(board, player, depth) {
+    const startTime = performance.now();
+    let M1 = getValidMovesForPlayer(board, player);
+    
+    if (M1.length === 0) return { bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 };
+
+    const initialMovesCount = M1.length;
+    if (useSymmetry) {
+        M1 = filterSymmetricMoves(board, M1);
+        if (M1.length < initialMovesCount) {
+            techLog(`Symmetry filter: reduced ${initialMovesCount} moves to ${M1.length} unique.`);
+        }
+    }
+
+    let combinedDepthVisits = {};
+    combinedDepthVisits[depth] = 1; 
+    let totalNodes = 1;
+    
+    if (M1.length > 0) {
+        combinedDepthVisits[depth - 1] = M1.length;
+        totalNodes += M1.length;
+    }
+
+    let tasks = [];
+    for (let m1 of M1) {
+        let b1 = simulateMove(board, m1, player);
+        let opponent = player === 1 ? 2 : 1;
+        let M2 = getValidMovesForPlayer(b1, opponent);
+        
+        if (depth <= 1 || M2.length === 0) {
+            tasks.push({
+                m1: m1, m2: null, board: b1, depthLeft: Math.max(0, depth - 1),
+                currentPlayer: (M2.length === 0) ? player : opponent,
+                passed: (M2.length === 0)
+            });
+        } else {
+            for (let m2 of M2) {
+                let b2 = simulateMove(b1, m2, opponent);
+                tasks.push({
+                    m1: m1, m2: m2, board: b2, depthLeft: depth - 2,
+                    currentPlayer: player, passed: false
+                });
+            }
+        }
+    }
+
+    let chunks = Array.from({ length: Math.min(numWorkers, tasks.length) }, () => []);
+    tasks.forEach((t, i) => chunks[i % chunks.length].push(t));
+
+    const promises = chunks.map((chunk, i) => {
+        return new Promise((resolve) => {
+            const worker = new Worker('ReversiWorker.js');
+            worker.onmessage = function(e) {
+                resolve(e.data);
+                worker.terminate(); 
+            };
+            worker.postMessage({
+                id: i, tasks: chunk, rootPlayerId: player,
+                weights: currentBrain.weights, pruning: usePruning, nVal: N
+            });
+        });
+    });
+
+    const resultsArray = await Promise.all(promises);
+    
+    let m1Map = new Map(); 
+
+    for (let workerRes of resultsArray) {
+        totalNodes += workerRes.totalNodes;
+        for (let d in workerRes.depthVisits) {
+            combinedDepthVisits[d] = (combinedDepthVisits[d] || 0) + workerRes.depthVisits[d];
+        }
+
+        for (let res of workerRes.results) {
+            let key = `${res.m1.x},${res.m1.y},${res.m1.z}`;
+            if (!m1Map.has(key)) m1Map.set(key, { m1: res.m1, minScore: Infinity });
+            if (res.score < m1Map.get(key).minScore) {
+                m1Map.get(key).minScore = res.score;
+            }
+        }
+    }
+
+    let ranked = Array.from(m1Map.values()).map(item => ({ move: item.m1, score: item.minScore }));
+    ranked.sort((a, b) => b.score - a.score);
+
+    let bestScore = ranked[0].score;
+    let bestList = ranked.filter(r => r.score === bestScore);
+    let bestMove;
+
+    if (useRandom) {
+        bestMove = bestList[Math.floor(Math.random() * bestList.length)].move;
+    } else {
+        bestList.sort((a,b) => {
+            if (a.move.x !== b.move.x) return a.move.x - b.move.x;
+            if (a.move.y !== b.move.y) return a.move.y - b.move.y;
+            return a.move.z - b.move.z;
+        });
+        bestMove = bestList[0].move;
+    }
+
+    const timeTakenMs = Math.round(performance.now() - startTime);
+    const pName = player === 1 ? "Red" : "Green";
+    
+    // Format requested by user
+    log(`${pName} AI T, D=${depth}, W=${numWorkers}`);
+    techLog(`AI Done: ${commas(totalNodes)} nodes, ${commas(timeTakenMs)}ms, V: ${commas(bestScore)}`);
+    
+    if (showDepths) {
+        techLog(`--- Depth Visits ---`);
+        for (let i = depth; i >= 0; i--) {
+            if (combinedDepthVisits[i] !== undefined) {
+                techLog(`Depth ${i}: ${commas(combinedDepthVisits[i])} nodes`);
+            }
+        }
+    }
+
+    return { bestMove, maxEval: bestScore, ranked, totalNodes };
 }
 
-function doListMoves() {
-    bestMoves = []; 
-    const moves = getValidMovesForPlayer(gameCube, activePlayer);
-    if (moves.length === 0) {
-        printToOverlay("No moves available.");
-        log("No moves available.");
-        return;
-    }
-    const ranked = moves.map(m => {
-        const nextBoard = simulateMove(gameCube, m, activePlayer);
-        const score = staticEvaluation(nextBoard, activePlayer);
-        return { move: m, score: score };
-    });
-    ranked.sort((a, b) => b.score - a.score);
-    const bestScore = ranked[0].score;
-    bestMoves = ranked.filter(r => r.score === bestScore).map(r => r.move);
+async function makeAIMove() {
+    if (isAIThinking || !isPlaying || isGameOver) return;
+    if (currentMoveIndex < moveHistory.length - 1) return;
 
-    let txt = `--- Available Moves (${ranked.length}) ---\nBest Score: ${bestScore} (${bestMoves.length} moves)\n`;
-    log(`--- Available Moves (${ranked.length}) ---`);
-    log(`Best Score: ${bestScore} (${bestMoves.length} moves)`);
+    isAIThinking = true;
+    let depth = activePlayer === 1 ? redDepth : greenDepth;
     
-    ranked.forEach(item => {
+    try {
+        const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth);
+        if (!isPlaying) {
+            isAIThinking = false;
+            return; 
+        }
+        isAIThinking = false;
+        
+        if (aiResult.bestMove) {
+            executeMove(aiResult.bestMove.x, aiResult.bestMove.y, aiResult.bestMove.z);
+        }
+    } catch (e) {
+        console.error("AI Thread Error:", e);
+        isAIThinking = false;
+    }
+}
+
+// --- BUTTON HANDLERS ---
+async function doStaticEval() {
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth);
+    if (!aiResult.bestMove) { log("No moves."); return; }
+    let msg = `Eval (D=${evalDepth}): ${commas(aiResult.maxEval)}`;
+    printToOverlay(msg);
+    log(msg); 
+}
+
+async function doListMoves() {
+    bestMoves = []; 
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth);
+    if (!aiResult.bestMove) { log("No moves available."); return; }
+
+    const bestScore = aiResult.maxEval;
+    bestMoves = aiResult.ranked.filter(r => r.score === bestScore).map(r => r.move);
+
+    let txt = `--- Moves (D=${evalDepth}) ---\n`;
+    log(`--- Moves (D=${evalDepth}) ---`);
+    
+    aiResult.ranked.forEach(item => {
         const isBest = item.score === bestScore;
         const mark = isBest ? " ★" : "";
-        let lineStr = `(${item.move.x},${item.move.y},${item.move.z}) : ${item.score}${mark}`;
+        let lineStr = `(${item.move.x},${item.move.y},${item.move.z}) : ${commas(item.score)}${mark}`;
         txt += lineStr + `\n`;
         log(lineStr);
     });
@@ -513,10 +710,11 @@ document.addEventListener('keydown', (e) => {
             if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
             break;
         case '.':
-            printToOverlay("");
-            break;
         case '?':
-            printToOverlay(
+            if (overlay3D.textContent.trim() !== "") {
+                printToOverlay("");
+            } else {
+                printToOverlay(
 `Commands:
 4, 6, 8 : Set board size
 a       : Cycle grid mode
@@ -530,9 +728,9 @@ H / h   : Increase/Decrease Hint ball size
 < / >   : History back/forward
 F / f   : Toggle Fullscreen
 I / i   : Toggle Infinity (Orthographic) mode
-.       : Clear text
-?       : Show this help
+. / ?   : Toggle this help display
 Esc/Spc : Exit Fullscreen`);
+            }
             break;
     }
 });
@@ -540,21 +738,36 @@ Esc/Spc : Exit Fullscreen`);
 // --- STATE MANAGEMENT ---
 
 function saveHistoryState() {
-    const cubeCopy = JSON.parse(JSON.stringify(gameCube));
+    const cubeCopy = cloneBoard(gameCube);
     if (currentMoveIndex < moveHistory.length - 1) {
         moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
-    moveHistory.push({ cube: cubeCopy, player: activePlayer });
+    moveHistory.push({ 
+        cube: cubeCopy, 
+        player: activePlayer,
+        lastMove: lastMoveRecord
+    });
     currentMoveIndex = moveHistory.length - 1;
     updateNavUI();
 }
 
 function loadHistoryState(index) {
-    if (index < 0 || index >= moveHistory.length) return;
+    if (index < 0 || index >= moveHistory.length || isAIThinking) return;
     currentMoveIndex = index;
     const state = moveHistory[index];
-    gameCube = JSON.parse(JSON.stringify(state.cube));
+    gameCube = cloneBoard(state.cube);
     activePlayer = state.player;
+    lastMoveRecord = state.lastMove || null; 
+    
+    if (currentMoveIndex < moveHistory.length - 1 && isPlaying) {
+        isPlaying = false;
+        const btnPlay = document.getElementById('btn-play');
+        if (btnPlay) {
+            btnPlay.textContent = 'Play';
+            btnPlay.style.backgroundColor = 'green';
+        }
+    }
+    
     updateGameState(true); 
     redrawAllSlices();
     update3D();
@@ -567,9 +780,21 @@ function updateNavUI() {
 }
 
 function resetGame() {
+    if (isAIThinking) return;
+    isPlaying = false; 
+    isGameOver = false;
+    resetCount++; 
     const box = document.getElementById('status-box');
     if(box) box.innerHTML = "";
     printToOverlay(""); 
+    
+    const btnPlay = document.getElementById('btn-play');
+    if (btnPlay) {
+        btnPlay.textContent = 'Play';
+        btnPlay.style.backgroundColor = 'green';
+        btnPlay.disabled = false;
+    }
+
     initGameData();
     initGeometry(); 
     initLayout();   
@@ -588,20 +813,29 @@ function getScores() {
 
 function updateGameState(isViewOnly = false) {
     validMoves = getValidMovesForPlayer(gameCube, activePlayer).map(m => `${m.x},${m.y},${m.z}`); 
+    const scores = getScores();
     const infoDiv = document.getElementById('game-info');
+    let winnerText = "";
 
+    // Determine Game Over
     if (!isViewOnly && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
         const opponent = activePlayer === 1 ? 2 : 1;
         const opponentMoves = getValidMovesForPlayer(gameCube, opponent);
 
         if (opponentMoves.length === 0) {
-            const scores = getScores();
-            let winner = "DRAW";
-            if (scores.red > scores.green) winner = "RED WINS!";
-            else if (scores.green > scores.red) winner = "GREEN WINS!";
-            log(`GAME OVER: ${winner}`);
-            if(infoDiv) infoDiv.innerHTML += `<div style="color:blue; font-weight:bold; margin-top:5px;">${winner}</div>`;
-            return; 
+            isGameOver = true;
+            isPlaying = false;
+            if (scores.red > scores.green) winnerText = "RED WINS!";
+            else if (scores.green > scores.red) winnerText = "GREEN WINS!";
+            else winnerText = "DRAW!";
+            log(`GAME OVER: ${winnerText}`);
+            
+            const btnPlay = document.getElementById('btn-play');
+            if (btnPlay) {
+                btnPlay.textContent = 'Game Over';
+                btnPlay.style.backgroundColor = 'gray';
+                btnPlay.disabled = true;
+            }
         } else {
             const pName = activePlayer === 1 ? "Red" : "Green";
             log(`${pName} has no moves. Passing...`);
@@ -612,19 +846,56 @@ function updateGameState(isViewOnly = false) {
         }
     }
 
-    const scores = getScores();
+    // Output UI HTML
     if (infoDiv) {
         const pName = activePlayer === 1 ? "Red" : "Green";
         const color = activePlayer === 1 ? redColor : greenColor;
-        infoDiv.innerHTML = `
-            <div style="font-size: 1.4em; text-align: center;">
-                <span style="color:${color}; font-weight:bold">${pName}</span>
-                <span>&nbsp;&nbsp;&nbsp;</span>
-                <span style="color: ${redColor}; font-weight:bold;">${scores.red}</span>
-                <span style="font-weight:bold; color: black;">&nbsp;|&nbsp;</span>
-                <span style="color: ${greenColor}; font-weight:bold;">${scores.green}</span>
-            </div>
-        `;
+        let html = "";
+
+        if (currentMoveIndex === 0 && !isPlaying && !isGameOver) {
+            html = `<div id="press-play-msg" style="font-size: 1.2em; font-weight: bold; height: 100%; display: flex; align-items: center; justify-content: center; color: magenta;">Press Play to Start</div>`;
+            infoDiv.innerHTML = html;
+            
+            // Blinking Logic
+            if (resetCount > 0) {
+                let el = document.getElementById('press-play-msg');
+                let blinks = 0;
+                let iv = setInterval(() => {
+                    if(!el) { clearInterval(iv); return; }
+                    el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+                    blinks++;
+                    if(blinks >= 10) { clearInterval(iv); el.style.visibility = 'visible'; }
+                }, 300);
+            }
+        } else {
+            let lastMoveHtml = "";
+            if (lastMoveRecord) {
+                const lmColor = lastMoveRecord.player === 1 ? redColor : greenColor;
+                lastMoveHtml = `<span style="color: ${lmColor};">Last Move: (${lastMoveRecord.x}, ${lastMoveRecord.y}, ${lastMoveRecord.z})</span>`;
+            }
+            
+            let line2 = isGameOver ? `<span style="color: ${scores.red>scores.green?redColor:(scores.green>scores.red?greenColor:'white')}; font-weight:bold;">${winnerText}</span>` : lastMoveHtml;
+
+            html = `
+                <div style="font-size: 1.1em; font-weight: bold; white-space: nowrap; margin-bottom: 2px;">
+                    <span style="color:${color};">${pName}</span>
+                    <span>&nbsp;&nbsp;</span>
+                    <span style="color: ${redColor};">${scores.red}</span>
+                    <span style="color: white;">&nbsp;|&nbsp;</span>
+                    <span style="color: ${greenColor};">${scores.green}</span>
+                </div>
+                <div style="font-size: 0.9em; font-weight: bold; white-space: nowrap;">${line2}</div>
+            `;
+            infoDiv.innerHTML = html;
+        }
+    }
+
+    // AI Trigger
+    if (!isViewOnly && !isGameOver && validMoves.length > 0 && currentMoveIndex === moveHistory.length - 1) {
+        let pType = activePlayer === 1 ? redType : greenType;
+        if (isPlaying && pType === 'AI' && !isAIThinking) {
+            makeAIMove();
+        }
     }
 }
 
@@ -635,9 +906,13 @@ function executeMove(x, y, z) {
         moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
 
+    lastMoveRecord = { player: activePlayer, x: x, y: y, z: z };
     gameCube[x][y][z] = activePlayer;
     bestMoves = []; 
     
+    const pName = activePlayer === 1 ? "Red" : "Green";
+    log(`${pName} to (${x},${y},${z})`);
+
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             for (let dz = -1; dz <= 1; dz++) {
@@ -660,7 +935,7 @@ function executeMove(x, y, z) {
     update3D(); 
 }
 
-// --- 3. 2D DRAWING ---
+// --- 4. 2D DRAWING ---
 
 function drawSlice(canvas, axis, sliceIndex) {
     const ctx = canvas.getContext('2d');
@@ -721,6 +996,9 @@ function drawSlice(canvas, axis, sliceIndex) {
 }
 
 function handleCanvasClick(event, axis) {
+    if (!isPlaying) { log("Press Play to start."); return; }
+    if (isAIThinking) return;
+
     const rect = event.target.getBoundingClientRect();
     const size = event.target.width;
     const step = size / N; 
@@ -748,7 +1026,7 @@ function redrawAllSlices() {
     });
 }
 
-// --- 4. 3D LOGIC (Three.js) ---
+// --- 5. 3D LOGIC (Three.js) ---
 
 function init3D() {
     const container = document.getElementById('view3d-container');
@@ -759,7 +1037,15 @@ function init3D() {
         cancelAnimationFrame(animationId);
         animationId = null;
     }
-    if (renderer) renderer.dispose();
+    
+    // Fix WebGL context warning by strictly reusing the renderer
+    if (!renderer) {
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.domElement.addEventListener('mousemove', on3DMouseMove);
+        renderer.domElement.addEventListener('click', on3DClick);
+    }
+    renderer.setSize(size, size);
+    container.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); 
@@ -777,19 +1063,16 @@ function init3D() {
 
     camera = orthographicMode ? cameraOrtho : cameraPersp;
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(size, size);
-    container.appendChild(renderer.domElement);
-
-    if (overlay3D) {
-        overlay3D.remove();
-    }
+    if (overlay3D) overlay3D.remove();
     overlay3D = document.createElement('div');
     overlay3D.style.cssText = 'position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; pointer-events: none; z-index: 10; text-shadow: 1px 1px 2px #000; white-space: pre-wrap;';
     container.appendChild(overlay3D);
     
-    renderer.domElement.addEventListener('click', on3DClick);
-
+    if (hoverTooltip) hoverTooltip.remove();
+    hoverTooltip = document.createElement('div');
+    hoverTooltip.style.cssText = 'position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 3px 6px; border-radius: 4px; pointer-events: none; display: none; font-family: monospace; font-size: 14px; z-index: 100; font-weight: bold; border: 1px solid white;';
+    document.body.appendChild(hoverTooltip); 
+    
     controls = new TrackballControls(camera, renderer.domElement);
     controls.rotateSpeed = 4.0;
     controls.zoomSpeed = 1.2;
@@ -838,7 +1121,7 @@ function init3D() {
     scene.add(axesHelper);
 
     update3DGrid();
-    animate();
+    if (!animationId) animate();
     update3D();
 }
 
@@ -912,7 +1195,7 @@ function update3D() {
                     });
                     const mesh = new THREE.Mesh(debugGeo, mat);
                     mesh.position.set(x,y,z);
-                    mesh.userData = { x:x, y:y, z:z }; 
+                    mesh.userData = { isHint: false, x:x, y:y, z:z }; 
                     stoneGroup.add(mesh);
                 }
             }
@@ -943,7 +1226,7 @@ function update3D() {
                     });
                     const mesh = new THREE.Mesh(debugGeo, mat);
                     mesh.position.set(x,y,z);
-                    mesh.userData = { x:x, y:y, z:z }; 
+                    mesh.userData = { isHint: false, x:x, y:y, z:z }; 
                     stoneGroup.add(mesh);
                 }
             }
@@ -964,14 +1247,14 @@ function update3D() {
                 if (val !== 0) {
                     const mesh = new THREE.Mesh(stoneGeo, val === 1 ? redMat : greenMat);
                     mesh.position.set(x, y, z);
-                    mesh.userData = { isHint: false };
+                    mesh.userData = { isHint: false, x: x, y: y, z: z };
                     stoneGroup.add(mesh);
                 }
             }
         }
     }
 
-    if (showHints) {
+    if (showHints && !isAIThinking) {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
             const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
@@ -986,7 +1269,37 @@ function update3D() {
     }
 }
 
+function on3DMouseMove(event) {
+    if (!showHover || !hoverTooltip) {
+        if (hoverTooltip) hoverTooltip.style.display = 'none';
+        return;
+    }
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(stoneGroup.children);
+
+    if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        const {x, y, z} = obj.userData;
+        if (x !== undefined) {
+            hoverTooltip.textContent = `(${x}, ${y}, ${z})`;
+            hoverTooltip.style.display = 'block';
+            hoverTooltip.style.left = (event.clientX + 15) + 'px';
+            hoverTooltip.style.top = (event.clientY + 15) + 'px';
+        }
+    } else {
+        hoverTooltip.style.display = 'none';
+    }
+}
+
 function on3DClick(event) {
+    if (!isPlaying) { log("Press Play to start."); return; }
+    if (isAIThinking) return;
+
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1010,7 +1323,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// --- 5. UI LAYOUT ---
+// --- 6. UI LAYOUT ---
 
 function initLayout() {
     if (gameCube.length !== N) initGameData();
@@ -1025,7 +1338,6 @@ function initLayout() {
     root.style.padding = `${S}px`;
     root.style.fontFamily = 'sans-serif';
 
-    // 4. Config inputs prepared beforehand to use smart input setup
     let scaleInput = el('input', { type: 'text', value: S, style: 'width: 30px; text-align: center;' });
     setupSmartInput(scaleInput, (val) => {
         let safeS = Math.max(20, Math.min(60, val));
@@ -1034,7 +1346,7 @@ function initLayout() {
         return safeS;
     });
 
-    let historyInput = el('input', { type: 'text', value: currentMoveIndex, style: 'width: 30px; text-align: center;' });
+    let historyInput = el('input', { id: 'nav-move-num', type: 'text', value: currentMoveIndex, style: 'width: 30px; text-align: center;' });
     setupSmartInput(historyInput, (val) => {
         let maxIdx = Math.max(0, moveHistory.length - 1);
         let safeVal = Math.max(0, Math.min(val, maxIdx));
@@ -1042,40 +1354,133 @@ function initLayout() {
         return safeVal;
     });
 
+    let workerInput = el('input', { type: 'text', value: numWorkers, style: 'width: 30px; text-align: center;' });
+    setupSmartInput(workerInput, (val) => {
+        let safeW = Math.max(1, Math.min(32, val)); 
+        numWorkers = safeW;
+        return safeW;
+    });
+
     // --- COLUMN 1: CONTROLS ---
     const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
         
         // Header
         el('div', { style: `background-color: ${millTitleBg}; color: ${millTitleColor}; padding: 5px; border-radius: 4px; border: 1px solid ${millTitleColor}; text-align: center;` },
-            el('div', { style: 'font-weight: bold; font-size: 1.2em;' }, "Reversi v. 1"),
+            el('div', { style: 'font-weight: bold; font-size: 1.2em;' }, "Reversi v. 3"),
             el('div', { style: 'font-size: 1em; font-weight: bold;' }, "JS engine.")
+        ),
+
+        // Play Button Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
+            el('button', { 
+                id: 'btn-play',
+                text: isPlaying ? 'Stop' : 'Play',
+                style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+                onclick: (e) => { 
+                    if (isGameOver) return;
+                    isPlaying = !isPlaying; 
+                    e.target.textContent = isPlaying ? 'Stop' : 'Play';
+                    e.target.style.backgroundColor = isPlaying ? 'orange' : 'green';
+                    if (isPlaying) updateGameState();
+                } 
+            }),
+            el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
+                el('span', { text: 'N=', style: 'font-weight: bold;' }),
+                el('select', { 
+                    id: 'size-select',
+                    style: 'width: 40px; font-size: 16px;',
+                    onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
+                },
+                    el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
+                    el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
+                    el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
+                )
+            )
+        ),
+
+        // Reset & History Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+            el('button', { 
+                text: 'Reset', 
+                style: 'flex: 1.5; background-color: red; color: yellow; font-size: 14px; font-weight: bold; padding: 5px; cursor: pointer;',
+                onclick: () => resetGame() 
+            }),
+            el('button', { text: '<', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+            historyInput,
+            el('button', { text: '>', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
+            el('button', { text: '>>', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
+                loadHistoryState(moveHistory.length - 1);
+                if (!isPlaying && !isGameOver) {
+                    isPlaying = true;
+                    const btnPlay = document.getElementById('btn-play');
+                    if (btnPlay) {
+                        btnPlay.textContent = 'Stop';
+                        btnPlay.style.backgroundColor = 'orange';
+                    }
+                    updateGameState();
+                }
+            }})
+        ),
+
+        // Player Type Selection (Red)
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+            el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
+            el('select', { 
+                style: 'flex: 1;',
+                onchange: (e) => { redType = e.target.value; if(isPlaying) updateGameState(); } 
+            },
+                el('option', { value: 'Human', text: 'Human', ...(redType==='Human' ? {selected:'true'} : {}) }),
+                el('option', { value: 'AI', text: 'AI', ...(redType==='AI' ? {selected:'true'} : {}) })
+            ),
+            el('span', { text: 'D=' }),
+            el('select', { 
+                style: 'width: 40px;',
+                onchange: (e) => { redDepth = parseInt(e.target.value); }
+            },
+                el('option', { value: '2', text: '2', ...(redDepth===2 ? {selected: 'true'} : {}) }),
+                el('option', { value: '4', text: '4', ...(redDepth===4 ? {selected: 'true'} : {}) }),
+                el('option', { value: '6', text: '6', ...(redDepth===6 ? {selected: 'true'} : {}) }),
+                el('option', { value: '8', text: '8', ...(redDepth===8 ? {selected: 'true'} : {}) }),
+                el('option', { value: '10', text: '10', ...(redDepth===10 ? {selected: 'true'} : {}) })
+            )
+        ),
+
+        // Player Type Selection (Green)
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+            el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
+            el('select', { 
+                style: 'flex: 1;',
+                onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
+            },
+                el('option', { value: 'Human', text: 'Human', ...(greenType==='Human' ? {selected:'true'} : {}) }),
+                el('option', { value: 'AI', text: 'AI', ...(greenType==='AI' ? {selected:'true'} : {}) })
+            ),
+            el('span', { text: 'D=' }),
+            el('select', { 
+                style: 'width: 40px;',
+                onchange: (e) => { greenDepth = parseInt(e.target.value); }
+            },
+                el('option', { value: '2', text: '2', ...(greenDepth===2 ? {selected: 'true'} : {}) }),
+                el('option', { value: '4', text: '4', ...(greenDepth===4 ? {selected: 'true'} : {}) }),
+                el('option', { value: '6', text: '6', ...(greenDepth===6 ? {selected: 'true'} : {}) }),
+                el('option', { value: '8', text: '8', ...(greenDepth===8 ? {selected: 'true'} : {}) }),
+                el('option', { value: '10', text: '10', ...(greenDepth===10 ? {selected: 'true'} : {}) })
+            )
         ),
 
         // 1. Status / Info Box
         el('div', { 
             id: 'game-info',
-            style: `background-color: ${millBoardColor}; padding: 10px; border-radius: 4px; border: 1px solid navy;`
+            style: `background-color: ${scoreBgColor}; color: white; padding: 10px; border-radius: 4px; border: 1px solid navy; height: 48px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;`
         }, "Initializing..."),
 
         // 2. Status Log
         el('div', { 
             id: 'status-box',
-            style: `background-color: ${millBoardColor}; color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
+            style: `background-color: ${scoreBgColor}; color: white; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
         }),
 
-        // 3. Reset & History
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { 
-                text: 'Reset Game', 
-                style: 'flex: 2; background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px; cursor: pointer;',
-                onclick: () => resetGame() 
-            }),
-            el('button', { text: '<', style: 'flex: 1; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
-            historyInput,
-            el('button', { text: '>', style: 'flex: 1; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
-        ),
-
-        // 4. Config (Scale & N)
+        // 4. Config (Scale & Workers)
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
             el('div', { style: 'display: flex; gap: 2px;' },
@@ -1083,16 +1488,7 @@ function initLayout() {
                 scaleInput,
                 el('button', { text: '>', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
             ),
-            el('label', { text: 'N=' }),
-            el('select', { 
-                id: 'size-select',
-                style: 'width: 40px;',
-                onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
-            },
-                el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
-                el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
-                el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
-            )
+            el('label', { text: 'W:' }), workerInput
         ),
 
         // 5. Fullscreen / Infinity
@@ -1110,56 +1506,52 @@ function initLayout() {
             })
         ),
 
-        // 6. Toggles
+        // 6. Toggles (Row 1)
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                text: 'Hints', 
-                id: 'btn-hints',
+                text: 'Hints', id: 'btn-hints',
                 style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { 
-                    showHints = !showHints; 
-                    e.target.style.backgroundColor = showHints?'green':'grey';
-                    redrawAllSlices(); 
-                    update3D(); 
-                } 
+                onclick: (e) => { showHints = !showHints; e.target.style.backgroundColor = showHints?'green':'grey'; redrawAllSlices(); update3D(); } 
             }),
             el('button', { 
-                text: 'Axes', 
-                id: 'btn-axes',
+                text: 'Axes', id: 'btn-axes',
                 style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { 
-                    showAxes = !showAxes; 
-                    e.target.style.backgroundColor = showAxes?'green':'grey';
-                    update3D(); 
-                } 
+                onclick: (e) => { showAxes = !showAxes; e.target.style.backgroundColor = showAxes?'green':'grey'; update3D(); } 
             }),
             el('button', { 
-                text: 'Cats', 
-                id: 'btn-cats',
+                text: 'Hover', id: 'btn-hover',
+                style: `flex:1; background-color: ${showHover?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showHover = !showHover; 
+                    e.target.style.backgroundColor = showHover?'green':'grey'; 
+                    if (!showHover && hoverTooltip) hoverTooltip.style.display = 'none';
+                } 
+            })
+        ),
+        
+        // Toggles (Row 2)
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Cats', id: 'btn-cats',
                 style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
-                    showCategories = !showCategories;
-                    showValues = false; 
+                    showCategories = !showCategories; showValues = false; 
                     document.getElementById('btn-vals').style.backgroundColor = 'grey';
-                    e.target.style.backgroundColor = showCategories?'green':'grey';
-                    update3D(); 
+                    e.target.style.backgroundColor = showCategories?'green':'grey'; update3D(); 
                 } 
             }),
             el('button', { 
-                text: 'Vals', 
-                id: 'btn-vals',
+                text: 'Vals', id: 'btn-vals',
                 style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
-                    showValues = !showValues;
-                    showCategories = false;
+                    showValues = !showValues; showCategories = false;
                     document.getElementById('btn-cats').style.backgroundColor = 'grey';
-                    e.target.style.backgroundColor = showValues?'green':'grey';
-                    update3D(); 
+                    e.target.style.backgroundColor = showValues?'green':'grey'; update3D(); 
                 } 
             })
         ),
 
-        // 7. Grid & Analysis
+        // 7. Grid
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
@@ -1170,16 +1562,102 @@ function initLayout() {
                 el('option', { value: '0', text: 'None', ...(gridMode===0 ? {selected: 'true'} : {}) }),
                 el('option', { value: '1', text: 'Orthogonal', ...(gridMode===1 ? {selected: 'true'} : {}) }),
                 el('option', { value: '2', text: 'All 26', ...(gridMode===2 ? {selected: 'true'} : {}) })
-            ),
+            )
+        ),
+
+        // 8. Analysis / Evaluation
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
             el('button', { 
-                text: 'Stat', 
-                style: 'flex: 0.5; background-color: navy; color: white; border: none; padding: 3px; cursor: pointer;',
+                text: 'Value', 
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
                 onclick: () => doStaticEval() 
             }),
             el('button', { 
-                text: 'Sort', 
-                style: 'flex: 0.5; background-color: navy; color: white; border: none; padding: 3px; cursor: pointer;',
+                text: 'Moves', 
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
                 onclick: () => doListMoves() 
+            }),
+            el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
+            el('select', { 
+                style: 'width: 40px;',
+                onchange: (e) => { evalDepth = parseInt(e.target.value); }
+            },
+                el('option', { value: '2', text: '2', ...(evalDepth===2 ? {selected: 'true'} : {}) }),
+                el('option', { value: '4', text: '4', ...(evalDepth===4 ? {selected: 'true'} : {}) }),
+                el('option', { value: '6', text: '6', ...(evalDepth===6 ? {selected: 'true'} : {}) }),
+                el('option', { value: '8', text: '8', ...(evalDepth===8 ? {selected: 'true'} : {}) }),
+                el('option', { value: '10', text: '10', ...(evalDepth===10 ? {selected: 'true'} : {}) })
+            )
+        ),
+
+        // AI Engine Logic Toggles
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                id: 'btn-pruning',
+                text: 'α/β', 
+                style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    usePruning = !usePruning;
+                    e.target.style.backgroundColor = usePruning ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-sym',
+                text: 'S', 
+                style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    useSymmetry = !useSymmetry;
+                    e.target.style.backgroundColor = useSymmetry ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-rand',
+                text: 'Rand', 
+                style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    useRandom = !useRandom;
+                    e.target.style.backgroundColor = useRandom ? 'green' : 'red';
+                } 
+            })
+        ),
+
+        // Logging & Depths Toggles
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                id: 'btn-logs',
+                text: 'Logs', 
+                style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    duplicateLogs = !duplicateLogs;
+                    e.target.style.backgroundColor = duplicateLogs ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-depths',
+                text: 'Depths', 
+                style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    showDepths = !showDepths;
+                    e.target.style.backgroundColor = showDepths ? 'green' : 'red';
+                } 
+            })
+        ),
+        
+        // 9. Sliders
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
+            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Ball:"),
+            el('input', { 
+                id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
+                style: 'width: 100%;',
+                oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
+            })
+        ),
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
+            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Hint:"),
+            el('input', { 
+                id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize,
+                style: 'width: 100%;',
+                oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
             })
         )
     );
@@ -1238,6 +1716,6 @@ function initLayout() {
     init3D();
 }
 
-// --- 6. START THE GAME ---
+// --- 7. START THE GAME ---
 initGameData();
 initLayout();
