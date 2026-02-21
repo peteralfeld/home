@@ -5,31 +5,65 @@ import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/con
 // Players are Red (1) and Green (2). Red starts.
 
 // --- CONFIGURATION & STATE ---
-let redColor = "rgb(255,0,0)";
-let greenColor = "rgb(0,255,0)";
+let redColor = "rgb(255,50,50)";  
+let greenColor = "rgb(50,255,50)";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
 let backgroundColor = "rgb(0,0,0)";
 let millTitleBg = "#ffffcc";
 let millTitleColor = "navy";
-let scoreBgColor = "#222222"; // High contrast dark background for Red/Green
+let scoreBgColor = "#333333"; 
 
 let S = 40;   
 let N = 4;    
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
 
+// --- ENGINE STATE ---
+let engineMode = 'WASM'; // Default to C++
+let wasmModule = null;
+
+async function loadWasmEngine() {
+    try {
+        const response = await fetch('ReversiEngine.wasm');
+        if (!response.ok) throw new Error("WASM file not found.");
+        const buffer = await response.arrayBuffer();
+        wasmModule = await WebAssembly.compile(buffer);
+        console.log("C++ WebAssembly Engine loaded successfully.");
+        updateEngineButtonUI();
+    } catch(e) {
+        console.warn("Could not load ReversiEngine.wasm. Falling back to JS mode.", e);
+        engineMode = 'JS';
+        console.log("JS Engine loaded successfully.");
+        updateEngineButtonUI();
+    }
+}
+loadWasmEngine(); 
+
+// --- BRAIN DATA & EVOLUTION ---
+function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
+    return { name, weights: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9] };
+}
+
+let defaultBrains = [
+    makeBrain("Default", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2),
+    makeBrain("Positional", 10, 0, 20, 1200, -50, -100, 80, -10, 5, -5),
+    makeBrain("Greedy", 5, 0, 100, 500, -5, -10, 50, 0, 20, 0)
+];
+let BrainList = JSON.parse(JSON.stringify(defaultBrains));
+let editBrainIndex = 0;
+
 // Player / AI Configuration
 let redType = 'Human';   
 let greenType = 'Human'; 
-let redDepth = 2;        
-let greenDepth = 2;
+let redDepth = 4;        
+let greenDepth = 4;
 let evalDepth = 4; 
 
 // Game State Controls
 let isPlaying = false;    
 let isAIThinking = false; 
 let isGameOver = false;
-let resetCount = 0;       // Tracks resets to trigger blinking
+let unplayedClickCount = 0; 
 
 // Toggles
 let usePruning = true;    
@@ -65,16 +99,6 @@ let hintBallSize = 0.125;
 // Camera Settings
 let cameraPersp, cameraOrtho;
 let orthographicMode = false;
-
-// --- BRAIN SETTINGS ---
-const DefaultBrain = {
-    name: "Standard",
-    weights: {
-        0: 20, 1: 100, 2: 40, 3: 1000, 4: -10, 
-        5: -20, 6: 100, 7: -5, 8: 10, 9: -2
-    }
-};
-let currentBrain = DefaultBrain;
 
 // --- 3D GLOBAL VARIABLES ---
 let scene, camera, renderer, controls;
@@ -115,7 +139,7 @@ function log(msg) {
 }
 
 function techLog(msg) {
-    console.log(msg); // Exclusively for the console
+    console.log(msg); 
 }
 
 function printToOverlay(msg) {
@@ -161,16 +185,183 @@ function cloneBoard(board) {
     return newB;
 }
 
+// UI Engine update function
+function updateEngineButtonUI() {
+    const btn = document.getElementById('engine-toggle-btn');
+    if (!btn) return;
+    const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap;">REVERSI V. 5 ${eng}</h2>`;
+}
+
+// UI Evolution Panel Updates
+function updateBrainUI() {
+    let sel = document.getElementById('editBrainSelect');
+    if (sel) {
+        sel.innerHTML = '';
+        BrainList.forEach((b, i) => sel.appendChild(el('option', {value: i, text: b.name})));
+        sel.value = editBrainIndex;
+    }
+    
+    let b = BrainList[editBrainIndex];
+    if (b) {
+        [0, 2, 3, 4, 5, 6, 7, 8, 9].forEach(w => {
+            let inp = document.getElementById(`p_W${w}`);
+            if (inp) inp.value = b.weights[w];
+        });
+    }
+
+    let partDiv = document.getElementById('participants');
+    if (partDiv) {
+        let partHTML = "<table border='1' style='border-collapse: collapse; text-align: center; width: 100%; border-color: #555;'>";
+        const cbStyle = "cursor: pointer; margin: 2px;";
+        partHTML += "<tr><td style='padding: 2px; font-size: 11px; color: white;'>All</td><td style='padding: 2px; font-size: 11px; color: white;'>None</td>";
+        for (let i = 0; i < BrainList.length; i++) {
+            partHTML += `<td style='padding: 2px; font-size: 12px; color: white;'><b>${BrainList[i].name.charAt(0)}</b></td>`;
+        }
+        partHTML += "</tr><tr>";
+        partHTML += `<td style='padding: 2px;'><input type='checkbox' id='cb_select_all' title='Select All' style='${cbStyle}'></td>`;
+        partHTML += `<td style='padding: 2px;'><input type='checkbox' id='cb_select_none' title='Select None' style='${cbStyle}'></td>`;
+        for (let i = 0; i < BrainList.length; i++) {
+            let existing = document.getElementById('part_checkbox_' + i);
+            let isChecked = existing ? existing.checked : true;
+            partHTML += `<td style='padding: 2px;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
+        }
+        partHTML += "</tr></table>";
+        partDiv.innerHTML = partHTML;
+        
+        document.getElementById('cb_select_all').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('cb_select_none').checked = false;
+                document.querySelectorAll('.tourn-participant').forEach(cb => cb.checked = true);
+            }
+        });
+        document.getElementById('cb_select_none').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('cb_select_all').checked = false;
+                document.querySelectorAll('.tourn-participant').forEach(cb => cb.checked = false);
+            }
+        });
+        document.querySelectorAll('.tourn-participant').forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) document.getElementById('cb_select_none').checked = false;
+                else document.getElementById('cb_select_all').checked = false;
+            });
+        });
+    }
+    updateTypeSelects();
+}
+
+function updateTypeSelects() {
+    let rs = document.getElementById('red-type-select');
+    let gs = document.getElementById('green-type-select');
+    if (!rs || !gs) return;
+    
+    let rVal = rs.value; let gVal = gs.value;
+    rs.innerHTML = ''; gs.innerHTML = '';
+    
+    let optH = el('option', {value: 'Human', text: 'Human'});
+    rs.appendChild(optH); gs.appendChild(optH.cloneNode(true));
+    
+    BrainList.forEach((b, i) => {
+        rs.appendChild(el('option', {value: `AI_${i}`, text: `AI: ${b.name}`}));
+        gs.appendChild(el('option', {value: `AI_${i}`, text: `AI: ${b.name}`}));
+    });
+    
+    rs.value = rVal; if(rs.selectedIndex < 0) rs.value = 'Human';
+    gs.value = gVal; if(gs.selectedIndex < 0) gs.value = 'Human';
+}
+
+function exportBrainsJS() {
+    let filename = document.getElementById('brainFileName').value || 'brains.js';
+    if (!filename.endsWith('.js')) filename += '.js';
+    let content = "// Reversi AI Brains\n\n";
+    content += "[\n";
+    BrainList.forEach((b, i) => {
+        content += `    { name: "${b.name}", weights: [${b.weights.join(', ')}] }${i < BrainList.length - 1 ? ',' : ''}\n`;
+    });
+    content += "]\n";
+    let blob = new Blob([content], {type: "text/javascript;charset=utf-8;"});
+    let dlAnchorElem = document.createElement('a');
+    dlAnchorElem.href = URL.createObjectURL(blob);
+    dlAnchorElem.download = filename;
+    dlAnchorElem.click();
+}
+
+function downloadRevisedBrain(brain) {
+    let content = `// Revised Parameters for ${brain.name}\n`;
+    content += `// Date: ${new Date().toLocaleString()}\n\n`;
+    content += `const ${brain.name.replace(/[^a-zA-Z0-9]/g, '')} = {\n`;
+    content += `    name: "${brain.name}",\n`;
+    content += `    weights: [${brain.weights.join(', ')}]\n`;
+    content += `};\n`;
+    const blob = new Blob([content], { type: 'text/javascript;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${brain.name.replace(/[^a-zA-Z0-9]/g, '')}_Improved.js`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair) {
+    let csv = "Reversi Tournament Results\n";
+    csv += `Date,"${new Date().toLocaleString()}"\n`;
+    csv += "Parameters: \n";
+    csv += `Games per Pair,${gamesPerPair}\n`;
+    csv += `Depth,${document.getElementById('tDepth').value}\n\n`;
+    
+    csv += "Standings\n";
+    csv += "Rank,Name,Points,Wins,Losses,Draws\n";
+    let ranking = displayPlayers.map(p => {
+        let s = scores[p.id];
+        return { name: p.name, ...s };
+    }).sort((a, b) => b.points - a.points);
+    
+    ranking.forEach((player, index) => {
+        csv += `${index + 1},${player.name},${player.points},${player.wins},${player.losses},${player.draws}\n`;
+    });
+    csv += "\n";
+    
+    csv += "Head-to-Head (Points received by Row Player when playing Red against Column Player)\n";
+    let opponentNames = displayPlayers.map(p => p.name).join(",");
+    csv += "Red \\ Green," + opponentNames + "\n";
+    displayPlayers.forEach(p1 => {
+        let rowName = p1.name;
+        let rowValues = displayPlayers.map(p2 => {
+            if (p1.id === p2.id) return "";
+            return headToHead[p1.id][p2.id] || 0;
+        }).join(",");
+        csv += `${rowName},${rowValues}\n`;
+    });
+    csv += "\n";
+    
+    csv += "Player Parameters:\n";
+    const paramHeaders = ["W0(Mob)", "W1", "W2(Dif)", "W3(Cor)", "W4(C-Sq)", "W5(X-Sq)", "W6(Edg)", "W7(IEd)", "W8(Fac)", "W9(IFa)"];
+    csv += "Name," + paramHeaders.join(",") + "\n";
+    displayPlayers.forEach(p => {
+        let w = p.params.weights;
+        csv += `${p.name},${w[0]},${w[1]},${w[2]},${w[3]},${w[4]},${w[5]},${w[6]},${w[7]},${w[8]},${w[9]}\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "ReversiTournamentResults.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 // --- SYMMETRY ENGINE (ROOT FILTERING) ---
 function applySymToCoord(x, y, z, sym) {
     let px = x, py = y, pz = z;
     let perm = sym % 6;
     let inv = Math.floor(sym / 6); 
-    
     if (inv & 1) px = (N - 1) - px;
     if (inv & 2) py = (N - 1) - py;
     if (inv & 4) pz = (N - 1) - pz;
-    
     if (perm === 0) return {x: px, y: py, z: pz};
     if (perm === 1) return {x: px, y: pz, z: py};
     if (perm === 2) return {x: py, y: px, z: pz};
@@ -199,7 +390,6 @@ function getBoardSymmetries(board) {
 function filterSymmetricMoves(board, validMoves) {
     let syms = getBoardSymmetries(board);
     if (syms.length === 1) return validMoves; 
-
     let uniqueMoves = [];
     for (let m of validMoves) {
         let isRedundant = false;
@@ -207,8 +397,7 @@ function filterSymmetricMoves(board, validMoves) {
             for (let sym of syms) {
                 let mapped = applySymToCoord(m.x, m.y, m.z, sym);
                 if (mapped.x === um.x && mapped.y === um.y && mapped.z === um.z) {
-                    isRedundant = true;
-                    break;
+                    isRedundant = true; break;
                 }
             }
             if (isRedundant) break;
@@ -244,13 +433,13 @@ function initGameData() {
     bestMoves = []; 
     isPlaying = false; 
     isGameOver = false;
+    unplayedClickCount = 0;
     updateGameState();
 }
 
 function initGeometry() {
     categoryMap = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
     const isEnd = (v) => (v === 0 || v === N - 1);
-    
     const distToCorner = (x, y, z) => {
         let minD = 999;
         const corners = [0, N-1];
@@ -305,7 +494,6 @@ function checkDirection(board, x, y, z, dx, dy, dz, player) {
     const opponent = player === 1 ? 2 : 1;
     let i = x + dx, j = y + dy, k = z + dz;
     let foundOpponent = false;
-
     while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
         const cell = board[i][j][k];
         if (cell === opponent) foundOpponent = true;
@@ -363,39 +551,9 @@ function simulateMove(board, move, player) {
     return newBoard;
 }
 
-function staticEvaluation(board, player) {
-    let opponent = (player === 1) ? 2 : 1;
-    let score = 0;
-    const w = currentBrain.weights;
-    
-    let counts = { p: {}, o: {} };
-    for(let i=0; i<=9; i++) { counts.p[i]=0; counts.o[i]=0; }
-    let pStones = 0, oStones = 0;
-
-    for(let x=0; x<N; x++) {
-        for(let y=0; y<N; y++) {
-            for(let z=0; z<N; z++) {
-                let val = board[x][y][z];
-                if (val === 0) continue;
-                let cat = categoryMap[x][y][z];
-                if (val === player) { pStones++; counts.p[cat]++; } 
-                else { oStones++; counts.o[cat]++; }
-            }
-        }
-    }
-
-    score += (pStones - oStones) * w[2]; 
-    for(let i=3; i<=9; i++) score += (counts.p[i] - counts.o[i]) * w[i];
-
-    if (w[0] !== 0) {
-        score += (getValidMovesForPlayer(board, player).length - getValidMovesForPlayer(board, opponent).length) * w[0];
-    }
-    return score;
-}
-
 // --- 3. AI LOGIC (2-PLY WEB WORKER POOL) ---
 
-async function getBestMoveAI_Async(board, player, depth) {
+async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     const startTime = performance.now();
     let M1 = getValidMovesForPlayer(board, player);
     
@@ -453,7 +611,8 @@ async function getBestMoveAI_Async(board, player, depth) {
             };
             worker.postMessage({
                 id: i, tasks: chunk, rootPlayerId: player,
-                weights: currentBrain.weights, pruning: usePruning, nVal: N
+                weights: activeBrain.weights, pruning: usePruning, nVal: N,
+                engineMode: engineMode, wasmModule: wasmModule 
             });
         });
     });
@@ -496,22 +655,18 @@ async function getBestMoveAI_Async(board, player, depth) {
     }
 
     const timeTakenMs = Math.round(performance.now() - startTime);
-    const pName = player === 1 ? "Red" : "Green";
-    
-    // Format requested by user
-    log(`${pName} AI T, D=${depth}, W=${numWorkers}`);
     techLog(`AI Done: ${commas(totalNodes)} nodes, ${commas(timeTakenMs)}ms, V: ${commas(bestScore)}`);
     
     if (showDepths) {
         techLog(`--- Depth Visits ---`);
         for (let i = depth; i >= 0; i--) {
             if (combinedDepthVisits[i] !== undefined) {
-                techLog(`Depth ${i}: ${commas(combinedDepthVisits[i])} nodes`);
+                techLog(`Depth ${i}: ${commas(combinedDepthVisits[i])}`);
             }
         }
     }
 
-    return { bestMove, maxEval: bestScore, ranked, totalNodes };
+    return { bestMove, maxEval: bestScore, ranked, totalNodes, timeTakenMs };
 }
 
 async function makeAIMove() {
@@ -520,9 +675,17 @@ async function makeAIMove() {
 
     isAIThinking = true;
     let depth = activePlayer === 1 ? redDepth : greenDepth;
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    let activeBrain = BrainList[bIdx];
+
+    let pName = activePlayer === 1 ? "Red" : "Green";
+    log(`${pName} is thinking, depth ${depth}...`);
+    
+    await new Promise(resolve => setTimeout(resolve, 10)); // Force DOM to paint the log
     
     try {
-        const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth);
+        const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth, activeBrain);
         if (!isPlaying) {
             isAIThinking = false;
             return; 
@@ -540,7 +703,9 @@ async function makeAIMove() {
 
 // --- BUTTON HANDLERS ---
 async function doStaticEval() {
-    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth);
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth, BrainList[bIdx]);
     if (!aiResult.bestMove) { log("No moves."); return; }
     let msg = `Eval (D=${evalDepth}): ${commas(aiResult.maxEval)}`;
     printToOverlay(msg);
@@ -549,7 +714,9 @@ async function doStaticEval() {
 
 async function doListMoves() {
     bestMoves = []; 
-    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth);
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth, BrainList[bIdx]);
     if (!aiResult.bestMove) { log("No moves available."); return; }
 
     const bestScore = aiResult.maxEval;
@@ -569,6 +736,198 @@ async function doListMoves() {
     printToOverlay(txt);
     update3D();
     redrawAllSlices();
+}
+
+async function runTournament() {
+    let checks = Array.from(document.querySelectorAll('.tourn-participant:checked'));
+    if (checks.length < 2) { log("Need at least 2 participants."); return; }
+    
+    let depth = parseInt(document.getElementById('tDepth').value) || 4;
+    let gamesPerPair = parseInt(document.getElementById('tGames').value) || 10;
+    
+    let pIndices = checks.map(c => parseInt(c.value));
+    let brains = pIndices.map(i => BrainList[i]);
+    
+    let scores = {};
+    let headToHead = {};
+    pIndices.forEach(i => {
+        scores[i] = { wins: 0, losses: 0, draws: 0, points: 0 };
+        headToHead[i] = {};
+        pIndices.forEach(j => headToHead[i][j] = 0);
+    });
+    
+    log(`--- TOURNAMENT START (D=${depth}, G=${gamesPerPair}) ---`);
+    
+    let queue = [];
+    for(let i=0; i<pIndices.length; i++) {
+        for(let j=i+1; j<pIndices.length; j++) {
+            for(let g=0; g<gamesPerPair; g++) {
+                if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], idx1: pIndices[i], b2: BrainList[pIndices[j]], idx2: pIndices[j] });
+                else queue.push({ b1: BrainList[pIndices[j]], idx1: pIndices[j], b2: BrainList[pIndices[i]], idx2: pIndices[i] });
+            }
+        }
+    }
+    
+    let activeWorkers = 0;
+    let resultsProcessed = 0;
+    let totalMatches = queue.length;
+    
+    let runNext = () => {
+        return new Promise(resolve => {
+            if (queue.length === 0) { resolve(); return; }
+            let match = queue.shift();
+            activeWorkers++;
+            
+            const worker = new Worker('ReversiWorker.js');
+            worker.onmessage = function(e) {
+                let res = e.data;
+                if (res.result === 'match_done') {
+                    if (res.winner === 1) {
+                        scores[match.idx1].wins++; scores[match.idx1].points += 3;
+                        scores[match.idx2].losses++;
+                        headToHead[match.idx1][match.idx2] += 3;
+                    } else if (res.winner === 2) {
+                        scores[match.idx2].wins++; scores[match.idx2].points += 3;
+                        scores[match.idx1].losses++;
+                        headToHead[match.idx2][match.idx1] += 3;
+                    } else {
+                        scores[match.idx1].draws++; scores[match.idx1].points += 1;
+                        scores[match.idx2].draws++; scores[match.idx2].points += 1;
+                        headToHead[match.idx1][match.idx2] += 1;
+                        headToHead[match.idx2][match.idx1] += 1;
+                    }
+                }
+                worker.terminate();
+                resultsProcessed++;
+                if (resultsProcessed % 10 === 0 || resultsProcessed === totalMatches) {
+                    log(`Match ${resultsProcessed}/${totalMatches} done.`);
+                }
+                activeWorkers--;
+                runNext().then(resolve);
+            };
+            worker.postMessage({
+                command: 'play_match',
+                b1: match.b1, b2: match.b2, depth: depth,
+                nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+            });
+        });
+    };
+    
+    let pool = [];
+    let concurrent = Math.min(numWorkers, queue.length);
+    for(let i=0; i<concurrent; i++) pool.push(runNext());
+    await Promise.all(pool);
+    
+    log(`--- TOURNAMENT COMPLETE ---`);
+    let displayPlayers = pIndices.map(idx => ({
+        id: idx, name: BrainList[idx].name, params: BrainList[idx]
+    }));
+    let finalStandings = displayPlayers.map(p => ({name: p.name, score: scores[p.id].points}));
+    finalStandings.sort((a,b) => b.score - a.score);
+    finalStandings.forEach((s, i) => {
+        log(`${i+1}. ${s.name}: ${s.score} pts`);
+    });
+    
+    downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair);
+}
+
+async function runImprovement() {
+    let brainIndex = editBrainIndex;
+    let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    
+    let genCount = parseInt(document.getElementById('impGenerations').value) || 10;
+    let matchCount = parseInt(document.getElementById('impGames').value) || 5;
+    let mutRate = parseFloat(document.getElementById('impPercent').value) / 100 || 0.1;
+    let depth = parseInt(document.getElementById('tDepth').value) || 4;
+    
+    log(`--- IMPROVEMENT START: ${baseBrain.name} ---`);
+    
+    for (let g = 0; g < genCount; g++) {
+        log(`Gen ${g+1}/${genCount}: Mutating...`);
+        let mutant = JSON.parse(JSON.stringify(baseBrain));
+        mutant.name = baseBrain.name + `_G${g+1}`;
+        
+        let changed = false;
+        for (let i=0; i<=9; i++) {
+            if (i === 1) continue; 
+            if (Math.random() < 0.3) { 
+                let change = 1 + (Math.random() * mutRate * 2 - mutRate);
+                mutant.weights[i] = Math.round(mutant.weights[i] * change);
+                if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
+                changed = true;
+            }
+        }
+        if (!changed) continue; 
+        
+        let mWins = 0, bWins = 0, draws = 0;
+        let queue = [];
+        for(let c=0; c<matchCount; c++) {
+            if (c % 2 === 0) queue.push({ b1: mutant, idx1: 1, b2: baseBrain, idx2: 0 });
+            else queue.push({ b1: baseBrain, idx1: 0, b2: mutant, idx2: 1 });
+        }
+        
+        let runNext = () => {
+            return new Promise(resolve => {
+                if(queue.length === 0) { resolve(); return; }
+                let match = queue.shift();
+                const worker = new Worker('ReversiWorker.js');
+                worker.onmessage = function(e) {
+                    let res = e.data;
+                    if (res.winner === 1) {
+                        if (match.idx1 === 1) mWins++; else bWins++;
+                    } else if (res.winner === 2) {
+                        if (match.idx2 === 1) mWins++; else bWins++;
+                    } else draws++;
+                    worker.terminate();
+                    runNext().then(resolve);
+                };
+                worker.postMessage({
+                    command: 'play_match',
+                    b1: match.b1, b2: match.b2, depth: depth,
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                });
+            });
+        };
+        
+        let pool = [];
+        let concurrent = Math.min(numWorkers, queue.length);
+        for(let i=0; i<concurrent; i++) pool.push(runNext());
+        await Promise.all(pool);
+        
+        log(`Gen ${g+1} Result: M:${mWins} B:${bWins} D:${draws}`);
+        if (mWins > bWins) {
+            log(`+++ Mutant accepted! Saving...`);
+            baseBrain = mutant;
+            BrainList.push(JSON.parse(JSON.stringify(mutant)));
+            updateBrainUI();
+            downloadRevisedBrain(mutant);
+        }
+    }
+    log(`--- IMPROVEMENT DONE ---`);
+}
+
+function triggerBlink() {
+    let el = document.getElementById('press-play-msg');
+    if (!el) return;
+    let blinks = 0;
+    let iv = setInterval(() => {
+        if(!el) { clearInterval(iv); return; }
+        el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+        blinks++;
+        if(blinks >= 10) { clearInterval(iv); el.style.visibility = 'visible'; }
+    }, 200);
+}
+
+function handleBoardClick() {
+    if (!isPlaying && !isGameOver) { 
+        if (currentMoveIndex === 0) {
+            unplayedClickCount++;
+            if (unplayedClickCount > 1) triggerBlink();
+        }
+        log("Press Play to start."); 
+        return true; 
+    }
+    return false;
 }
 
 function toggleFullscreen() {
@@ -709,6 +1068,21 @@ document.addEventListener('keydown', (e) => {
             toggleCamera();
             if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
             break;
+        case 'p':
+        case 'P':
+            if (isGameOver) break;
+            isPlaying = !isPlaying; 
+            let btnPlay = document.getElementById('btn-play');
+            if (btnPlay) {
+                btnPlay.textContent = isPlaying ? 'Stop' : 'Play';
+                btnPlay.style.backgroundColor = isPlaying ? 'orange' : 'green';
+            }
+            if (isPlaying) updateGameState();
+            break;
+        case 'r':
+        case 'R':
+            resetGame();
+            break;
         case '.':
         case '?':
             if (overlay3D.textContent.trim() !== "") {
@@ -726,6 +1100,8 @@ M       : List sorted Moves
 B / b   : Increase/Decrease Player ball size
 H / h   : Increase/Decrease Hint ball size
 < / >   : History back/forward
+p       : Play / Stop
+r       : Reset game
 F / f   : Toggle Fullscreen
 I / i   : Toggle Infinity (Orthographic) mode
 . / ?   : Toggle this help display
@@ -783,7 +1159,7 @@ function resetGame() {
     if (isAIThinking) return;
     isPlaying = false; 
     isGameOver = false;
-    resetCount++; 
+    unplayedClickCount = 0;
     const box = document.getElementById('status-box');
     if(box) box.innerHTML = "";
     printToOverlay(""); 
@@ -853,25 +1229,13 @@ function updateGameState(isViewOnly = false) {
         let html = "";
 
         if (currentMoveIndex === 0 && !isPlaying && !isGameOver) {
-            html = `<div id="press-play-msg" style="font-size: 1.2em; font-weight: bold; height: 100%; display: flex; align-items: center; justify-content: center; color: magenta;">Press Play to Start</div>`;
+            html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Press Play to Start</div>`;
             infoDiv.innerHTML = html;
-            
-            // Blinking Logic
-            if (resetCount > 0) {
-                let el = document.getElementById('press-play-msg');
-                let blinks = 0;
-                let iv = setInterval(() => {
-                    if(!el) { clearInterval(iv); return; }
-                    el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
-                    blinks++;
-                    if(blinks >= 10) { clearInterval(iv); el.style.visibility = 'visible'; }
-                }, 300);
-            }
         } else {
             let lastMoveHtml = "";
             if (lastMoveRecord) {
                 const lmColor = lastMoveRecord.player === 1 ? redColor : greenColor;
-                lastMoveHtml = `<span style="color: ${lmColor};">Last Move: (${lastMoveRecord.x}, ${lastMoveRecord.y}, ${lastMoveRecord.z})</span>`;
+                lastMoveHtml = `<span style="color: ${lmColor};">(${lastMoveRecord.x}, ${lastMoveRecord.y}, ${lastMoveRecord.z})</span>`;
             }
             
             let line2 = isGameOver ? `<span style="color: ${scores.red>scores.green?redColor:(scores.green>scores.red?greenColor:'white')}; font-weight:bold;">${winnerText}</span>` : lastMoveHtml;
@@ -884,17 +1248,18 @@ function updateGameState(isViewOnly = false) {
                     <span style="color: white;">&nbsp;|&nbsp;</span>
                     <span style="color: ${greenColor};">${scores.green}</span>
                 </div>
-                <div style="font-size: 0.9em; font-weight: bold; white-space: nowrap;">${line2}</div>
+                <div style="font-size: 0.95em; font-weight: bold; white-space: nowrap;">${line2}</div>
             `;
             infoDiv.innerHTML = html;
         }
     }
 
-    // AI Trigger
+    // Defer AI trigger to prevent locking UI thread / memory exhaustion
     if (!isViewOnly && !isGameOver && validMoves.length > 0 && currentMoveIndex === moveHistory.length - 1) {
         let pType = activePlayer === 1 ? redType : greenType;
-        if (isPlaying && pType === 'AI' && !isAIThinking) {
-            makeAIMove();
+        if (isPlaying && pType.startsWith('AI') && !isAIThinking) {
+            // Defer the execution of makeAIMove so UI finishes painting
+            setTimeout(makeAIMove, 50);
         }
     }
 }
@@ -996,7 +1361,7 @@ function drawSlice(canvas, axis, sliceIndex) {
 }
 
 function handleCanvasClick(event, axis) {
-    if (!isPlaying) { log("Press Play to start."); return; }
+    if (handleBoardClick()) return; 
     if (isAIThinking) return;
 
     const rect = event.target.getBoundingClientRect();
@@ -1037,15 +1402,16 @@ function init3D() {
         cancelAnimationFrame(animationId);
         animationId = null;
     }
-    
-    // Fix WebGL context warning by strictly reusing the renderer
+
     if (!renderer) {
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.domElement.addEventListener('mousemove', on3DMouseMove);
         renderer.domElement.addEventListener('click', on3DClick);
     }
     renderer.setSize(size, size);
-    container.appendChild(renderer.domElement);
+    if (!container.contains(renderer.domElement)) {
+        container.appendChild(renderer.domElement);
+    }
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000); 
@@ -1126,7 +1492,12 @@ function init3D() {
 }
 
 function update3DGrid() {
-    while(gridGroup.children.length > 0) gridGroup.remove(gridGroup.children[0]);
+    while(gridGroup.children.length > 0) {
+        let child = gridGroup.children[0];
+        gridGroup.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+    }
     if (gridMode === 0) return; 
 
     const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
@@ -1170,7 +1541,15 @@ function update3D() {
     if (axesHelper) axesHelper.visible = showAxes;
     update3DGrid(); 
 
-    while(stoneGroup.children.length > 0) stoneGroup.remove(stoneGroup.children[0]);
+    while(stoneGroup.children.length > 0) {
+        let child = stoneGroup.children[0];
+        stoneGroup.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+            else child.material.dispose();
+        }
+    }
 
     const pRadius = playerBallSize / 2;
     const hRadius = hintBallSize / 2;
@@ -1210,19 +1589,14 @@ function update3D() {
                 for(let z=0; z<N; z++) {
                     const cat = categoryMap[x][y][z];
                     const weight = currentBrain.weights[cat] || 0;
-                    
                     let col = 0x888888;
                     if (weight > 0) {
                         if (weight >= 500) col = 0xFFD700; 
                         else col = 0x00FF00; 
-                    } else if (weight < 0) {
-                        col = 0xFF0000; 
-                    }
+                    } else if (weight < 0) col = 0xFF0000; 
 
                     const mat = new THREE.MeshStandardMaterial({ 
-                        color: col,
-                        roughness: 0.4, metalness: 0.1,
-                        transparent: true, opacity: 0.6
+                        color: col, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 0.6
                     });
                     const mesh = new THREE.Mesh(debugGeo, mat);
                     mesh.position.set(x,y,z);
@@ -1234,9 +1608,8 @@ function update3D() {
         return;
     }
 
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.2, metalness: 0.1 });
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, roughness: 0.2, metalness: 0.1 });
-    
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, roughness: 0.2, metalness: 0.1 });
     const hintColorHex = (activePlayer === 1) ? 0x7f0000 : 0x007f00;
     const hintMat = new THREE.MeshStandardMaterial({ color: hintColorHex, transparent: true, opacity: 0.8, roughness: 0.2 });
 
@@ -1258,10 +1631,8 @@ function update3D() {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
             const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
-            
             const geometry = isBest ? bestMoveGeo : hintGeo;
             const mesh = new THREE.Mesh(geometry, hintMat);
-            
             mesh.position.set(x, y, z);
             mesh.userData = { isHint: true, x: x, y: y, z: z };
             stoneGroup.add(mesh);
@@ -1291,13 +1662,11 @@ function on3DMouseMove(event) {
             hoverTooltip.style.left = (event.clientX + 15) + 'px';
             hoverTooltip.style.top = (event.clientY + 15) + 'px';
         }
-    } else {
-        hoverTooltip.style.display = 'none';
-    }
+    } else hoverTooltip.style.display = 'none';
 }
 
 function on3DClick(event) {
-    if (!isPlaying) { log("Press Play to start."); return; }
+    if (handleBoardClick()) return; 
     if (isAIThinking) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
@@ -1328,14 +1697,44 @@ function animate() {
 function initLayout() {
     if (gameCube.length !== N) initGameData();
 
+    let fileInp = document.getElementById('brainFileInput');
+    if (!fileInp) {
+        fileInp = el('input', { type: 'file', id: 'brainFileInput', style: 'display: none;', accept: '.js,.json' });
+        document.body.appendChild(fileInp);
+    }
+    fileInp.onchange = (e) => {
+        let file = e.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                let text = evt.target.result;
+                let match = text.match(/\[[\s\S]*\]/); 
+                if (match) {
+                    let parsed = eval(match[0]);
+                    if (Array.isArray(parsed)) {
+                        BrainList = parsed;
+                        editBrainIndex = 0;
+                        updateBrainUI();
+                        log("Brains imported successfully.");
+                    }
+                }
+            } catch (err) {
+                log("Failed to parse file.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; 
+    };
+
     const root = document.getElementById('gameTable');
     if (!root) return;
     root.innerHTML = '';
 
     root.style.display = 'flex';
     root.style.flexDirection = 'row';
-    root.style.gap = `${S}px`; 
-    root.style.padding = `${S}px`;
+    root.style.gap = '2px'; 
+    root.style.padding = '2px';
     root.style.fontFamily = 'sans-serif';
 
     let scaleInput = el('input', { type: 'text', value: S, style: 'width: 30px; text-align: center;' });
@@ -1361,16 +1760,42 @@ function initLayout() {
         return safeW;
     });
 
-    // --- COLUMN 1: CONTROLS ---
-    const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
-        
-        // Header
-        el('div', { style: `background-color: ${millTitleBg}; color: ${millTitleColor}; padding: 5px; border-radius: 4px; border: 1px solid ${millTitleColor}; text-align: center;` },
-            el('div', { style: 'font-weight: bold; font-size: 1.2em;' }, "Reversi v. 3"),
-            el('div', { style: 'font-size: 1em; font-weight: bold;' }, "JS engine.")
-        ),
+    function makeWeightInput(label, index, title) {
+        let inp = el('input', {
+            id: `p_W${index}`,
+            style: 'width: 38px; text-align: center; font-size: 0.85em; padding: 1px;',
+            title: title,
+            onchange: (e) => { BrainList[editBrainIndex].weights[index] = parseInt(e.target.value) || 0; }
+        });
+        return el('div', {style: 'display: flex; flex-direction: column; align-items: center; gap: 1px;'}, 
+            el('span', {text: label, style: 'font-size: 0.7em;'}), 
+            inp
+        );
+    }
 
-        // Play Button Row
+    // --- COLUMN 1: CONTROLS ---
+    const col1 = el('div', { 
+        class: 'col-controls', 
+        style: `min-width: 280px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; max-height: ${23 * S}px; overflow-y: auto; padding-right: 5px;` 
+    },
+        
+        el('button', { 
+            id: 'engine-toggle-btn',
+            style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: 'Arial Black', Impact, sans-serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
+            onclick: (e) => {
+                if (engineMode === 'JS') {
+                    if (wasmModule) {
+                        engineMode = 'WASM';
+                    } else {
+                        alert("WASM module not loaded. Please compile ReversiEngine.cpp");
+                    }
+                } else {
+                    engineMode = 'JS';
+                }
+                updateEngineButtonUI();
+            }
+        }),
+
         el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
             el('button', { 
                 id: 'btn-play',
@@ -1398,7 +1823,6 @@ function initLayout() {
             )
         ),
 
-        // Reset & History Row
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
             el('button', { 
                 text: 'Reset', 
@@ -1422,65 +1846,51 @@ function initLayout() {
             }})
         ),
 
-        // Player Type Selection (Red)
         el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
             el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
             el('select', { 
-                style: 'flex: 1;',
-                onchange: (e) => { redType = e.target.value; if(isPlaying) updateGameState(); } 
-            },
-                el('option', { value: 'Human', text: 'Human', ...(redType==='Human' ? {selected:'true'} : {}) }),
-                el('option', { value: 'AI', text: 'AI', ...(redType==='AI' ? {selected:'true'} : {}) })
-            ),
+                id: 'red-type-select', style: 'flex: 1; min-width: 0;',
+                onchange: (e) => { 
+                    redType = e.target.value; greenType = redType; 
+                    let gs = document.getElementById('green-type-select');
+                    if (gs) gs.value = greenType;
+                    if(isPlaying) updateGameState(); 
+                } 
+            }),
             el('span', { text: 'D=' }),
             el('select', { 
-                style: 'width: 40px;',
-                onchange: (e) => { redDepth = parseInt(e.target.value); }
-            },
-                el('option', { value: '2', text: '2', ...(redDepth===2 ? {selected: 'true'} : {}) }),
-                el('option', { value: '4', text: '4', ...(redDepth===4 ? {selected: 'true'} : {}) }),
-                el('option', { value: '6', text: '6', ...(redDepth===6 ? {selected: 'true'} : {}) }),
-                el('option', { value: '8', text: '8', ...(redDepth===8 ? {selected: 'true'} : {}) }),
-                el('option', { value: '10', text: '10', ...(redDepth===10 ? {selected: 'true'} : {}) })
-            )
+                id: 'red-depth-select', style: 'width: 45px;',
+                onchange: (e) => { 
+                    redDepth = parseInt(e.target.value); greenDepth = redDepth;
+                    let gs = document.getElementById('green-depth-select');
+                    if (gs) gs.value = greenDepth;
+                }
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(redDepth===d ? {selected: 'true'} : {}) })))
         ),
 
-        // Player Type Selection (Green)
         el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
             el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
             el('select', { 
-                style: 'flex: 1;',
+                id: 'green-type-select', style: 'flex: 1; min-width: 0;',
                 onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
-            },
-                el('option', { value: 'Human', text: 'Human', ...(greenType==='Human' ? {selected:'true'} : {}) }),
-                el('option', { value: 'AI', text: 'AI', ...(greenType==='AI' ? {selected:'true'} : {}) })
-            ),
+            }),
             el('span', { text: 'D=' }),
             el('select', { 
-                style: 'width: 40px;',
+                id: 'green-depth-select', style: 'width: 45px;',
                 onchange: (e) => { greenDepth = parseInt(e.target.value); }
-            },
-                el('option', { value: '2', text: '2', ...(greenDepth===2 ? {selected: 'true'} : {}) }),
-                el('option', { value: '4', text: '4', ...(greenDepth===4 ? {selected: 'true'} : {}) }),
-                el('option', { value: '6', text: '6', ...(greenDepth===6 ? {selected: 'true'} : {}) }),
-                el('option', { value: '8', text: '8', ...(greenDepth===8 ? {selected: 'true'} : {}) }),
-                el('option', { value: '10', text: '10', ...(greenDepth===10 ? {selected: 'true'} : {}) })
-            )
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
         ),
 
-        // 1. Status / Info Box
         el('div', { 
             id: 'game-info',
-            style: `background-color: ${scoreBgColor}; color: white; padding: 10px; border-radius: 4px; border: 1px solid navy; height: 48px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;`
+            style: `background-color: ${scoreBgColor}; color: white; padding: 4px; border-radius: 4px; border: 1px solid navy; min-height: 40px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;`
         }, "Initializing..."),
 
-        // 2. Status Log
         el('div', { 
             id: 'status-box',
-            style: `background-color: ${scoreBgColor}; color: white; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
+            style: `background-color: ${scoreBgColor}; color: white; height: 50px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
         }),
 
-        // 4. Config (Scale & Workers)
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
             el('div', { style: 'display: flex; gap: 2px;' },
@@ -1491,7 +1901,6 @@ function initLayout() {
             el('label', { text: 'W:' }), workerInput
         ),
 
-        // 5. Fullscreen / Infinity
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
                 text: 'Fullscreen', 
@@ -1506,7 +1915,6 @@ function initLayout() {
             })
         ),
 
-        // 6. Toggles (Row 1)
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
                 text: 'Hints', id: 'btn-hints',
@@ -1529,7 +1937,6 @@ function initLayout() {
             })
         ),
         
-        // Toggles (Row 2)
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
                 text: 'Cats', id: 'btn-cats',
@@ -1551,7 +1958,6 @@ function initLayout() {
             })
         ),
 
-        // 7. Grid
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
@@ -1565,7 +1971,6 @@ function initLayout() {
             )
         ),
 
-        // 8. Analysis / Evaluation
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
             el('button', { 
                 text: 'Value', 
@@ -1579,22 +1984,14 @@ function initLayout() {
             }),
             el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
             el('select', { 
-                style: 'width: 40px;',
+                style: 'width: 45px;',
                 onchange: (e) => { evalDepth = parseInt(e.target.value); }
-            },
-                el('option', { value: '2', text: '2', ...(evalDepth===2 ? {selected: 'true'} : {}) }),
-                el('option', { value: '4', text: '4', ...(evalDepth===4 ? {selected: 'true'} : {}) }),
-                el('option', { value: '6', text: '6', ...(evalDepth===6 ? {selected: 'true'} : {}) }),
-                el('option', { value: '8', text: '8', ...(evalDepth===8 ? {selected: 'true'} : {}) }),
-                el('option', { value: '10', text: '10', ...(evalDepth===10 ? {selected: 'true'} : {}) })
-            )
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
         ),
 
-        // AI Engine Logic Toggles
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                id: 'btn-pruning',
-                text: 'α/β', 
+                id: 'btn-pruning', text: 'α/β', 
                 style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     usePruning = !usePruning;
@@ -1602,8 +1999,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-sym',
-                text: 'S', 
+                id: 'btn-sym', text: 'S', 
                 style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     useSymmetry = !useSymmetry;
@@ -1611,8 +2007,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-rand',
-                text: 'Rand', 
+                id: 'btn-rand', text: 'Rand', 
                 style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     useRandom = !useRandom;
@@ -1621,11 +2016,9 @@ function initLayout() {
             })
         ),
 
-        // Logging & Depths Toggles
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                id: 'btn-logs',
-                text: 'Logs', 
+                id: 'btn-logs', text: 'Logs', 
                 style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     duplicateLogs = !duplicateLogs;
@@ -1633,8 +2026,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-depths',
-                text: 'Depths', 
+                id: 'btn-depths', text: 'Depths', 
                 style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     showDepths = !showDepths;
@@ -1643,7 +2035,6 @@ function initLayout() {
             })
         ),
         
-        // 9. Sliders
         el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
             el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Ball:"),
             el('input', { 
@@ -1659,32 +2050,80 @@ function initLayout() {
                 style: 'width: 100%;',
                 oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
             })
+        ),
+
+        // --- AI LAB / EVOLUTION PANEL (Moved to bottom) ---
+        el('hr', {style: 'margin: 2px 0; border-color: #555;'}),
+        el('div', {style: 'display: flex; align-items: center; gap: 5px;'},
+            el('span', {text: 'Brain:', style: 'font-size: 0.9em;'}),
+            el('select', {
+                id: 'editBrainSelect',
+                style: 'flex: 1; min-width: 0;',
+                onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }
+            })
+        ),
+        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
+            makeWeightInput('Mob', 0, 'Mobility'),
+            makeWeightInput('Dif', 2, 'Piece Difference'),
+            makeWeightInput('Cor', 3, 'Corners'),
+            makeWeightInput('C-Sq', 4, 'C-Squares'),
+            makeWeightInput('X-Sq', 5, 'X-Squares')
+        ),
+        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
+            makeWeightInput('Edg', 6, 'Edges'),
+            makeWeightInput('IEd', 7, 'Inner Edges'),
+            makeWeightInput('Fac', 8, 'Faces'),
+            makeWeightInput('IFa', 9, 'Inner Faces'),
+            el('div', {style: 'width: 38px;'}) 
+        ),
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 2px;'},
+            el('button', {text: 'Import', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
+            el('input', {id: 'brainFileName', value: 'brains.js', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
+            el('button', {text: 'Export', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
+            el('button', {text: 'Def.', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrains)); editBrainIndex = 0; updateBrainUI(); }})
+        ),
+        el('div', {style: 'display: flex; gap: 4px; margin-top: 2px; align-items: center; justify-content: space-between;'},
+            el('button', {text: 'Improve', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1;', onclick: runImprovement}),
+            el('input', {id: 'impGenerations', value: '10', title: 'Generations', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'}),
+            el('input', {id: 'impGames', value: '3', title: 'Games per match', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'}),
+            el('input', {id: 'impPercent', value: '10', title: 'Mutation %', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'})
+        ),
+
+        // --- TOURNAMENT PANEL ---
+        el('hr', {style: 'margin: 2px 0; border-color: #555;'}),
+        el('div', {id: 'participants', style: 'overflow-x: auto; background: #222; padding: 2px;'}), 
+        el('div', {style: 'display: flex; gap: 5px; margin-top: 2px; align-items: center;'},
+            el('button', {text: 'Run Tourney', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 2px;', onclick: runTournament}),
+            el('input', {id: 'tGames', value: '10', title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'}),
+            el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+            el('input', {id: 'tDepth', value: '4', title: 'Search Depth', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'})
         )
     );
 
     // --- COLUMN 2: SLICES ---
-    const col2 = el('div', { class: 'col-slices' });
-    const sliceWidth = 5 * S; 
+    const col2 = el('div', { 
+        class: 'col-slices',
+        style: `height: ${23 * S}px; display: flex; flex-direction: column; justify-content: space-between;`
+    });
+    
+    const sliceWidth = Math.max(50, Math.floor(((23 * S) - 110) / 3)); 
 
     ['X', 'Y', 'Z'].forEach(axis => {
         const cvs = el('canvas', { 
             id: `canvas-${axis}`, 
             width: sliceWidth, 
             height: sliceWidth, 
-            style: `border: 1px solid #333; background: ${backgroundColor}; display: block; cursor: pointer;`,
+            style: `border: 1px solid #333; background: ${backgroundColor}; display: block; cursor: pointer; width: ${sliceWidth}px; height: ${sliceWidth}px;`,
             onclick: (e) => handleCanvasClick(e, axis)
         });
 
         const radioContainer = el('div', { 
-            style: `display: flex; justify-content: space-between; width: ${sliceWidth}px; margin-top: 3px;` 
+            style: `display: flex; justify-content: space-between; width: ${sliceWidth}px; margin-top: 3px; height: 16px;` 
         });
         
         for (let i = 0; i < N; i++) {
             const radio = el('input', { 
-                type: 'radio', 
-                name: `slice-${axis}`, 
-                value: i,
-                title: `Index ${i}`,
+                type: 'radio', name: `slice-${axis}`, value: i, title: `Index ${i}`,
                 style: 'cursor: pointer; margin: 0; padding: 0; transform: scale(0.7);',
                 onchange: (e) => {
                     currentSlices[axis] = parseInt(e.target.value);
@@ -1695,7 +2134,7 @@ function initLayout() {
             radioContainer.appendChild(radio);
         }
 
-        col2.appendChild(el('div', { style: `margin-bottom: ${S}px` },
+        col2.appendChild(el('div', { style: `display: flex; flex-direction: column; align-items: center; margin-bottom: 0;` },
             el('div', { text: `${axis}-Axis`, style: 'text-align: center; font-size: 0.8em; margin-bottom: 2px;' }),
             cvs,
             radioContainer
@@ -1707,10 +2146,13 @@ function initLayout() {
         el('div', { id: 'view3d-container' })
     );
 
+    // Append to DOM FIRST so getElementById works
     root.appendChild(col1);
     root.appendChild(col2);
     root.appendChild(col3);
 
+    updateEngineButtonUI();
+    updateBrainUI(); // Initialize all dynamic selects & inputs
     updateGameState();
     redrawAllSlices();
     init3D();
