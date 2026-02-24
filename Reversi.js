@@ -79,7 +79,7 @@ for (let i = 0; i < 10; i++) {
 }
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
-let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); // Clone so we can edit without ruining defaults
+let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
 
 let editBrainIndex = 0;
 const activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
@@ -214,6 +214,36 @@ function setupSmartInput(inputEl, validateAndApply) {
     return inputEl;
 }
 
+// Zero-Allocation Memory Pools for 3D Arrays
+let boardPool = [];
+function getEmptyBoard() {
+    if (boardPool.length > 0) {
+        let b = boardPool.pop();
+        if (b.length === N) return b; 
+    }
+    let b = new Array(N);
+    for(let x=0; x<N; x++) {
+        let col = new Array(N);
+        for(let y=0; y<N; y++) col[y] = new Array(N).fill(0);
+        b[x] = col;
+    }
+    return b;
+}
+function releaseBoard(b) {
+    if (b) boardPool.push(b);
+}
+
+function cloneBoardPooled(board) {
+    let newB = getEmptyBoard();
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) newB[x][y][z] = board[x][y][z];
+        }
+    }
+    return newB;
+}
+
+// Standard copy mapping (allocates explicitly for history states)
 function cloneBoard(board) {
     let newB = new Array(N);
     for(let x=0; x<N; x++) {
@@ -574,8 +604,9 @@ function getValidMovesForPlayer(board, player) {
     return moves;
 }
 
-function simulateMove(board, move, player) {
-    const newBoard = cloneBoard(board);
+// Memory-Safe Version of simulate move
+function simulateMovePooled(board, move, player) {
+    const newBoard = cloneBoardPooled(board);
     const {x, y, z} = move;
     newBoard[x][y][z] = player;
     for (let dx = -1; dx <= 1; dx++) {
@@ -621,22 +652,35 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     }
 
     let tasks = [];
+    let tempBoards = []; // Keep track of pooled boards used in this loop
+
     for (let m1 of M1) {
-        let b1 = simulateMove(board, m1, player);
+        let b1 = simulateMovePooled(board, m1, player);
+        tempBoards.push(b1);
         let opponent = player === 1 ? 2 : 1;
         let M2 = getValidMovesForPlayer(b1, opponent);
         
         if (depth <= 1 || M2.length === 0) {
+            let flatB = new Uint8Array(512);
+            let n2 = N*N;
+            for(let x=0; x<N; x++) for(let y=0; y<N; y++) for(let z=0; z<N; z++) flatB[x*n2+y*N+z] = b1[x][y][z];
+            
             tasks.push({
-                m1: m1, m2: null, board: b1, depthLeft: Math.max(0, depth - 1),
+                m1: m1, m2: null, flatBoard: flatB, depthLeft: Math.max(0, depth - 1),
                 currentPlayer: (M2.length === 0) ? player : opponent,
                 passed: (M2.length === 0)
             });
         } else {
             for (let m2 of M2) {
-                let b2 = simulateMove(b1, m2, opponent);
+                let b2 = simulateMovePooled(b1, m2, opponent);
+                tempBoards.push(b2);
+                
+                let flatB = new Uint8Array(512);
+                let n2 = N*N;
+                for(let x=0; x<N; x++) for(let y=0; y<N; y++) for(let z=0; z<N; z++) flatB[x*n2+y*N+z] = b2[x][y][z];
+
                 tasks.push({
-                    m1: m1, m2: m2, board: b2, depthLeft: depth - 2,
+                    m1: m1, m2: m2, flatBoard: flatB, depthLeft: depth - 2,
                     currentPlayer: player, passed: false
                 });
             }
@@ -663,6 +707,9 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
 
     const resultsArray = await Promise.all(promises);
     
+    // Memory Rescue: Release all 3D pooled boards back into the void
+    for(let b of tempBoards) releaseBoard(b);
+
     let m1Map = new Map(); 
 
     for (let workerRes of resultsArray) {
@@ -1067,7 +1114,7 @@ async function runTournament() {
                 if (res.bestMove && isPlaying) {
                     executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
                     passes = 0;
-                    await new Promise(r => setTimeout(r, 10)); 
+                    await new Promise(r => setTimeout(r, 100)); 
                 } else {
                     passes++;
                     activePlayer = activePlayer === 1 ? 2 : 1;
@@ -1164,6 +1211,7 @@ async function runImprovement() {
     let brainIndex = editBrainIndex;
     let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
     
+    // Normalize starting brain to guarantee clean mutation percentages
     normalizeBrain(baseBrain); 
     
     let depth = tDepthVal;
@@ -1196,11 +1244,13 @@ async function runImprovement() {
             log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
             let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
             
+            // Normalize the new champion so absolute max is 1000
             normalizeBrain(optimized); 
             
             successes++;
             baseBrain = optimized;
             baseBrain.name = BrainList[brainIndex].name + `_Opt${successes}`;
+            // DO NOT auto-add to the tournament UI. Updates are handled manually by the user later.
             downloadRevisedBrain(baseBrain);
         } else {
             currentRate *= 0.95;

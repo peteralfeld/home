@@ -168,6 +168,7 @@ function fastEvaluation(board, player) {
     return score;
 }
 
+// Zero-allocation recursive pools
 let global_moves = new Array(128).fill(0).map(()=>new Int32Array(512));
 let global_temp_boards = new Array(128).fill(0).map(()=>new Uint8Array(512));
 
@@ -251,22 +252,27 @@ self.onmessage = async function(e) {
             initGeometry(); initRays(); initialized = true;
         }
 
+        let currentPlayer = 1;
+        let passes = 0;
+
+        // ZERO ALLOCATION: Declare arrays exactly ONCE outside the loop
         let board = new Uint8Array(N3);
+        let tempBoard = new Uint8Array(N3);
+        let newBoard = new Uint8Array(N3);
+        let moves = new Int32Array(512);
+
+        // Setup starting pieces
         const mid = (N / 2) - 1;
         let centerIndices = [mid, mid + 1];
         for (let x of centerIndices) for (let y of centerIndices) for (let z of centerIndices) {
             board[idx(x,y,z)] = (x + y + z) % 2 === 0 ? 1 : 2;
         }
 
-        let currentPlayer = 1;
-        let passes = 0;
-
         while (passes < 2) {
             let activeBrain = currentPlayer === 1 ? b1 : b2;
             let activeDepth = currentPlayer === 1 ? depth1 : depth2;
             currentBrain = { weights: activeBrain.weights }; 
             
-            let moves = new Int32Array(512);
             let moveCount = getValidMoves(board, currentPlayer, moves);
 
             if (moveCount === 0) {
@@ -284,7 +290,6 @@ self.onmessage = async function(e) {
                 
                 for (let i=0; i<moveCount; i++) {
                     let m = moves[i];
-                    let tempBoard = new Uint8Array(512);
                     simulateMove(board, tempBoard, m, currentPlayer);
                     
                     for(let j=0; j<N3; j++) memArray[boardPtr + j] = tempBoard[j];
@@ -298,7 +303,6 @@ self.onmessage = async function(e) {
             } else {
                 for (let i=0; i<moveCount; i++) {
                     let m = moves[i];
-                    let tempBoard = new Uint8Array(512);
                     simulateMove(board, tempBoard, m, currentPlayer);
                     
                     // Score is evaluated relative to currentPlayer
@@ -310,9 +314,13 @@ self.onmessage = async function(e) {
             }
 
             let bestMove = bestMoves[Math.floor(Math.random() * bestMoves.length)];
-            let newBoard = new Uint8Array(512);
             simulateMove(board, newBoard, bestMove, currentPlayer);
+            
+            // Swap array pointers to avoid allocating memory for the next loop!
+            let t = board;
             board = newBoard;
+            newBoard = t;
+
             currentPlayer = currentPlayer === 1 ? 2 : 1;
         }
 
@@ -347,9 +355,8 @@ self.onmessage = async function(e) {
         wasmExports.init_engine(N, weights[0], weights[1], weights[2], weights[3], weights[4], weights[5], weights[6], weights[7], weights[8], weights[9], pruning);
 
         for (let task of tasks) {
-            for (let x=0; x<N; x++) for (let y=0; y<N; y++) for (let z=0; z<N; z++) {
-                memArray[boardPtr + (x * N2 + y * N + z)] = task.board[x][y][z];
-            }
+            // Memory set is instantly mapped from task.flatBoard
+            memArray.set(task.flatBoard, boardPtr);
             wasmExports.reset_stats();
             let score = wasmExports.run_alpha_beta(task.depthLeft, -1000000000, 1000000000, rootPlayerId, task.currentPlayer, task.passed);
             
@@ -360,15 +367,12 @@ self.onmessage = async function(e) {
             results.push({ m1: task.m1, m2: task.m2, score: score });
         }
     } else {
-        let flatBoard = new Uint8Array(512);
         for (let task of tasks) {
-            for (let x=0; x<N; x++) for (let y=0; y<N; y++) for (let z=0; z<N; z++) {
-                flatBoard[x * N2 + y * N + z] = task.board[x][y][z];
-            }
-            let score = alphaBetaJS(flatBoard, task.depthLeft, -Infinity, Infinity, rootPlayerId, task.currentPlayer, task.passed);
+            let score = alphaBetaJS(task.flatBoard, task.depthLeft, -Infinity, Infinity, rootPlayerId, task.currentPlayer, task.passed);
             results.push({ m1: task.m1, m2: task.m2, score: score });
         }
     }
 
     self.postMessage({ id: id, results: results, totalNodes: aiNodesVisited, depthVisits: depthVisits });
 };
+
