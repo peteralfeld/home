@@ -17,10 +17,23 @@ let scoreBgColor = "#333333";
 let S = 40;   
 let N = 4;    
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
+let duplicateLogs = true; 
 
 // --- ENGINE STATE ---
-let engineMode = 'WASM'; // Default to C++
+let engineMode = 'WASM'; 
 let wasmModule = null;
+let currentAIEpoch = 0; // Tracks resets to kill orphaned workers
+
+// --- WORKER POOL ---
+let workerPool = [];
+function getWorker() {
+    if (workerPool.length > 0) return workerPool.pop();
+    return new Worker('ReversiWorker.js');
+}
+function releaseWorker(worker) {
+    worker.onmessage = null; 
+    workerPool.push(worker);
+}
 
 async function loadWasmEngine() {
     try {
@@ -30,11 +43,13 @@ async function loadWasmEngine() {
         wasmModule = await WebAssembly.compile(buffer);
         console.log("C++ WebAssembly Engine loaded successfully.");
         updateEngineButtonUI();
+        log("C++ Engine loaded successfully.");
     } catch(e) {
         console.warn("Could not load ReversiEngine.wasm. Falling back to JS mode.", e);
         engineMode = 'JS';
         console.log("JS Engine loaded successfully.");
         updateEngineButtonUI();
+        log("JS Engine loaded successfully.");
     }
 }
 loadWasmEngine(); 
@@ -44,20 +59,44 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
     return { name, weights: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9] };
 }
 
-let defaultBrains = [
-    makeBrain("Default", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2),
-    makeBrain("Positional", 10, 0, 20, 1200, -50, -100, 80, -10, 5, -5),
-    makeBrain("Greedy", 5, 0, 100, 500, -5, -10, 50, 0, 20, 0)
-];
-let BrainList = JSON.parse(JSON.stringify(defaultBrains));
-let editBrainIndex = 0;
+const Arwen = makeBrain("Arwen", 20, 0, 28, 1145, -9, -17, 83, -6, 7, -2);
+const Bilbo = makeBrain("Bilbo", 20, 0, 28, 1145, -9, -17, 83, -6, 7, -2);
+const Celebrian = makeBrain("Celebrian", 20, 0, 28, 1145, -9, -18, 83, -6, 7, -2);
+const Dwalin = makeBrain("Dwalin", 16, 0, 22, 1000, -8, -13, 71, -5, 7, -2); 
+const Eowyn = makeBrain("Eowyn", 16, 0, 22, 1000, -8, -13, 70, -5, 7, -2);
+const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
-// Player / AI Configuration
+let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
+let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
+let Indis = makeBrain("Indis", 0,0,0,0,0,0,0,0,0,0);
+let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
+
+for (let i = 0; i < 10; i++) {
+   Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
+   Hamfast.weights[i] = 1000;
+   Indis.weights[i] = 0;
+   Jolly.weights[i] = -Arwen.weights[i];
+}
+
+let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
+let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); // Clone so we can edit without ruining defaults
+
+let editBrainIndex = 0;
+const activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
+
+// Player / UI Configuration
 let redType = 'Human';   
 let greenType = 'Human'; 
 let redDepth = 4;        
 let greenDepth = 4;
 let evalDepth = 4; 
+let tGamesVal = 10;
+let tDepthVal = 4;
+let impGenVal = 10;
+let impGamesVal = 3;
+let impMutVal = 10;
+let silenceMode = true;
+let improving = false;
 
 // Game State Controls
 let isPlaying = false;    
@@ -69,7 +108,6 @@ let unplayedClickCount = 0;
 let usePruning = true;    
 let useSymmetry = true;   
 let useRandom = true;     
-let duplicateLogs = true; 
 let showDepths = false;   
 
 // 0 = empty, 1 = Red, 2 = Green
@@ -129,12 +167,7 @@ function commas(x) {
 
 function log(msg) {
     const box = document.getElementById('status-box');
-    if (box) {
-        const line = document.createElement('div');
-        line.textContent = msg;
-        box.appendChild(line);
-        box.scrollTop = box.scrollHeight; 
-    }
+    if (box) box.textContent = msg; 
     if (duplicateLogs) console.log(msg); 
 }
 
@@ -144,6 +177,16 @@ function techLog(msg) {
 
 function printToOverlay(msg) {
     if (overlay3D) overlay3D.textContent = msg;
+}
+
+function setPlayState(playing) {
+    isPlaying = playing;
+    let btn = document.getElementById('btn-play');
+    if (btn) {
+        btn.textContent = isPlaying ? 'Playing' : 'Play';
+        btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
+        btn.disabled = false; 
+    }
 }
 
 function setupSmartInput(inputEl, validateAndApply) {
@@ -185,15 +228,13 @@ function cloneBoard(board) {
     return newB;
 }
 
-// UI Engine update function
 function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap;">REVERSI V. 5 ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.25em;">REVERSI V. 5 ${eng}</h2>`;
 }
 
-// UI Evolution Panel Updates
 function updateBrainUI() {
     let sel = document.getElementById('editBrainSelect');
     if (sel) {
@@ -204,7 +245,7 @@ function updateBrainUI() {
     
     let b = BrainList[editBrainIndex];
     if (b) {
-        [0, 2, 3, 4, 5, 6, 7, 8, 9].forEach(w => {
+        activeParams.forEach(w => {
             let inp = document.getElementById(`p_W${w}`);
             if (inp) inp.value = b.weights[w];
         });
@@ -212,19 +253,19 @@ function updateBrainUI() {
 
     let partDiv = document.getElementById('participants');
     if (partDiv) {
-        let partHTML = "<table border='1' style='border-collapse: collapse; text-align: center; width: 100%; border-color: #555;'>";
-        const cbStyle = "cursor: pointer; margin: 2px;";
-        partHTML += "<tr><td style='padding: 2px; font-size: 11px; color: white;'>All</td><td style='padding: 2px; font-size: 11px; color: white;'>None</td>";
+        let partHTML = "<table style='border-collapse: collapse; text-align: center; width: 100%; border: none; margin: 0; padding: 0;'>";
+        const cbStyle = "cursor: pointer; margin: 0; padding: 0; vertical-align: middle;";
+        partHTML += "<tr><td style='padding: 0 2px; font-size: 11px; color: white;'>All</td><td style='padding: 0 2px; font-size: 11px; color: white;'>None</td>";
         for (let i = 0; i < BrainList.length; i++) {
-            partHTML += `<td style='padding: 2px; font-size: 12px; color: white;'><b>${BrainList[i].name.charAt(0)}</b></td>`;
+            partHTML += `<td style='padding: 0; font-size: 11px; color: white;'><b>${BrainList[i].name.charAt(0)}</b></td>`;
         }
         partHTML += "</tr><tr>";
-        partHTML += `<td style='padding: 2px;'><input type='checkbox' id='cb_select_all' title='Select All' style='${cbStyle}'></td>`;
-        partHTML += `<td style='padding: 2px;'><input type='checkbox' id='cb_select_none' title='Select None' style='${cbStyle}'></td>`;
+        partHTML += `<td style='padding: 0;'><input type='checkbox' id='cb_select_all' title='Select All' style='${cbStyle}'></td>`;
+        partHTML += `<td style='padding: 0;'><input type='checkbox' id='cb_select_none' title='Select None' style='${cbStyle}'></td>`;
         for (let i = 0; i < BrainList.length; i++) {
             let existing = document.getElementById('part_checkbox_' + i);
             let isChecked = existing ? existing.checked : true;
-            partHTML += `<td style='padding: 2px;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
+            partHTML += `<td style='padding: 0;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
         }
         partHTML += "</tr></table>";
         partDiv.innerHTML = partHTML;
@@ -256,19 +297,18 @@ function updateTypeSelects() {
     let gs = document.getElementById('green-type-select');
     if (!rs || !gs) return;
     
-    let rVal = rs.value; let gVal = gs.value;
     rs.innerHTML = ''; gs.innerHTML = '';
     
     let optH = el('option', {value: 'Human', text: 'Human'});
     rs.appendChild(optH); gs.appendChild(optH.cloneNode(true));
     
     BrainList.forEach((b, i) => {
-        rs.appendChild(el('option', {value: `AI_${i}`, text: `AI: ${b.name}`}));
-        gs.appendChild(el('option', {value: `AI_${i}`, text: `AI: ${b.name}`}));
+        rs.appendChild(el('option', {value: `AI_${i}`, text: `${b.name}`}));
+        gs.appendChild(el('option', {value: `AI_${i}`, text: `${b.name}`}));
     });
     
-    rs.value = rVal; if(rs.selectedIndex < 0) rs.value = 'Human';
-    gs.value = gVal; if(gs.selectedIndex < 0) gs.value = 'Human';
+    rs.value = redType; if(rs.selectedIndex < 0) rs.value = 'Human';
+    gs.value = greenType; if(gs.selectedIndex < 0) gs.value = 'Human';
 }
 
 function exportBrainsJS() {
@@ -304,7 +344,7 @@ function downloadRevisedBrain(brain) {
     document.body.removeChild(link);
 }
 
-function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair) {
+function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair, globalStats) {
     let csv = "Reversi Tournament Results\n";
     csv += `Date,"${new Date().toLocaleString()}"\n`;
     csv += "Parameters: \n";
@@ -323,9 +363,9 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     });
     csv += "\n";
     
-    csv += "Head-to-Head (Points received by Row Player when playing Red against Column Player)\n";
+    csv += "Head-to-Head (Points received by Row Player when playing against Column Player)\n";
     let opponentNames = displayPlayers.map(p => p.name).join(",");
-    csv += "Red \\ Green," + opponentNames + "\n";
+    csv += "Row vs Col," + opponentNames + "\n";
     displayPlayers.forEach(p1 => {
         let rowName = p1.name;
         let rowValues = displayPlayers.map(p2 => {
@@ -343,6 +383,12 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
         let w = p.params.weights;
         csv += `${p.name},${w[0]},${w[1]},${w[2]},${w[3]},${w[4]},${w[5]},${w[6]},${w[7]},${w[8]},${w[9]}\n`;
     });
+    csv += "\n";
+    
+    csv += "Global Color Performance (First Mover Stats):\n";
+    csv += `Red (First Mover) Wins,${globalStats.redWins}\n`;
+    csv += `Green (Second Mover) Wins,${globalStats.greenWins}\n`;
+    csv += `Total Draws,${globalStats.draws}\n`;
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -431,10 +477,8 @@ function initGameData() {
     saveHistoryState(); 
     currentMoveIndex = 0;
     bestMoves = []; 
-    isPlaying = false; 
     isGameOver = false;
     unplayedClickCount = 0;
-    updateGameState();
 }
 
 function initGeometry() {
@@ -604,10 +648,10 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
 
     const promises = chunks.map((chunk, i) => {
         return new Promise((resolve) => {
-            const worker = new Worker('ReversiWorker.js');
+            const worker = getWorker();
             worker.onmessage = function(e) {
                 resolve(e.data);
-                worker.terminate(); 
+                releaseWorker(worker);
             };
             worker.postMessage({
                 id: i, tasks: chunk, rootPlayerId: player,
@@ -673,11 +717,12 @@ async function makeAIMove() {
     if (isAIThinking || !isPlaying || isGameOver) return;
     if (currentMoveIndex < moveHistory.length - 1) return;
 
+    let epoch = currentAIEpoch; 
     isAIThinking = true;
     let depth = activePlayer === 1 ? redDepth : greenDepth;
     let pType = activePlayer === 1 ? redType : greenType;
     let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
-    let activeBrain = BrainList[bIdx];
+    let activeBrain = BrainList[bIdx] || BrainList[0];
 
     let pName = activePlayer === 1 ? "Red" : "Green";
     log(`${pName} is thinking, depth ${depth}...`);
@@ -686,7 +731,11 @@ async function makeAIMove() {
     
     try {
         const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth, activeBrain);
-        if (!isPlaying) {
+        if (epoch !== currentAIEpoch) {
+            return;
+        }
+
+        if (!isPlaying || isGameOver) {
             isAIThinking = false;
             return; 
         }
@@ -697,7 +746,7 @@ async function makeAIMove() {
         }
     } catch (e) {
         console.error("AI Thread Error:", e);
-        isAIThinking = false;
+        if (epoch === currentAIEpoch) isAIThinking = false;
     }
 }
 
@@ -738,15 +787,253 @@ async function doListMoves() {
     redrawAllSlices();
 }
 
+// --- EVOLUTION: GRADIENT LINE SEARCH ---
+function normalizeBrain(brain) {
+    let maxVal = 0;
+    for (let i of activeParams) {
+        if (Math.abs(brain.weights[i]) > maxVal) {
+            maxVal = Math.abs(brain.weights[i]);
+        }
+    }
+    if (maxVal === 0) return;
+    let scale = 1000 / maxVal;
+    for (let i of activeParams) {
+        let val = Math.round(brain.weights[i] * scale);
+        if (val === 0) val = Math.random() > 0.5 ? 1 : -1;
+        brain.weights[i] = val;
+    }
+}
+
+function applyVector(base, vec, scale) {
+    let newBrain = JSON.parse(JSON.stringify(base));
+    for (let param of activeParams) {
+        let delta = vec[param] * scale;
+        let val = base.weights[param] + delta;
+        newBrain.weights[param] = Math.round(val);
+        if (newBrain.weights[param] === 0) newBrain.weights[param] = Math.random() > 0.5 ? 1 : -1;
+    }
+    return newBrain;
+}
+
+function isSameBrain(b1, b2) {
+    for (let param of activeParams) {
+        if (b1.weights[param] !== b2.weights[param]) return false;
+    }
+    return true;
+}
+
+async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
+    let aWins = 0, bWins = 0, draws = 0;
+    let queue = [];
+    for(let c=0; c<gamesPerSide; c++) {
+        queue.push({ b1: bA, d1: depth, idx1: 'A', b2: bB, d2: depth, idx2: 'B' });
+        queue.push({ b1: bB, d1: depth, idx1: 'B', b2: bA, d2: depth, idx2: 'A' });
+    }
+    
+    if (!silenceMode) {
+        for(let match of queue) {
+            initGameData(); 
+            let btn = document.getElementById('btn-play');
+            if (btn) { btn.textContent = 'Playing'; btn.style.backgroundColor = 'orange'; }
+            isPlaying = true;
+            
+            let passes = 0;
+            while (passes < 2 && !isGameOver && isPlaying) {
+                let pId = activePlayer;
+                let d = pId === 1 ? match.d1 : match.d2;
+                let b = pId === 1 ? match.b1 : match.b2;
+                log(`Test: ${pId===1?'Red':'Green'} thinking (D=${d})...`);
+                await new Promise(r => setTimeout(r, 10)); 
+                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (res.bestMove && isPlaying) {
+                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
+                    passes = 0;
+                    await new Promise(r => setTimeout(r, 10)); 
+                } else {
+                    passes++;
+                    activePlayer = activePlayer === 1 ? 2 : 1;
+                    updateGameState();
+                }
+            }
+            isPlaying = false;
+            let s1 = 0, s2 = 0;
+            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
+                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
+            }
+            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
+            if (winner === 1) {
+                if (match.idx1 === 'A') aWins++; else bWins++;
+            } else if (winner === 2) {
+                if (match.idx2 === 'A') aWins++; else bWins++;
+            } else draws++;
+            if (!isPlaying && !isGameOver) { log("Interrupted."); return 0; }
+        }
+    } else {
+        let runNext = () => {
+            return new Promise(resolve => {
+                if(queue.length === 0) { resolve(); return; }
+                let match = queue.shift();
+                const worker = getWorker();
+                worker.onmessage = function(e) {
+                    let res = e.data;
+                    if (res.winner === 1) {
+                        if (match.idx1 === 'A') aWins++; else bWins++;
+                    } else if (res.winner === 2) {
+                        if (match.idx2 === 'A') aWins++; else bWins++;
+                    } else draws++;
+                    releaseWorker(worker);
+                    runNext().then(resolve);
+                };
+                worker.postMessage({
+                    command: 'play_match', b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                });
+            });
+        };
+        let pool = [];
+        let concurrent = Math.min(numWorkers, queue.length);
+        for(let i=0; i<concurrent; i++) pool.push(runNext());
+        await Promise.all(pool);
+    }
+    return aWins - bWins;
+}
+
+async function runRoundRobin(brains, gamesPerSide, depth) {
+    let scores = [0, 0, 0]; 
+    for (let i = 0; i < brains.length; i++) {
+        for (let j = i + 1; j < brains.length; j++) {
+            let netScore = await playBalancedMatch(brains[i], brains[j], gamesPerSide, depth);
+            if (netScore > 0) scores[i] += 1;
+            else if (netScore < 0) scores[j] += 1;
+        }
+    }
+    let maxScore = -1;
+    let winners = [];
+    for (let i = 0; i < brains.length; i++) {
+        if (scores[i] > maxScore) { maxScore = scores[i]; winners = [i]; }
+        else if (scores[i] === maxScore) { winners.push(i); }
+    }
+    if (winners.length === 1) return winners[0];
+    
+    log(`Tie detected. Rematch...`);
+    scores = [0, 0, 0];
+    for (let i = 0; i < winners.length; i++) {
+        for (let j = i + 1; j < winners.length; j++) {
+            let p1 = winners[i], p2 = winners[j];
+            let netScore = await playBalancedMatch(brains[p1], brains[p2], 1, depth);
+            if (netScore > 0) scores[p1] += 1;
+            else if (netScore < 0) scores[p2] += 1;
+        }
+    }
+    maxScore = -999;
+    let finalWinners = [];
+    for (let idx of winners) {
+        if (scores[idx] > maxScore) { maxScore = scores[idx]; finalWinners = [idx]; }
+        else if (scores[idx] === maxScore) { finalWinners.push(idx); }
+    }
+    if (finalWinners.length === 1) return finalWinners[0];
+    
+    // Priority: Center > Forward > Backward
+    if (finalWinners.includes(1)) return 1;
+    if (finalWinners.includes(0)) return 0;
+    return finalWinners[0];
+}
+
+async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
+    let vector = {};
+    for (let param of activeParams) {
+        vector[param] = firstStepBrain.weights[param] - originBrain.weights[param];
+    }
+    let center = JSON.parse(JSON.stringify(firstStepBrain));
+    center.name = "LS_Center";
+    
+    let stepScale = 0.5;
+    let expanding = true;
+    let searching = true;
+    let iterations = 0;
+    
+    while (searching && iterations < 20) {
+        iterations++;
+        log(`Line Search Step ${iterations}, Scale ${stepScale.toFixed(3)}`);
+        
+        let forward = applyVector(center, vector, stepScale);
+        forward.name = "LS_Forward";
+        let backward = applyVector(center, vector, -stepScale);
+        backward.name = "LS_Backward";
+        
+        if (isSameBrain(forward, center) && isSameBrain(backward, center)) {
+            log(`Line Search converged.`);
+            break;
+        }
+        
+        let brains = [forward, center, backward];
+        let winnerIdx = await runRoundRobin(brains, gamesPerSide, depth);
+        
+        if (winnerIdx === 0) { 
+            center = forward;
+            center.name = "LS_Center";
+            if (expanding) {
+                for (let p of activeParams) vector[p] *= 2;
+                log("-> Forward wins. Doubling stride.");
+            } else {
+                stepScale /= 2;
+                log("-> Forward wins. Refining (Halving step).");
+            }
+        } else if (winnerIdx === 2) { 
+            center = backward;
+            center.name = "LS_Center";
+            expanding = false;
+            stepScale /= 2;
+            log("-> Backward wins. Turned around (Halving step).");
+        } else { 
+            expanding = false;
+            stepScale /= 2;
+            log("-> Center wins. Peak found (Halving step).");
+        }
+    }
+    return center;
+}
+
 async function runTournament() {
     let checks = Array.from(document.querySelectorAll('.tourn-participant:checked'));
-    if (checks.length < 2) { log("Need at least 2 participants."); return; }
     
-    let depth = parseInt(document.getElementById('tDepth').value) || 4;
+    let depthVal = parseInt(document.getElementById('tDepth').value) || 4;
     let gamesPerPair = parseInt(document.getElementById('tGames').value) || 10;
     
-    let pIndices = checks.map(c => parseInt(c.value));
-    let brains = pIndices.map(i => BrainList[i]);
+    let displayPlayers = [];
+    let pIndices = [];
+    let queue = [];
+    let globalStats = { redWins: 0, greenWins: 0, draws: 0 };
+    
+    if (checks.length === 0) {
+        let rIdx = redType.startsWith('AI_') ? parseInt(redType.split('_')[1]) : 0;
+        let gIdx = greenType.startsWith('AI_') ? parseInt(greenType.split('_')[1]) : 0;
+        let b1 = BrainList[rIdx], b2 = BrainList[gIdx];
+        
+        displayPlayers = [
+            { id: 0, name: `Red (${b1.name} D${redDepth})`, params: b1, depth: redDepth },
+            { id: 1, name: `Green (${b2.name} D${greenDepth})`, params: b2, depth: greenDepth }
+        ];
+        pIndices = [0, 1];
+        
+        for(let g=0; g<tGamesVal; g++) {
+            if (g % 2 === 0) queue.push({ b1: b1, d1: redDepth, idx1: 0, b2: b2, d2: greenDepth, idx2: 1 });
+            else queue.push({ b1: b2, d1: greenDepth, idx1: 1, b2: b1, d2: redDepth, idx2: 0 });
+        }
+    } else if (checks.length < 2) { 
+        log("Need at least 2 participants."); return; 
+    } else {
+        pIndices = checks.map(c => parseInt(c.value));
+        displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
+        for(let i=0; i<pIndices.length; i++) {
+            for(let j=i+1; j<pIndices.length; j++) {
+                for(let g=0; g<tGamesVal; g++) {
+                    if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], d1: tDepthVal, idx1: pIndices[i], b2: BrainList[pIndices[j]], d2: tDepthVal, idx2: pIndices[j] });
+                    else queue.push({ b1: BrainList[pIndices[j]], d1: tDepthVal, idx1: pIndices[j], b2: BrainList[pIndices[i]], d2: tDepthVal, idx2: pIndices[i] });
+                }
+            }
+        }
+    }
     
     let scores = {};
     let headToHead = {};
@@ -756,134 +1043,108 @@ async function runTournament() {
         pIndices.forEach(j => headToHead[i][j] = 0);
     });
     
-    log(`--- TOURNAMENT START (D=${depth}, G=${gamesPerPair}) ---`);
-    
-    let queue = [];
-    for(let i=0; i<pIndices.length; i++) {
-        for(let j=i+1; j<pIndices.length; j++) {
-            for(let g=0; g<gamesPerPair; g++) {
-                if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], idx1: pIndices[i], b2: BrainList[pIndices[j]], idx2: pIndices[j] });
-                else queue.push({ b1: BrainList[pIndices[j]], idx1: pIndices[j], b2: BrainList[pIndices[i]], idx2: pIndices[i] });
-            }
-        }
-    }
-    
-    let activeWorkers = 0;
+    log(`--- TOURNAMENT START ---`);
     let resultsProcessed = 0;
     let totalMatches = queue.length;
     
-    let runNext = () => {
-        return new Promise(resolve => {
-            if (queue.length === 0) { resolve(); return; }
-            let match = queue.shift();
-            activeWorkers++;
+    if (!silenceMode) {
+        for(let match of queue) {
+            initGameData(); 
+            let btn = document.getElementById('btn-play');
+            if (btn) { btn.textContent = 'Playing'; btn.style.backgroundColor = 'orange'; }
+            isPlaying = true;
             
-            const worker = new Worker('ReversiWorker.js');
-            worker.onmessage = function(e) {
-                let res = e.data;
-                if (res.result === 'match_done') {
-                    if (res.winner === 1) {
-                        scores[match.idx1].wins++; scores[match.idx1].points += 3;
-                        scores[match.idx2].losses++;
-                        headToHead[match.idx1][match.idx2] += 3;
-                    } else if (res.winner === 2) {
-                        scores[match.idx2].wins++; scores[match.idx2].points += 3;
-                        scores[match.idx1].losses++;
-                        headToHead[match.idx2][match.idx1] += 3;
-                    } else {
-                        scores[match.idx1].draws++; scores[match.idx1].points += 1;
-                        scores[match.idx2].draws++; scores[match.idx2].points += 1;
-                        headToHead[match.idx1][match.idx2] += 1;
-                        headToHead[match.idx2][match.idx1] += 1;
-                    }
+            let passes = 0;
+            while (passes < 2 && !isGameOver && isPlaying) {
+                let pId = activePlayer;
+                let d = pId === 1 ? match.d1 : match.d2;
+                let b = pId === 1 ? match.b1 : match.b2;
+                
+                log(`Tourney: ${pId===1?'Red':'Green'} thinking (D=${d})...`);
+                await new Promise(r => setTimeout(r, 10)); 
+                
+                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (res.bestMove && isPlaying) {
+                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
+                    passes = 0;
+                    await new Promise(r => setTimeout(r, 10)); 
+                } else {
+                    passes++;
+                    activePlayer = activePlayer === 1 ? 2 : 1;
+                    updateGameState();
                 }
-                worker.terminate();
-                resultsProcessed++;
-                if (resultsProcessed % 10 === 0 || resultsProcessed === totalMatches) {
-                    log(`Match ${resultsProcessed}/${totalMatches} done.`);
-                }
-                activeWorkers--;
-                runNext().then(resolve);
-            };
-            worker.postMessage({
-                command: 'play_match',
-                b1: match.b1, b2: match.b2, depth: depth,
-                nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
-            });
-        });
-    };
-    
-    let pool = [];
-    let concurrent = Math.min(numWorkers, queue.length);
-    for(let i=0; i<concurrent; i++) pool.push(runNext());
-    await Promise.all(pool);
-    
-    log(`--- TOURNAMENT COMPLETE ---`);
-    let displayPlayers = pIndices.map(idx => ({
-        id: idx, name: BrainList[idx].name, params: BrainList[idx]
-    }));
-    let finalStandings = displayPlayers.map(p => ({name: p.name, score: scores[p.id].points}));
-    finalStandings.sort((a,b) => b.score - a.score);
-    finalStandings.forEach((s, i) => {
-        log(`${i+1}. ${s.name}: ${s.score} pts`);
-    });
-    
-    downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair);
-}
-
-async function runImprovement() {
-    let brainIndex = editBrainIndex;
-    let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
-    
-    let genCount = parseInt(document.getElementById('impGenerations').value) || 10;
-    let matchCount = parseInt(document.getElementById('impGames').value) || 5;
-    let mutRate = parseFloat(document.getElementById('impPercent').value) / 100 || 0.1;
-    let depth = parseInt(document.getElementById('tDepth').value) || 4;
-    
-    log(`--- IMPROVEMENT START: ${baseBrain.name} ---`);
-    
-    for (let g = 0; g < genCount; g++) {
-        log(`Gen ${g+1}/${genCount}: Mutating...`);
-        let mutant = JSON.parse(JSON.stringify(baseBrain));
-        mutant.name = baseBrain.name + `_G${g+1}`;
-        
-        let changed = false;
-        for (let i=0; i<=9; i++) {
-            if (i === 1) continue; 
-            if (Math.random() < 0.3) { 
-                let change = 1 + (Math.random() * mutRate * 2 - mutRate);
-                mutant.weights[i] = Math.round(mutant.weights[i] * change);
-                if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
-                changed = true;
             }
+            isPlaying = false;
+            if(!isGameOver && passes >= 2) log("Match ended in double pass.");
+            
+            let s1 = 0, s2 = 0;
+            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
+                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
+            }
+            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
+            
+            if (winner === 1) {
+                globalStats.redWins++;
+                scores[match.idx1].wins++; scores[match.idx1].points += 1;
+                scores[match.idx2].losses++; scores[match.idx2].points -= 1;
+                headToHead[match.idx1][match.idx2] += 1;
+                headToHead[match.idx2][match.idx1] -= 1;
+            } else if (winner === 2) {
+                globalStats.greenWins++;
+                scores[match.idx2].wins++; scores[match.idx2].points += 1;
+                scores[match.idx1].losses++; scores[match.idx1].points -= 1;
+                headToHead[match.idx2][match.idx1] += 1;
+                headToHead[match.idx1][match.idx2] -= 1;
+            } else {
+                globalStats.draws++;
+                scores[match.idx1].draws++;
+                scores[match.idx2].draws++;
+            }
+            resultsProcessed++;
+            log(`Match ${resultsProcessed}/${totalMatches} done.`);
+            if (!isPlaying && !isGameOver) { log("Tournament Interrupted."); break; }
         }
-        if (!changed) continue; 
-        
-        let mWins = 0, bWins = 0, draws = 0;
-        let queue = [];
-        for(let c=0; c<matchCount; c++) {
-            if (c % 2 === 0) queue.push({ b1: mutant, idx1: 1, b2: baseBrain, idx2: 0 });
-            else queue.push({ b1: baseBrain, idx1: 0, b2: mutant, idx2: 1 });
-        }
-        
+    } else {
+        let activeWorkers = 0;
         let runNext = () => {
             return new Promise(resolve => {
-                if(queue.length === 0) { resolve(); return; }
+                if (queue.length === 0) { resolve(); return; }
                 let match = queue.shift();
-                const worker = new Worker('ReversiWorker.js');
+                activeWorkers++;
+                
+                const worker = getWorker();
                 worker.onmessage = function(e) {
                     let res = e.data;
-                    if (res.winner === 1) {
-                        if (match.idx1 === 1) mWins++; else bWins++;
-                    } else if (res.winner === 2) {
-                        if (match.idx2 === 1) mWins++; else bWins++;
-                    } else draws++;
-                    worker.terminate();
+                    if (res.result === 'match_done') {
+                        if (res.winner === 1) {
+                            globalStats.redWins++;
+                            scores[match.idx1].wins++; scores[match.idx1].points += 1;
+                            scores[match.idx2].losses++; scores[match.idx2].points -= 1;
+                            headToHead[match.idx1][match.idx2] += 1;
+                            headToHead[match.idx2][match.idx1] -= 1;
+                        } else if (res.winner === 2) {
+                            globalStats.greenWins++;
+                            scores[match.idx2].wins++; scores[match.idx2].points += 1;
+                            scores[match.idx1].losses++; scores[match.idx1].points -= 1;
+                            headToHead[match.idx2][match.idx1] += 1;
+                            headToHead[match.idx1][match.idx2] -= 1;
+                        } else {
+                            globalStats.draws++;
+                            scores[match.idx1].draws++;
+                            scores[match.idx2].draws++;
+                        }
+                    }
+                    releaseWorker(worker);
+                    resultsProcessed++;
+                    if (resultsProcessed % 10 === 0 || resultsProcessed === totalMatches) {
+                        log(`Match ${resultsProcessed}/${totalMatches} done.`);
+                    }
+                    activeWorkers--;
                     runNext().then(resolve);
                 };
                 worker.postMessage({
                     command: 'play_match',
-                    b1: match.b1, b2: match.b2, depth: depth,
+                    b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
                     nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
                 });
             });
@@ -893,17 +1154,62 @@ async function runImprovement() {
         let concurrent = Math.min(numWorkers, queue.length);
         for(let i=0; i<concurrent; i++) pool.push(runNext());
         await Promise.all(pool);
+    }
+    
+    log(`Tourney Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
+    downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
+}
+
+async function runImprovement() {
+    let brainIndex = editBrainIndex;
+    let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    
+    normalizeBrain(baseBrain); 
+    
+    let depth = tDepthVal;
+    
+    log(`--- EVOLUTION START: ${baseBrain.name} ---`);
+    let successes = 0;
+    let currentRate = impMutVal;
+    
+    for (let g = 0; g < impGenVal; g++) {
+        log(`Gen ${g+1}/${impGenVal} (Rate: ${Math.round(currentRate)}%)`);
         
-        log(`Gen ${g+1} Result: M:${mWins} B:${bWins} D:${draws}`);
-        if (mWins > bWins) {
-            log(`+++ Mutant accepted! Saving...`);
-            baseBrain = mutant;
-            BrainList.push(JSON.parse(JSON.stringify(mutant)));
-            updateBrainUI();
-            downloadRevisedBrain(mutant);
+        let mutant = JSON.parse(JSON.stringify(baseBrain));
+        mutant.name = baseBrain.name + `_G${g+1}`;
+        
+        let changed = false;
+        for (let i of activeParams) {
+            if (Math.random() < 0.3) { 
+                let noise = (Math.random() * 2) - 1; 
+                let change = mutant.weights[i] * (currentRate / 100) * noise;
+                mutant.weights[i] = Math.round(mutant.weights[i] + change);
+                if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
+                changed = true;
+            }
+        }
+        if (!changed) continue; 
+        
+        let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
+        
+        if (netScore > 0) { 
+            log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
+            let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
+            
+            normalizeBrain(optimized); 
+            
+            successes++;
+            baseBrain = optimized;
+            baseBrain.name = BrainList[brainIndex].name + `_Opt${successes}`;
+            downloadRevisedBrain(baseBrain);
+        } else {
+            currentRate *= 0.95;
+            if (currentRate < 1) currentRate = 1;
+            document.getElementById('impPercent').value = Math.round(currentRate);
+            impMutVal = Math.round(currentRate);
         }
     }
-    log(`--- IMPROVEMENT DONE ---`);
+    log(`--- EVOLUTION DONE (${successes} upgrades) ---`);
 }
 
 function triggerBlink() {
@@ -1002,6 +1308,7 @@ document.addEventListener('keydown', (e) => {
             N = parseInt(e.key);
             if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
             resetGame();
+            initLayout(); 
             break;
         case 'a':
             gridMode = (gridMode + 1) % 3;
@@ -1071,12 +1378,7 @@ document.addEventListener('keydown', (e) => {
         case 'p':
         case 'P':
             if (isGameOver) break;
-            isPlaying = !isPlaying; 
-            let btnPlay = document.getElementById('btn-play');
-            if (btnPlay) {
-                btnPlay.textContent = isPlaying ? 'Stop' : 'Play';
-                btnPlay.style.backgroundColor = isPlaying ? 'orange' : 'green';
-            }
+            setPlayState(!isPlaying);
             if (isPlaying) updateGameState();
             break;
         case 'r':
@@ -1136,12 +1438,7 @@ function loadHistoryState(index) {
     lastMoveRecord = state.lastMove || null; 
     
     if (currentMoveIndex < moveHistory.length - 1 && isPlaying) {
-        isPlaying = false;
-        const btnPlay = document.getElementById('btn-play');
-        if (btnPlay) {
-            btnPlay.textContent = 'Play';
-            btnPlay.style.backgroundColor = 'green';
-        }
+        setPlayState(false);
     }
     
     updateGameState(true); 
@@ -1156,24 +1453,17 @@ function updateNavUI() {
 }
 
 function resetGame() {
-    if (isAIThinking) return;
-    isPlaying = false; 
+    currentAIEpoch++; 
+    isAIThinking = false;
+    setPlayState(false); 
     isGameOver = false;
     unplayedClickCount = 0;
-    const box = document.getElementById('status-box');
-    if(box) box.innerHTML = "";
-    printToOverlay(""); 
     
-    const btnPlay = document.getElementById('btn-play');
-    if (btnPlay) {
-        btnPlay.textContent = 'Play';
-        btnPlay.style.backgroundColor = 'green';
-        btnPlay.disabled = false;
-    }
-
     initGameData();
-    initGeometry(); 
-    initLayout();   
+    updateGameState(); 
+    redrawAllSlices();
+    update3D(); 
+    log("Game reset.");
 }
 
 function getScores() {
@@ -1200,7 +1490,7 @@ function updateGameState(isViewOnly = false) {
 
         if (opponentMoves.length === 0) {
             isGameOver = true;
-            isPlaying = false;
+            setPlayState(false);
             if (scores.red > scores.green) winnerText = "RED WINS!";
             else if (scores.green > scores.red) winnerText = "GREEN WINS!";
             else winnerText = "DRAW!";
@@ -1210,7 +1500,7 @@ function updateGameState(isViewOnly = false) {
             if (btnPlay) {
                 btnPlay.textContent = 'Game Over';
                 btnPlay.style.backgroundColor = 'gray';
-                btnPlay.disabled = true;
+                btnPlay.disabled = true; 
             }
         } else {
             const pName = activePlayer === 1 ? "Red" : "Green";
@@ -1779,6 +2069,7 @@ function initLayout() {
         style: `min-width: 280px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; max-height: ${23 * S}px; overflow-y: auto; padding-right: 5px;` 
     },
         
+        // 1. Title / Engine Toggle
         el('button', { 
             id: 'engine-toggle-btn',
             style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: 'Arial Black', Impact, sans-serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
@@ -1786,26 +2077,33 @@ function initLayout() {
                 if (engineMode === 'JS') {
                     if (wasmModule) {
                         engineMode = 'WASM';
+                        log("Switched to C++ Engine.");
                     } else {
                         alert("WASM module not loaded. Please compile ReversiEngine.cpp");
                     }
                 } else {
                     engineMode = 'JS';
+                    log("Switched to JS Engine.");
                 }
                 updateEngineButtonUI();
             }
         }),
 
+        // 2. Status Box
+        el('div', { 
+            id: 'status-box',
+            style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: monospace; text-align: center; font-weight: bold;`
+        }),
+
+        // 3. Play Row
         el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
             el('button', { 
                 id: 'btn-play',
-                text: isPlaying ? 'Stop' : 'Play',
+                text: isPlaying ? 'Playing' : 'Play',
                 style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
                 onclick: (e) => { 
                     if (isGameOver) return;
-                    isPlaying = !isPlaying; 
-                    e.target.textContent = isPlaying ? 'Stop' : 'Play';
-                    e.target.style.backgroundColor = isPlaying ? 'orange' : 'green';
+                    setPlayState(!isPlaying);
                     if (isPlaying) updateGameState();
                 } 
             }),
@@ -1814,7 +2112,11 @@ function initLayout() {
                 el('select', { 
                     id: 'size-select',
                     style: 'width: 40px; font-size: 16px;',
-                    onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
+                    onchange: (e) => { 
+                        N = parseInt(e.target.value); 
+                        resetGame(); 
+                        initLayout(); 
+                    } 
                 },
                     el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
                     el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
@@ -1823,6 +2125,7 @@ function initLayout() {
             )
         ),
 
+        // 4. Reset Row
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
             el('button', { 
                 text: 'Reset', 
@@ -1835,17 +2138,13 @@ function initLayout() {
             el('button', { text: '>>', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
                 loadHistoryState(moveHistory.length - 1);
                 if (!isPlaying && !isGameOver) {
-                    isPlaying = true;
-                    const btnPlay = document.getElementById('btn-play');
-                    if (btnPlay) {
-                        btnPlay.textContent = 'Stop';
-                        btnPlay.style.backgroundColor = 'orange';
-                    }
+                    setPlayState(true);
                     updateGameState();
                 }
             }})
         ),
 
+        // 5. Player Selects
         el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
             el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
             el('select', { 
@@ -1881,16 +2180,13 @@ function initLayout() {
             }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
         ),
 
+        // 6. Game Info Box
         el('div', { 
             id: 'game-info',
             style: `background-color: ${scoreBgColor}; color: white; padding: 4px; border-radius: 4px; border: 1px solid navy; min-height: 40px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;`
         }, "Initializing..."),
 
-        el('div', { 
-            id: 'status-box',
-            style: `background-color: ${scoreBgColor}; color: white; height: 50px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
-        }),
-
+        // Other options
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
             el('div', { style: 'display: flex; gap: 2px;' },
@@ -2036,33 +2332,32 @@ function initLayout() {
         ),
         
         el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
-            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Ball:"),
-            el('input', { 
-                id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
-                style: 'width: 100%;',
-                oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
-            })
-        ),
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' }, 
-            el('div', { style: 'font-size: 0.9em; white-space: nowrap;' }, "Hint:"),
-            el('input', { 
-                id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize,
-                style: 'width: 100%;',
-                oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
-            })
+            el('div', { style: 'font-size: 0.9em; font-weight: bold;' }, "B:"),
+            el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
+            el('div', { style: 'font-size: 0.9em; font-weight: bold; margin-left: 5px;' }, "H:"),
+            el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
         ),
 
-        // --- AI LAB / EVOLUTION PANEL (Moved to bottom) ---
-        el('hr', {style: 'margin: 2px 0; border-color: #555;'}),
-        el('div', {style: 'display: flex; align-items: center; gap: 5px;'},
-            el('span', {text: 'Brain:', style: 'font-size: 0.9em;'}),
-            el('select', {
-                id: 'editBrainSelect',
-                style: 'flex: 1; min-width: 0;',
-                onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }
-            })
+        // --- AI LAB / EVOLUTION PANEL ---
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
+            el('button', {text: 'Import', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
+            el('input', {id: 'brainFileName', value: 'brains.js', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
+            el('button', {text: 'Export', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
+            el('button', {text: 'Def.', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
         ),
-        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
+
+        el('button', { 
+            id: 'btn-silence',
+            text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+            style: `background-color: ${silenceMode?'#800':'#080'}; color: white; font-weight: bold; width: 100%; cursor: pointer; padding: 4px; border: none; margin-top: 4px;`, 
+            onclick: (e) => { 
+                silenceMode = !silenceMode; 
+                e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+                e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
+            } 
+        }),
+
+        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
             makeWeightInput('Mob', 0, 'Mobility'),
             makeWeightInput('Dif', 2, 'Piece Difference'),
             makeWeightInput('Cor', 3, 'Corners'),
@@ -2076,27 +2371,22 @@ function initLayout() {
             makeWeightInput('IFa', 9, 'Inner Faces'),
             el('div', {style: 'width: 38px;'}) 
         ),
-        el('div', {style: 'display: flex; gap: 3px; margin-top: 2px;'},
-            el('button', {text: 'Import', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
-            el('input', {id: 'brainFileName', value: 'brains.js', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
-            el('button', {text: 'Export', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
-            el('button', {text: 'Def.', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrains)); editBrainIndex = 0; updateBrainUI(); }})
-        ),
-        el('div', {style: 'display: flex; gap: 4px; margin-top: 2px; align-items: center; justify-content: space-between;'},
-            el('button', {text: 'Improve', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1;', onclick: runImprovement}),
-            el('input', {id: 'impGenerations', value: '10', title: 'Generations', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'}),
-            el('input', {id: 'impGames', value: '3', title: 'Games per match', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'}),
-            el('input', {id: 'impPercent', value: '10', title: 'Mutation %', style: 'width: 100%; text-align: center; font-size: 0.85em; padding: 2px; min-width: 0;'})
+        
+        el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
+            el('button', {text: 'Improve', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
+            el('select', {id: 'editBrainSelect', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+            el('input', {id: 'impGenerations', value: impGenVal, title: 'Generations', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impGenVal = e.target.value}),
+            el('input', {id: 'impGames', value: impGamesVal, title: 'Games per match', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impGamesVal = e.target.value}),
+            el('input', {id: 'impPercent', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impMutVal = e.target.value})
         ),
 
         // --- TOURNAMENT PANEL ---
-        el('hr', {style: 'margin: 2px 0; border-color: #555;'}),
-        el('div', {id: 'participants', style: 'overflow-x: auto; background: #222; padding: 2px;'}), 
-        el('div', {style: 'display: flex; gap: 5px; margin-top: 2px; align-items: center;'},
-            el('button', {text: 'Run Tourney', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 2px;', onclick: runTournament}),
-            el('input', {id: 'tGames', value: '10', title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'}),
+        el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}), 
+        el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
+            el('button', {text: 'Run Tourney', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
+            el('input', {id: 'tGames', value: tGamesVal, title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;', onchange: e => tGamesVal = e.target.value}),
             el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
-            el('input', {id: 'tDepth', value: '4', title: 'Search Depth', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'})
+            el('input', {id: 'tDepth', value: tDepthVal, title: 'Search Depth', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;', onchange: e => tDepthVal = e.target.value})
         )
     );
 
@@ -2152,7 +2442,7 @@ function initLayout() {
     root.appendChild(col3);
 
     updateEngineButtonUI();
-    updateBrainUI(); // Initialize all dynamic selects & inputs
+    updateBrainUI(); 
     updateGameState();
     redrawAllSlices();
     init3D();

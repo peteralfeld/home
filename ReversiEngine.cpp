@@ -11,6 +11,9 @@ int N3 = 64;
 int weights[10];
 bool usePruning = true;
 
+// Cache the last board size to prevent redundant geometry recalculations
+static int current_N = -1; 
+
 // Performance metrics
 long long nodesVisited = 0;
 long long depthVisits[20] = {0};
@@ -312,13 +315,18 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE uint8_t* get_board_ptr() { return global_board; }
 
     EMSCRIPTEN_KEEPALIVE void init_engine(int n_val, int w0, int w1, int w2, int w3, int w4, int w5, int w6, int w7, int w8, int w9, bool pruning) {
-        N = n_val; N2 = N * N; N3 = N * N * N;
         weights[0] = w0; weights[1] = w1; weights[2] = w2; weights[3] = w3;
         weights[4] = w4; weights[5] = w5; weights[6] = w6; weights[7] = w7;
         weights[8] = w8; weights[9] = w9;
         usePruning = pruning;
-        initGeometry();
-        initRays(); 
+        
+        // Cache block to completely eliminate 3D grid recalculation bottlenecks!
+        if (n_val != current_N) {
+            N = n_val; N2 = N * N; N3 = N * N * N;
+            initGeometry();
+            initRays(); 
+            current_N = n_val;
+        }
     }
 
     EMSCRIPTEN_KEEPALIVE void reset_stats() {

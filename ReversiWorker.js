@@ -11,6 +11,12 @@ let aiNodesVisited = 0;
 let depthVisits = {}; 
 let initialized = false; 
 
+// CACHED WEBASSEMBLY ENGINE (Crucial for Speed!)
+let wasmInstanceCache = null;
+let wasmExports = null;
+let memArray = null;
+let boardPtr = null;
+
 // RAY CASTING LOOKUP TABLES
 let ray_len = new Int32Array(512 * 26);
 let ray_path = new Int32Array(512 * 26 * 8);
@@ -223,27 +229,26 @@ function alphaBetaJS(board, depth, alpha, beta, maxPlayer, currentPlayer, passed
 self.onmessage = async function(e) {
     const data = e.data;
     
+    // CACHE WEBASSEMBLY ACROSS MESSAGES
+    if (data.engineMode === 'WASM' && data.wasmModule) {
+        if (!wasmInstanceCache) {
+            wasmInstanceCache = await WebAssembly.instantiate(data.wasmModule, {
+                env: { emscripten_notify_memory_growth: function() {} }
+            });
+            wasmExports = wasmInstanceCache.exports;
+            boardPtr = wasmExports.get_board_ptr();
+            memArray = new Uint8Array(wasmExports.memory.buffer);
+        }
+    }
+
     // ========================================================
     // HEADLESS TOURNAMENT MODE (Runs entire match in one Worker)
     // ========================================================
     if (data.command === 'play_match') {
-        const { b1, b2, depth, nVal, engineMode, wasmModule, pruning } = data;
+        const { b1, b2, depth1, depth2, nVal, pruning } = data;
         if (N !== nVal || !initialized) { 
             N = nVal; N2 = N*N; N3 = N*N*N;
             initGeometry(); initRays(); initialized = true;
-        }
-
-        let exports = null;
-        let memArray = null;
-        let boardPtr = null;
-
-        if (engineMode === 'WASM' && wasmModule) {
-            const wasmInstance = await WebAssembly.instantiate(wasmModule, {
-                env: { emscripten_notify_memory_growth: function() {} }
-            });
-            exports = wasmInstance.exports;
-            boardPtr = exports.get_board_ptr();
-            memArray = new Uint8Array(exports.memory.buffer);
         }
 
         let board = new Uint8Array(N3);
@@ -258,6 +263,7 @@ self.onmessage = async function(e) {
 
         while (passes < 2) {
             let activeBrain = currentPlayer === 1 ? b1 : b2;
+            let activeDepth = currentPlayer === 1 ? depth1 : depth2;
             currentBrain = { weights: activeBrain.weights }; 
             
             let moves = new Int32Array(512);
@@ -270,11 +276,11 @@ self.onmessage = async function(e) {
             }
             passes = 0;
 
-            let bestScore = currentPlayer === 1 ? -Infinity : Infinity;
+            let bestScore = -Infinity; // Both players want their OWN max score
             let bestMoves = [];
 
-            if (exports) {
-                exports.init_engine(N, currentBrain.weights[0], currentBrain.weights[1], currentBrain.weights[2], currentBrain.weights[3], currentBrain.weights[4], currentBrain.weights[5], currentBrain.weights[6], currentBrain.weights[7], currentBrain.weights[8], currentBrain.weights[9], pruning);
+            if (wasmExports && data.engineMode === 'WASM') {
+                wasmExports.init_engine(N, currentBrain.weights[0], currentBrain.weights[1], currentBrain.weights[2], currentBrain.weights[3], currentBrain.weights[4], currentBrain.weights[5], currentBrain.weights[6], currentBrain.weights[7], currentBrain.weights[8], currentBrain.weights[9], pruning);
                 
                 for (let i=0; i<moveCount; i++) {
                     let m = moves[i];
@@ -283,30 +289,23 @@ self.onmessage = async function(e) {
                     
                     for(let j=0; j<N3; j++) memArray[boardPtr + j] = tempBoard[j];
                     
-                    let score = exports.run_alpha_beta(depth - 1, -1000000000, 1000000000, currentPlayer, currentPlayer === 1 ? 2 : 1, false);
+                    // Score is evaluated relative to currentPlayer
+                    let score = wasmExports.run_alpha_beta(activeDepth - 1, -1000000000, 1000000000, currentPlayer, currentPlayer === 1 ? 2 : 1, false);
                     
-                    if (currentPlayer === 1) {
-                        if (score > bestScore) { bestScore = score; bestMoves = [m]; }
-                        else if (score === bestScore) bestMoves.push(m);
-                    } else {
-                        if (score < bestScore) { bestScore = score; bestMoves = [m]; }
-                        else if (score === bestScore) bestMoves.push(m);
-                    }
+                    if (score > bestScore) { bestScore = score; bestMoves = [m]; }
+                    else if (score === bestScore) bestMoves.push(m);
                 }
             } else {
                 for (let i=0; i<moveCount; i++) {
                     let m = moves[i];
                     let tempBoard = new Uint8Array(512);
                     simulateMove(board, tempBoard, m, currentPlayer);
-                    let score = alphaBetaJS(tempBoard, depth - 1, -Infinity, Infinity, currentPlayer, currentPlayer === 1 ? 2 : 1, false);
                     
-                    if (currentPlayer === 1) {
-                        if (score > bestScore) { bestScore = score; bestMoves = [m]; }
-                        else if (score === bestScore) bestMoves.push(m);
-                    } else {
-                        if (score < bestScore) { bestScore = score; bestMoves = [m]; }
-                        else if (score === bestScore) bestMoves.push(m);
-                    }
+                    // Score is evaluated relative to currentPlayer
+                    let score = alphaBetaJS(tempBoard, activeDepth - 1, -Infinity, Infinity, currentPlayer, currentPlayer === 1 ? 2 : 1, false);
+                    
+                    if (score > bestScore) { bestScore = score; bestMoves = [m]; }
+                    else if (score === bestScore) bestMoves.push(m);
                 }
             }
 
@@ -331,7 +330,7 @@ self.onmessage = async function(e) {
     // ========================================================
     // STANDARD UI EVALUATION MODE (Evaluates individual moves)
     // ========================================================
-    const { id, tasks, rootPlayerId, weights, pruning, nVal, engineMode, wasmModule } = data;
+    const { id, tasks, rootPlayerId, weights, pruning, nVal } = data;
     
     if (N !== nVal || !initialized) { 
         N = nVal; N2 = N*N; N3 = N*N*N;
@@ -344,26 +343,19 @@ self.onmessage = async function(e) {
     depthVisits = {};
     let results = [];
 
-    if (engineMode === 'WASM' && wasmModule) {
-        const wasmInstance = await WebAssembly.instantiate(wasmModule, {
-            env: { emscripten_notify_memory_growth: function() {} }
-        });
-        const exports = wasmInstance.exports;
-        
-        exports.init_engine(N, weights[0], weights[1], weights[2], weights[3], weights[4], weights[5], weights[6], weights[7], weights[8], weights[9], pruning);
-        const boardPtr = exports.get_board_ptr();
-        const memArray = new Uint8Array(exports.memory.buffer);
+    if (wasmExports && data.engineMode === 'WASM') {
+        wasmExports.init_engine(N, weights[0], weights[1], weights[2], weights[3], weights[4], weights[5], weights[6], weights[7], weights[8], weights[9], pruning);
 
         for (let task of tasks) {
             for (let x=0; x<N; x++) for (let y=0; y<N; y++) for (let z=0; z<N; z++) {
                 memArray[boardPtr + (x * N2 + y * N + z)] = task.board[x][y][z];
             }
-            exports.reset_stats();
-            let score = exports.run_alpha_beta(task.depthLeft, -1000000000, 1000000000, rootPlayerId, task.currentPlayer, task.passed);
+            wasmExports.reset_stats();
+            let score = wasmExports.run_alpha_beta(task.depthLeft, -1000000000, 1000000000, rootPlayerId, task.currentPlayer, task.passed);
             
-            aiNodesVisited += Number(exports.get_nodes_visited());
+            aiNodesVisited += Number(wasmExports.get_nodes_visited());
             for(let d=0; d<=task.depthLeft; d++) {
-                depthVisits[d] = (depthVisits[d] || 0) + Number(exports.get_depth_visits(d));
+                depthVisits[d] = (depthVisits[d] || 0) + Number(wasmExports.get_depth_visits(d));
             }
             results.push({ m1: task.m1, m2: task.m2, score: score });
         }
