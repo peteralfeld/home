@@ -1,8 +1,9 @@
+// Three-dimensional Reversi by Peter Alfeld. 
+// started 2/15/26
+// Players are Red (1) and Green (2). Red starts.
+
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
-
-// Three-dimensional Reversi by Peter Alfeld. 
-// Players are Red (1) and Green (2). Red starts.
 
 // --- CONFIGURATION & STATE ---
 let redColor = "rgb(255,50,50)";  
@@ -50,16 +51,15 @@ async function loadWasmEngine() {
         if (!response.ok) throw new Error("WASM file not found.");
         const buffer = await response.arrayBuffer();
         wasmModule = await WebAssembly.compile(buffer);
-        console.log("C++ WebAssembly Engine loaded successfully.");
         updateEngineButtonUI();
         log("C++ Engine loaded successfully.");
     } catch(e) {
         console.warn("Could not load ReversiEngine.wasm. Falling back to JS mode.", e);
         engineMode = 'JS';
-        console.log("JS Engine loaded successfully.");
         updateEngineButtonUI();
         log("JS Engine loaded successfully.");
     }
+    log(" Ready to Play, Board Size = " +N+"x"+N+"x"+N+".");
 }
 loadWasmEngine(); 
 
@@ -217,7 +217,11 @@ function stopTasks() {
 }
 
 function setEngineTaskState(taskName) {
-    currentTask = taskName;
+    // CHANGE: Update the global variable IMMEDIATELY.
+    // This ensures that when updateGameState() runs at the end of this function,
+    // it sees the new 'TOURNEY' or 'EVO' state right away.
+    currentTask = taskName; 
+
     let statusBox = document.getElementById('status-box');
     if (statusBox) {
         if (taskName === 'TOURNEY') statusBox.textContent = 'Running Tournament...';
@@ -242,7 +246,11 @@ function setEngineTaskState(taskName) {
             btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
         }
     }
-    updateGameState();
+
+    // Now call the UI refresh. 
+    // Because currentTask was set at the top, the logic we added to the 
+    // headerDiv block will now correctly identify that it should NOT show "Press Play".
+    updateGameState(); 
 }
 
 function setPlayState(playing) {
@@ -324,7 +332,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 6 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 7 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
@@ -423,17 +431,27 @@ function exportBrainsJS() {
 }
 
 function downloadRevisedBrain(brain) {
+    // 1. Create a descriptive header
     let content = `// Revised Parameters for ${brain.name}\n`;
-    content += `// Date: ${new Date().toLocaleString()}\n\n`;
-    content += `const ${brain.name.replace(/[^a-zA-Z0-9]/g, '')} = {\n`;
+    content += `// Date: ${new Date().toLocaleString()}\n`;
+    content += `// Board Size: ${N}x${N}x${N}\n\n`; // Track N
+    
+    // 2. Format as a clean JS constant
+    let cleanConstName = brain.name.replace(/[^a-zA-Z0-9]/g, '');
+    content += `const ${cleanConstName} = {\n`;
     content += `    name: "${brain.name}",\n`;
     content += `    weights: [${brain.weights.join(', ')}]\n`;
     content += `};\n`;
+
+    // 3. Generate a descriptive filename
+    // Example output: ArwenOpt1_6x6x6.js
+    let fileName = `${brain.name}_${N}x${N}x${N}.js`;
+
     const blob = new Blob([content], { type: 'text/javascript;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `${brain.name.replace(/[^a-zA-Z0-9]/g, '')}_Improved.js`);
+    link.setAttribute("download", fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1069,7 +1087,7 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
     let expanding = true;
     let iterations = 0;
     
-    log(`Starting True Line Search...`);
+    log(`Starting Line Search`);
     
     while (iterations < 20) {
         if (cancelBackgroundTasks) break;
@@ -1083,7 +1101,7 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
             break;
         }
         
-        log(`LS Iteration ${iterations}: Testing Candidate...`);
+        log(`${iterations}: Testing.`);
         let netScore = await playBalancedMatch(candidate, X, gamesPerSide, depth);
         if (cancelBackgroundTasks) break;
         
@@ -1091,14 +1109,14 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
             X = candidate;
             if (expanding) {
                 for(let p of activeParams) V[p] *= 2;
-                log(`--> Candidate wins. Doubling step size.`);
+                log(`--> Doubling step size.`);
             } else {
-                log(`--> Candidate wins. Maintaining current bisection step.`);
+                log(`--> Keeping step-size.`);
             }
         } else { 
             expanding = false;
             for(let p of activeParams) V[p] /= 2;
-            log(`--> Candidate failed/drew. Bisecting step size.`);
+            log(`--> Halving step size.`);
         }
     }
     return X;
@@ -1297,7 +1315,7 @@ async function runImprovement() {
         log(`Gen ${g+1}/${impGenVal} (Rate: ${Math.round(currentRate)}%)`);
         
         let mutant = JSON.parse(JSON.stringify(baseBrain));
-        mutant.name = baseBrain.name + `_G${g+1}`;
+        mutant.name = baseBrain.name + `G${g+1}`;
         
         let changed = false;
         for (let i of activeParams) {
@@ -1314,7 +1332,7 @@ async function runImprovement() {
         let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
         if (cancelBackgroundTasks) break;
         
-        if (netScore > 0) { 
+	if (netScore > 0) {
             log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
             let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
             if (cancelBackgroundTasks) break;
@@ -1322,8 +1340,19 @@ async function runImprovement() {
             normalizeBrain(optimized); 
             
             successes++;
+            
+            // 1. Strip away "Opt" and any following numbers to get the base name
+            // This turns "ArwenOpt1" back into "Arwen"
+            let baseName = BrainList[brainIndex].name.replace(/Opt\d+$/, "");
+            
             baseBrain = optimized;
-            baseBrain.name = BrainList[brainIndex].name + `_Opt${successes}`;
+            
+            // 2. Combine them without an underscore
+            baseBrain.name = `${baseName}Opt${successes}`;
+            
+            BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
+            updateBrainUI();
+
             downloadRevisedBrain(baseBrain);
         } else {
             currentRate *= 0.95;
@@ -1354,6 +1383,9 @@ function triggerBlink() {
 }
 
 function handleBoardClick() {
+    // If a background task is running, ignore clicks entirely
+    if (currentTask !== 'NONE') return true;
+
     if (!isPlaying && !isGameOver) { 
         if (currentMoveIndex === 0) {
             unplayedClickCount++;
@@ -1588,20 +1620,26 @@ function updateNavUI() {
 }
 
 function resetGame() {
+    // 1. Stop any background work first
     if (currentTask !== 'NONE') {
         stopTasks();
     }
+    
+    // 2. CRITICAL: Initialize the board data for the NEW N immediately
+    // This builds the gameCube array to the correct size
+    initGameData();
+
+    // 3. Now it is safe to reset states and update the UI
     currentAIEpoch++; 
     isAIThinking = false;
     setPlayState(false); 
     isGameOver = false;
     unplayedClickCount = 0;
     
-    initGameData();
     updateGameState(); 
     redrawAllSlices();
     update3D(); 
-    log("Board reset.");
+    log("Board reset, N= " + N + ".");
 }
 
 function getScores() {
@@ -1650,30 +1688,34 @@ function updateGameState(isViewOnly = false) {
         }
     }
 
-    // Output UI HTML
+// Output UI HTML
     if (headerDiv) {
         const pName = activePlayer === 1 ? "Red" : "Green";
         const color = activePlayer === 1 ? redColor : greenColor;
         let html = "";
 
-        if (currentTask !== 'NONE' && !isPlaying) {
+        // 1. MASTER GUARD: If a task is active, ONLY show the task message.
+        // We remove !isPlaying because background matches toggle isPlaying to true.
+        if (currentTask !== 'NONE') {
             let msg = currentTask === 'TOURNEY' ? 'Running Tournament...' : 'Running Evolution...';
             html = `
                 <div style="font-size: 1.2em; font-weight: bold; color: orange; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
                     <div>${msg}</div>
                     <div style="font-size: 0.75em; color: yellow; margin-top: 4px;">Press Reset/Stop to stop</div>
                 </div>`;
-        } else if (currentMoveIndex === 0 && !isPlaying && !isGameOver && currentTask === 'NONE') {
+        } 
+        // 2. IDLE GUARD: Only show "Press Play" if NO task is running and we are at the start.
+        else if (currentTask === 'NONE' && currentMoveIndex === 0 && !isPlaying && !isGameOver) {
             html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Press Play to Start</div>`;
-        } else {
+        } 
+        // 3. DEFAULT: Standard Gameplay UI.
+        else {
             let lastMoveHtml = "";
             if (lastMoveRecord) {
                 const lmColor = lastMoveRecord.player === 1 ? redColor : greenColor;
                 lastMoveHtml = `<span style="color: ${lmColor};">(${lastMoveRecord.x}, ${lastMoveRecord.y}, ${lastMoveRecord.z})</span>`;
             }
-            
             let line2 = isGameOver ? `<span style="color: ${scores.red>scores.green?redColor:(scores.green>scores.red?greenColor:'white')}; font-weight:bold;">${winnerText}</span>` : lastMoveHtml;
-
             html = `
                 <div style="font-size: 1.1em; font-weight: bold; white-space: nowrap; margin-bottom: 2px;">
                     <span style="color:${color};">${pName}</span>
@@ -2260,24 +2302,53 @@ function initLayout() {
                 text: isPlaying ? 'Playing' : 'Play',
                 title: 'Start/Stop a game between the selected players. Also stops background tasks.',
                 style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+
+		onclick: (e) => { 
+		    if (currentTask !== 'NONE') {
+			stopTasks();
+			setPlayState(true);
+			updateGameState();
+		    } else {
+			if (isGameOver) return;
+
+			// NEW LOGIC: If we are viewing a past move, truncate the history to resume
+			if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
+			    log(`Resuming game from move ${currentMoveIndex}...`);
+			    moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+			    // lastMoveRecord should be updated to the move that led to this state
+			    lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
+			}
+
+			setPlayState(!isPlaying);
+			if (isPlaying) updateGameState();
+		    }
+		}
+            }),
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
+            el('button', { 
+                id: 'btn-silence',
+                text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+                title: 'Toggle Headless Mode for Tournaments/Evolution',
+                style: `background-color: ${silenceMode?'#800':'#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
                 onclick: (e) => { 
-                    if (currentTask !== 'NONE') {
-                        stopTasks();
-                        setPlayState(true);
-                        updateGameState();
-                    } else {
-                        if (isGameOver) return;
-                        setPlayState(!isPlaying);
-                        if (isPlaying) updateGameState();
-                    }
+                    silenceMode = !silenceMode; 
+                    e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+                    e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
                 } 
             }),
+            el('button', { 
+                text: 'Reset', 
+                title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
+                style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
+                onclick: resetGame
+            })
+          ),
             el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
                 el('span', { text: 'N=', style: 'font-weight: bold;' }),
                 el('select', { 
                     id: 'size-select',
                     title: 'Board Size (N)',
-                    style: 'width: 40px; font-size: 16px;',
+                    style: 'width: 40px; font-size: 16px; background-color: rgb(200,255,150);',
                     onchange: (e) => { 
                         N = parseInt(e.target.value); 
                         resetGame(); 
@@ -2512,25 +2583,6 @@ function initLayout() {
             el('button', {text: 'Def.', title: 'Restore Default Brains', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
         ),
 
-        el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
-            el('button', { 
-                id: 'btn-silence',
-                text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
-                title: 'Toggle Headless Mode for Tournaments/Evolution',
-                style: `background-color: ${silenceMode?'#800':'#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
-                onclick: (e) => { 
-                    silenceMode = !silenceMode; 
-                    e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
-                    e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
-                } 
-            }),
-            el('button', { 
-                text: 'Reset/Stop', 
-                title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
-                style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
-                onclick: resetGame
-            })
-        ),
 
         el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
             makeWeightInput('Mob', 0, 'Mobility'),
