@@ -5,7 +5,7 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
 
-// --- CONFIGURATION & STATE ---
+// CONFIGURATION & STATE
 let redColor = "rgb(255,50,50)";  
 let greenColor = "rgb(50,255,50)";
 let eligibleColor = "rgb(255,255,0)"; 
@@ -20,16 +20,16 @@ let N = 6;
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
 let duplicateLogs = true; 
 
-// --- ENGINE STATE ---
+// ENGINE STATE
 let engineMode = 'WASM'; 
 let wasmModule = null;
 let currentAIEpoch = 0; // Tracks resets to kill orphaned workers
 
-// --- GLOBAL TASK CANCELLATION ---
+// GLOBAL TASK CANCELLATION
 let cancelBackgroundTasks = false;
 let currentTask = 'NONE'; // 'TOURNEY', 'EVO', or 'NONE'
 
-// --- WORKER POOL ---
+// WORKER POOL
 let workerPool = [];
 let activeWorkers = new Set(); // Tracks currently calculating threads
 
@@ -59,11 +59,11 @@ async function loadWasmEngine() {
         updateEngineButtonUI();
         log("JS Engine loaded successfully.");
     }
-    log(" Ready to Play, Board Size = " +N+"x"+N+"x"+N+".");
+    log("Ready to Play, \nBoard Size = " +N+"x"+N+"x"+N+".");
 }
 loadWasmEngine(); 
 
-// --- BRAIN DATA & EVOLUTION ---
+// BRAIN DATA & EVOLUTION
 function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
     return { name, weights: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9] };
 }
@@ -150,7 +150,7 @@ let hintBallSize = 0.125;
 let cameraPersp, cameraOrtho;
 let orthographicMode = false;
 
-// --- 3D GLOBAL VARIABLES ---
+// 3D GLOBAL VARIABLES
 let scene, camera, renderer, controls;
 let stoneGroup, gridGroup, axesHelper; 
 let raycaster, mouse; 
@@ -158,7 +158,7 @@ let animationId = null;
 let overlay3D = null; 
 let hoverTooltip = null; 
 
-// --- 1. HELPER FUNCTIONS ---
+// 1. HELPER FUNCTIONS
 function el(tag, attrs = {}, ...children) {
     const element = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs)) {
@@ -233,11 +233,11 @@ function setEngineTaskState(taskName) {
     let btn = document.getElementById('btn-play');
     if (btn) {
         if (taskName === 'TOURNEY') {
-            btn.textContent = 'Running Tournament';
+            btn.textContent = 'Tournament';
             btn.style.fontSize = '14px';
             btn.style.backgroundColor = 'purple';
         } else if (taskName === 'EVO') {
-            btn.textContent = 'Running Evolution';
+            btn.textContent = 'Evolution';
             btn.style.fontSize = '14px';
             btn.style.backgroundColor = 'purple';
         } else {
@@ -513,7 +513,7 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     document.body.removeChild(link);
 }
 
-// --- SYMMETRY ENGINE (ROOT FILTERING) ---
+// SYMMETRY ENGINE (ROOT FILTERING)
 function applySymToCoord(x, y, z, sym) {
     let px = x, py = y, pz = z;
     let perm = sym % 6;
@@ -566,7 +566,7 @@ function filterSymmetricMoves(board, validMoves) {
     return uniqueMoves;
 }
 
-// --- 2. GAME LOGIC ---
+// 2. GAME LOGIC
 
 function initGameData() {
     gameCube = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
@@ -708,7 +708,7 @@ function simulateMovePooled(board, move, player) {
     return newBoard;
 }
 
-// --- 3. AI LOGIC (2-PLY WEB WORKER POOL) ---
+// 3. AI LOGIC (2-PLY WEB WORKER POOL)
 
 async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     const startTime = performance.now();
@@ -833,7 +833,7 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     techLog(`AI Done: ${commas(totalNodes)} nodes, ${commas(timeTakenMs)}ms, V: ${commas(bestScore)}`);
     
     if (showDepths) {
-        techLog(`--- Depth Visits ---`);
+        techLog(`Depth Visits`);
         for (let i = depth; i >= 0; i--) {
             if (combinedDepthVisits[i] !== undefined) {
                 techLog(`Depth ${i}: ${commas(combinedDepthVisits[i])}`);
@@ -881,7 +881,7 @@ async function makeAIMove() {
     }
 }
 
-// --- BUTTON HANDLERS ---
+// BUTTON HANDLERS
 async function doStaticEval() {
     let pType = activePlayer === 1 ? redType : greenType;
     let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
@@ -901,7 +901,7 @@ async function doListMoves() {
     const bestScore = aiResult.maxEval;
     bestMoves = aiResult.ranked.filter(r => r.score === bestScore).map(r => r.move);
 
-    log(`--- Moves (D=${evalDepth}) ---`);
+    log(`Moves (D=${evalDepth})`);
     aiResult.ranked.forEach(item => {
         const isBest = item.score === bestScore;
         const mark = isBest ? " ★" : "";
@@ -913,7 +913,7 @@ async function doListMoves() {
     redrawAllSlices();
 }
 
-// --- EVOLUTION: GRADIENT LINE SEARCH ---
+// EVOLUTION: GRADIENT LINE SEARCH
 function normalizeBrain(brain) {
     let maxVal = 0;
     for (let i of activeParams) {
@@ -1076,19 +1076,22 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
 }
 
 async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
+    // 1. Calculate the initial direction vector (V)
     let V = {};
     for (let param of activeParams) {
         V[param] = firstStepBrain.weights[param] - originBrain.weights[param];
     }
     
-    let X = JSON.parse(JSON.stringify(firstStepBrain));
-    X.name = "LS_Candidate";
+    let Delta = "LS: first step: ";
+    for (let param of activeParams) {
+	Delta += V[param] + " ";
+    }
+    log (Delta);
     
-    let expanding = true;
+    let X = JSON.parse(JSON.stringify(firstStepBrain)); // Current best brain
     let iterations = 0;
     
-    log(`Starting Line Search`);
-    
+    let expanding = true;
     while (iterations < 20) {
         if (cancelBackgroundTasks) break;
         iterations++;
@@ -1096,27 +1099,28 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
         let candidate = applyVector(X, V, 1.0);
         candidate.name = "LS_Candidate";
         
+        // EXIT: If step size is so small that integer weights don't change
         if (isSameBrain(X, candidate)) {
-            log(`Line Search converged.`);
+            log(`Line Search converged (step size too small).`);
             break;
         }
         
-        log(`${iterations}: Testing.`);
+        log(`${iterations}: Testing Candidate...`);
         let netScore = await playBalancedMatch(candidate, X, gamesPerSide, depth);
         if (cancelBackgroundTasks) break;
         
-        if (netScore > 0) { 
+        if (netScore > 0 && expanding) { 
+           // SUCCESS: Move to new position and double the step to move faster
             X = candidate;
-            if (expanding) {
-                for(let p of activeParams) V[p] *= 2;
-                log(`--> Doubling step size.`);
-            } else {
-                log(`--> Keeping step-size.`);
-            }
+            for(let p of activeParams) V[p] *= 2;
+            log(`--> Hit! Moving forward and doubling step.`);
         } else { 
             expanding = false;
-            for(let p of activeParams) V[p] /= 2;
-            log(`--> Halving step size.`);
+            // FAILURE: Flip direction AND halve the step size
+            for(let p of activeParams) {
+                V[p] = Math.round((V[p] * -1) / 2);
+            }
+            log(`--> Miss. Flipping direction and halving step size.`);
         }
     }
     return X;
@@ -1174,7 +1178,7 @@ async function runTournament() {
         pIndices.forEach(j => headToHead[i][j] = 0);
     });
     
-    log(`--- TOURNAMENT START ---`);
+    log(`Tournament Start`);
     let resultsProcessed = 0;
     let totalMatches = queue.length;
     
@@ -1233,7 +1237,7 @@ async function runTournament() {
                 scores[match.idx2].draws++;
             }
             resultsProcessed++;
-            log(`game ${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
+            log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
         }
     } else {
         let activeWorkers = 0;
@@ -1269,7 +1273,7 @@ async function runTournament() {
                     }
                     releaseWorker(worker);
                     resultsProcessed++;
-                    log(`game ${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
+                    log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
                     activeWorkers--;
                     runNext().then(resolve);
                 };
@@ -1306,7 +1310,7 @@ async function runImprovement() {
     normalizeBrain(baseBrain); 
     let depth = tDepthVal;
     
-    log(`--- EVOLUTION START: ${baseBrain.name} ---`);
+    log(`EVOLUTION START: ${baseBrain.name}`);
     let successes = 0;
     let currentRate = impMutVal;
     
@@ -1319,17 +1323,17 @@ async function runImprovement() {
         
         let changed = false;
         for (let i of activeParams) {
-            if (Math.random() < 0.3) { 
-                let noise = (Math.random() * 2) - 1; 
-                let change = mutant.weights[i] * (currentRate / 100) * noise;
-                mutant.weights[i] = Math.round(mutant.weights[i] + change);
-                if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
-                changed = true;
-            }
-        }
+            let noise = (Math.random() * 2) - 1; 
+            let change = mutant.weights[i] * (currentRate / 100) * noise;
+            if (Math.abs(change) > 1.0) {
+		changed = true;
+	    }
+            mutant.weights[i] = Math.round(mutant.weights[i] + change);
+            if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
+	}
         if (!changed) continue; 
         
-        let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
+	let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
         if (cancelBackgroundTasks) break;
         
 	if (netScore > 0) {
@@ -1354,21 +1358,23 @@ async function runImprovement() {
             updateBrainUI();
 
             downloadRevisedBrain(baseBrain);
-        } else {
-            currentRate *= 0.95;
-            if (currentRate < 1) currentRate = 1;
-            document.getElementById('impPercent').value = Math.round(currentRate);
-            impMutVal = Math.round(currentRate);
         }
+//	else {
+//            currentRate *= 0.95;
+//            if (currentRate < 1) currentRate = 1;
+//            document.getElementById('impPercent').value = Math.round(currentRate);
+//            impMutVal = Math.round(currentRate);
+
     }
-    
     if (cancelBackgroundTasks) {
         log("Evolution cancelled by user.");
     } else {
-        log(`--- EVOLUTION DONE (${successes} upgrades) ---`);
+        log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
 }
+
+
 
 function triggerBlink() {
     let el = document.getElementById('press-play-msg');
@@ -1580,7 +1586,7 @@ Esc/Spc : Exit Fullscreen`);
     }
 });
 
-// --- STATE MANAGEMENT ---
+// STATE MANAGEMENT
 
 function saveHistoryState() {
     const cubeCopy = cloneBoard(gameCube);
@@ -1701,7 +1707,7 @@ function updateGameState(isViewOnly = false) {
             html = `
                 <div style="font-size: 1.2em; font-weight: bold; color: orange; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
                     <div>${msg}</div>
-                    <div style="font-size: 0.75em; color: yellow; margin-top: 4px;">Press Reset/Stop to stop</div>
+                    <div style="font-size: 0.75em; color: yellow; margin-top: 4px;">Press Reset to stop</div>
                 </div>`;
         } 
         // 2. IDLE GUARD: Only show "Press Play" if NO task is running and we are at the start.
@@ -1781,7 +1787,7 @@ function executeMove(x, y, z) {
     update3D(); 
 }
 
-// --- 4. 2D DRAWING ---
+// 4. 2D DRAWING
 
 function drawSlice(canvas, axis, sliceIndex) {
     const ctx = canvas.getContext('2d');
@@ -1872,7 +1878,7 @@ function redrawAllSlices() {
     });
 }
 
-// --- 5. 3D LOGIC (Three.js) ---
+// 5. 3D LOGIC (Three.js)
 
 function init3D() {
     const container = document.getElementById('view3d-container');
@@ -2173,7 +2179,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// --- 6. UI LAYOUT ---
+// 6. UI LAYOUT
 
 function initLayout() {
     if (gameCube.length !== N) initGameData();
@@ -2261,7 +2267,7 @@ function initLayout() {
         );
     }
 
-    // --- COLUMN 1: CONTROLS ---
+    // COLUMN 1: CONTROLS
     const col1 = el('div', { 
         class: 'col-controls', 
         style: `min-width: 280px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; max-height: ${23 * S}px; overflow-y: auto; padding-right: 5px;` 
@@ -2575,7 +2581,7 @@ function initLayout() {
             el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, title: 'Hint Marker Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
         ),
 
-        // --- AI LAB / EVOLUTION PANEL ---
+        // AI LAB / EVOLUTION PANEL
         el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
             el('button', {text: 'Import', title: 'Import Brains from a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
             el('input', {id: 'brainFileName', value: 'brains.js', title: 'Filename to export', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
@@ -2610,13 +2616,13 @@ function initLayout() {
     setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
 
     let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
-        el('button', {text: 'Improve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
+        el('button', {text: 'Evolve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
         el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
         impGenInp, impGamesInp, impPercentInp
     );
     col1.appendChild(evoControlsDiv);
 
-    // --- TOURNAMENT PANEL ---
+    // TOURNAMENT PANEL
     col1.appendChild(el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}));
 
     let tGamesInp = el('input', {id: 'tGames', type: 'text', value: tGamesVal, title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'});
@@ -2636,7 +2642,7 @@ function initLayout() {
     );
     col1.appendChild(tourneyControlsDiv);
 
-    // --- COLUMN 2: SLICES ---
+    // COLUMN 2: SLICES
     const col2 = el('div', { 
         class: 'col-slices',
         style: `height: ${23 * S}px; display: flex; flex-direction: column; justify-content: space-between;`
@@ -2677,7 +2683,7 @@ function initLayout() {
         ));
     });
 
-    // --- COLUMN 3: 3D VIEW ---
+    // COLUMN 3: 3D VIEW
     const col3 = el('div', { class: 'col-3d' },
         el('div', { id: 'view3d-container' })
     );
@@ -2695,6 +2701,6 @@ function initLayout() {
     init3D();
 }
 
-// --- 7. START THE GAME ---
+// 7. START THE GAME
 initGameData();
 initLayout();
