@@ -15,7 +15,7 @@ let millTitleColor = "navy";
 let scoreBgColor = "#333333"; 
 
 let S = 40;   
-let N = 4;    
+let N = 6;    
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
 let duplicateLogs = true; 
 
@@ -24,14 +24,23 @@ let engineMode = 'WASM';
 let wasmModule = null;
 let currentAIEpoch = 0; // Tracks resets to kill orphaned workers
 
+// --- GLOBAL TASK CANCELLATION ---
+let cancelBackgroundTasks = false;
+let currentTask = 'NONE'; // 'TOURNEY', 'EVO', or 'NONE'
+
 // --- WORKER POOL ---
 let workerPool = [];
+let activeWorkers = new Set(); // Tracks currently calculating threads
+
 function getWorker() {
-    if (workerPool.length > 0) return workerPool.pop();
-    return new Worker('ReversiWorker.js');
+    let w = workerPool.length > 0 ? workerPool.pop() : new Worker('ReversiWorker.js');
+    activeWorkers.add(w);
+    return w;
 }
 function releaseWorker(worker) {
     worker.onmessage = null; 
+    worker.currentResolve = null;
+    activeWorkers.delete(worker);
     workerPool.push(worker);
 }
 
@@ -59,11 +68,15 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
     return { name, weights: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9] };
 }
 
-const Arwen = makeBrain("Arwen", 20, 0, 28, 1145, -9, -17, 83, -6, 7, -2);
-const Bilbo = makeBrain("Bilbo", 20, 0, 28, 1145, -9, -17, 83, -6, 7, -2);
-const Celebrian = makeBrain("Celebrian", 20, 0, 28, 1145, -9, -18, 83, -6, 7, -2);
+// Normalized to max parameter = 1000
+const Arwen = makeBrain("Arwen", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
+const Bilbo = makeBrain("Bilbo", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
+const Celebrian = makeBrain("Celebrian", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
 const Dwalin = makeBrain("Dwalin", 16, 0, 22, 1000, -8, -13, 71, -5, 7, -2); 
-const Eowyn = makeBrain("Eowyn", 16, 0, 22, 1000, -8, -13, 70, -5, 7, -2);
+const Eowyn = {
+    name: "Eowyn",
+    weights: [11, 0, 47, 1000, -13, -32, 194, -1, 8, -3]
+};
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
 let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
@@ -92,11 +105,10 @@ let greenDepth = 4;
 let evalDepth = 4; 
 let tGamesVal = 10;
 let tDepthVal = 4;
-let impGenVal = 10;
-let impGamesVal = 3;
+let impGenVal = 1000; 
+let impGamesVal = 10; 
 let impMutVal = 10;
 let silenceMode = true;
-let improving = false;
 
 // Game State Controls
 let isPlaying = false;    
@@ -166,9 +178,12 @@ function commas(x) {
 }
 
 function log(msg) {
-    const box = document.getElementById('status-box');
-    if (box) box.textContent = msg; 
     if (duplicateLogs) console.log(msg); 
+    let logDiv = document.getElementById('game-info-log');
+    if (logDiv) {
+        logDiv.textContent += msg + '\n';
+        logDiv.scrollTop = logDiv.scrollHeight; 
+    }
 }
 
 function techLog(msg) {
@@ -179,13 +194,61 @@ function printToOverlay(msg) {
     if (overlay3D) overlay3D.textContent = msg;
 }
 
-function setPlayState(playing) {
-    isPlaying = playing;
+function stopTasks() {
+    if (currentTask !== 'NONE') {
+        cancelBackgroundTasks = true;
+        setEngineTaskState('NONE');
+        currentAIEpoch++;
+        
+        // Instantly murder all active workers mid-calculation
+        for (let w of activeWorkers) {
+            // Send dummy resolution to safely unblock awaiting Promises
+            if (w.currentResolve) {
+                w.currentResolve({ result: 'cancelled', bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 });
+            }
+            w.terminate();
+        }
+        activeWorkers.clear();
+        workerPool = []; // Wipe the pool so fresh, untainted workers spawn next time
+        
+        log("Background tasks manually stopped.");
+        updateGameState();
+    }
+}
+
+function setEngineTaskState(taskName) {
+    currentTask = taskName;
+    let statusBox = document.getElementById('status-box');
+    if (statusBox) {
+        if (taskName === 'TOURNEY') statusBox.textContent = 'Running Tournament...';
+        else if (taskName === 'EVO') statusBox.textContent = 'Running Evolution...';
+        else if (isPlaying) statusBox.textContent = 'Playing Game';
+        else statusBox.textContent = 'Ready to play';
+    }
+    
     let btn = document.getElementById('btn-play');
     if (btn) {
-        btn.textContent = isPlaying ? 'Playing' : 'Play';
-        btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
-        btn.disabled = false; 
+        if (taskName === 'TOURNEY') {
+            btn.textContent = 'Running Tournament';
+            btn.style.fontSize = '14px';
+            btn.style.backgroundColor = 'purple';
+        } else if (taskName === 'EVO') {
+            btn.textContent = 'Running Evolution';
+            btn.style.fontSize = '14px';
+            btn.style.backgroundColor = 'purple';
+        } else {
+            btn.style.fontSize = '18px';
+            btn.textContent = isPlaying ? 'Playing' : 'Play';
+            btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
+        }
+    }
+    updateGameState();
+}
+
+function setPlayState(playing) {
+    isPlaying = playing;
+    if (currentTask === 'NONE') {
+        setEngineTaskState('NONE'); // Restores the button appearance cleanly
     }
 }
 
@@ -198,7 +261,7 @@ function setupSmartInput(inputEl, validateAndApply) {
     inputEl.addEventListener('blur', function() {
         if (this.value.trim() === '') this.value = this.dataset.lastValid;
         else {
-            let val = parseInt(this.value);
+            let val = parseFloat(this.value);
             if (Number.isFinite(val)) {
                 let finalVal = validateAndApply(val);
                 if (finalVal !== undefined && finalVal !== null) {
@@ -243,7 +306,6 @@ function cloneBoardPooled(board) {
     return newB;
 }
 
-// Standard copy mapping (allocates explicitly for history states)
 function cloneBoard(board) {
     let newB = new Array(N);
     for(let x=0; x<N; x++) {
@@ -262,7 +324,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.25em;">REVERSI V. 5 ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 6 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
@@ -277,7 +339,10 @@ function updateBrainUI() {
     if (b) {
         activeParams.forEach(w => {
             let inp = document.getElementById(`p_W${w}`);
-            if (inp) inp.value = b.weights[w];
+            if (inp) {
+                inp.value = b.weights[w];
+                inp.dataset.lastValid = b.weights[w];
+            }
         });
     }
 
@@ -287,7 +352,7 @@ function updateBrainUI() {
         const cbStyle = "cursor: pointer; margin: 0; padding: 0; vertical-align: middle;";
         partHTML += "<tr><td style='padding: 0 2px; font-size: 11px; color: white;'>All</td><td style='padding: 0 2px; font-size: 11px; color: white;'>None</td>";
         for (let i = 0; i < BrainList.length; i++) {
-            partHTML += `<td style='padding: 0; font-size: 11px; color: white;'><b>${BrainList[i].name.charAt(0)}</b></td>`;
+            partHTML += `<td style='padding: 0; font-size: 11px; color: white;' title='Toggle ${BrainList[i].name}'><b>${BrainList[i].name.charAt(0)}</b></td>`;
         }
         partHTML += "</tr><tr>";
         partHTML += `<td style='padding: 0;'><input type='checkbox' id='cb_select_all' title='Select All' style='${cbStyle}'></td>`;
@@ -295,7 +360,7 @@ function updateBrainUI() {
         for (let i = 0; i < BrainList.length; i++) {
             let existing = document.getElementById('part_checkbox_' + i);
             let isChecked = existing ? existing.checked : true;
-            partHTML += `<td style='padding: 0;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
+            partHTML += `<td style='padding: 0;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' title='Include ${BrainList[i].name} in tournament' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
         }
         partHTML += "</tr></table>";
         partDiv.innerHTML = partHTML;
@@ -379,7 +444,7 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     csv += `Date,"${new Date().toLocaleString()}"\n`;
     csv += "Parameters: \n";
     csv += `Games per Pair,${gamesPerPair}\n`;
-    csv += `Depth,${document.getElementById('tDepth').value}\n\n`;
+    csv += `Depth,${tDepthVal}\n\n`;
     
     csv += "Standings\n";
     csv += "Rank,Name,Points,Wins,Losses,Draws\n";
@@ -604,7 +669,6 @@ function getValidMovesForPlayer(board, player) {
     return moves;
 }
 
-// Memory-Safe Version of simulate move
 function simulateMovePooled(board, move, player) {
     const newBoard = cloneBoardPooled(board);
     const {x, y, z} = move;
@@ -652,7 +716,7 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     }
 
     let tasks = [];
-    let tempBoards = []; // Keep track of pooled boards used in this loop
+    let tempBoards = []; 
 
     for (let m1 of M1) {
         let b1 = simulateMovePooled(board, m1, player);
@@ -693,7 +757,9 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
     const promises = chunks.map((chunk, i) => {
         return new Promise((resolve) => {
             const worker = getWorker();
+            worker.currentResolve = (data) => resolve(data);
             worker.onmessage = function(e) {
+                worker.currentResolve = null;
                 resolve(e.data);
                 releaseWorker(worker);
             };
@@ -707,12 +773,12 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
 
     const resultsArray = await Promise.all(promises);
     
-    // Memory Rescue: Release all 3D pooled boards back into the void
     for(let b of tempBoards) releaseBoard(b);
 
     let m1Map = new Map(); 
 
     for (let workerRes of resultsArray) {
+        if (workerRes.result === 'cancelled') return { bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 };
         totalNodes += workerRes.totalNodes;
         for (let d in workerRes.depthVisits) {
             combinedDepthVisits[d] = (combinedDepthVisits[d] || 0) + workerRes.depthVisits[d];
@@ -778,7 +844,7 @@ async function makeAIMove() {
     
     try {
         const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth, activeBrain);
-        if (epoch !== currentAIEpoch) {
+        if (epoch !== currentAIEpoch || cancelBackgroundTasks) {
             return;
         }
 
@@ -804,7 +870,6 @@ async function doStaticEval() {
     const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth, BrainList[bIdx]);
     if (!aiResult.bestMove) { log("No moves."); return; }
     let msg = `Eval (D=${evalDepth}): ${commas(aiResult.maxEval)}`;
-    printToOverlay(msg);
     log(msg); 
 }
 
@@ -818,18 +883,14 @@ async function doListMoves() {
     const bestScore = aiResult.maxEval;
     bestMoves = aiResult.ranked.filter(r => r.score === bestScore).map(r => r.move);
 
-    let txt = `--- Moves (D=${evalDepth}) ---\n`;
     log(`--- Moves (D=${evalDepth}) ---`);
-    
     aiResult.ranked.forEach(item => {
         const isBest = item.score === bestScore;
         const mark = isBest ? " ★" : "";
         let lineStr = `(${item.move.x},${item.move.y},${item.move.z}) : ${commas(item.score)}${mark}`;
-        txt += lineStr + `\n`;
         log(lineStr);
     });
     
-    printToOverlay(txt);
     update3D();
     redrawAllSlices();
 }
@@ -879,19 +940,21 @@ async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
     
     if (!silenceMode) {
         for(let match of queue) {
+            if (cancelBackgroundTasks) break;
             initGameData(); 
-            let btn = document.getElementById('btn-play');
-            if (btn) { btn.textContent = 'Playing'; btn.style.backgroundColor = 'orange'; }
             isPlaying = true;
             
             let passes = 0;
             while (passes < 2 && !isGameOver && isPlaying) {
+                if (cancelBackgroundTasks) break;
                 let pId = activePlayer;
                 let d = pId === 1 ? match.d1 : match.d2;
                 let b = pId === 1 ? match.b1 : match.b2;
-                log(`Test: ${pId===1?'Red':'Green'} thinking (D=${d})...`);
                 await new Promise(r => setTimeout(r, 10)); 
+                if (cancelBackgroundTasks) break;
                 let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (cancelBackgroundTasks) break;
+                
                 if (res.bestMove && isPlaying) {
                     executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
                     passes = 0;
@@ -913,21 +976,25 @@ async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
             } else if (winner === 2) {
                 if (match.idx2 === 'A') aWins++; else bWins++;
             } else draws++;
-            if (!isPlaying && !isGameOver) { log("Interrupted."); return 0; }
         }
     } else {
         let runNext = () => {
             return new Promise(resolve => {
-                if(queue.length === 0) { resolve(); return; }
+                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
                 let match = queue.shift();
+                
                 const worker = getWorker();
+                worker.currentResolve = () => resolve(); // Unblocks if cancelled
                 worker.onmessage = function(e) {
                     let res = e.data;
-                    if (res.winner === 1) {
-                        if (match.idx1 === 'A') aWins++; else bWins++;
-                    } else if (res.winner === 2) {
-                        if (match.idx2 === 'A') aWins++; else bWins++;
-                    } else draws++;
+                    worker.currentResolve = null;
+                    if (res.result === 'match_done') {
+                        if (res.winner === 1) {
+                            if (match.idx1 === 'A') aWins++; else bWins++;
+                        } else if (res.winner === 2) {
+                            if (match.idx2 === 'A') aWins++; else bWins++;
+                        } else draws++;
+                    }
                     releaseWorker(worker);
                     runNext().then(resolve);
                 };
@@ -949,11 +1016,14 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
     let scores = [0, 0, 0]; 
     for (let i = 0; i < brains.length; i++) {
         for (let j = i + 1; j < brains.length; j++) {
+            if (cancelBackgroundTasks) break;
             let netScore = await playBalancedMatch(brains[i], brains[j], gamesPerSide, depth);
             if (netScore > 0) scores[i] += 1;
             else if (netScore < 0) scores[j] += 1;
         }
     }
+    if (cancelBackgroundTasks) return 0;
+    
     let maxScore = -1;
     let winners = [];
     for (let i = 0; i < brains.length; i++) {
@@ -966,6 +1036,7 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
     scores = [0, 0, 0];
     for (let i = 0; i < winners.length; i++) {
         for (let j = i + 1; j < winners.length; j++) {
+            if (cancelBackgroundTasks) break;
             let p1 = winners[i], p2 = winners[j];
             let netScore = await playBalancedMatch(brains[p1], brains[p2], 1, depth);
             if (netScore > 0) scores[p1] += 1;
@@ -987,66 +1058,57 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
 }
 
 async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
-    let vector = {};
+    let V = {};
     for (let param of activeParams) {
-        vector[param] = firstStepBrain.weights[param] - originBrain.weights[param];
+        V[param] = firstStepBrain.weights[param] - originBrain.weights[param];
     }
-    let center = JSON.parse(JSON.stringify(firstStepBrain));
-    center.name = "LS_Center";
     
-    let stepScale = 0.5;
+    let X = JSON.parse(JSON.stringify(firstStepBrain));
+    X.name = "LS_Candidate";
+    
     let expanding = true;
-    let searching = true;
     let iterations = 0;
     
-    while (searching && iterations < 20) {
+    log(`Starting True Line Search...`);
+    
+    while (iterations < 20) {
+        if (cancelBackgroundTasks) break;
         iterations++;
-        log(`Line Search Step ${iterations}, Scale ${stepScale.toFixed(3)}`);
         
-        let forward = applyVector(center, vector, stepScale);
-        forward.name = "LS_Forward";
-        let backward = applyVector(center, vector, -stepScale);
-        backward.name = "LS_Backward";
+        let candidate = applyVector(X, V, 1.0);
+        candidate.name = "LS_Candidate";
         
-        if (isSameBrain(forward, center) && isSameBrain(backward, center)) {
+        if (isSameBrain(X, candidate)) {
             log(`Line Search converged.`);
             break;
         }
         
-        let brains = [forward, center, backward];
-        let winnerIdx = await runRoundRobin(brains, gamesPerSide, depth);
+        log(`LS Iteration ${iterations}: Testing Candidate...`);
+        let netScore = await playBalancedMatch(candidate, X, gamesPerSide, depth);
+        if (cancelBackgroundTasks) break;
         
-        if (winnerIdx === 0) { 
-            center = forward;
-            center.name = "LS_Center";
+        if (netScore > 0) { 
+            X = candidate;
             if (expanding) {
-                for (let p of activeParams) vector[p] *= 2;
-                log("-> Forward wins. Doubling stride.");
+                for(let p of activeParams) V[p] *= 2;
+                log(`--> Candidate wins. Doubling step size.`);
             } else {
-                stepScale /= 2;
-                log("-> Forward wins. Refining (Halving step).");
+                log(`--> Candidate wins. Maintaining current bisection step.`);
             }
-        } else if (winnerIdx === 2) { 
-            center = backward;
-            center.name = "LS_Center";
-            expanding = false;
-            stepScale /= 2;
-            log("-> Backward wins. Turned around (Halving step).");
         } else { 
             expanding = false;
-            stepScale /= 2;
-            log("-> Center wins. Peak found (Halving step).");
+            for(let p of activeParams) V[p] /= 2;
+            log(`--> Candidate failed/drew. Bisecting step size.`);
         }
     }
-    return center;
+    return X;
 }
 
 async function runTournament() {
+    setEngineTaskState('TOURNEY');
+    cancelBackgroundTasks = false;
+    
     let checks = Array.from(document.querySelectorAll('.tourn-participant:checked'));
-    
-    let depthVal = parseInt(document.getElementById('tDepth').value) || 4;
-    let gamesPerPair = parseInt(document.getElementById('tGames').value) || 10;
-    
     let displayPlayers = [];
     let pIndices = [];
     let queue = [];
@@ -1058,25 +1120,29 @@ async function runTournament() {
         let b1 = BrainList[rIdx], b2 = BrainList[gIdx];
         
         displayPlayers = [
-            { id: 0, name: `Red (${b1.name} D${redDepth})`, params: b1, depth: redDepth },
-            { id: 1, name: `Green (${b2.name} D${greenDepth})`, params: b2, depth: greenDepth }
+            { id: 0, name: b1.name, params: b1, depth: redDepth },
+            { id: 1, name: b2.name, params: b2, depth: greenDepth }
         ];
         pIndices = [0, 1];
         
         for(let g=0; g<tGamesVal; g++) {
-            if (g % 2 === 0) queue.push({ b1: b1, d1: redDepth, idx1: 0, b2: b2, d2: greenDepth, idx2: 1 });
-            else queue.push({ b1: b2, d1: greenDepth, idx1: 1, b2: b1, d2: redDepth, idx2: 0 });
+            if (g % 2 === 0) queue.push({ b1: b1, d1: redDepth, idx1: 0, name1: b1.name, b2: b2, d2: greenDepth, idx2: 1, name2: b2.name });
+            else queue.push({ b1: b2, d1: greenDepth, idx1: 1, name1: b2.name, b2: b1, d2: redDepth, idx2: 0, name2: b1.name });
         }
     } else if (checks.length < 2) { 
-        log("Need at least 2 participants."); return; 
+        log("Need at least 2 participants."); 
+        setEngineTaskState('NONE');
+        return; 
     } else {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
         for(let i=0; i<pIndices.length; i++) {
             for(let j=i+1; j<pIndices.length; j++) {
                 for(let g=0; g<tGamesVal; g++) {
-                    if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], d1: tDepthVal, idx1: pIndices[i], b2: BrainList[pIndices[j]], d2: tDepthVal, idx2: pIndices[j] });
-                    else queue.push({ b1: BrainList[pIndices[j]], d1: tDepthVal, idx1: pIndices[j], b2: BrainList[pIndices[i]], d2: tDepthVal, idx2: pIndices[i] });
+                    let n1 = BrainList[pIndices[i]].name;
+                    let n2 = BrainList[pIndices[j]].name;
+                    if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], d1: tDepthVal, idx1: pIndices[i], name1: n1, b2: BrainList[pIndices[j]], d2: tDepthVal, idx2: pIndices[j], name2: n2 });
+                    else queue.push({ b1: BrainList[pIndices[j]], d1: tDepthVal, idx1: pIndices[j], name1: n2, b2: BrainList[pIndices[i]], d2: tDepthVal, idx2: pIndices[i], name2: n1 });
                 }
             }
         }
@@ -1096,25 +1162,27 @@ async function runTournament() {
     
     if (!silenceMode) {
         for(let match of queue) {
+            if (cancelBackgroundTasks) break;
             initGameData(); 
-            let btn = document.getElementById('btn-play');
-            if (btn) { btn.textContent = 'Playing'; btn.style.backgroundColor = 'orange'; }
             isPlaying = true;
             
             let passes = 0;
             while (passes < 2 && !isGameOver && isPlaying) {
+                if (cancelBackgroundTasks) break;
                 let pId = activePlayer;
                 let d = pId === 1 ? match.d1 : match.d2;
                 let b = pId === 1 ? match.b1 : match.b2;
                 
-                log(`Tourney: ${pId===1?'Red':'Green'} thinking (D=${d})...`);
                 await new Promise(r => setTimeout(r, 10)); 
+                if (cancelBackgroundTasks) break;
                 
                 let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (cancelBackgroundTasks) break;
+                
                 if (res.bestMove && isPlaying) {
                     executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
                     passes = 0;
-                    await new Promise(r => setTimeout(r, 100)); 
+                    await new Promise(r => setTimeout(r, 10)); 
                 } else {
                     passes++;
                     activePlayer = activePlayer === 1 ? 2 : 1;
@@ -1122,7 +1190,6 @@ async function runTournament() {
                 }
             }
             isPlaying = false;
-            if(!isGameOver && passes >= 2) log("Match ended in double pass.");
             
             let s1 = 0, s2 = 0;
             for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
@@ -1148,20 +1215,21 @@ async function runTournament() {
                 scores[match.idx2].draws++;
             }
             resultsProcessed++;
-            log(`Match ${resultsProcessed}/${totalMatches} done.`);
-            if (!isPlaying && !isGameOver) { log("Tournament Interrupted."); break; }
+            log(`game ${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
         }
     } else {
         let activeWorkers = 0;
         let runNext = () => {
             return new Promise(resolve => {
-                if (queue.length === 0) { resolve(); return; }
+                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
                 let match = queue.shift();
                 activeWorkers++;
                 
                 const worker = getWorker();
+                worker.currentResolve = () => resolve(); // Unblocks if cancelled
                 worker.onmessage = function(e) {
                     let res = e.data;
+                    worker.currentResolve = null;
                     if (res.result === 'match_done') {
                         if (res.winner === 1) {
                             globalStats.redWins++;
@@ -1183,9 +1251,7 @@ async function runTournament() {
                     }
                     releaseWorker(worker);
                     resultsProcessed++;
-                    if (resultsProcessed % 10 === 0 || resultsProcessed === totalMatches) {
-                        log(`Match ${resultsProcessed}/${totalMatches} done.`);
-                    }
+                    log(`game ${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
                     activeWorkers--;
                     runNext().then(resolve);
                 };
@@ -1203,17 +1269,23 @@ async function runTournament() {
         await Promise.all(pool);
     }
     
-    log(`Tourney Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
-    downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
+    if (cancelBackgroundTasks) {
+        log("Tournament cancelled by user.");
+    } else {
+        log(`Tourney Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
+        downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
+    }
+    setEngineTaskState('NONE');
 }
 
 async function runImprovement() {
+    setEngineTaskState('EVO');
+    cancelBackgroundTasks = false;
+    
     let brainIndex = editBrainIndex;
     let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
     
-    // Normalize starting brain to guarantee clean mutation percentages
     normalizeBrain(baseBrain); 
-    
     let depth = tDepthVal;
     
     log(`--- EVOLUTION START: ${baseBrain.name} ---`);
@@ -1221,6 +1293,7 @@ async function runImprovement() {
     let currentRate = impMutVal;
     
     for (let g = 0; g < impGenVal; g++) {
+        if (cancelBackgroundTasks) break;
         log(`Gen ${g+1}/${impGenVal} (Rate: ${Math.round(currentRate)}%)`);
         
         let mutant = JSON.parse(JSON.stringify(baseBrain));
@@ -1239,18 +1312,18 @@ async function runImprovement() {
         if (!changed) continue; 
         
         let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
+        if (cancelBackgroundTasks) break;
         
         if (netScore > 0) { 
             log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
             let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
+            if (cancelBackgroundTasks) break;
             
-            // Normalize the new champion so absolute max is 1000
             normalizeBrain(optimized); 
             
             successes++;
             baseBrain = optimized;
             baseBrain.name = BrainList[brainIndex].name + `_Opt${successes}`;
-            // DO NOT auto-add to the tournament UI. Updates are handled manually by the user later.
             downloadRevisedBrain(baseBrain);
         } else {
             currentRate *= 0.95;
@@ -1259,7 +1332,13 @@ async function runImprovement() {
             impMutVal = Math.round(currentRate);
         }
     }
-    log(`--- EVOLUTION DONE (${successes} upgrades) ---`);
+    
+    if (cancelBackgroundTasks) {
+        log("Evolution cancelled by user.");
+    } else {
+        log(`--- EVOLUTION DONE (${successes} upgrades) ---`);
+    }
+    setEngineTaskState('NONE');
 }
 
 function triggerBlink() {
@@ -1427,9 +1506,15 @@ document.addEventListener('keydown', (e) => {
             break;
         case 'p':
         case 'P':
-            if (isGameOver) break;
-            setPlayState(!isPlaying);
-            if (isPlaying) updateGameState();
+            if (currentTask !== 'NONE') {
+                stopTasks();
+                setPlayState(true);
+                updateGameState();
+            } else {
+                if (isGameOver) break;
+                setPlayState(!isPlaying);
+                if (isPlaying) updateGameState();
+            }
             break;
         case 'r':
         case 'R':
@@ -1503,6 +1588,9 @@ function updateNavUI() {
 }
 
 function resetGame() {
+    if (currentTask !== 'NONE') {
+        stopTasks();
+    }
     currentAIEpoch++; 
     isAIThinking = false;
     setPlayState(false); 
@@ -1513,7 +1601,7 @@ function resetGame() {
     updateGameState(); 
     redrawAllSlices();
     update3D(); 
-    log("Game reset.");
+    log("Board reset.");
 }
 
 function getScores() {
@@ -1530,7 +1618,7 @@ function getScores() {
 function updateGameState(isViewOnly = false) {
     validMoves = getValidMovesForPlayer(gameCube, activePlayer).map(m => `${m.x},${m.y},${m.z}`); 
     const scores = getScores();
-    const infoDiv = document.getElementById('game-info');
+    const headerDiv = document.getElementById('game-score-header');
     let winnerText = "";
 
     // Determine Game Over
@@ -1563,14 +1651,20 @@ function updateGameState(isViewOnly = false) {
     }
 
     // Output UI HTML
-    if (infoDiv) {
+    if (headerDiv) {
         const pName = activePlayer === 1 ? "Red" : "Green";
         const color = activePlayer === 1 ? redColor : greenColor;
         let html = "";
 
-        if (currentMoveIndex === 0 && !isPlaying && !isGameOver) {
+        if (currentTask !== 'NONE' && !isPlaying) {
+            let msg = currentTask === 'TOURNEY' ? 'Running Tournament...' : 'Running Evolution...';
+            html = `
+                <div style="font-size: 1.2em; font-weight: bold; color: orange; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                    <div>${msg}</div>
+                    <div style="font-size: 0.75em; color: yellow; margin-top: 4px;">Press Reset/Stop to stop</div>
+                </div>`;
+        } else if (currentMoveIndex === 0 && !isPlaying && !isGameOver && currentTask === 'NONE') {
             html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Press Play to Start</div>`;
-            infoDiv.innerHTML = html;
         } else {
             let lastMoveHtml = "";
             if (lastMoveRecord) {
@@ -1590,15 +1684,20 @@ function updateGameState(isViewOnly = false) {
                 </div>
                 <div style="font-size: 0.95em; font-weight: bold; white-space: nowrap;">${line2}</div>
             `;
-            infoDiv.innerHTML = html;
         }
+        headerDiv.innerHTML = html;
+    }
+    
+    // Update the 1-line top status monitor if we aren't in a headless loop
+    if (currentTask === 'NONE') {
+        let sb = document.getElementById('status-box');
+        if (sb) sb.textContent = isPlaying ? 'Playing Game' : 'Ready to play';
     }
 
     // Defer AI trigger to prevent locking UI thread / memory exhaustion
     if (!isViewOnly && !isGameOver && validMoves.length > 0 && currentMoveIndex === moveHistory.length - 1) {
         let pType = activePlayer === 1 ? redType : greenType;
         if (isPlaying && pType.startsWith('AI') && !isAIThinking) {
-            // Defer the execution of makeAIMove so UI finishes painting
             setTimeout(makeAIMove, 50);
         }
     }
@@ -2077,25 +2176,25 @@ function initLayout() {
     root.style.padding = '2px';
     root.style.fontFamily = 'sans-serif';
 
-    let scaleInput = el('input', { type: 'text', value: S, style: 'width: 30px; text-align: center;' });
+    let scaleInput = el('input', { type: 'text', value: S, title: '3D Render Scale', style: 'width: 30px; text-align: center;' });
     setupSmartInput(scaleInput, (val) => {
-        let safeS = Math.max(20, Math.min(60, val));
+        let safeS = Math.max(20, Math.min(60, parseInt(val) || 40));
         S = safeS;
         initLayout();
         return safeS;
     });
 
-    let historyInput = el('input', { id: 'nav-move-num', type: 'text', value: currentMoveIndex, style: 'width: 30px; text-align: center;' });
+    let historyInput = el('input', { id: 'nav-move-num', type: 'text', value: currentMoveIndex, title: 'Current Move Number', style: 'width: 30px; text-align: center;' });
     setupSmartInput(historyInput, (val) => {
         let maxIdx = Math.max(0, moveHistory.length - 1);
-        let safeVal = Math.max(0, Math.min(val, maxIdx));
+        let safeVal = Math.max(0, Math.min(parseInt(val) || 0, maxIdx));
         loadHistoryState(safeVal);
         return safeVal;
     });
 
-    let workerInput = el('input', { type: 'text', value: numWorkers, style: 'width: 30px; text-align: center;' });
+    let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center;' });
     setupSmartInput(workerInput, (val) => {
-        let safeW = Math.max(1, Math.min(32, val)); 
+        let safeW = Math.max(1, Math.min(32, parseInt(val) || 4)); 
         numWorkers = safeW;
         return safeW;
     });
@@ -2103,12 +2202,19 @@ function initLayout() {
     function makeWeightInput(label, index, title) {
         let inp = el('input', {
             id: `p_W${index}`,
+            type: 'text',
+            value: BrainList[editBrainIndex].weights[index],
             style: 'width: 38px; text-align: center; font-size: 0.85em; padding: 1px;',
-            title: title,
-            onchange: (e) => { BrainList[editBrainIndex].weights[index] = parseInt(e.target.value) || 0; }
+            title: title
+        });
+        setupSmartInput(inp, (val) => {
+            let parsed = parseInt(val);
+            let safeVal = isNaN(parsed) ? 0 : parsed;
+            BrainList[editBrainIndex].weights[index] = safeVal;
+            return safeVal;
         });
         return el('div', {style: 'display: flex; flex-direction: column; align-items: center; gap: 1px;'}, 
-            el('span', {text: label, style: 'font-size: 0.7em;'}), 
+            el('span', {text: label, style: 'font-size: 0.7em;', title: title}), 
             inp
         );
     }
@@ -2122,7 +2228,8 @@ function initLayout() {
         // 1. Title / Engine Toggle
         el('button', { 
             id: 'engine-toggle-btn',
-            style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: 'Arial Black', Impact, sans-serif; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
+            title: 'Click to toggle between C++ and JS evaluation engines',
+            style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: sans-serif; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
             onclick: (e) => {
                 if (engineMode === 'JS') {
                     if (wasmModule) {
@@ -2142,7 +2249,8 @@ function initLayout() {
         // 2. Status Box
         el('div', { 
             id: 'status-box',
-            style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: monospace; text-align: center; font-weight: bold;`
+            title: 'General Status Info',
+            style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: sans-serif; text-align: center; font-weight: bold;`
         }),
 
         // 3. Play Row
@@ -2150,17 +2258,25 @@ function initLayout() {
             el('button', { 
                 id: 'btn-play',
                 text: isPlaying ? 'Playing' : 'Play',
+                title: 'Start/Stop a game between the selected players. Also stops background tasks.',
                 style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
                 onclick: (e) => { 
-                    if (isGameOver) return;
-                    setPlayState(!isPlaying);
-                    if (isPlaying) updateGameState();
+                    if (currentTask !== 'NONE') {
+                        stopTasks();
+                        setPlayState(true);
+                        updateGameState();
+                    } else {
+                        if (isGameOver) return;
+                        setPlayState(!isPlaying);
+                        if (isPlaying) updateGameState();
+                    }
                 } 
             }),
             el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
                 el('span', { text: 'N=', style: 'font-weight: bold;' }),
                 el('select', { 
                     id: 'size-select',
+                    title: 'Board Size (N)',
                     style: 'width: 40px; font-size: 16px;',
                     onchange: (e) => { 
                         N = parseInt(e.target.value); 
@@ -2175,17 +2291,12 @@ function initLayout() {
             )
         ),
 
-        // 4. Reset Row
+        // 4. Navigation & Board Reset Row
         el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { 
-                text: 'Reset', 
-                style: 'flex: 1.5; background-color: red; color: yellow; font-size: 14px; font-weight: bold; padding: 5px; cursor: pointer;',
-                onclick: () => resetGame() 
-            }),
-            el('button', { text: '<', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+            el('button', { text: '<', title: 'Previous Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
             historyInput,
-            el('button', { text: '>', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
-            el('button', { text: '>>', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
+            el('button', { text: '>', title: 'Next Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
+            el('button', { text: '>>', title: 'End of Game', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
                 loadHistoryState(moveHistory.length - 1);
                 if (!isPlaying && !isGameOver) {
                     setPlayState(true);
@@ -2198,7 +2309,7 @@ function initLayout() {
         el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
             el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
             el('select', { 
-                id: 'red-type-select', style: 'flex: 1; min-width: 0;',
+                id: 'red-type-select', title: 'Red Player Type', style: 'flex: 1; min-width: 0;',
                 onchange: (e) => { 
                     redType = e.target.value; greenType = redType; 
                     let gs = document.getElementById('green-type-select');
@@ -2208,7 +2319,7 @@ function initLayout() {
             }),
             el('span', { text: 'D=' }),
             el('select', { 
-                id: 'red-depth-select', style: 'width: 45px;',
+                id: 'red-depth-select', title: 'Red Search Depth', style: 'width: 45px; background-color: #add8e6;',
                 onchange: (e) => { 
                     redDepth = parseInt(e.target.value); greenDepth = redDepth;
                     let gs = document.getElementById('green-depth-select');
@@ -2220,41 +2331,64 @@ function initLayout() {
         el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
             el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
             el('select', { 
-                id: 'green-type-select', style: 'flex: 1; min-width: 0;',
+                id: 'green-type-select', title: 'Green Player Type', style: 'flex: 1; min-width: 0;',
                 onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
             }),
             el('span', { text: 'D=' }),
             el('select', { 
-                id: 'green-depth-select', style: 'width: 45px;',
+                id: 'green-depth-select', title: 'Green Search Depth', style: 'width: 45px; background-color: #add8e6;',
                 onchange: (e) => { greenDepth = parseInt(e.target.value); }
             }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
         ),
 
-        // 6. Game Info Box
+        // 6. Game Info / Log Wrapper
         el('div', { 
-            id: 'game-info',
-            style: `background-color: ${scoreBgColor}; color: white; padding: 4px; border-radius: 4px; border: 1px solid navy; min-height: 40px; display: flex; flex-direction: column; justify-content: center; overflow: hidden;`
-        }, "Initializing..."),
+            id: 'game-info-wrapper',
+            style: `background-color: ${scoreBgColor}; color: white; border-radius: 4px; border: 1px solid navy; display: flex; flex-direction: column; height: 160px; overflow: hidden;`
+        },
+            el('div', { id: 'game-score-header', title: 'Current Score', style: 'padding: 4px; border-bottom: 1px solid #555; text-align: center; min-height: 45px; display: flex; flex-direction: column; justify-content: center;' }, "Initializing..."),
+            el('div', { id: 'game-info-log', title: 'Engine Logs and Output', style: 'flex: 1; overflow-y: auto; padding: 4px; font-size: 0.85em; font-family: monospace; white-space: pre-wrap; background-color: #111;' })
+        ),
+        
+        // 7. Value / Moves Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+            el('button', { 
+                text: 'Value', title: 'Compute Static Value of Current Board',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+                onclick: () => doStaticEval() 
+            }),
+            el('button', { 
+                text: 'Moves', title: 'List Ranked Moves for Current Player',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+                onclick: () => doListMoves() 
+            }),
+            el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
+            el('select', { 
+                title: 'Search Depth for Static Eval and Moves List',
+                style: 'width: 45px; background-color: #add8e6;',
+                onchange: (e) => { evalDepth = parseInt(e.target.value); }
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
+        ),
 
         // Other options
         el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
             el('label', { text: 'Scale:' }),
             el('div', { style: 'display: flex; gap: 2px;' },
-                el('button', { text: '<', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
+                el('button', { text: '<', title: 'Decrease Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
                 scaleInput,
-                el('button', { text: '>', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
+                el('button', { text: '>', title: 'Increase Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
             ),
             el('label', { text: 'W:' }), workerInput
         ),
 
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                text: 'Fullscreen', 
+                text: 'Fullscreen', title: 'Toggle Fullscreen Mode',
                 style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
                 onclick: () => toggleFullscreen() 
             }),
             el('button', { 
-                text: orthographicMode ? 'Perspective' : 'Infinity', 
+                text: orthographicMode ? 'Perspective' : 'Infinity', title: 'Toggle Camera Projection Mode',
                 id: 'btn-camera',
                 style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
                 onclick: () => { toggleCamera(); document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity'; }
@@ -2263,17 +2397,17 @@ function initLayout() {
 
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                text: 'Hints', id: 'btn-hints',
+                text: 'Hints', id: 'btn-hints', title: 'Toggle Hint Markers',
                 style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { showHints = !showHints; e.target.style.backgroundColor = showHints?'green':'grey'; redrawAllSlices(); update3D(); } 
             }),
             el('button', { 
-                text: 'Axes', id: 'btn-axes',
+                text: 'Axes', id: 'btn-axes', title: 'Toggle XYZ Axes',
                 style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { showAxes = !showAxes; e.target.style.backgroundColor = showAxes?'green':'grey'; update3D(); } 
             }),
             el('button', { 
-                text: 'Hover', id: 'btn-hover',
+                text: 'Hover', id: 'btn-hover', title: 'Toggle Hover Tooltips',
                 style: `flex:1; background-color: ${showHover?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
                     showHover = !showHover; 
@@ -2285,7 +2419,7 @@ function initLayout() {
         
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                text: 'Cats', id: 'btn-cats',
+                text: 'Cats', id: 'btn-cats', title: 'Toggle Category Coloring',
                 style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
                     showCategories = !showCategories; showValues = false; 
@@ -2294,7 +2428,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                text: 'Vals', id: 'btn-vals',
+                text: 'Vals', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
                 style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
                     showValues = !showValues; showCategories = false;
@@ -2307,7 +2441,7 @@ function initLayout() {
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
-                id: 'grid-select',
+                id: 'grid-select', title: 'Toggle 3D Grid Visibility',
                 style: 'flex: 1;',
                 onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
             },
@@ -2317,27 +2451,9 @@ function initLayout() {
             )
         ),
 
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { 
-                text: 'Value', 
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
-                onclick: () => doStaticEval() 
-            }),
-            el('button', { 
-                text: 'Moves', 
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
-                onclick: () => doListMoves() 
-            }),
-            el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
-            el('select', { 
-                style: 'width: 45px;',
-                onchange: (e) => { evalDepth = parseInt(e.target.value); }
-            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
-        ),
-
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                id: 'btn-pruning', text: 'α/β', 
+                id: 'btn-pruning', text: 'α/β', title: 'Toggle Alpha-Beta Pruning',
                 style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     usePruning = !usePruning;
@@ -2345,7 +2461,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-sym', text: 'S', 
+                id: 'btn-sym', text: 'S', title: 'Toggle Symmetry Filtering',
                 style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     useSymmetry = !useSymmetry;
@@ -2353,7 +2469,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-rand', text: 'Rand', 
+                id: 'btn-rand', text: 'Rand', title: 'Toggle Random Selection for Equal Best Moves',
                 style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     useRandom = !useRandom;
@@ -2364,7 +2480,7 @@ function initLayout() {
 
         el('div', { style: 'display: flex; gap: 5px;' },
             el('button', { 
-                id: 'btn-logs', text: 'Logs', 
+                id: 'btn-logs', text: 'Logs', title: 'Toggle Duplicate Logs to Console',
                 style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     duplicateLogs = !duplicateLogs;
@@ -2372,7 +2488,7 @@ function initLayout() {
                 } 
             }),
             el('button', { 
-                id: 'btn-depths', text: 'Depths', 
+                id: 'btn-depths', text: 'Depths', title: 'Toggle Search Depth Visit Stats',
                 style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
                 onclick: (e) => { 
                     showDepths = !showDepths;
@@ -2383,29 +2499,38 @@ function initLayout() {
         
         el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
             el('div', { style: 'font-size: 0.9em; font-weight: bold;' }, "B:"),
-            el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
+            el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, title: 'Player Stone Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
             el('div', { style: 'font-size: 0.9em; font-weight: bold; margin-left: 5px;' }, "H:"),
-            el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
+            el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, title: 'Hint Marker Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
         ),
 
         // --- AI LAB / EVOLUTION PANEL ---
         el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
-            el('button', {text: 'Import', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
-            el('input', {id: 'brainFileName', value: 'brains.js', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
-            el('button', {text: 'Export', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
-            el('button', {text: 'Def.', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
+            el('button', {text: 'Import', title: 'Import Brains from a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
+            el('input', {id: 'brainFileName', value: 'brains.js', title: 'Filename to export', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
+            el('button', {text: 'Export', title: 'Export Brains to a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
+            el('button', {text: 'Def.', title: 'Restore Default Brains', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
         ),
 
-        el('button', { 
-            id: 'btn-silence',
-            text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
-            style: `background-color: ${silenceMode?'#800':'#080'}; color: white; font-weight: bold; width: 100%; cursor: pointer; padding: 4px; border: none; margin-top: 4px;`, 
-            onclick: (e) => { 
-                silenceMode = !silenceMode; 
-                e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
-                e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
-            } 
-        }),
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
+            el('button', { 
+                id: 'btn-silence',
+                text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+                title: 'Toggle Headless Mode for Tournaments/Evolution',
+                style: `background-color: ${silenceMode?'#800':'#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
+                onclick: (e) => { 
+                    silenceMode = !silenceMode; 
+                    e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+                    e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
+                } 
+            }),
+            el('button', { 
+                text: 'Reset/Stop', 
+                title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
+                style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
+                onclick: resetGame
+            })
+        ),
 
         el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
             makeWeightInput('Mob', 0, 'Mobility'),
@@ -2420,25 +2545,44 @@ function initLayout() {
             makeWeightInput('Fac', 8, 'Faces'),
             makeWeightInput('IFa', 9, 'Inner Faces'),
             el('div', {style: 'width: 38px;'}) 
-        ),
-        
-        el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
-            el('button', {text: 'Improve', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
-            el('select', {id: 'editBrainSelect', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
-            el('input', {id: 'impGenerations', value: impGenVal, title: 'Generations', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impGenVal = e.target.value}),
-            el('input', {id: 'impGames', value: impGamesVal, title: 'Games per match', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impGamesVal = e.target.value}),
-            el('input', {id: 'impPercent', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;', onchange: e => impMutVal = e.target.value})
-        ),
-
-        // --- TOURNAMENT PANEL ---
-        el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}), 
-        el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
-            el('button', {text: 'Run Tourney', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
-            el('input', {id: 'tGames', value: tGamesVal, title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;', onchange: e => tGamesVal = e.target.value}),
-            el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
-            el('input', {id: 'tDepth', value: tDepthVal, title: 'Search Depth', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;', onchange: e => tDepthVal = e.target.value})
         )
     );
+
+    let impGenInp = el('input', {id: 'impGenerations', type: 'text', value: impGenVal, title: 'Generations', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impGenInp, val => { impGenVal = Math.max(1, parseInt(val) || 1); return impGenVal; });
+
+    let impGamesInp = el('input', {id: 'impGames', type: 'text', value: impGamesVal, title: 'Games per match', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impGamesInp, val => { impGamesVal = Math.max(1, parseInt(val) || 1); return impGamesVal; });
+
+    let impPercentInp = el('input', {id: 'impPercent', type: 'text', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
+
+    let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
+        el('button', {text: 'Improve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
+        el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+        impGenInp, impGamesInp, impPercentInp
+    );
+    col1.appendChild(evoControlsDiv);
+
+    // --- TOURNAMENT PANEL ---
+    col1.appendChild(el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}));
+
+    let tGamesInp = el('input', {id: 'tGames', type: 'text', value: tGamesVal, title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'});
+    setupSmartInput(tGamesInp, val => { tGamesVal = Math.max(1, parseInt(val) || 1); return tGamesVal; });
+
+    let tDepthSelect = el('select', { 
+        id: 'tDepth', title: 'Search Depth for Tournaments/Evolution',
+        style: 'width: 45px; background-color: #add8e6;',
+        onchange: (e) => { tDepthVal = parseInt(e.target.value); }
+    }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
+
+    let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
+        el('button', {text: 'Run Tourney', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
+        tGamesInp,
+        el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+        tDepthSelect
+    );
+    col1.appendChild(tourneyControlsDiv);
 
     // --- COLUMN 2: SLICES ---
     const col2 = el('div', { 
@@ -2493,6 +2637,7 @@ function initLayout() {
 
     updateEngineButtonUI();
     updateBrainUI(); 
+    setEngineTaskState('NONE');
     updateGameState();
     redrawAllSlices();
     init3D();
