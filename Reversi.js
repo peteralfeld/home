@@ -69,13 +69,16 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
 }
 
 // Normalized to max parameter = 1000
-const Arwen = makeBrain("Arwen", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
+const Arwen = {
+    name: "Arwen",
+    weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
+};
 const Bilbo = makeBrain("Bilbo", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
 const Celebrian = makeBrain("Celebrian", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
 const Dwalin = makeBrain("Dwalin", 16, 0, 22, 1000, -8, -13, 71, -5, 7, -2); 
 const Eowyn = {
     name: "Eowyn",
-    weights: [11, 0, 47, 1000, -13, -32, 194, -1, 8, -3]
+    weights: [16, 0, 28, 1000, -10, -20, 191, -2, 3, -3]
 };
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
@@ -90,6 +93,9 @@ for (let i = 0; i < 10; i++) {
    Indis.weights[i] = 0;
    Jolly.weights[i] = -Arwen.weights[i];
 }
+
+
+
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
@@ -460,6 +466,7 @@ function downloadRevisedBrain(brain) {
 function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair, globalStats) {
     let csv = "Reversi Tournament Results\n";
     csv += `Date,"${new Date().toLocaleString()}"\n`;
+    csv += `Board Size,${N}x${N}x${N}\n`;
     csv += "Parameters: \n";
     csv += `Games per Pair,${gamesPerPair}\n`;
     csv += `Depth,${tDepthVal}\n\n`;
@@ -1076,51 +1083,84 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
 }
 
 async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
-    // 1. Calculate the initial direction vector (V)
     let V = {};
-    for (let param of activeParams) {
-        V[param] = firstStepBrain.weights[param] - originBrain.weights[param];
+    for (let p of activeParams) {
+        V[p] = firstStepBrain.weights[p] - originBrain.weights[p];
     }
     
-    let Delta = "LS: first step: ";
-    for (let param of activeParams) {
-	Delta += V[param] + " ";
-    }
-    log (Delta);
-    
-    let X = JSON.parse(JSON.stringify(firstStepBrain)); // Current best brain
-    let iterations = 0;
-    
+    let X = JSON.parse(JSON.stringify(firstStepBrain)); 
     let expanding = true;
-    while (iterations < 20) {
+    let iterations = 0;
+
+    while (iterations < 30) {
         if (cancelBackgroundTasks) break;
         iterations++;
-        
-        let candidate = applyVector(X, V, 1.0);
-        candidate.name = "LS_Candidate";
-        
-        // EXIT: If step size is so small that integer weights don't change
-        if (isSameBrain(X, candidate)) {
-            log(`Line Search converged (step size too small).`);
+
+        let A = applyVector(X, V, 1.0);
+        let B = applyVector(X, V, -1.0);
+
+        // CONVERGENCE CHECK
+        if (isSameBrain(X, A) && isSameBrain(X, B)) {
+            log(`Line Search converged at integer peak in ${iterations} steps.`);
             break;
         }
+
+        log(`LS ${iterations}: Testing Triplet {A, X, B}...`);
         
-        log(`${iterations}: Testing Candidate...`);
-        let netScore = await playBalancedMatch(candidate, X, gamesPerSide, depth);
+        let Step = "Step = ";
+        for(let p of activeParams) {Step += V[p] +" ";}
+        log(Step);
+
+        // 1. A vs X
+        let scoreAX = await playBalancedMatch(A, X, gamesPerSide, depth);
+        if (scoreAX === 0 && !cancelBackgroundTasks) {
+            log("--> Draw (A vs X). Retrying...");
+            scoreAX = await playBalancedMatch(A, X, gamesPerSide, depth);
+        }
         if (cancelBackgroundTasks) break;
-        
-        if (netScore > 0 && expanding) { 
-           // SUCCESS: Move to new position and double the step to move faster
-            X = candidate;
-            for(let p of activeParams) V[p] *= 2;
-            log(`--> Hit! Moving forward and doubling step.`);
-        } else { 
+
+        // 2. B vs X
+        let scoreBX = await playBalancedMatch(B, X, gamesPerSide, depth);
+        if (scoreBX === 0 && !cancelBackgroundTasks) {
+            log("--> Draw (B vs X). Retrying...");
+            scoreBX = await playBalancedMatch(B, X, gamesPerSide, depth);
+        }
+        if (cancelBackgroundTasks) break;
+
+        // LOGIC ENGINE
+        if (scoreAX === 0 && scoreBX === 0) {
+            log("--> Double Draw. Terminating.");
+            break;
+        }
+
+        if (scoreAX <= 0 && scoreBX <= 0) {
+            // X is best
             expanding = false;
-            // FAILURE: Flip direction AND halve the step size
-            for(let p of activeParams) {
-                V[p] = Math.round((V[p] * -1) / 2);
+            for(let p of activeParams) V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            log("--> X is best. Halving step.");
+        } else if (scoreAX > scoreBX && scoreAX > 0) {
+            // A is better
+            X = A;
+            if (expanding) {
+                for(let p of activeParams) V[p] *= 2;
+                log("--> A is winner. Doubling step.");
+            } else {
+                for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+                log("--> A is winner. Halving step.");
             }
-            log(`--> Miss. Flipping direction and halving step size.`);
+        } else if (scoreBX > scoreAX && scoreBX > 0) {
+            // B is better
+            X = B;
+            expanding = false;
+            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            log("--> B is winner. Reversing/Halving step.");
+        } else {
+            // Anomaly: A and B both > X
+            log("--> Non-convex result. Tie-break A vs B.");
+            let scoreAB = await playBalancedMatch(A, B, gamesPerSide, depth);
+            X = (scoreAB >= 0) ? A : B;
+            expanding = false;
+            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
         }
     }
     return X;
@@ -1158,16 +1198,22 @@ async function runTournament() {
     } else {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
-        for(let i=0; i<pIndices.length; i++) {
-            for(let j=i+1; j<pIndices.length; j++) {
-                for(let g=0; g<tGamesVal; g++) {
-                    let n1 = BrainList[pIndices[i]].name;
-                    let n2 = BrainList[pIndices[j]].name;
-                    if (g % 2 === 0) queue.push({ b1: BrainList[pIndices[i]], d1: tDepthVal, idx1: pIndices[i], name1: n1, b2: BrainList[pIndices[j]], d2: tDepthVal, idx2: pIndices[j], name2: n2 });
-                    else queue.push({ b1: BrainList[pIndices[j]], d1: tDepthVal, idx1: pIndices[j], name1: n2, b2: BrainList[pIndices[i]], d2: tDepthVal, idx2: pIndices[i], name2: n1 });
-                }
+	for (let i = 0; i < pIndices.length; i++) {
+            for (let j = 0; j < pIndices.length; j++) {
+		if (i === j) continue; // A player doesn't play themselves
+
+		// Each pair now plays tGamesVal matches. 
+		// In each match, the first player (idx1) is Red.
+		for (let g = 0; g < tGamesVal; g++) {
+                    let p1 = BrainList[pIndices[i]];
+                    let p2 = BrainList[pIndices[j]];
+                    queue.push({ 
+			b1: p1, d1: tDepthVal, idx1: pIndices[i], name1: p1.name, 
+			b2: p2, d2: tDepthVal, idx2: pIndices[j], name2: p2.name 
+                    });
+		}
             }
-        }
+	}
     }
     
     let scores = {};
