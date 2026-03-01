@@ -1,53 +1,179 @@
-import * as THREE from 'https://esm.sh/three@0.160.0';
-import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls';
-
 // Three-dimensional Reversi by Peter Alfeld. 
+// started 2/15/26
 // Players are Red (1) and Green (2). Red starts.
 
-// --- CONFIGURATION & STATE ---
-let redColor = "rgb(255,0,0)";
-let greenColor = "rgb(0,255,0)";
+import * as THREE from 'https://esm.sh/three@0.160.0';
+import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
+
+// Timing parameters:
+let tick;
+let tock;
+let startTime;
+
+// CONFIGURATION & STATE
+let redColor = "rgb(255,50,50)";  
+let greenColor = "rgb(50,255,50)";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
 let backgroundColor = "rgb(0,0,0)";
+let millTitleBg = "#ffffcc";
+let millTitleColor = "navy";
+let scoreBgColor = "#333333"; 
 
-let S = 20;   // Scaling factor for 2D
-let N = 4;    // Board size
+let S = 40;   
+let N = 6;    
+let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
+let duplicateLogs = true; 
+
+// ENGINE STATE
+let engineMode = 'WASM'; 
+let wasmModule = null;
+let currentAIEpoch = 0; // Tracks resets to kill orphaned workers
+
+// GLOBAL TASK CANCELLATION
+let cancelBackgroundTasks = false;
+let currentTask = 'NONE'; // 'TOURNEY', 'EVO', or 'NONE'
+
+// WORKER POOL
+let workerPool = [];
+let activeWorkers = new Set(); // Tracks currently calculating threads
+
+function getWorker() {
+    let w = workerPool.length > 0 ? workerPool.pop() : new Worker('ReversiWorker.js');
+    activeWorkers.add(w);
+    return w;
+}
+function releaseWorker(worker) {
+    worker.onmessage = null; 
+    worker.currentResolve = null;
+    activeWorkers.delete(worker);
+    workerPool.push(worker);
+}
+
+async function loadWasmEngine() {
+    try {
+        const response = await fetch('ReversiEngine.wasm');
+        if (!response.ok) throw new Error("WASM file not found.");
+        const buffer = await response.arrayBuffer();
+        wasmModule = await WebAssembly.compile(buffer);
+        updateEngineButtonUI();
+        log("C++ Engine loaded successfully.");
+    } catch(e) {
+        console.warn("Could not load ReversiEngine.wasm. Falling back to JS mode.", e);
+        engineMode = 'JS';
+        updateEngineButtonUI();
+        log("JS Engine loaded successfully.");
+    }
+    log("Ready to Play, \nBoard Size = " +N+"x"+N+"x"+N+".");
+}
+loadWasmEngine(); 
+
+// BRAIN DATA & EVOLUTION
+function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
+    return { name, weights: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9] };
+}
+
+// Normalized to max parameter = 1000
+const Arwen = {
+    name: "Arwen",
+    weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
+};
+const Bilbo = makeBrain("Bilbo", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
+const Celebrian = makeBrain("Celebrian", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
+const Dwalin = makeBrain("Dwalin", 16, 0, 22, 1000, -8, -13, 71, -5, 7, -2); 
+const Eowyn = {
+    name: "Eowyn",
+    weights: [16, 0, 28, 1000, -10, -20, 191, -2, 3, -3]
+};
+const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
+
+let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
+let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
+let Indis = makeBrain("Indis", 0,0,0,0,0,0,0,0,0,0);
+let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
+
+for (let i = 0; i < 10; i++) {
+   Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
+   Hamfast.weights[i] = 1000;
+   Indis.weights[i] = 0;
+   Jolly.weights[i] = -Arwen.weights[i];
+}
+
+let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
+let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
+
+let editBrainIndex = 0;
+const activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
+
+// Player / UI Configuration
+let redType = 'Human';   
+let greenType = 'Human'; 
+let redDepth = 4;        
+let greenDepth = 4;
+let evalDepth = 4; 
+let tGamesVal = 10;
+let tDepthVal = 4;
+let impGenVal = 1000; 
+let impGamesVal = 10; 
+let impMutVal = 10;
+let silenceMode = true;
+
+// Game State Controls
+let isPlaying = false;    
+let isAIThinking = false; 
+let isGameOver = false;
+let unplayedClickCount = 0; 
+
+// Toggles
+let usePruning = true;    
+let useSymmetry = true;   
+let useRandom = true;     
+let showDepths = false;   
 
 // 0 = empty, 1 = Red, 2 = Green
 let gameCube = []; 
+let categoryMap = []; 
+let activePlayer = 1; 
+
 let currentSlices = { X: 0, Y: 0, Z: 0 };
 let validMoves = []; 
+let bestMoves = []; 
+let lastMoveRecord = null; 
 
 // History Management
-let moveHistory = []; // Stores copies of gameCube
-let currentMoveIndex = 0; // Where we are in the timeline (0 = start)
+let moveHistory = []; 
+let currentMoveIndex = 0; 
 
 // Visualization Settings
 let showHints = true;
-let showAxes = true;
-let gridMode = 1; // 0=None, 1=Ortho(XYZ), 2=All 26
-let playerBallSize = 0.25; // Diameter relative to cell spacing (0.25 means radius 0.125)
-let hintBallSize = 0.15;   // Diameter
+let showAxes = false; 
+let showHover = false;      
+let showCategories = false; 
+let showValues = false;     
+let gridMode = 1; 
+let playerBallSize = 0.25; 
+let hintBallSize = 0.125; 
 
-// --- 3D GLOBAL VARIABLES ---
+// Camera Settings
+let cameraPersp, cameraOrtho;
+let orthographicMode = false;
+
+// 3D GLOBAL VARIABLES
 let scene, camera, renderer, controls;
 let stoneGroup, gridGroup, axesHelper; 
 let raycaster, mouse; 
 let animationId = null;
+let overlay3D = null; 
+let hoverTooltip = null; 
 
-// --- 1. HELPER FUNCTIONS ---
+// 1. HELPER FUNCTIONS
 function el(tag, attrs = {}, ...children) {
     const element = document.createElement(tag);
     for (const [key, value] of Object.entries(attrs)) {
         if (key === 'text') element.textContent = value;
-        else if (key.startsWith('on') && typeof value === 'function') {
-            element.addEventListener(key.substring(2).toLowerCase(), value);
-        } else if (key === 'style') {
-            element.style.cssText = value; 
-        } else {
-            element.setAttribute(key, value);
-        }
+        else if (key.startsWith('on') && typeof value === 'function') element.addEventListener(key.substring(2).toLowerCase(), value);
+        else if (key === 'style') element.style.cssText = value; 
+        else element.setAttribute(key, value);
     }
     children.forEach(child => {
         if (child) element.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
@@ -55,30 +181,417 @@ function el(tag, attrs = {}, ...children) {
     return element;
 }
 
-function createSpacer(height) {
-    return el('div', { style: `height: ${height}px; width: 100%;` });
+function commas(z) {
+    if (isFinite(z)) {
+        return z.toLocaleString();
+    }
+    return z;
 }
 
 function log(msg) {
-    const box = document.getElementById('status-box');
-    if (box) {
-        const line = document.createElement('div');
-        line.textContent = msg;
-        box.appendChild(line);
-        box.scrollTop = box.scrollHeight; // Auto-scroll
+    if (duplicateLogs) console.log(msg); 
+    let logDiv = document.getElementById('game-info-log');
+    if (logDiv) {
+        logDiv.textContent += msg + '\n';
+        logDiv.scrollTop = logDiv.scrollHeight; 
     }
-    console.log(msg);
 }
 
-// --- 2. GAME LOGIC ---
+function techLog(msg) {
+    console.log(msg); 
+}
+
+function printToOverlay(msg) {
+    if (overlay3D) overlay3D.textContent = msg;
+}
+
+function stopTasks() {
+    if (currentTask !== 'NONE') {
+        cancelBackgroundTasks = true;
+        setEngineTaskState('NONE');
+        currentAIEpoch++;
+        
+        // Instantly murder all active workers mid-calculation
+        for (let w of activeWorkers) {
+            // Send dummy resolution to safely unblock awaiting Promises
+            if (w.currentResolve) {
+                w.currentResolve({ result: 'cancelled', bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 });
+            }
+            w.terminate();
+        }
+        activeWorkers.clear();
+        workerPool = []; // Wipe the pool so fresh, untainted workers spawn next time
+        
+        log("Background tasks manually stopped.");
+        updateGameState();
+    }
+}
+
+function setEngineTaskState(taskName) {
+    // CHANGE: Update the global variable IMMEDIATELY.
+    // This ensures that when updateGameState() runs at the end of this function,
+    // it sees the new 'TOURNEY' or 'EVO' state right away.
+    currentTask = taskName; 
+
+    let statusBox = document.getElementById('status-box');
+    if (statusBox) {
+        if (taskName === 'TOURNEY') statusBox.textContent = 'Running Tournament...';
+        else if (taskName === 'EVO') statusBox.textContent = 'Running Evolution...';
+        else if (isPlaying) statusBox.textContent = 'Playing Game';
+        else statusBox.textContent = 'Ready to play';
+    }
+    
+    let btn = document.getElementById('btn-play');
+    if (btn) {
+        if (taskName === 'TOURNEY') {
+            btn.textContent = 'Tournament';
+            btn.style.fontSize = '14px';
+            btn.style.backgroundColor = 'purple';
+        } else if (taskName === 'EVO') {
+            btn.textContent = 'Evolution';
+            btn.style.fontSize = '14px';
+            btn.style.backgroundColor = 'purple';
+        } else {
+            btn.style.fontSize = '18px';
+            btn.textContent = isPlaying ? 'Playing' : 'Play';
+            btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
+        }
+    }
+
+    // Now call the UI refresh. 
+    // Because currentTask was set at the top, the logic we added to the 
+    // headerDiv block will now correctly identify that it should NOT show "Press Play".
+    updateGameState(); 
+}
+
+function setPlayState(playing) {
+    isPlaying = playing;
+    if (currentTask === 'NONE') {
+        setEngineTaskState('NONE'); // Restores the button appearance cleanly
+    }
+}
+
+function setupSmartInput(inputEl, validateAndApply) {
+    inputEl.dataset.lastValid = inputEl.value;
+    inputEl.addEventListener('focus', function() {
+        this.dataset.lastValid = this.value;
+        this.value = '';
+    });
+    inputEl.addEventListener('blur', function() {
+        if (this.value.trim() === '') this.value = this.dataset.lastValid;
+        else {
+            let val = parseFloat(this.value);
+            if (Number.isFinite(val)) {
+                let finalVal = validateAndApply(val);
+                if (finalVal !== undefined && finalVal !== null) {
+                    this.value = finalVal;
+                    this.dataset.lastValid = finalVal;
+                }
+            } else this.value = this.dataset.lastValid;
+        }
+    });
+    inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') this.blur();
+    });
+    return inputEl;
+}
+
+// Zero-Allocation Memory Pools for 3D Arrays
+let boardPool = [];
+function getEmptyBoard() {
+    if (boardPool.length > 0) {
+        let b = boardPool.pop();
+        if (b.length === N) return b; 
+    }
+    let b = new Array(N);
+    for(let x=0; x<N; x++) {
+        let col = new Array(N);
+        for(let y=0; y<N; y++) col[y] = new Array(N).fill(0);
+        b[x] = col;
+    }
+    return b;
+}
+function releaseBoard(b) {
+    if (b) boardPool.push(b);
+}
+
+function cloneBoardPooled(board) {
+    let newB = getEmptyBoard();
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) newB[x][y][z] = board[x][y][z];
+        }
+    }
+    return newB;
+}
+
+function cloneBoard(board) {
+    let newB = new Array(N);
+    for(let x=0; x<N; x++) {
+        let col = new Array(N);
+        for(let y=0; y<N; y++) {
+            let row = new Array(N);
+            for(let z=0; z<N; z++) row[z] = board[x][y][z];
+            col[y] = row;
+        }
+        newB[x] = col;
+    }
+    return newB;
+}
+
+function updateEngineButtonUI() {
+    const btn = document.getElementById('engine-toggle-btn');
+    if (!btn) return;
+    const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 7 (${numWorkers} Workers) ${eng}</h2>`;
+}
+
+function updateBrainUI() {
+    let sel = document.getElementById('editBrainSelect');
+    if (sel) {
+        sel.innerHTML = '';
+        BrainList.forEach((b, i) => sel.appendChild(el('option', {value: i, text: b.name})));
+        sel.value = editBrainIndex;
+    }
+    
+    let b = BrainList[editBrainIndex];
+    if (b) {
+        activeParams.forEach(w => {
+            let inp = document.getElementById(`p_W${w}`);
+            if (inp) {
+                inp.value = b.weights[w];
+                inp.dataset.lastValid = b.weights[w];
+            }
+        });
+    }
+
+    let partDiv = document.getElementById('participants');
+    if (partDiv) {
+        let partHTML = "<table style='border-collapse: collapse; text-align: center; width: 100%; border: none; margin: 0; padding: 0;'>";
+        const cbStyle = "cursor: pointer; margin: 0; padding: 0; vertical-align: middle;";
+        partHTML += "<tr><td style='padding: 0 2px; font-size: 11px; color: white;'>All</td><td style='padding: 0 2px; font-size: 11px; color: white;'>None</td>";
+        for (let i = 0; i < BrainList.length; i++) {
+            partHTML += `<td style='padding: 0; font-size: 11px; color: white;' title='Toggle ${BrainList[i].name}'><b>${BrainList[i].name.charAt(0)}</b></td>`;
+        }
+        partHTML += "</tr><tr>";
+        partHTML += `<td style='padding: 0;'><input type='checkbox' id='cb_select_all' title='Select All' style='${cbStyle}'></td>`;
+        partHTML += `<td style='padding: 0;'><input type='checkbox' id='cb_select_none' title='Select None' style='${cbStyle}'></td>`;
+        for (let i = 0; i < BrainList.length; i++) {
+            let existing = document.getElementById('part_checkbox_' + i);
+            let isChecked = existing ? existing.checked : true;
+            partHTML += `<td style='padding: 0;'><input type='checkbox' id='part_checkbox_${i}' class='tourn-participant' value='${i}' title='Include ${BrainList[i].name} in tournament' ${isChecked ? 'checked' : ''} style='${cbStyle}'></td>`;
+        }
+        partHTML += "</tr></table>";
+        partDiv.innerHTML = partHTML;
+        
+        document.getElementById('cb_select_all').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('cb_select_none').checked = false;
+                document.querySelectorAll('.tourn-participant').forEach(cb => cb.checked = true);
+            }
+        });
+        document.getElementById('cb_select_none').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('cb_select_all').checked = false;
+                document.querySelectorAll('.tourn-participant').forEach(cb => cb.checked = false);
+            }
+        });
+        document.querySelectorAll('.tourn-participant').forEach(cb => {
+            cb.addEventListener('change', function() {
+                if (this.checked) document.getElementById('cb_select_none').checked = false;
+                else document.getElementById('cb_select_all').checked = false;
+            });
+        });
+    }
+    updateTypeSelects();
+}
+
+function updateTypeSelects() {
+    let rs = document.getElementById('red-type-select');
+    let gs = document.getElementById('green-type-select');
+    if (!rs || !gs) return;
+    
+    rs.innerHTML = ''; gs.innerHTML = '';
+    
+    let optH = el('option', {value: 'Human', text: 'Human'});
+    rs.appendChild(optH); gs.appendChild(optH.cloneNode(true));
+    
+    BrainList.forEach((b, i) => {
+        rs.appendChild(el('option', {value: `AI_${i}`, text: `${b.name}`}));
+        gs.appendChild(el('option', {value: `AI_${i}`, text: `${b.name}`}));
+    });
+    
+    rs.value = redType; if(rs.selectedIndex < 0) rs.value = 'Human';
+    gs.value = greenType; if(gs.selectedIndex < 0) gs.value = 'Human';
+}
+
+function exportBrainsJS() {
+    let filename = document.getElementById('brainFileName').value || 'brains.js';
+    if (!filename.endsWith('.js')) filename += '.js';
+    let content = "// Reversi AI Brains\n\n";
+    content += "[\n";
+    BrainList.forEach((b, i) => {
+        content += `    { name: "${b.name}", weights: [${b.weights.join(', ')}] }${i < BrainList.length - 1 ? ',' : ''}\n`;
+    });
+    content += "]\n";
+    let blob = new Blob([content], {type: "text/javascript;charset=utf-8;"});
+    let dlAnchorElem = document.createElement('a');
+    dlAnchorElem.href = URL.createObjectURL(blob);
+    dlAnchorElem.download = filename;
+    dlAnchorElem.click();
+}
+
+function downloadRevisedBrain(brain) {
+    // 1. Create a descriptive header
+    let content = `// Revised Parameters for ${brain.name}\n`;
+    content += `// Date: ${new Date().toLocaleString()}\n`;
+    content += `// Board Size: ${N}x${N}x${N}\n\n`; // Track N
+    
+    // 2. Format as a clean JS constant
+    let cleanConstName = brain.name.replace(/[^a-zA-Z0-9]/g, '');
+    content += `const ${cleanConstName} = {\n`;
+    content += `    name: "${brain.name}",\n`;
+    content += `    weights: [${brain.weights.join(', ')}]\n`;
+    content += `};\n`;
+
+    // 3. Generate a descriptive filename
+    // Example output: ArwenOpt1_6x6x6.js
+    let fileName = `${brain.name}_${N}x${N}x${N}.js`;
+
+    const blob = new Blob([content], { type: 'text/javascript;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair, globalStats) {
+    let csv = "Reversi Tournament Results\n";
+    csv += "Starting Date:, ";       
+    csv += tick.toLocaleString() + "\n";
+    tock = new Date();
+    csv += "Ending Date:, ";
+    csv += tick.toLocaleString() + "\n";
+    csv += "Duration:," + `"${commas(tock - tick)} ms"` + "\n";
+    csv += `Board Size,${N}x${N}x${N}\n`;
+    csv += "Parameters: \n";
+    csv += `Games per Pair,${gamesPerPair}\n`;
+    csv += `Depth,${tDepthVal}\n\n`;
+    
+    csv += "Standings\n";
+    csv += "Rank,Name,Points,Wins,Losses,Draws\n";
+    let ranking = displayPlayers.map(p => {
+        let s = scores[p.id];
+        return { name: p.name, ...s };
+    }).sort((a, b) => b.points - a.points);
+    
+    ranking.forEach((player, index) => {
+        csv += `${index + 1},${player.name},${player.points},${player.wins},${player.losses},${player.draws}\n`;
+    });
+    csv += "\n";
+    
+    csv += "Head-to-Head\n";
+    let opponentNames = displayPlayers.map(p => p.name).join(",");
+    csv += "Row vs Col," + opponentNames + "\n";
+    displayPlayers.forEach(p1 => {
+        let rowName = p1.name;
+        let rowValues = displayPlayers.map(p2 => {
+            if (p1.id === p2.id) return "";
+            return headToHead[p1.id][p2.id] || 0;
+        }).join(",");
+        csv += `${rowName},${rowValues}\n`;
+    });
+    csv += "\n";
+    
+    csv += "Player Parameters:\n";
+    const paramHeaders = ["W0(Mob)", "W1", "W2(Dif)", "W3(Cor)", "W4(C-Sq)", "W5(X-Sq)", "W6(Edg)", "W7(IEd)", "W8(Fac)", "W9(IFa)"];
+    csv += "Name," + paramHeaders.join(",") + "\n";
+    displayPlayers.forEach(p => {
+        let w = p.params.weights;
+        csv += `${p.name},${w[0]},${w[1]},${w[2]},${w[3]},${w[4]},${w[5]},${w[6]},${w[7]},${w[8]},${w[9]}\n`;
+    });
+    csv += "\n";
+    
+    csv += "Global Color Performance:\n";
+    csv += `Red (First Mover) Wins,${globalStats.redWins}\n`;
+    csv += `Green (Second Mover) Wins,${globalStats.greenWins}\n`;
+    csv += `Total Draws,${globalStats.draws}\n`;
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "ReversiTournamentResults.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// SYMMETRY ENGINE (ROOT FILTERING)
+function applySymToCoord(x, y, z, sym) {
+    let px = x, py = y, pz = z;
+    let perm = sym % 6;
+    let inv = Math.floor(sym / 6); 
+    if (inv & 1) px = (N - 1) - px;
+    if (inv & 2) py = (N - 1) - py;
+    if (inv & 4) pz = (N - 1) - pz;
+    if (perm === 0) return {x: px, y: py, z: pz};
+    if (perm === 1) return {x: px, y: pz, z: py};
+    if (perm === 2) return {x: py, y: px, z: pz};
+    if (perm === 3) return {x: py, y: pz, z: px};
+    if (perm === 4) return {x: pz, y: px, z: py};
+    if (perm === 5) return {x: pz, y: py, z: px};
+}
+
+function getBoardSymmetries(board) {
+    let syms = [];
+    for (let sym = 0; sym < 48; sym++) {
+        let match = true;
+        for (let x = 0; x < N && match; x++) {
+            for (let y = 0; y < N && match; y++) {
+                for (let z = 0; z < N && match; z++) {
+                    let mc = applySymToCoord(x, y, z, sym);
+                    if (board[x][y][z] !== board[mc.x][mc.y][mc.z]) match = false;
+                }
+            }
+        }
+        if (match) syms.push(sym);
+    }
+    return syms;
+}
+
+function filterSymmetricMoves(board, validMoves) {
+    let syms = getBoardSymmetries(board);
+    if (syms.length === 1) return validMoves; 
+    let uniqueMoves = [];
+    for (let m of validMoves) {
+        let isRedundant = false;
+        for (let um of uniqueMoves) {
+            for (let sym of syms) {
+                let mapped = applySymToCoord(m.x, m.y, m.z, sym);
+                if (mapped.x === um.x && mapped.y === um.y && mapped.z === um.z) {
+                    isRedundant = true; break;
+                }
+            }
+            if (isRedundant) break;
+        }
+        if (!isRedundant) uniqueMoves.push(m);
+    }
+    return uniqueMoves;
+}
+
+// 2. GAME LOGIC
 
 function initGameData() {
     gameCube = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
-    
+    activePlayer = 1; 
+
     const mid = (N / 2) - 1;
     currentSlices = { X: mid, Y: mid, Z: mid };
 
-    // Starter Pattern
     const centerIndices = [mid, mid + 1];
     for (let x of centerIndices) {
         for (let y of centerIndices) {
@@ -88,38 +601,1081 @@ function initGameData() {
         }
     }
 
-    // Initialize History
+    initGeometry();
     moveHistory = [];
-    saveHistoryState(); // Save initial state (Index 0)
+    lastMoveRecord = null; 
+    saveHistoryState(); 
     currentMoveIndex = 0;
-
-    updateGameState();
+    bestMoves = []; 
+    isGameOver = false;
+    unplayedClickCount = 0;
 }
 
+function initGeometry() {
+    categoryMap = new Array(N).fill(0).map(() => new Array(N).fill(0).map(() => new Array(N).fill(0)));
+    const isEnd = (v) => (v === 0 || v === N - 1);
+    const distToCorner = (x, y, z) => {
+        let minD = 999;
+        const corners = [0, N-1];
+        corners.forEach(cx => corners.forEach(cy => corners.forEach(cz => {
+            const d = Math.max(Math.abs(x - cx), Math.abs(y - cy), Math.abs(z - cz));
+            if (d < minD) minD = d;
+        })));
+        return minD;
+    };
+    const isEdge = (x, y, z) => {
+        let ends = 0;
+        if (isEnd(x)) ends++; if (isEnd(y)) ends++; if (isEnd(z)) ends++;
+        return ends === 2;
+    };
+    const distToEdge = (x, y, z) => {
+        let minD = 999;
+        for(let i=0; i<N; i++) for(let j=0; j<N; j++) for(let k=0; k<N; k++) {
+            if (isEdge(i,j,k)) {
+                const d = Math.max(Math.abs(x - i), Math.abs(y - j), Math.abs(z - k));
+                if (d < minD) minD = d;
+            }
+        }
+        return minD;
+    };
+    const distToFace = (x, y, z) => {
+        return Math.min(Math.min(x, (N-1) - x), Math.min(y, (N-1) - y), Math.min(z, (N-1) - z));
+    };
+
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) {
+                let cat = 0; let ends = 0;
+                if (isEnd(x)) ends++; if (isEnd(y)) ends++; if (isEnd(z)) ends++;
+                let dCorner = distToCorner(x, y, z);
+                let dEdge = distToEdge(x, y, z);
+                let dFace = distToFace(x, y, z);
+
+                if (ends === 3) cat = 3; 
+                else if (ends === 2 && dCorner === 1) cat = 4; 
+                else if (dCorner === 1) cat = 5; 
+                else if (ends === 2) cat = 6; 
+                else if (dEdge === 1) cat = 7; 
+                else if (ends === 1) cat = 8; 
+                else if (dFace === 1) cat = 9; 
+                categoryMap[x][y][z] = cat;
+            }
+        }
+    }
+}
+
+function checkDirection(board, x, y, z, dx, dy, dz, player) {
+    const opponent = player === 1 ? 2 : 1;
+    let i = x + dx, j = y + dy, k = z + dz;
+    let foundOpponent = false;
+    while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
+        const cell = board[i][j][k];
+        if (cell === opponent) foundOpponent = true;
+        else if (cell === player) return foundOpponent; 
+        else return false;
+        i += dx; j += dy; k += dz;
+    }
+    return false; 
+}
+
+function getValidMovesForPlayer(board, player) {
+    let moves = [];
+    for(let x=0; x<N; x++) {
+        for(let y=0; y<N; y++) {
+            for(let z=0; z<N; z++) {
+                if (board[x][y][z] !== 0) continue; 
+                let isValid = false;
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            if (dx===0 && dy===0 && dz===0) continue;
+                            if (checkDirection(board, x, y, z, dx, dy, dz, player)) {
+                                isValid = true; break; 
+                            }
+                        }
+                        if (isValid) break;
+                    }
+                    if (isValid) break;
+                }
+                if (isValid) moves.push({x, y, z}); 
+            }
+        }
+    }
+    return moves;
+}
+
+function simulateMovePooled(board, move, player) {
+    const newBoard = cloneBoardPooled(board);
+    const {x, y, z} = move;
+    newBoard[x][y][z] = player;
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+                if (dx===0 && dy===0 && dz===0) continue;
+                if (checkDirection(newBoard, x, y, z, dx, dy, dz, player)) {
+                    let i = x + dx, j = y + dy, k = z + dz;
+                    while (newBoard[i][j][k] !== player) {
+                        newBoard[i][j][k] = player;
+                        i += dx; j += dy; k += dz;
+                    }
+                }
+            }
+        }
+    }
+    return newBoard;
+}
+
+// 3. AI LOGIC (2-PLY WEB WORKER POOL)
+
+async function getBestMoveAI_Async(board, player, depth, activeBrain) {
+    const startTime = performance.now();
+    let M1 = getValidMovesForPlayer(board, player);
+    
+    if (M1.length === 0) return { bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 };
+
+    const initialMovesCount = M1.length;
+    if (useSymmetry) {
+        M1 = filterSymmetricMoves(board, M1);
+        if (M1.length < initialMovesCount) {
+            techLog(`Symmetry filter: reduced ${initialMovesCount} moves to ${M1.length} unique.`);
+        }
+    }
+
+    let combinedDepthVisits = {};
+    combinedDepthVisits[depth] = 1; 
+    let totalNodes = 1;
+    
+    if (M1.length > 0) {
+        combinedDepthVisits[depth - 1] = M1.length;
+        totalNodes += M1.length;
+    }
+
+    let tasks = [];
+    let tempBoards = []; 
+
+    for (let m1 of M1) {
+        let b1 = simulateMovePooled(board, m1, player);
+        tempBoards.push(b1);
+        let opponent = player === 1 ? 2 : 1;
+        let M2 = getValidMovesForPlayer(b1, opponent);
+        
+        if (depth <= 1 || M2.length === 0) {
+            let flatB = new Uint8Array(512);
+            let n2 = N*N;
+            for(let x=0; x<N; x++) for(let y=0; y<N; y++) for(let z=0; z<N; z++) flatB[x*n2+y*N+z] = b1[x][y][z];
+            
+            tasks.push({
+                m1: m1, m2: null, flatBoard: flatB, depthLeft: Math.max(0, depth - 1),
+                currentPlayer: (M2.length === 0) ? player : opponent,
+                passed: (M2.length === 0)
+            });
+        } else {
+            for (let m2 of M2) {
+                let b2 = simulateMovePooled(b1, m2, opponent);
+                tempBoards.push(b2);
+                
+                let flatB = new Uint8Array(512);
+                let n2 = N*N;
+                for(let x=0; x<N; x++) for(let y=0; y<N; y++) for(let z=0; z<N; z++) flatB[x*n2+y*N+z] = b2[x][y][z];
+
+                tasks.push({
+                    m1: m1, m2: m2, flatBoard: flatB, depthLeft: depth - 2,
+                    currentPlayer: player, passed: false
+                });
+            }
+        }
+    }
+
+    let chunks = Array.from({ length: Math.min(numWorkers, tasks.length) }, () => []);
+    tasks.forEach((t, i) => chunks[i % chunks.length].push(t));
+
+    const promises = chunks.map((chunk, i) => {
+        return new Promise((resolve) => {
+            const worker = getWorker();
+            worker.currentResolve = (data) => resolve(data);
+            worker.onmessage = function(e) {
+                worker.currentResolve = null;
+                resolve(e.data);
+                releaseWorker(worker);
+            };
+            worker.postMessage({
+                id: i, tasks: chunk, rootPlayerId: player,
+                weights: activeBrain.weights, pruning: usePruning, nVal: N,
+                engineMode: engineMode, wasmModule: wasmModule 
+            });
+        });
+    });
+
+    const resultsArray = await Promise.all(promises);
+    
+    for(let b of tempBoards) releaseBoard(b);
+
+    let m1Map = new Map(); 
+
+    for (let workerRes of resultsArray) {
+        if (workerRes.result === 'cancelled') return { bestMove: null, maxEval: 0, ranked: [], totalNodes: 0 };
+        totalNodes += workerRes.totalNodes;
+        for (let d in workerRes.depthVisits) {
+            combinedDepthVisits[d] = (combinedDepthVisits[d] || 0) + workerRes.depthVisits[d];
+        }
+
+        for (let res of workerRes.results) {
+            let key = `${res.m1.x},${res.m1.y},${res.m1.z}`;
+            if (!m1Map.has(key)) m1Map.set(key, { m1: res.m1, minScore: Infinity });
+            if (res.score < m1Map.get(key).minScore) {
+                m1Map.get(key).minScore = res.score;
+            }
+        }
+    }
+
+    let ranked = Array.from(m1Map.values()).map(item => ({ move: item.m1, score: item.minScore }));
+    ranked.sort((a, b) => b.score - a.score);
+
+    let bestScore = ranked[0].score;
+    let bestList = ranked.filter(r => r.score === bestScore);
+    let bestMove;
+
+    if (useRandom) {
+        bestMove = bestList[Math.floor(Math.random() * bestList.length)].move;
+    } else {
+        bestList.sort((a,b) => {
+            if (a.move.x !== b.move.x) return a.move.x - b.move.x;
+            if (a.move.y !== b.move.y) return a.move.y - b.move.y;
+            return a.move.z - b.move.z;
+        });
+        bestMove = bestList[0].move;
+    }
+
+    const timeTakenMs = Math.round(performance.now() - startTime);
+    techLog(`AI Done: ${commas(totalNodes)} nodes, ${commas(timeTakenMs)}ms, V: ${commas(bestScore)}`);
+    
+    if (showDepths) {
+        techLog(`Depth Visits`);
+        for (let i = depth; i >= 0; i--) {
+            if (combinedDepthVisits[i] !== undefined) {
+                techLog(`Depth ${i}: ${commas(combinedDepthVisits[i])}`);
+            }
+        }
+    }
+
+    return { bestMove, maxEval: bestScore, ranked, totalNodes, timeTakenMs };
+}
+
+async function makeAIMove() {
+    if (isAIThinking || !isPlaying || isGameOver) return;
+    if (currentMoveIndex < moveHistory.length - 1) return;
+
+    let epoch = currentAIEpoch; 
+    isAIThinking = true;
+    let depth = activePlayer === 1 ? redDepth : greenDepth;
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    let activeBrain = BrainList[bIdx] || BrainList[0];
+
+    let pName = activePlayer === 1 ? "Red" : "Green";
+    log(`${pName} is thinking, depth ${depth}...`);
+    
+    await new Promise(resolve => setTimeout(resolve, 10)); // Force DOM to paint the log
+    
+    try {
+        const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, depth, activeBrain);
+        if (epoch !== currentAIEpoch || cancelBackgroundTasks) {
+            return;
+        }
+
+        if (!isPlaying || isGameOver) {
+            isAIThinking = false;
+            return; 
+        }
+        isAIThinking = false;
+        
+        if (aiResult.bestMove) {
+            executeMove(aiResult.bestMove.x, aiResult.bestMove.y, aiResult.bestMove.z);
+        }
+    } catch (e) {
+        console.error("AI Thread Error:", e);
+        if (epoch === currentAIEpoch) isAIThinking = false;
+    }
+}
+
+// BUTTON HANDLERS
+async function doStaticEval() {
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth, BrainList[bIdx]);
+    if (!aiResult.bestMove) { log("No moves."); return; }
+    let msg = `Eval (D=${evalDepth}): ${commas(aiResult.maxEval)}`;
+    log(msg); 
+}
+
+async function doListMoves() {
+    bestMoves = []; 
+    let pType = activePlayer === 1 ? redType : greenType;
+    let bIdx = pType.startsWith('AI') ? parseInt(pType.split('_')[1]) : 0;
+    const aiResult = await getBestMoveAI_Async(gameCube, activePlayer, evalDepth, BrainList[bIdx]);
+    if (!aiResult.bestMove) { log("No moves available."); return; }
+
+    const bestScore = aiResult.maxEval;
+    bestMoves = aiResult.ranked.filter(r => r.score === bestScore).map(r => r.move);
+
+    log(`Moves (D=${evalDepth})`);
+    aiResult.ranked.forEach(item => {
+        const isBest = item.score === bestScore;
+        const mark = isBest ? " ★" : "";
+        let lineStr = `(${item.move.x},${item.move.y},${item.move.z}) : ${commas(item.score)}${mark}`;
+        log(lineStr);
+    });
+    
+    update3D();
+    redrawAllSlices();
+}
+
+// EVOLUTION: GRADIENT LINE SEARCH
+function normalizeBrain(brain) {
+    let maxVal = 0;
+    for (let i of activeParams) {
+        if (Math.abs(brain.weights[i]) > maxVal) {
+            maxVal = Math.abs(brain.weights[i]);
+        }
+    }
+    if (maxVal === 0) return;
+    let scale = 1000 / maxVal;
+    for (let i of activeParams) {
+        let val = Math.round(brain.weights[i] * scale);
+        if (val === 0) val = Math.random() > 0.5 ? 1 : -1;
+        brain.weights[i] = val;
+    }
+}
+
+function applyVector(base, vec, scale) {
+    let newBrain = JSON.parse(JSON.stringify(base));
+    for (let param of activeParams) {
+        let delta = vec[param] * scale;
+        let val = base.weights[param] + delta;
+        newBrain.weights[param] = Math.round(val);
+        if (newBrain.weights[param] === 0) newBrain.weights[param] = Math.random() > 0.5 ? 1 : -1;
+    }
+    return newBrain;
+}
+
+function isSameBrain(b1, b2) {
+    for (let param of activeParams) {
+        if (b1.weights[param] !== b2.weights[param]) return false;
+    }
+    return true;
+}
+
+async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
+    let aWins = 0, bWins = 0, draws = 0;
+    let queue = [];
+    for(let c=0; c<gamesPerSide; c++) {
+        queue.push({ b1: bA, d1: depth, idx1: 'A', b2: bB, d2: depth, idx2: 'B' });
+        queue.push({ b1: bB, d1: depth, idx1: 'B', b2: bA, d2: depth, idx2: 'A' });
+    }
+    
+    if (!silenceMode) {
+        for(let match of queue) {
+            if (cancelBackgroundTasks) break;
+            initGameData(); 
+            isPlaying = true;
+            
+            let passes = 0;
+            while (passes < 2 && !isGameOver && isPlaying) {
+                if (cancelBackgroundTasks) break;
+                let pId = activePlayer;
+                let d = pId === 1 ? match.d1 : match.d2;
+                let b = pId === 1 ? match.b1 : match.b2;
+                await new Promise(r => setTimeout(r, 10)); 
+                if (cancelBackgroundTasks) break;
+                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (cancelBackgroundTasks) break;
+                
+                if (res.bestMove && isPlaying) {
+                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
+                    passes = 0;
+                    await new Promise(r => setTimeout(r, 10)); 
+                } else {
+                    passes++;
+                    activePlayer = activePlayer === 1 ? 2 : 1;
+                    updateGameState();
+                }
+            }
+            isPlaying = false;
+            let s1 = 0, s2 = 0;
+            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
+                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
+            }
+            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
+            if (winner === 1) {
+                if (match.idx1 === 'A') aWins++; else bWins++;
+            } else if (winner === 2) {
+                if (match.idx2 === 'A') aWins++; else bWins++;
+            } else draws++;
+        }
+    } else {
+        let runNext = () => {
+            return new Promise(resolve => {
+                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
+                let match = queue.shift();
+                
+                const worker = getWorker();
+                worker.currentResolve = () => resolve(); // Unblocks if cancelled
+                worker.onmessage = function(e) {
+                    let res = e.data;
+                    worker.currentResolve = null;
+                    if (res.result === 'match_done') {
+                        if (res.winner === 1) {
+                            if (match.idx1 === 'A') aWins++; else bWins++;
+                        } else if (res.winner === 2) {
+                            if (match.idx2 === 'A') aWins++; else bWins++;
+                        } else draws++;
+                    }
+                    releaseWorker(worker);
+                    runNext().then(resolve);
+                };
+                worker.postMessage({
+                    command: 'play_match', b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                });
+            });
+        };
+        let pool = [];
+        let concurrent = Math.min(numWorkers, queue.length);
+        for(let i=0; i<concurrent; i++) pool.push(runNext());
+        await Promise.all(pool);
+    }
+    return aWins - bWins;
+}
+
+async function runRoundRobin(brains, gamesPerSide, depth) {
+    let scores = [0, 0, 0]; 
+    for (let i = 0; i < brains.length; i++) {
+        for (let j = i + 1; j < brains.length; j++) {
+            if (cancelBackgroundTasks) break;
+            let netScore = await playBalancedMatch(brains[i], brains[j], gamesPerSide, depth);
+            if (netScore > 0) scores[i] += 1;
+            else if (netScore < 0) scores[j] += 1;
+        }
+    }
+    if (cancelBackgroundTasks) return 0;
+    
+    let maxScore = -1;
+    let winners = [];
+    for (let i = 0; i < brains.length; i++) {
+        if (scores[i] > maxScore) { maxScore = scores[i]; winners = [i]; }
+        else if (scores[i] === maxScore) { winners.push(i); }
+    }
+    if (winners.length === 1) return winners[0];
+    
+    log(`Tie detected. Rematch...`);
+    scores = [0, 0, 0];
+    for (let i = 0; i < winners.length; i++) {
+        for (let j = i + 1; j < winners.length; j++) {
+            if (cancelBackgroundTasks) break;
+            let p1 = winners[i], p2 = winners[j];
+            let netScore = await playBalancedMatch(brains[p1], brains[p2], 1, depth);
+            if (netScore > 0) scores[p1] += 1;
+            else if (netScore < 0) scores[p2] += 1;
+        }
+    }
+    maxScore = -999;
+    let finalWinners = [];
+    for (let idx of winners) {
+        if (scores[idx] > maxScore) { maxScore = scores[idx]; finalWinners = [idx]; }
+        else if (scores[idx] === maxScore) { finalWinners.push(idx); }
+    }
+    if (finalWinners.length === 1) return finalWinners[0];
+    
+    // Priority: Center > Forward > Backward
+    if (finalWinners.includes(1)) return 1;
+    if (finalWinners.includes(0)) return 0;
+    return finalWinners[0];
+}
+
+async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
+    let V = {};
+    for (let p of activeParams) {
+        V[p] = firstStepBrain.weights[p] - originBrain.weights[p];
+    }
+    
+    let X = JSON.parse(JSON.stringify(firstStepBrain)); 
+    let expanding = true;
+    let iterations = 0;
+
+    while (iterations < 30) {
+        if (cancelBackgroundTasks) break;
+        iterations++;
+
+        let A = applyVector(X, V, 1.0);
+        let B = applyVector(X, V, -1.0);
+
+        // CONVERGENCE CHECK
+        if (isSameBrain(X, A) && isSameBrain(X, B)) {
+            log(`Line Search converged at integer peak in ${iterations} steps.`);
+            break;
+        }
+
+        log(`LS ${iterations}: Testing Triplet {A, X, B}...`);
+        
+        let Step = "Step = ";
+        for(let p of activeParams) {Step += V[p] +" ";}
+        log(Step);
+
+        // 1. A vs X
+        let scoreAX = await playBalancedMatch(A, X, gamesPerSide, depth);
+        if (scoreAX === 0 && !cancelBackgroundTasks) {
+            log("--> Draw (A vs X). Retrying...");
+            scoreAX = await playBalancedMatch(A, X, gamesPerSide, depth);
+        }
+        if (cancelBackgroundTasks) break;
+
+        // 2. B vs X
+        let scoreBX = await playBalancedMatch(B, X, gamesPerSide, depth);
+        if (scoreBX === 0 && !cancelBackgroundTasks) {
+            log("--> Draw (B vs X). Retrying...");
+            scoreBX = await playBalancedMatch(B, X, gamesPerSide, depth);
+        }
+        if (cancelBackgroundTasks) break;
+
+        // LOGIC ENGINE
+        if (scoreAX === 0 && scoreBX === 0) {
+            log("--> Double Draw. Terminating.");
+            break;
+        }
+
+        if (scoreAX <= 0 && scoreBX <= 0) {
+            // X is best
+            expanding = false;
+            for(let p of activeParams) V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            log("--> X is best. Halving step.");
+        } else if (scoreAX > scoreBX && scoreAX > 0) {
+            // A is better
+            X = A;
+            if (expanding) {
+                for(let p of activeParams) V[p] *= 2;
+                log("--> A is winner. Doubling step.");
+            } else {
+                for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+                log("--> A is winner. Halving step.");
+            }
+        } else if (scoreBX > scoreAX && scoreBX > 0) {
+            // B is better
+            X = B;
+            expanding = false;
+            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            log("--> B is winner. Reversing/Halving step.");
+        } else {
+            // Anomaly: A and B both > X
+            log("--> Non-convex result. Tie-break A vs B.");
+            let scoreAB = await playBalancedMatch(A, B, gamesPerSide, depth);
+            X = (scoreAB >= 0) ? A : B;
+            expanding = false;
+            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+        }
+    }
+    return X;
+}
+
+async function runTournament() {
+    tick = new Date();
+
+    setEngineTaskState('TOURNEY');
+    cancelBackgroundTasks = false;
+    
+    let checks = Array.from(document.querySelectorAll('.tourn-participant:checked'));
+    let displayPlayers = [];
+    let pIndices = [];
+    let queue = [];
+    let globalStats = { redWins: 0, greenWins: 0, draws: 0 };
+    
+    if (checks.length === 0) {
+        let rIdx = redType.startsWith('AI_') ? parseInt(redType.split('_')[1]) : 0;
+        let gIdx = greenType.startsWith('AI_') ? parseInt(greenType.split('_')[1]) : 0;
+        let b1 = BrainList[rIdx], b2 = BrainList[gIdx];
+        
+        displayPlayers = [
+            { id: 0, name: b1.name, params: b1, depth: redDepth },
+            { id: 1, name: b2.name, params: b2, depth: greenDepth }
+        ];
+        pIndices = [0, 1];
+        
+        for(let g=0; g<tGamesVal; g++) {
+            if (g % 2 === 0) queue.push({ b1: b1, d1: redDepth, idx1: 0, name1: b1.name, b2: b2, d2: greenDepth, idx2: 1, name2: b2.name });
+            else queue.push({ b1: b2, d1: greenDepth, idx1: 1, name1: b2.name, b2: b1, d2: redDepth, idx2: 0, name2: b1.name });
+        }
+    } else if (checks.length < 2) { 
+        log("Need at least 2 participants."); 
+        setEngineTaskState('NONE');
+        return; 
+    } else {
+        pIndices = checks.map(c => parseInt(c.value));
+        displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
+	for (let i = 0; i < pIndices.length; i++) {
+            for (let j = 0; j < pIndices.length; j++) {
+		if (i === j) continue; // A player doesn't play themselves
+
+		// Each pair now plays tGamesVal matches. 
+		// In each match, the first player (idx1) is Red.
+		for (let g = 0; g < tGamesVal; g++) {
+                    let p1 = BrainList[pIndices[i]];
+                    let p2 = BrainList[pIndices[j]];
+                    queue.push({ 
+			b1: p1, d1: tDepthVal, idx1: pIndices[i], name1: p1.name, 
+			b2: p2, d2: tDepthVal, idx2: pIndices[j], name2: p2.name 
+                    });
+		}
+            }
+	}
+    }
+    
+    let scores = {};
+    let headToHead = {};
+    pIndices.forEach(i => {
+        scores[i] = { wins: 0, losses: 0, draws: 0, points: 0 };
+        headToHead[i] = {};
+        pIndices.forEach(j => headToHead[i][j] = 0);
+    });
+    
+    log(`Tournament Start`);
+    let resultsProcessed = 0;
+    let totalMatches = queue.length;
+    
+    if (!silenceMode) {
+        for(let match of queue) {
+            if (cancelBackgroundTasks) break;
+            initGameData(); 
+            isPlaying = true;
+            
+            let passes = 0;
+            while (passes < 2 && !isGameOver && isPlaying) {
+                if (cancelBackgroundTasks) break;
+                let pId = activePlayer;
+                let d = pId === 1 ? match.d1 : match.d2;
+                let b = pId === 1 ? match.b1 : match.b2;
+                
+                await new Promise(r => setTimeout(r, 10)); 
+                if (cancelBackgroundTasks) break;
+                
+                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
+                if (cancelBackgroundTasks) break;
+                
+                if (res.bestMove && isPlaying) {
+                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
+                    passes = 0;
+                    await new Promise(r => setTimeout(r, 10)); 
+                } else {
+                    passes++;
+                    activePlayer = activePlayer === 1 ? 2 : 1;
+                    updateGameState();
+                }
+            }
+            isPlaying = false;
+            
+            let s1 = 0, s2 = 0;
+            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
+                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
+            }
+            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
+            
+            if (winner === 1) {
+                globalStats.redWins++;
+                scores[match.idx1].wins++; scores[match.idx1].points += 1;
+                scores[match.idx2].losses++; scores[match.idx2].points -= 1;
+                headToHead[match.idx1][match.idx2] += 1;
+                headToHead[match.idx2][match.idx1] -= 1;
+            } else if (winner === 2) {
+                globalStats.greenWins++;
+                scores[match.idx2].wins++; scores[match.idx2].points += 1;
+                scores[match.idx1].losses++; scores[match.idx1].points -= 1;
+                headToHead[match.idx2][match.idx1] += 1;
+                headToHead[match.idx1][match.idx2] -= 1;
+            } else {
+                globalStats.draws++;
+                scores[match.idx1].draws++;
+                scores[match.idx2].draws++;
+            }
+            resultsProcessed++;
+            log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
+        }
+    } else {
+        let activeWorkers = 0;
+        let runNext = () => {
+            return new Promise(resolve => {
+                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
+                let match = queue.shift();
+                activeWorkers++;
+                
+                const worker = getWorker();
+                worker.currentResolve = () => resolve(); // Unblocks if cancelled
+                worker.onmessage = function(e) {
+                    let res = e.data;
+                    worker.currentResolve = null;
+                    if (res.result === 'match_done') {
+                        if (res.winner === 1) {
+                            globalStats.redWins++;
+                            scores[match.idx1].wins++; scores[match.idx1].points += 1;
+                            scores[match.idx2].losses++; scores[match.idx2].points -= 1;
+                            headToHead[match.idx1][match.idx2] += 1;
+                            headToHead[match.idx2][match.idx1] -= 1;
+                        } else if (res.winner === 2) {
+                            globalStats.greenWins++;
+                            scores[match.idx2].wins++; scores[match.idx2].points += 1;
+                            scores[match.idx1].losses++; scores[match.idx1].points -= 1;
+                            headToHead[match.idx2][match.idx1] += 1;
+                            headToHead[match.idx1][match.idx2] -= 1;
+                        } else {
+                            globalStats.draws++;
+                            scores[match.idx1].draws++;
+                            scores[match.idx2].draws++;
+                        }
+                    }
+                    releaseWorker(worker);
+                    resultsProcessed++;
+                    log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
+                    activeWorkers--;
+                    runNext().then(resolve);
+                };
+                worker.postMessage({
+                    command: 'play_match',
+                    b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                });
+            });
+        };
+        
+        let pool = [];
+        let concurrent = Math.min(numWorkers, queue.length);
+        for(let i=0; i<concurrent; i++) pool.push(runNext());
+        await Promise.all(pool);
+    }
+    
+    if (cancelBackgroundTasks) {
+        log("Tournament cancelled by user.");
+    } else {
+        log(`Tourney Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
+        downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
+    }
+    setEngineTaskState('NONE');
+}
+
+async function runImprovement() {
+    setEngineTaskState('EVO');
+    cancelBackgroundTasks = false;
+    
+    let brainIndex = editBrainIndex;
+    let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    
+    normalizeBrain(baseBrain); 
+    let depth = tDepthVal;
+    
+    log(`EVOLUTION START: ${baseBrain.name}`);
+    let successes = 0;
+    let currentRate = impMutVal;
+    
+    for (let g = 0; g < impGenVal; g++) {
+        if (cancelBackgroundTasks) break;
+        log(`Gen ${g+1}/${impGenVal} (Rate: ${Math.round(currentRate)}%)`);
+        
+        let mutant = JSON.parse(JSON.stringify(baseBrain));
+        mutant.name = baseBrain.name + `G${g+1}`;
+        
+        let changed = false;
+        for (let i of activeParams) {
+            let noise = (Math.random() * 2) - 1; 
+            let change = mutant.weights[i] * (currentRate / 100) * noise;
+            if (Math.abs(change) > 1.0) {
+		changed = true;
+	    }
+            mutant.weights[i] = Math.round(mutant.weights[i] + change);
+            if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
+	}
+        if (!changed) continue; 
+        
+	let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
+        if (cancelBackgroundTasks) break;
+        
+	if (netScore > 0) {
+            log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
+            let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
+            if (cancelBackgroundTasks) break;
+            
+            normalizeBrain(optimized); 
+            
+            successes++;
+            
+            // 1. Strip away "Opt" and any following numbers to get the base name
+            // This turns "ArwenOpt1" back into "Arwen"
+            let baseName = BrainList[brainIndex].name.replace(/Opt\d+$/, "");
+            
+            baseBrain = optimized;
+            
+            // 2. Combine them without an underscore
+            baseBrain.name = `${baseName}Opt${successes}`;
+            
+            BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
+            updateBrainUI();
+
+            downloadRevisedBrain(baseBrain);
+        }
+//	else {
+//            currentRate *= 0.95;
+//            if (currentRate < 1) currentRate = 1;
+//            document.getElementById('impPercent').value = Math.round(currentRate);
+//            impMutVal = Math.round(currentRate);
+
+    }
+    if (cancelBackgroundTasks) {
+        log("Evolution cancelled by user.");
+    } else {
+        log(`EVOLUTION DONE (${successes} upgrades)`);
+    }
+    setEngineTaskState('NONE');
+}
+
+
+
+function triggerBlink() {
+    let el = document.getElementById('press-play-msg');
+    if (!el) return;
+    let blinks = 0;
+    let iv = setInterval(() => {
+        if(!el) { clearInterval(iv); return; }
+        el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+        blinks++;
+        if(blinks >= 10) { clearInterval(iv); el.style.visibility = 'visible'; }
+    }, 200);
+}
+
+function handleBoardClick() {
+    // If a background task is running, ignore clicks entirely
+    if (currentTask !== 'NONE') return true;
+
+    if (!isPlaying && !isGameOver) { 
+        if (currentMoveIndex === 0) {
+            unplayedClickCount++;
+            if (unplayedClickCount > 1) triggerBlink();
+        }
+        log("Press Play to start."); 
+        return true; 
+    }
+    return false;
+}
+
+function toggleFullscreen() {
+    const container = document.getElementById('view3d-container');
+    if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
+    } else {
+        document.exitFullscreen();
+    }
+}
+
+function toggleCamera() {
+    orthographicMode = !orthographicMode;
+    if (orthographicMode) {
+        cameraOrtho.position.copy(cameraPersp.position);
+        cameraOrtho.quaternion.copy(cameraPersp.quaternion);
+        camera = cameraOrtho;
+    } else {
+        cameraPersp.position.copy(cameraOrtho.position);
+        cameraPersp.quaternion.copy(cameraOrtho.quaternion);
+        camera = cameraPersp;
+    }
+    controls.object = camera;
+    updateCameraFrustum();
+}
+
+function updateCameraFrustum() {
+    if (!renderer) return;
+    const w = renderer.domElement.width;
+    const h = renderer.domElement.height;
+    const aspect = w / h;
+    const frustumSize = N * 1.8; 
+    
+    if (cameraPersp) {
+        cameraPersp.aspect = aspect;
+        cameraPersp.updateProjectionMatrix();
+    }
+    if (cameraOrtho) {
+        cameraOrtho.left = frustumSize * aspect / -2;
+        cameraOrtho.right = frustumSize * aspect / 2;
+        cameraOrtho.top = frustumSize / 2;
+        cameraOrtho.bottom = frustumSize / -2;
+        cameraOrtho.updateProjectionMatrix();
+    }
+}
+
+document.addEventListener('fullscreenchange', () => {
+    if (renderer && camera) {
+        const isFS = !!document.fullscreenElement;
+        const w = isFS ? window.innerWidth : 23 * S;
+        const h = isFS ? window.innerHeight : 23 * S;
+        renderer.setSize(w, h);
+        updateCameraFrustum();
+        if (controls && controls.handleResize) controls.handleResize();
+    }
+});
+
+// KEYBOARD COMMANDS
+document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+
+    if (e.key === ' ' || e.key === 'Escape') {
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+            e.preventDefault();
+        }
+        return;
+    }
+
+    switch(e.key) {
+        case '4': case '6': case '8':
+            N = parseInt(e.key);
+            if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
+            resetGame();
+            initLayout(); 
+            break;
+        case 'a':
+            gridMode = (gridMode + 1) % 3;
+            if(document.getElementById('grid-select')) document.getElementById('grid-select').value = gridMode;
+            update3D();
+            break;
+        case 'A':
+            showAxes = !showAxes;
+            if(document.getElementById('btn-axes')) document.getElementById('btn-axes').style.backgroundColor = showAxes ? 'green' : 'grey';
+            update3D();
+            break;
+        case 'c':
+            showCategories = !showCategories;
+            showValues = false;
+            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = showCategories ? 'green' : 'grey';
+            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = 'grey';
+            update3D();
+            break;
+        case 'v':
+            showValues = !showValues;
+            showCategories = false;
+            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = showValues ? 'green' : 'grey';
+            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = 'grey';
+            update3D();
+            break;
+        case 'S':
+            doStaticEval();
+            break;
+        case 'M':
+            doListMoves();
+            break;
+        case 'B':
+            playerBallSize = Math.min(0.9, playerBallSize + 0.05);
+            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+            update3D();
+            break;
+        case 'b':
+            playerBallSize = Math.max(0.1, playerBallSize - 0.05);
+            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+            update3D();
+            break;
+        case 'H':
+            hintBallSize = Math.min(0.5, hintBallSize + 0.025);
+            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+            update3D();
+            break;
+        case 'h':
+            hintBallSize = Math.max(0.05, hintBallSize - 0.025);
+            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+            update3D();
+            break;
+        case '<':
+            loadHistoryState(currentMoveIndex - 1);
+            break;
+        case '>':
+            loadHistoryState(currentMoveIndex + 1);
+            break;
+        case 'F':
+        case 'f':
+            toggleFullscreen();
+            break;
+        case 'I':
+        case 'i':
+            toggleCamera();
+            if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
+            break;
+        case 'p':
+        case 'P':
+            if (currentTask !== 'NONE') {
+                stopTasks();
+                setPlayState(true);
+                updateGameState();
+            } else {
+                if (isGameOver) break;
+                setPlayState(!isPlaying);
+                if (isPlaying) updateGameState();
+            }
+            break;
+        case 'r':
+        case 'R':
+            resetGame();
+            break;
+        case '.':
+        case '?':
+            if (overlay3D.textContent.trim() !== "") {
+                printToOverlay("");
+            } else {
+                printToOverlay(
+`Commands:
+4, 6, 8 : Set board size
+a       : Cycle grid mode
+A       : Toggle Axes
+c       : Toggle Categories
+v       : Toggle Clues (Values)
+S       : Compute Static Value
+M       : List sorted Moves
+B / b   : Increase/Decrease Player ball size
+H / h   : Increase/Decrease Hint ball size
+< / >   : History back/forward
+p       : Play / Stop
+r       : Reset game
+F / f   : Toggle Fullscreen
+I / i   : Toggle Infinity (Orthographic) mode
+. / ?   : Toggle this help display
+Esc/Spc : Exit Fullscreen`);
+            }
+            break;
+    }
+});
+
+// STATE MANAGEMENT
+
 function saveHistoryState() {
-    // Deep copy the cube
-    const cubeCopy = JSON.parse(JSON.stringify(gameCube));
-    // If we are not at the end of history, truncate the future
+    const cubeCopy = cloneBoard(gameCube);
     if (currentMoveIndex < moveHistory.length - 1) {
         moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
     }
-    moveHistory.push(cubeCopy);
+    moveHistory.push({ 
+        cube: cubeCopy, 
+        player: activePlayer,
+        lastMove: lastMoveRecord
+    });
     currentMoveIndex = moveHistory.length - 1;
     updateNavUI();
 }
 
 function loadHistoryState(index) {
-    if (index < 0 || index >= moveHistory.length) return;
-    
+    if (index < 0 || index >= moveHistory.length || isAIThinking) return;
     currentMoveIndex = index;
-    // Restore Cube
-    gameCube = JSON.parse(JSON.stringify(moveHistory[index]));
+    const state = moveHistory[index];
+    gameCube = cloneBoard(state.cube);
+    activePlayer = state.player;
+    lastMoveRecord = state.lastMove || null; 
     
-    updateGameState();
+    if (currentMoveIndex < moveHistory.length - 1 && isPlaying) {
+        setPlayState(false);
+    }
+    
+    updateGameState(true); 
     redrawAllSlices();
     update3D();
     updateNavUI();
-    log(`Jumped to Move ${index}`);
 }
 
 function updateNavUI() {
@@ -128,21 +1684,26 @@ function updateNavUI() {
 }
 
 function resetGame() {
-    const box = document.getElementById('status-box');
-    if(box) box.innerHTML = "";
-    log("--- RESETTING GAME ---");
+    // 1. Stop any background work first
+    if (currentTask !== 'NONE') {
+        stopTasks();
+    }
+    
+    // 2. CRITICAL: Initialize the board data for the NEW N immediately
+    // This builds the gameCube array to the correct size
     initGameData();
-    // Reset view options to defaults? Optional. Keeping current prefs is usually better.
-    update3D(); // Rebuild scene
-}
 
-function getCurrentPlayer() {
-    let count = 0;
-    for(let x=0; x<N; x++) 
-        for(let y=0; y<N; y++) 
-            for(let z=0; z<N; z++) 
-                if(gameCube[x][y][z] !== 0) count++;
-    return (count % 2 === 0) ? 1 : 2; 
+    // 3. Now it is safe to reset states and update the UI
+    currentAIEpoch++; 
+    isAIThinking = false;
+    setPlayState(false); 
+    isGameOver = false;
+    unplayedClickCount = 0;
+    
+    updateGameState(); 
+    redrawAllSlices();
+    update3D(); 
+    log("Board reset, N= " + N + ".");
 }
 
 function getScores() {
@@ -156,86 +1717,120 @@ function getScores() {
     return { red: r, green: g };
 }
 
-function checkDirection(x, y, z, dx, dy, dz, player) {
-    const opponent = player === 1 ? 2 : 1;
-    let i = x + dx;
-    let j = y + dy;
-    let k = z + dz;
-    let foundOpponent = false;
-
-    while (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) {
-        const cell = gameCube[i][j][k];
-        if (cell === opponent) {
-            foundOpponent = true;
-        } else if (cell === player) {
-            return foundOpponent; 
-        } else {
-            return false;
-        }
-        i += dx; j += dy; k += dz;
-    }
-    return false; 
-}
-
-function updateGameState() {
-    validMoves = [];
-    const player = getCurrentPlayer();
-    
-    for(let x=0; x<N; x++) {
-        for(let y=0; y<N; y++) {
-            for(let z=0; z<N; z++) {
-                if (gameCube[x][y][z] !== 0) continue; 
-
-                let isValid = false;
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dz = -1; dz <= 1; dz++) {
-                            if (dx===0 && dy===0 && dz===0) continue;
-                            if (checkDirection(x, y, z, dx, dy, dz, player)) {
-                                isValid = true;
-                                break; 
-                            }
-                        }
-                        if (isValid) break;
-                    }
-                    if (isValid) break;
-                }
-                if (isValid) validMoves.push(`${x},${y},${z}`);
-            }
-        }
-    }
-    
-    // Update Score Board
+function updateGameState(isViewOnly = false) {
+    validMoves = getValidMovesForPlayer(gameCube, activePlayer).map(m => `${m.x},${m.y},${m.z}`); 
     const scores = getScores();
-    const infoDiv = document.getElementById('game-info');
-    if (infoDiv) {
-        const pName = player === 1 ? "Red" : "Green";
-        const color = player === 1 ? redColor : greenColor;
-        infoDiv.innerHTML = `
-            <div style="margin-bottom: 5px;">Turn: <span style="color:${color}; font-weight:bold">${pName}</span></div>
-            <div style="font-size: 0.9em;">Red: ${scores.red} | Green: ${scores.green}</div>
-        `;
+    const headerDiv = document.getElementById('game-score-header');
+    let winnerText = "";
+
+    // Determine Game Over
+    if (!isViewOnly && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
+        const opponent = activePlayer === 1 ? 2 : 1;
+        const opponentMoves = getValidMovesForPlayer(gameCube, opponent);
+
+        if (opponentMoves.length === 0) {
+            isGameOver = true;
+            setPlayState(false);
+            if (scores.red > scores.green) winnerText = "RED WINS!";
+            else if (scores.green > scores.red) winnerText = "GREEN WINS!";
+            else winnerText = "DRAW!";
+            log(`GAME OVER: ${winnerText}`);
+            
+            const btnPlay = document.getElementById('btn-play');
+            if (btnPlay) {
+                btnPlay.textContent = 'Game Over';
+                btnPlay.style.backgroundColor = 'gray';
+                btnPlay.disabled = true; 
+            }
+        } else {
+            const pName = activePlayer === 1 ? "Red" : "Green";
+            log(`${pName} has no moves. Passing...`);
+            activePlayer = opponent;
+            saveHistoryState();
+            updateGameState();
+            return; 
+        }
+    }
+
+// Output UI HTML
+    if (headerDiv) {
+        const pName = activePlayer === 1 ? "Red" : "Green";
+        const color = activePlayer === 1 ? redColor : greenColor;
+        let html = "";
+
+        // 1. MASTER GUARD: If a task is active, ONLY show the task message.
+        // We remove !isPlaying because background matches toggle isPlaying to true.
+        if (currentTask !== 'NONE') {
+            let msg = currentTask === 'TOURNEY' ? 'Running Tournament...' : 'Running Evolution...';
+            html = `
+                <div style="font-size: 1.2em; font-weight: bold; color: orange; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                    <div>${msg}</div>
+                    <div style="font-size: 0.75em; color: yellow; margin-top: 4px;">Press Reset to stop</div>
+                </div>`;
+        } 
+        // 2. IDLE GUARD: Only show "Press Play" if NO task is running and we are at the start.
+        else if (currentTask === 'NONE' && currentMoveIndex === 0 && !isPlaying && !isGameOver) {
+            html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Press Play to Start</div>`;
+        } 
+        // 3. DEFAULT: Standard Gameplay UI.
+        else {
+            let lastMoveHtml = "";
+            if (lastMoveRecord) {
+                const lmColor = lastMoveRecord.player === 1 ? redColor : greenColor;
+                lastMoveHtml = `<span style="color: ${lmColor};">(${lastMoveRecord.x}, ${lastMoveRecord.y}, ${lastMoveRecord.z})</span>`;
+            }
+            let line2 = isGameOver ? `<span style="color: ${scores.red>scores.green?redColor:(scores.green>scores.red?greenColor:'white')}; font-weight:bold;">${winnerText}</span>` : lastMoveHtml;
+            html = `
+                <div style="font-size: 1.1em; font-weight: bold; white-space: nowrap; margin-bottom: 2px;">
+                    <span style="color:${color};">${pName}</span>
+                    <span>&nbsp;&nbsp;</span>
+                    <span style="color: ${redColor};">${scores.red}</span>
+                    <span style="color: white;">&nbsp;|&nbsp;</span>
+                    <span style="color: ${greenColor};">${scores.green}</span>
+                </div>
+                <div style="font-size: 0.95em; font-weight: bold; white-space: nowrap;">${line2}</div>
+            `;
+        }
+        headerDiv.innerHTML = html;
+    }
+    
+    // Update the 1-line top status monitor if we aren't in a headless loop
+    if (currentTask === 'NONE') {
+        let sb = document.getElementById('status-box');
+        if (sb) sb.textContent = isPlaying ? 'Playing Game' : 'Ready to play';
+    }
+
+    // Defer AI trigger to prevent locking UI thread / memory exhaustion
+    if (!isViewOnly && !isGameOver && validMoves.length > 0 && currentMoveIndex === moveHistory.length - 1) {
+        let pType = activePlayer === 1 ? redType : greenType;
+        if (isPlaying && pType.startsWith('AI') && !isAIThinking) {
+            setTimeout(makeAIMove, 50);
+        }
     }
 }
 
 function executeMove(x, y, z) {
-    // If we are looking at history, we can't play unless we are at the HEAD
-    // But typical behavior is to branch new history. 
-    // Since saveHistoryState truncates future, this works naturally.
+    if (showCategories || showValues) return; 
+
+    if (currentMoveIndex < moveHistory.length - 1) {
+        moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+    }
+
+    lastMoveRecord = { player: activePlayer, x: x, y: y, z: z };
+    gameCube[x][y][z] = activePlayer;
+    bestMoves = []; 
     
-    const player = getCurrentPlayer();
-    gameCube[x][y][z] = player;
-    
-    log(`Move: ${player===1?"Red":"Green"} to (${x},${y},${z})`);
+    const pName = activePlayer === 1 ? "Red" : "Green";
+    log(`${pName} to (${x},${y},${z})`);
 
     for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
             for (let dz = -1; dz <= 1; dz++) {
                 if (dx===0 && dy===0 && dz===0) continue;
-                if (checkDirection(x, y, z, dx, dy, dz, player)) {
+                if (checkDirection(gameCube, x, y, z, dx, dy, dz, activePlayer)) {
                     let i = x + dx, j = y + dy, k = z + dz;
-                    while (gameCube[i][j][k] !== player) {
-                        gameCube[i][j][k] = player;
+                    while (gameCube[i][j][k] !== activePlayer) {
+                        gameCube[i][j][k] = activePlayer;
                         i += dx; j += dy; k += dz;
                     }
                 }
@@ -243,13 +1838,14 @@ function executeMove(x, y, z) {
         }
     }
     
-    saveHistoryState(); // Commit to history
-    updateGameState();
+    activePlayer = (activePlayer === 1 ? 2 : 1);
+    saveHistoryState(); 
+    updateGameState(); 
     redrawAllSlices();
     update3D(); 
 }
 
-// --- 3. 2D DRAWING ---
+// 4. 2D DRAWING
 
 function drawSlice(canvas, axis, sliceIndex) {
     const ctx = canvas.getContext('2d');
@@ -284,16 +1880,23 @@ function drawSlice(canvas, axis, sliceIndex) {
             const cx = offset + (i * step);
             const cy = offset + (j * step);
 
+            const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
+
             if (val !== 0) {
-                // In 2D we stick to full circles for clarity
                 const radius = step * 0.35; 
                 ctx.fillStyle = (val === 1) ? redColor : greenColor;
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
                 ctx.fill();
-            } else if (showHints && validMoves.includes(`${x},${y},${z}`)) {
-                const radius = step * 0.15; 
+            } else if (isBest) {
+                const radius = step * 0.30; 
                 ctx.fillStyle = eligibleColor;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+                ctx.fill();
+            } else if (showHints && validMoves.includes(`${x},${y},${z}`) && !showCategories && !showValues) {
+                const radius = step * 0.15; 
+                ctx.fillStyle = (activePlayer === 1) ? "rgb(127,0,0)" : "rgb(0,127,0)";
                 ctx.beginPath();
                 ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
                 ctx.fill();
@@ -303,6 +1906,9 @@ function drawSlice(canvas, axis, sliceIndex) {
 }
 
 function handleCanvasClick(event, axis) {
+    if (handleBoardClick()) return; 
+    if (isAIThinking) return;
+
     const rect = event.target.getBoundingClientRect();
     const size = event.target.width;
     const step = size / N; 
@@ -319,8 +1925,6 @@ function handleCanvasClick(event, axis) {
         const moveKey = `${x},${y},${z}`;
         if (validMoves.includes(moveKey)) {
             executeMove(x, y, z);
-        } else {
-            log("Invalid move");
         }
     }
 }
@@ -332,19 +1936,26 @@ function redrawAllSlices() {
     });
 }
 
-// --- 4. 3D LOGIC (Three.js) ---
+// 5. 3D LOGIC (Three.js)
 
 function init3D() {
     const container = document.getElementById('view3d-container');
+    container.style.position = 'relative'; 
     const size = 23 * S;
 
     if (animationId) {
         cancelAnimationFrame(animationId);
         animationId = null;
     }
-    
-    if (renderer) {
-        renderer.dispose();
+
+    if (!renderer) {
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.domElement.addEventListener('mousemove', on3DMouseMove);
+        renderer.domElement.addEventListener('click', on3DClick);
+    }
+    renderer.setSize(size, size);
+    if (!container.contains(renderer.domElement)) {
+        container.appendChild(renderer.domElement);
     }
 
     scene = new THREE.Scene();
@@ -353,17 +1964,30 @@ function init3D() {
     raycaster = new THREE.Raycaster();
     mouse = new THREE.Vector2();
 
-    camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-    camera.position.set(N*1.5, N*1.5, N*2.5);
+    const aspect = size / size;
+    cameraPersp = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+    cameraPersp.position.set(N*0.8, N*0.8, N*1.5); 
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(size, size);
-    container.appendChild(renderer.domElement);
+    const frustumSize = N * 1.8;
+    cameraOrtho = new THREE.OrthographicCamera(frustumSize * aspect / -2, frustumSize * aspect / 2, frustumSize / 2, frustumSize / -2, 0.1, 1000);
+    cameraOrtho.position.set(N*0.8, N*0.8, N*1.5);
+
+    camera = orthographicMode ? cameraOrtho : cameraPersp;
+
+    if (overlay3D) overlay3D.remove();
+    overlay3D = document.createElement('div');
+    overlay3D.style.cssText = 'position: absolute; top: 10px; left: 10px; color: white; font-family: monospace; font-size: 16px; pointer-events: none; z-index: 10; text-shadow: 1px 1px 2px #000; white-space: pre-wrap;';
+    container.appendChild(overlay3D);
     
-    renderer.domElement.addEventListener('click', on3DClick);
-
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; 
+    if (hoverTooltip) hoverTooltip.remove();
+    hoverTooltip = document.createElement('div');
+    hoverTooltip.style.cssText = 'position: absolute; background: rgba(0,0,0,0.8); color: white; padding: 3px 6px; border-radius: 4px; pointer-events: none; display: none; font-family: monospace; font-size: 14px; z-index: 100; font-weight: bold; border: 1px solid white;';
+    document.body.appendChild(hoverTooltip); 
+    
+    controls = new TrackballControls(camera, renderer.domElement);
+    controls.rotateSpeed = 4.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
@@ -371,9 +1995,7 @@ function init3D() {
     dirLight.position.set(10, 20, 10);
     scene.add(dirLight);
 
-    // Setup Groups
     gridGroup = new THREE.Group();
-    // Center the grid
     const offset = (N - 1) / 2;
     gridGroup.position.set(-offset, -offset, -offset);
     scene.add(gridGroup);
@@ -382,56 +2004,67 @@ function init3D() {
     stoneGroup.position.set(-offset, -offset, -offset); 
     scene.add(stoneGroup);
     
-    // Axes Helper
-    axesHelper = new THREE.AxesHelper(N);
-    // Position axes at corner of grid
+    axesHelper = new THREE.Group();
+    const lineHelper = new THREE.AxesHelper(N);
+    axesHelper.add(lineHelper);
+
+    const makeLabel = (txt, color) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color;
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(txt, 32, 32);
+        const tex = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(1.5, 1.5, 1.5);
+        return sprite;
+    };
+
+    const xLab = makeLabel('X', '#ff0000'); xLab.position.set(N + 0.5, 0, 0); axesHelper.add(xLab);
+    const yLab = makeLabel('Y', '#00ff00'); yLab.position.set(0, N + 0.5, 0); axesHelper.add(yLab);
+    const zLab = makeLabel('Z', '#0000ff'); zLab.position.set(0, 0, N + 0.5); axesHelper.add(zLab);
+
     axesHelper.position.set(-offset - 1, -offset - 1, -offset - 1);
     scene.add(axesHelper);
 
     update3DGrid();
-    animate();
+    if (!animationId) animate();
     update3D();
 }
 
 function update3DGrid() {
-    // Clear old grid
-    while(gridGroup.children.length > 0) gridGroup.remove(gridGroup.children[0]);
-
-    if (gridMode === 0) return; // No Grid
+    while(gridGroup.children.length > 0) {
+        let child = gridGroup.children[0];
+        gridGroup.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+    }
+    if (gridMode === 0) return; 
 
     const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
     const points = [];
 
-    // Orthogonal Grid (Mode 1 & 2)
     for (let i = 0; i < N; i++) {
         for (let j = 0; j < N; j++) {
-            // X-lines
             points.push(new THREE.Vector3(0, i, j), new THREE.Vector3(N-1, i, j));
-            // Y-lines
             points.push(new THREE.Vector3(i, 0, j), new THREE.Vector3(i, N-1, j));
-            // Z-lines
             points.push(new THREE.Vector3(i, j, 0), new THREE.Vector3(i, j, N-1));
         }
     }
 
-    // All 26 Directions (Mode 2 only)
     if (gridMode === 2) {
-        // We connect every point to its neighbors. 
-        // To avoid duplicate lines, we only draw forward-facing vectors.
         for (let x = 0; x < N; x++) {
             for (let y = 0; y < N; y++) {
                 for (let z = 0; z < N; z++) {
                     const origin = new THREE.Vector3(x,y,z);
-                    // Check neighbors in positive directions to avoid dupes
-                    // Vectors: (1,0,0), (0,1,0), (0,0,1) are already done above.
-                    // We need diagonals.
                     const diags = [
-                        [1,1,0], [1,-1,0], 
-                        [1,0,1], [1,0,-1], 
-                        [0,1,1], [0,1,-1], 
-                        [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1] 
+                        [1,1,0], [1,-1,0], [1,0,1], [1,0,-1], 
+                        [0,1,1], [0,1,-1], [1,1,1], [1,1,-1], [1,-1,1], [1,-1,-1] 
                     ];
-                    
                     diags.forEach(d => {
                         const nx = x + d[0], ny = y + d[1], nz = z + d[2];
                         if (nx >=0 && nx < N && ny >=0 && ny < N && nz >=0 && nz < N) {
@@ -450,42 +2083,81 @@ function update3DGrid() {
 
 function update3D() {
     if (!stoneGroup) return;
-    
-    // 1. Update Axes Visibility
     if (axesHelper) axesHelper.visible = showAxes;
-
-    // 2. Rebuild Grid if mode changed (checked roughly via simple flag or just rebuild)
     update3DGrid(); 
 
-    // 3. Rebuild Stones
-    while(stoneGroup.children.length > 0) stoneGroup.remove(stoneGroup.children[0]);
+    while(stoneGroup.children.length > 0) {
+        let child = stoneGroup.children[0];
+        stoneGroup.remove(child);
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+            else child.material.dispose();
+        }
+    }
 
-    // Calculate radii based on sliders (slider value 0.1 to 1.0 represents Diameter)
-    // So Radius = Diameter / 2
     const pRadius = playerBallSize / 2;
     const hRadius = hintBallSize / 2;
-
     const stoneGeo = new THREE.SphereGeometry(pRadius, 32, 32);
     const hintGeo = new THREE.SphereGeometry(hRadius, 16, 16);
-    
-    // Glassy Materials
-    const glassParams = { 
-        roughness: 0.1, 
-        metalness: 0.1, 
-        transparent: true, 
-        opacity: 0.8 // Slightly more opaque than hints
-    };
-    
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xff0000, ...glassParams });
-    const greenMat = new THREE.MeshStandardMaterial({ color: 0x00ff00, ...glassParams });
-    const hintMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffff00, 
-        transparent: true, 
-        opacity: 0.5,
-        roughness: 0.2 
-    });
+    const bestMoveGeo = new THREE.SphereGeometry(hRadius * 2, 16, 16);
 
-    // Draw Stones
+    if (showCategories) {
+        const catColors = [
+            0x444444, 0xFFFFFF, 0xFFFFFF, 0xFFD700, 
+            0x8B0000, 0xFF0000, 0x0000FF, 0xFFA500, 
+            0x008000, 0x90EE90 
+        ];
+        const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        for(let x=0; x<N; x++) {
+            for(let y=0; y<N; y++) {
+                for(let z=0; z<N; z++) {
+                    const cat = categoryMap[x][y][z];
+                    const mat = new THREE.MeshStandardMaterial({ 
+                        color: catColors[cat] || 0x888888,
+                        roughness: 0.4, transparent: true, opacity: 0.8
+                    });
+                    const mesh = new THREE.Mesh(debugGeo, mat);
+                    mesh.position.set(x,y,z);
+                    mesh.userData = { isHint: false, x:x, y:y, z:z }; 
+                    stoneGroup.add(mesh);
+                }
+            }
+        }
+        return; 
+    }
+
+    if (showValues) {
+        const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        for(let x=0; x<N; x++) {
+            for(let y=0; y<N; y++) {
+                for(let z=0; z<N; z++) {
+                    const cat = categoryMap[x][y][z];
+                    const weight = currentBrain.weights[cat] || 0;
+                    let col = 0x888888;
+                    if (weight > 0) {
+                        if (weight >= 500) col = 0xFFD700; 
+                        else col = 0x00FF00; 
+                    } else if (weight < 0) col = 0xFF0000; 
+
+                    const mat = new THREE.MeshStandardMaterial({ 
+                        color: col, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 0.6
+                    });
+                    const mesh = new THREE.Mesh(debugGeo, mat);
+                    mesh.position.set(x,y,z);
+                    mesh.userData = { isHint: false, x:x, y:y, z:z }; 
+                    stoneGroup.add(mesh);
+                }
+            }
+        }
+        return;
+    }
+
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
+    const greenMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, roughness: 0.2, metalness: 0.1 });
+    const hintColorHex = (activePlayer === 1) ? 0x7f0000 : 0x007f00;
+    const hintMat = new THREE.MeshStandardMaterial({ color: hintColorHex, transparent: true, opacity: 0.8, roughness: 0.2 });
+
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
             for(let z=0; z<N; z++) {
@@ -493,18 +2165,19 @@ function update3D() {
                 if (val !== 0) {
                     const mesh = new THREE.Mesh(stoneGeo, val === 1 ? redMat : greenMat);
                     mesh.position.set(x, y, z);
-                    mesh.userData = { isHint: false };
+                    mesh.userData = { isHint: false, x: x, y: y, z: z };
                     stoneGroup.add(mesh);
                 }
             }
         }
     }
 
-    // Draw Hints
-    if (showHints) {
+    if (showHints && !isAIThinking) {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
-            const mesh = new THREE.Mesh(hintGeo, hintMat);
+            const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
+            const geometry = isBest ? bestMoveGeo : hintGeo;
+            const mesh = new THREE.Mesh(geometry, hintMat);
             mesh.position.set(x, y, z);
             mesh.userData = { isHint: true, x: x, y: y, z: z };
             stoneGroup.add(mesh);
@@ -512,8 +2185,34 @@ function update3D() {
     }
 }
 
+function on3DMouseMove(event) {
+    if (!showHover || !hoverTooltip) {
+        if (hoverTooltip) hoverTooltip.style.display = 'none';
+        return;
+    }
+
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(stoneGroup.children);
+
+    if (intersects.length > 0) {
+        const obj = intersects[0].object;
+        const {x, y, z} = obj.userData;
+        if (x !== undefined) {
+            hoverTooltip.textContent = `(${x}, ${y}, ${z})`;
+            hoverTooltip.style.display = 'block';
+            hoverTooltip.style.left = (event.clientX + 15) + 'px';
+            hoverTooltip.style.top = (event.clientY + 15) + 'px';
+        }
+    } else hoverTooltip.style.display = 'none';
+}
+
 function on3DClick(event) {
-    if (!showHints) return; // Can't click what you can't see
+    if (handleBoardClick()) return; 
+    if (isAIThinking) return;
 
     const rect = renderer.domElement.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -524,8 +2223,8 @@ function on3DClick(event) {
 
     for (let i = 0; i < intersects.length; i++) {
         const obj = intersects[i].object;
+        if (showCategories || showValues) return;
         if (obj.userData.isHint) {
-//            log(`Clicked 3D Hint at (${obj.userData.x}, ${obj.userData.y}, ${obj.userData.z})`);
             executeMove(obj.userData.x, obj.userData.y, obj.userData.z);
             return; 
         }
@@ -534,14 +2233,44 @@ function on3DClick(event) {
 
 function animate() {
     animationId = requestAnimationFrame(animate); 
-    controls.update();
+    if (controls) controls.update();
     renderer.render(scene, camera);
 }
 
-// --- 5. UI LAYOUT ---
+// 6. UI LAYOUT
 
 function initLayout() {
     if (gameCube.length !== N) initGameData();
+
+    let fileInp = document.getElementById('brainFileInput');
+    if (!fileInp) {
+        fileInp = el('input', { type: 'file', id: 'brainFileInput', style: 'display: none;', accept: '.js,.json' });
+        document.body.appendChild(fileInp);
+    }
+    fileInp.onchange = (e) => {
+        let file = e.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                let text = evt.target.result;
+                let match = text.match(/\[[\s\S]*\]/); 
+                if (match) {
+                    let parsed = eval(match[0]);
+                    if (Array.isArray(parsed)) {
+                        BrainList = parsed;
+                        editBrainIndex = 0;
+                        updateBrainUI();
+                        log("Brains imported successfully.");
+                    }
+                }
+            } catch (err) {
+                log("Failed to parse file.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = ''; 
+    };
 
     const root = document.getElementById('gameTable');
     if (!root) return;
@@ -549,143 +2278,452 @@ function initLayout() {
 
     root.style.display = 'flex';
     root.style.flexDirection = 'row';
-    root.style.gap = `${S}px`; 
-    root.style.padding = `${S}px`;
+    root.style.gap = '2px'; 
+    root.style.padding = '2px';
     root.style.fontFamily = 'sans-serif';
 
-    // --- COLUMN 1: CONTROLS (Mill Style) ---
-    const col1 = el('div', { class: 'col-controls', style: 'min-width: 220px; max-width: 220px; display: flex; flex-direction: column; gap: 8px;' },
-        
-        // 1. Status / Info Box
-        el('div', { 
-            id: 'game-info',
-            style: `background-color: rgb(200,255,255); color: navy; padding: 10px; border-radius: 4px; text-align: center; border: 1px solid navy;`
-        }, "Initializing..."),
+    let scaleInput = el('input', { type: 'text', value: S, title: '3D Render Scale', style: 'width: 30px; text-align: center;' });
+    setupSmartInput(scaleInput, (val) => {
+        let safeS = Math.max(20, Math.min(60, parseInt(val) || 40));
+        S = safeS;
+        initLayout();
+        return safeS;
+    });
 
-        // 2. Status Log (Scrolling)
+    let historyInput = el('input', { id: 'nav-move-num', type: 'text', value: currentMoveIndex, title: 'Current Move Number', style: 'width: 30px; text-align: center;' });
+    setupSmartInput(historyInput, (val) => {
+        let maxIdx = Math.max(0, moveHistory.length - 1);
+        let safeVal = Math.max(0, Math.min(parseInt(val) || 0, maxIdx));
+        loadHistoryState(safeVal);
+        return safeVal;
+    });
+
+    let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center;' });
+    setupSmartInput(workerInput, (val) => {
+        let safeW = Math.max(1, Math.min(32, parseInt(val) || 4)); 
+        numWorkers = safeW;
+        return safeW;
+    });
+
+    function makeWeightInput(label, index, title) {
+        let inp = el('input', {
+            id: `p_W${index}`,
+            type: 'text',
+            value: BrainList[editBrainIndex].weights[index],
+            style: 'width: 38px; text-align: center; font-size: 0.85em; padding: 1px;',
+            title: title
+        });
+        setupSmartInput(inp, (val) => {
+            let parsed = parseInt(val);
+            let safeVal = isNaN(parsed) ? 0 : parsed;
+            BrainList[editBrainIndex].weights[index] = safeVal;
+            return safeVal;
+        });
+        return el('div', {style: 'display: flex; flex-direction: column; align-items: center; gap: 1px;'}, 
+            el('span', {text: label, style: 'font-size: 0.7em;', title: title}), 
+            inp
+        );
+    }
+
+    // COLUMN 1: CONTROLS
+    const col1 = el('div', { 
+        class: 'col-controls', 
+        style: `min-width: 280px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; max-height: ${23 * S}px; overflow-y: auto; padding-right: 5px;` 
+    },
+        
+        // 1. Title / Engine Toggle
+        el('button', { 
+            id: 'engine-toggle-btn',
+            title: 'Click to toggle between C++ and JS evaluation engines',
+            style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: sans-serif; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
+            onclick: (e) => {
+                if (engineMode === 'JS') {
+                    if (wasmModule) {
+                        engineMode = 'WASM';
+                        log("Switched to C++ Engine.");
+                    } else {
+                        alert("WASM module not loaded. Please compile ReversiEngine.cpp");
+                    }
+                } else {
+                    engineMode = 'JS';
+                    log("Switched to JS Engine.");
+                }
+                updateEngineButtonUI();
+            }
+        }),
+
+        // 2. Status Box
         el('div', { 
             id: 'status-box',
-            style: `background-color: rgb(200,255,255); color: navy; height: 100px; overflow-y: auto; padding: 5px; font-size: 0.8em; border: 1px solid navy; font-family: monospace;`
+            title: 'General Status Info',
+            style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: sans-serif; text-align: center; font-weight: bold;`
         }),
 
-        // 3. Main Game Controls
-        el('button', { 
-            text: 'Reset Game', 
-            style: 'background-color: red; color: yellow; font-size: 16px; font-weight: bold; padding: 5px;',
-            onclick: () => resetGame() 
-        }),
-
-        // 4. History Navigation
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { text: '<', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
-            el('input', { 
-                id: 'nav-move-num', type: 'text', value: '0', 
-                style: 'width: 40px; text-align: center;', readonly: true 
-            }),
-            el('button', { text: '>', style: 'flex:1; font-weight:bold;', onclick: () => loadHistoryState(currentMoveIndex + 1) })
-        ),
-
-        createSpacer(5),
-        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-
-        // 5. Configuration (S and N)
-        el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
-            el('label', { text: 'Scale:' }),
-            el('input', { 
-                type: 'number', min: '15', max: '40', value: S, style: 'width: 40px;',
-                onchange: (e) => { S = parseInt(e.target.value); initLayout(); }
-            }),
-            el('label', { text: 'Size:' }),
-            el('select', { 
-                style: 'width: 40px;',
-                onchange: (e) => { N = parseInt(e.target.value); resetGame(); } 
-            },
-                el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
-                el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
-                el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
-            )
-        ),
-
-        el('hr', { style: 'width:100%; border:0; border-top:1px solid #ccc;' }),
-        el('div', { text: 'Visualization', style: 'font-weight: bold; text-align: center;' }),
-
-        // 6. Toggles (Colored Buttons)
-        el('div', { style: 'display: flex; gap: 5px;' },
+        // 3. Play Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
             el('button', { 
-                text: 'Hints', 
-                id: 'btn-hints',
-                style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                id: 'btn-play',
+                text: isPlaying ? 'Playing' : 'Play',
+                title: 'Start/Stop a game between the selected players. Also stops background tasks.',
+                style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+
+		onclick: (e) => { 
+		    if (currentTask !== 'NONE') {
+			stopTasks();
+			setPlayState(true);
+			updateGameState();
+		    } else {
+			if (isGameOver) return;
+
+			// NEW LOGIC: If we are viewing a past move, truncate the history to resume
+			if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
+			    log(`Resuming game from move ${currentMoveIndex}...`);
+			    moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+			    // lastMoveRecord should be updated to the move that led to this state
+			    lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
+			}
+
+			setPlayState(!isPlaying);
+			if (isPlaying) updateGameState();
+		    }
+		}
+            }),
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
+            el('button', { 
+                id: 'btn-silence',
+                text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+                title: 'Toggle Headless Mode for Tournaments/Evolution',
+                style: `background-color: ${silenceMode?'#800':'#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
                 onclick: (e) => { 
-                    showHints = !showHints; 
-                    e.target.style.backgroundColor = showHints?'green':'grey';
-                    redrawAllSlices(); 
-                    update3D(); 
+                    silenceMode = !silenceMode; 
+                    e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+                    e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
                 } 
             }),
             el('button', { 
-                text: 'Axes', 
-                id: 'btn-axes',
+                text: 'Reset', 
+                title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
+                style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
+                onclick: resetGame
+            })
+          ),
+            el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
+                el('span', { text: 'N=', style: 'font-weight: bold;' }),
+                el('select', { 
+                    id: 'size-select',
+                    title: 'Board Size (N)',
+                    style: 'width: 40px; font-size: 16px; background-color: rgb(200,255,150);',
+                    onchange: (e) => { 
+                        N = parseInt(e.target.value); 
+                        resetGame(); 
+                        initLayout(); 
+                    } 
+                },
+                    el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
+                    el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
+                    el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
+                )
+            )
+        ),
+
+        // 4. Navigation & Board Reset Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+            el('button', { text: '<', title: 'Previous Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+            historyInput,
+            el('button', { text: '>', title: 'Next Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
+            el('button', { text: '>>', title: 'End of Game', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
+                loadHistoryState(moveHistory.length - 1);
+                if (!isPlaying && !isGameOver) {
+                    setPlayState(true);
+                    updateGameState();
+                }
+            }})
+        ),
+
+        // 5. Player Selects
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+            el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
+            el('select', { 
+                id: 'red-type-select', title: 'Red Player Type', style: 'flex: 1; min-width: 0;',
+                onchange: (e) => { 
+                    redType = e.target.value; greenType = redType; 
+                    let gs = document.getElementById('green-type-select');
+                    if (gs) gs.value = greenType;
+                    if(isPlaying) updateGameState(); 
+                } 
+            }),
+            el('span', { text: 'D=' }),
+            el('select', { 
+                id: 'red-depth-select', title: 'Red Search Depth', style: 'width: 45px; background-color: #add8e6;',
+                onchange: (e) => { 
+                    redDepth = parseInt(e.target.value); greenDepth = redDepth;
+                    let gs = document.getElementById('green-depth-select');
+                    if (gs) gs.value = greenDepth;
+                }
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(redDepth===d ? {selected: 'true'} : {}) })))
+        ),
+
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+            el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
+            el('select', { 
+                id: 'green-type-select', title: 'Green Player Type', style: 'flex: 1; min-width: 0;',
+                onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
+            }),
+            el('span', { text: 'D=' }),
+            el('select', { 
+                id: 'green-depth-select', title: 'Green Search Depth', style: 'width: 45px; background-color: #add8e6;',
+                onchange: (e) => { greenDepth = parseInt(e.target.value); }
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
+        ),
+
+        // 6. Game Info / Log Wrapper
+        el('div', { 
+            id: 'game-info-wrapper',
+            style: `background-color: ${scoreBgColor}; color: white; border-radius: 4px; border: 1px solid navy; display: flex; flex-direction: column; height: 160px; overflow: hidden;`
+        },
+            el('div', { id: 'game-score-header', title: 'Current Score', style: 'padding: 4px; border-bottom: 1px solid #555; text-align: center; min-height: 45px; display: flex; flex-direction: column; justify-content: center;' }, "Initializing..."),
+            el('div', { id: 'game-info-log', title: 'Engine Logs and Output', style: 'flex: 1; overflow-y: auto; padding: 4px; font-size: 0.85em; font-family: monospace; white-space: pre-wrap; background-color: #111;' })
+        ),
+        
+        // 7. Value / Moves Row
+        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+            el('button', { 
+                text: 'Value', title: 'Compute Static Value of Current Board',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+                onclick: () => doStaticEval() 
+            }),
+            el('button', { 
+                text: 'Moves', title: 'List Ranked Moves for Current Player',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+                onclick: () => doListMoves() 
+            }),
+            el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
+            el('select', { 
+                title: 'Search Depth for Static Eval and Moves List',
+                style: 'width: 45px; background-color: #add8e6;',
+                onchange: (e) => { evalDepth = parseInt(e.target.value); }
+            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
+        ),
+
+        // Other options
+        el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
+            el('label', { text: 'Scale:' }),
+            el('div', { style: 'display: flex; gap: 2px;' },
+                el('button', { text: '<', title: 'Decrease Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
+                scaleInput,
+                el('button', { text: '>', title: 'Increase Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
+            ),
+            el('label', { text: 'W:' }), workerInput
+        ),
+
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Fullscreen', title: 'Toggle Fullscreen Mode',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+                onclick: () => toggleFullscreen() 
+            }),
+            el('button', { 
+                text: orthographicMode ? 'Perspective' : 'Infinity', title: 'Toggle Camera Projection Mode',
+                id: 'btn-camera',
+                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+                onclick: () => { toggleCamera(); document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity'; }
+            })
+        ),
+
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Hints', id: 'btn-hints', title: 'Toggle Hint Markers',
+                style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { showHints = !showHints; e.target.style.backgroundColor = showHints?'green':'grey'; redrawAllSlices(); update3D(); } 
+            }),
+            el('button', { 
+                text: 'Axes', id: 'btn-axes', title: 'Toggle XYZ Axes',
                 style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { showAxes = !showAxes; e.target.style.backgroundColor = showAxes?'green':'grey'; update3D(); } 
+            }),
+            el('button', { 
+                text: 'Hover', id: 'btn-hover', title: 'Toggle Hover Tooltips',
+                style: `flex:1; background-color: ${showHover?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
                 onclick: (e) => { 
-                    showAxes = !showAxes; 
-                    e.target.style.backgroundColor = showAxes?'green':'grey';
-                    update3D(); 
+                    showHover = !showHover; 
+                    e.target.style.backgroundColor = showHover?'green':'grey'; 
+                    if (!showHover && hoverTooltip) hoverTooltip.style.display = 'none';
+                } 
+            })
+        ),
+        
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                text: 'Cats', id: 'btn-cats', title: 'Toggle Category Coloring',
+                style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showCategories = !showCategories; showValues = false; 
+                    document.getElementById('btn-vals').style.backgroundColor = 'grey';
+                    e.target.style.backgroundColor = showCategories?'green':'grey'; update3D(); 
+                } 
+            }),
+            el('button', { 
+                text: 'Vals', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
+                style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+                onclick: (e) => { 
+                    showValues = !showValues; showCategories = false;
+                    document.getElementById('btn-cats').style.backgroundColor = 'grey';
+                    e.target.style.backgroundColor = showValues?'green':'grey'; update3D(); 
                 } 
             })
         ),
 
-        // 7. Grid Menu
         el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
             el('label', { text: 'Grid:' }),
             el('select', { 
+                id: 'grid-select', title: 'Toggle 3D Grid Visibility',
                 style: 'flex: 1;',
                 onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
             },
-                el('option', { value: '0', text: 'None' }),
-                el('option', { value: '1', text: 'Orthogonal', selected: 'true' }),
-                el('option', { value: '2', text: 'All 26' })
+                el('option', { value: '0', text: 'None', ...(gridMode===0 ? {selected: 'true'} : {}) }),
+                el('option', { value: '1', text: 'Orthogonal', ...(gridMode===1 ? {selected: 'true'} : {}) }),
+                el('option', { value: '2', text: 'All 26', ...(gridMode===2 ? {selected: 'true'} : {}) })
             )
         ),
 
-        // 8. Sliders
-        el('div', { style: 'font-size: 0.9em; margin-top: 5px;' }, "Player Ball Size"),
-        el('input', { 
-            type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize,
-            style: 'width: 100%;',
-            oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); }
-        }),
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                id: 'btn-pruning', text: 'α/β', title: 'Toggle Alpha-Beta Pruning',
+                style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    usePruning = !usePruning;
+                    e.target.style.backgroundColor = usePruning ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-sym', text: 'S', title: 'Toggle Symmetry Filtering',
+                style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    useSymmetry = !useSymmetry;
+                    e.target.style.backgroundColor = useSymmetry ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-rand', text: 'Rand', title: 'Toggle Random Selection for Equal Best Moves',
+                style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    useRandom = !useRandom;
+                    e.target.style.backgroundColor = useRandom ? 'green' : 'red';
+                } 
+            })
+        ),
 
-        el('div', { style: 'font-size: 0.9em;' }, "Hint Ball Size"),
-        el('input', { 
-            type: 'range', min: '0.05', max: '0.5', step: '0.05', value: hintBallSize,
-            style: 'width: 100%;',
-            oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); }
-        })
+        el('div', { style: 'display: flex; gap: 5px;' },
+            el('button', { 
+                id: 'btn-logs', text: 'Logs', title: 'Toggle Duplicate Logs to Console',
+                style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    duplicateLogs = !duplicateLogs;
+                    e.target.style.backgroundColor = duplicateLogs ? 'green' : 'red';
+                } 
+            }),
+            el('button', { 
+                id: 'btn-depths', text: 'Depths', title: 'Toggle Search Depth Visit Stats',
+                style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+                onclick: (e) => { 
+                    showDepths = !showDepths;
+                    e.target.style.backgroundColor = showDepths ? 'green' : 'red';
+                } 
+            })
+        ),
+        
+        el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
+            el('div', { style: 'font-size: 0.9em; font-weight: bold;' }, "B:"),
+            el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, title: 'Player Stone Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
+            el('div', { style: 'font-size: 0.9em; font-weight: bold; margin-left: 5px;' }, "H:"),
+            el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, title: 'Hint Marker Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
+        ),
+
+        // AI LAB / EVOLUTION PANEL
+        el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
+            el('button', {text: 'Import', title: 'Import Brains from a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
+            el('input', {id: 'brainFileName', value: 'brains.js', title: 'Filename to export', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
+            el('button', {text: 'Export', title: 'Export Brains to a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
+            el('button', {text: 'Def.', title: 'Restore Default Brains', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
+        ),
+
+
+        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
+            makeWeightInput('Mob', 0, 'Mobility'),
+            makeWeightInput('Dif', 2, 'Piece Difference'),
+            makeWeightInput('Cor', 3, 'Corners'),
+            makeWeightInput('C-Sq', 4, 'C-Squares'),
+            makeWeightInput('X-Sq', 5, 'X-Squares')
+        ),
+        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
+            makeWeightInput('Edg', 6, 'Edges'),
+            makeWeightInput('IEd', 7, 'Inner Edges'),
+            makeWeightInput('Fac', 8, 'Faces'),
+            makeWeightInput('IFa', 9, 'Inner Faces'),
+            el('div', {style: 'width: 38px;'}) 
+        )
     );
 
-    // --- COLUMN 2: SLICES ---
-    const col2 = el('div', { class: 'col-slices' });
-    const sliceWidth = 5 * S; 
+    let impGenInp = el('input', {id: 'impGenerations', type: 'text', value: impGenVal, title: 'Generations', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impGenInp, val => { impGenVal = Math.max(1, parseInt(val) || 1); return impGenVal; });
+
+    let impGamesInp = el('input', {id: 'impGames', type: 'text', value: impGamesVal, title: 'Games per match', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impGamesInp, val => { impGamesVal = Math.max(1, parseInt(val) || 1); return impGamesVal; });
+
+    let impPercentInp = el('input', {id: 'impPercent', type: 'text', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
+    setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
+
+    let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
+        el('button', {text: 'Evolve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
+        el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+        impGenInp, impGamesInp, impPercentInp
+    );
+    col1.appendChild(evoControlsDiv);
+
+    // TOURNAMENT PANEL
+    col1.appendChild(el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}));
+
+    let tGamesInp = el('input', {id: 'tGames', type: 'text', value: tGamesVal, title: 'Games per pair', style: 'width: 35px; text-align: center; font-size: 0.9em; padding: 2px;'});
+    setupSmartInput(tGamesInp, val => { tGamesVal = Math.max(1, parseInt(val) || 1); return tGamesVal; });
+
+    let tDepthSelect = el('select', { 
+        id: 'tDepth', title: 'Search Depth for Tournaments/Evolution',
+        style: 'width: 45px; background-color: #add8e6;',
+        onchange: (e) => { tDepthVal = parseInt(e.target.value); }
+    }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
+
+    let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
+        el('button', {text: 'Run Tourney', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
+        tGamesInp,
+        el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+        tDepthSelect
+    );
+    col1.appendChild(tourneyControlsDiv);
+
+    // COLUMN 2: SLICES
+    const col2 = el('div', { 
+        class: 'col-slices',
+        style: `height: ${23 * S}px; display: flex; flex-direction: column; justify-content: space-between;`
+    });
+    
+    const sliceWidth = Math.max(50, Math.floor(((23 * S) - 110) / 3)); 
 
     ['X', 'Y', 'Z'].forEach(axis => {
         const cvs = el('canvas', { 
             id: `canvas-${axis}`, 
             width: sliceWidth, 
             height: sliceWidth, 
-            style: `border: 1px solid #333; background: ${backgroundColor}; display: block; cursor: pointer;`,
+            style: `border: 1px solid #333; background: ${backgroundColor}; display: block; cursor: pointer; width: ${sliceWidth}px; height: ${sliceWidth}px;`,
             onclick: (e) => handleCanvasClick(e, axis)
         });
 
         const radioContainer = el('div', { 
-            style: `display: flex; justify-content: space-between; width: ${sliceWidth}px; margin-top: 3px;` 
+            style: `display: flex; justify-content: space-between; width: ${sliceWidth}px; margin-top: 3px; height: 16px;` 
         });
         
         for (let i = 0; i < N; i++) {
             const radio = el('input', { 
-                type: 'radio', 
-                name: `slice-${axis}`, 
-                value: i,
-                title: `Index ${i}`,
+                type: 'radio', name: `slice-${axis}`, value: i, title: `Index ${i}`,
                 style: 'cursor: pointer; margin: 0; padding: 0; transform: scale(0.7);',
                 onchange: (e) => {
                     currentSlices[axis] = parseInt(e.target.value);
@@ -696,28 +2734,31 @@ function initLayout() {
             radioContainer.appendChild(radio);
         }
 
-        col2.appendChild(el('div', { style: `margin-bottom: ${S}px` },
+        col2.appendChild(el('div', { style: `display: flex; flex-direction: column; align-items: center; margin-bottom: 0;` },
             el('div', { text: `${axis}-Axis`, style: 'text-align: center; font-size: 0.8em; margin-bottom: 2px;' }),
             cvs,
             radioContainer
         ));
     });
 
-    // --- COLUMN 3: 3D VIEW ---
+    // COLUMN 3: 3D VIEW
     const col3 = el('div', { class: 'col-3d' },
-        el('div', { text: '3D View', style: 'text-align: center; margin-bottom: 5px;' }),
         el('div', { id: 'view3d-container' })
     );
 
+    // Append to DOM FIRST so getElementById works
     root.appendChild(col1);
     root.appendChild(col2);
     root.appendChild(col3);
 
+    updateEngineButtonUI();
+    updateBrainUI(); 
+    setEngineTaskState('NONE');
     updateGameState();
     redrawAllSlices();
     init3D();
 }
 
-// --- 6. START THE GAME ---
+// 7. START THE GAME
 initGameData();
 initLayout();
