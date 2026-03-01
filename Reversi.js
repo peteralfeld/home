@@ -5,6 +5,11 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
 
+// Timing parameters:
+let tick;
+let tock;
+let startTime;
+
 // CONFIGURATION & STATE
 let redColor = "rgb(255,50,50)";  
 let greenColor = "rgb(50,255,50)";
@@ -94,9 +99,6 @@ for (let i = 0; i < 10; i++) {
    Jolly.weights[i] = -Arwen.weights[i];
 }
 
-
-
-
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
 
@@ -179,8 +181,11 @@ function el(tag, attrs = {}, ...children) {
     return element;
 }
 
-function commas(x) {
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+function commas(z) {
+    if (isFinite(z)) {
+        return z.toLocaleString();
+    }
+    return z;
 }
 
 function log(msg) {
@@ -465,7 +470,12 @@ function downloadRevisedBrain(brain) {
 
 function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair, globalStats) {
     let csv = "Reversi Tournament Results\n";
-    csv += `Date,"${new Date().toLocaleString()}"\n`;
+    csv += "Starting Date:, ";       
+    csv += tick.toLocaleString() + "\n";
+    tock = new Date();
+    csv += "Ending Date:, ";
+    csv += tick.toLocaleString() + "\n";
+    csv += "Duration:," + `"${commas(tock - tick)} ms"` + "\n";
     csv += `Board Size,${N}x${N}x${N}\n`;
     csv += "Parameters: \n";
     csv += `Games per Pair,${gamesPerPair}\n`;
@@ -483,7 +493,7 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     });
     csv += "\n";
     
-    csv += "Head-to-Head (Points received by Row Player when playing against Column Player)\n";
+    csv += "Head-to-Head\n";
     let opponentNames = displayPlayers.map(p => p.name).join(",");
     csv += "Row vs Col," + opponentNames + "\n";
     displayPlayers.forEach(p1 => {
@@ -505,7 +515,7 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     });
     csv += "\n";
     
-    csv += "Global Color Performance (First Mover Stats):\n";
+    csv += "Global Color Performance:\n";
     csv += `Red (First Mover) Wins,${globalStats.redWins}\n`;
     csv += `Green (Second Mover) Wins,${globalStats.greenWins}\n`;
     csv += `Total Draws,${globalStats.draws}\n`;
@@ -1167,6 +1177,8 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
 }
 
 async function runTournament() {
+    tick = new Date();
+
     setEngineTaskState('TOURNEY');
     cancelBackgroundTasks = false;
     
