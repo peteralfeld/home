@@ -474,8 +474,9 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     csv += tick.toLocaleString() + "\n";
     tock = new Date();
     csv += "Ending Date:, ";
-    csv += tick.toLocaleString() + "\n";
+    csv += tock.toLocaleString() + "\n";
     csv += "Duration:," + `"${commas(tock - tick)} ms"` + "\n";
+    csv += "Number of Workers: " + numWorkers +"\n";
     csv += `Board Size,${N}x${N}x${N}\n`;
     csv += "Parameters: \n";
     csv += `Games per Pair,${gamesPerPair}\n`;
@@ -1352,7 +1353,7 @@ async function runTournament() {
     if (cancelBackgroundTasks) {
         log("Tournament cancelled by user.");
     } else {
-        log(`Tourney Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
+        log(`Tournament Done! Red: ${globalStats.redWins} | Green: ${globalStats.greenWins} | Draws: ${globalStats.draws}`);
         downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
     }
     setEngineTaskState('NONE');
@@ -2693,7 +2694,7 @@ function initLayout() {
     }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
 
     let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
-        el('button', {text: 'Run Tourney', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
+        el('button', {text: 'Run Tournament', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
         tGamesInp,
         el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
         tDepthSelect
