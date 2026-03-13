@@ -1,7 +1,7 @@
 // Three-dimensional Reversi by Peter Alfeld. 
 // started 2/15/26
 // Players are Red (1) and Green (2). Red starts.
-// 3/13/26: 2D added
+// 3/13/26: 2D added ....
 
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
