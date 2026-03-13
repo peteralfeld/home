@@ -322,6 +322,8 @@ self.onmessage = async function(e) {
             newBoard = t;
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
+// Yield to the event loop so the browser watchdog doesn't kill the worker
+            await new Promise(r => setTimeout(r, 0));
         }
 
         let s1 = 0, s2 = 0;

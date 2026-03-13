@@ -43,13 +43,14 @@ function getWorker() {
     activeWorkers.add(w);
     return w;
 }
+
 function releaseWorker(worker) {
     worker.onmessage = null; 
     worker.currentResolve = null;
     activeWorkers.delete(worker);
-    workerPool.push(worker);
+    // RESTORED: Keep the worker alive to reuse the WASM memory
+    workerPool.push(worker); 
 }
-
 async function loadWasmEngine() {
     try {
         const response = await fetch('ReversiEngine.wasm');
@@ -87,14 +88,22 @@ const Eowyn = {
 };
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
+const Hamfast = {
+    name: "Hamfast",
+    weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
+};
+
+
 let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
-let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
+// let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
 let Indis = makeBrain("Indis", 0,0,0,0,0,0,0,0,0,0);
 let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
 
+
+
 for (let i = 0; i < 10; i++) {
    Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
-   Hamfast.weights[i] = 1000;
+//   Hamfast.weights[i] = 1000;
    Indis.weights[i] = 0;
    Jolly.weights[i] = -Arwen.weights[i];
 }
@@ -189,15 +198,17 @@ function commas(z) {
 }
 
 function log(msg) {
-    if (duplicateLogs) console.log(msg); 
-    let logDiv = document.getElementById('game-info-log');
-    if (logDiv) {
-        logDiv.textContent += msg + '\n';
-        logDiv.scrollTop = logDiv.scrollHeight; 
+    console.log(msg); 
+    if (duplicateLogs) {
+	let logDiv = document.getElementById('game-info-log');
+	if (logDiv) {
+            logDiv.textContent += msg + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight; 
+	}
     }
 }
 
-function techLog(msg) {
+function techLog(msg) { 
     console.log(msg); 
 }
 
@@ -343,7 +354,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 7 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 8 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
@@ -1359,7 +1370,10 @@ async function runTournament() {
     setEngineTaskState('NONE');
 }
 
-async function runImprovement() {
+
+    async function runImprovement() {
+	let logCopy = duplicateLogs;
+	duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
     
@@ -1418,12 +1432,6 @@ async function runImprovement() {
 
             downloadRevisedBrain(baseBrain);
         }
-//	else {
-//            currentRate *= 0.95;
-//            if (currentRate < 1) currentRate = 1;
-//            document.getElementById('impPercent').value = Math.round(currentRate);
-//            impMutVal = Math.round(currentRate);
-
     }
     if (cancelBackgroundTasks) {
         log("Evolution cancelled by user.");
@@ -1431,6 +1439,7 @@ async function runImprovement() {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
+	duplicateLogs = logCopy;
 }
 
 
@@ -1854,14 +1863,44 @@ function drawSlice(canvas, axis, sliceIndex) {
     ctx.fillStyle = backgroundColor;
     ctx.fillRect(0, 0, size, size);
 
-    const step = size / N; 
-    const offset = step / 2;
+    // --- NEW: Margin for axis scales ---
+    const margin = 24; 
+    const boardSize = size - margin;
+    const step = boardSize / N; 
+    const offset = margin + step / 2;
 
+    // Draw axis scales
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Determine correct axis labels for the current slice
+    let hAxis, vAxis;
+    if (axis === 'X') { hAxis = 'Y'; vAxis = 'Z'; }
+    else if (axis === 'Y') { hAxis = 'X'; vAxis = 'Z'; }
+    else { hAxis = 'X'; vAxis = 'Y'; }
+
+    // Top-left corner axis labels
+    ctx.font = '10px sans-serif';
+    ctx.fillText(`${vAxis} \\ ${hAxis}`, margin / 2, margin / 2);
+
+    ctx.font = '12px sans-serif';
+    // Draw horizontal numbers (1 to N)
+    for (let i = 0; i < N; i++) {
+        ctx.fillText((i + 1).toString(), offset + (i * step), margin / 2);
+    }
+    // Draw vertical numbers (1 to N)
+    for (let j = 0; j < N; j++) {
+        ctx.fillText((j + 1).toString(), margin / 2, offset + (j * step));
+    }
+
+    // Preserve original wireframe grid style
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
+    
     const lineStart = offset;
-    const lineEnd = size - offset;
+    const lineEnd = margin + boardSize - step / 2;
 
     for (let i = 0; i < N; i++) {
         const pos = offset + (i * step);
@@ -1870,6 +1909,7 @@ function drawSlice(canvas, axis, sliceIndex) {
     }
     ctx.stroke();
 
+    // Draw pieces and hints
     for (let i = 0; i < N; i++) { 
         for (let j = 0; j < N; j++) { 
             let x, y, z;
@@ -1912,10 +1952,22 @@ function handleCanvasClick(event, axis) {
 
     const rect = event.target.getBoundingClientRect();
     const size = event.target.width;
-    const step = size / N; 
-    const offset = step / 2;
-    const i = Math.round((event.clientX - rect.left - offset) / step);
-    const j = Math.round((event.clientY - rect.top - offset) / step);
+    
+    // --- NEW: Adjust math for the axis margin ---
+    const margin = 24; 
+    const boardSize = size - margin;
+    const step = boardSize / N; 
+    
+    // Offset raw click coordinates by the margin
+    const clickX = event.clientX - rect.left - margin;
+    const clickY = event.clientY - rect.top - margin;
+
+    // Ignore clicks inside the margin (scales) or out of bounds
+    if (clickX < 0 || clickY < 0 || clickX > boardSize || clickY > boardSize) return;
+
+    // Map click to grid index
+    const i = Math.floor(clickX / step);
+    const j = Math.floor(clickY / step);
 
     if (i >= 0 && i < N && j >= 0 && j < N) {
         let x, y, z, sliceIndex = currentSlices[axis];
@@ -2353,7 +2405,20 @@ function initLayout() {
             }
         }),
 
-        // 2. Status Box
+
+// 1.5 NEW: Help Link (Second Row)
+el('div', { style: 'text-align: center; margin: 4px 0;' }, 
+     // <--- Note the opening bracket here
+        el('a', { 
+            href: 'Reversi.html', 
+            target: '_blank', 
+            text: 'Click for rules and instructions', 
+            title: 'link to game rules and instructions',
+            style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
+        })
+),
+
+		    // 2. Status Box
         el('div', { 
             id: 'status-box',
             title: 'General Status Info',
