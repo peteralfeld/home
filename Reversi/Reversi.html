@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Reversi Rules and User's Guide</title>
+    <link rel="stylesheet" href="Reversi.css">
+</head>
+<body>
+
+  <H1> 3D Reversi Rules and User's Guide</H1>
+
+  <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page. 
+
+<h2> The Rules of the Game </h2>
+								       
+<p> The game of <i>Reversi</i>   (also known as <i>Othello</i>) is usually played on an 8x8 2D Board, as shown in Figure 1.   The novel feature of this online version is that you can play it in 3D.   But the easiest way to understand the rules is to start with the 2D rules.   The transfer of those rules to the 3D case will be straightforward. <table style ="float: left">
+  <tr><TD><IMG SRC = "start.png" style = "height: 270px; width: auto; float: left; margin-right:10px"><img></td></tr>
+  <tr><td><b>Fig. 1: Initial Board </b> </td><tr> </table>
+The game is played by two players, usually denoted as Black and White.   However, when I first played Reversi many years ago the players were Red and Green and I have used that color scheme on this site.  The players have a supply of <i>markers</i> (or <i>pieces</i>) that are red on one side and green on the other.   Thus the markers can be <i>reversed</i> (or <i>turned</i> or <i>flipped</i>) and switch color.
+Figure 1 shows the initial state of the 8x8 2D Board.  There is a grid with 8x8 = 64 intersections. At the start of the game there are red markers on 4-5 (horizontal-vertical) and 5-4, and green markers on 4-4 and 5-5.  The players take flips placing markers on the board.  Their goal is to enclose contiguous chains of the opponents pieces between two pieces of their own. If they can do that the pieces in the enclosed chain change colors.   The player with the most pieces at the end wins.  For example, at the beginning, Red could play on 4-3 or 3-4 and flip 4-4, or play on 6-5 or 5-6 and flip 5-5.
+
+
+<p> The following four boards illustrate a possible sequence of the first four moves.   The picture shows the status of the board <e>after the indicated move.
+
+    <table>
+      <tr>
+        <td>
+	<table>
+	  <tr>	<td><IMG SRC="1.png" style="height: 270px; width: auto"></td><tr>
+          <tr><td>Red places on 3-4 and flips 4-4</td></tr>
+          </table>
+        <td>
+        <td>
+	<table>
+	  <tr>	<td><IMG SRC="2.png" style="height: 270px; width: auto"></td><tr>
+          <tr><td>Green places on 3-3 and flips 4-4</td></tr>
+          </table>
+        <td>
+        <td>
+	<table>
+	  <tr>	<td><IMG SRC="3.png" style="height: 270px; width: auto"></td><tr>
+          <tr><td>Red places on 4-3 and flips 4-4 </td></tr>
+          </table>
+        <td>
+        <td>
+	<table>
+	  <tr>	<td><IMG SRC="4.png" style="height: 270px; width: auto"></td><tr>
+          <tr><td>Green places on 5-3 and flips 4-3 and 5-4</td></tr>
+          </table>
+        <td>
+
+      </tr>
+      </table>
+
+    <p> Here is a list of specific rules:
+      <OL>
+	<li> Starting with Red, the players take turns placing their pieces.   The player whose turn it is is <i>the current player</i>, the other player is <i>the opponent</i>.</li>
+	<LI> Any stone placed by the current player must flip at least one of the opponent's pieces.</li>
+	<li> The current player must play a legal placement if possible.   If no legal placement is available the current player forfeits the turn, and the opponent becomes the current player.  </li>
+	<LI> After each placement all of the opponent's
+pieces contained in enclosed chains <e>must be</e> flipped.</li>
+        <LI> The game ends when neither player can make a legal move. The player with more pieces wins.</li>
+	<li> The game is a <i>draw</i> if both players have the same number of pieces at the end of the game.</li>
+
+
+<p>      To illustrate some aspects of the game, note the following:
+     
+
+<LI>once a piece is placed it may change color but it never moves, and it never gets removed from the board.</LI>
+<LI>Neither player may skip a valid move, or choose not to flip some of the opponent's enclosed pieces.</LI>
+<LI>As the game proceeds the number of red and green pieces undergo large swings back and forth.   This gives an advantage to the last player.   Any, potentially large, gain on the last turn cannot be undone by the opponent.</li>
+<LI>Since a player may not have have a legal placement, and thereby forfeit that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.
+<Ii> Corners are very special.   Once a player places piece in a corner it will never change color there.   Much of the game strategy consists of gaining corners, and preventing the opponents from gaining corners.  Similar considerations apply to edges.</li>
+<li> Usually a game consists of 60 (64 board points - the four points occupied from the beginning.  But since a player may have to forfeit a turn it may take longer, and it may also end early with empty spots left on the board, but no legal placements being available for either player.   For example, if it was Green's turn in the last board of the above sequence, Green could play 3-5.  As a result, all pieces would turn green, neither player would have a legal move available, and the game would end with nine green pieces, and zero red pieces.
+
+  </OL>
+
+<H3> The 3D Game</H3>
+
+<p> The 3D game is played exactly like the 2D game, except that now there are more neighbors for each point, and the chains of enclosed pieces can run in  more directions.    In fact, the number of directions increases from 8 to 26 neighbors.    To see this note that an interior point and its neighbors in the grid form a 3x3x3 cube which contains 27 points.   The innermost point is not a neighbor of itself, so that point has a total of 3<sup>3</sup>-1=27-1 = 26 neighbors, each corresponding to a potential chain of enclosed opposing pieces.  (On the 2x2 board we have 3<sup>2</sup>-1 = 8 neighbors, and in n dimensions we have 3<sup>n</sup>-1 neighbors.   You can place pieces in a three dimensional array by using the interactive 3D display or in a two-dimensional cross section of the board.
+
+  <H2>User's Guide </H2>
+You can run the game <a href="index.html">
+
+
+</body>
+</html>
