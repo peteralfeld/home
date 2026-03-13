@@ -13,14 +13,17 @@ let startTime;
 // CONFIGURATION & STATE
 let redColor = "rgb(255,50,50)";  
 let greenColor = "rgb(50,255,50)";
+let millTitleColor = "navy";
+let scoreBgColor = "#333333";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
-let backgroundColor = "rgb(0,0,0)";
+let playMode = '3D'; // default is 3D
+let color2D = "rgb(0,0,100)"; // Dark blue for 2D
+let color3D = "rgb(0,0,0)";   // Black for 3D
+let backgroundColor = color3D; // Starts in 3D mode
 let millTitleBg = "#ffffcc";
-let millTitleColor = "navy";
-let scoreBgColor = "#333333"; 
 
-let S = 40;   
+let S = 45;   
 let N = 6;    
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
 let duplicateLogs = true; 
@@ -48,7 +51,6 @@ function releaseWorker(worker) {
     worker.onmessage = null; 
     worker.currentResolve = null;
     activeWorkers.delete(worker);
-    // RESTORED: Keep the worker alive to reuse the WASM memory
     workerPool.push(worker); 
 }
 async function loadWasmEngine() {
@@ -75,44 +77,51 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
 }
 
 // Normalized to max parameter = 1000
+
 const Arwen = {
     name: "Arwen",
     weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
 };
-const Bilbo = makeBrain("Bilbo", 17, 0, 24, 1000, -8, -15, 72, -5, 6, -2);
+
+const Bilbo = {
+    name: "Bilbo",
+    weights: [14, 0, 6, 1000, -1, -8, 91, -3, 4, -1]
+};
+
 const Celebrian = makeBrain("Celebrian", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
-const Dwalin = makeBrain("Dwalin", 16, 0, 22, 1000, -8, -13, 71, -5, 7, -2); 
+
 const Eowyn = {
     name: "Eowyn",
     weights: [16, 0, 28, 1000, -10, -20, 191, -2, 3, -3]
 };
+
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
-const Hamfast = {
-    name: "Hamfast",
+const Dwalin = {
+    name: "Dwalin",
     weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
 };
 
 
 let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
-// let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
+let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
 let Indis = makeBrain("Indis", 0,0,0,0,0,0,0,0,0,0);
 let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
 
 
 
 for (let i = 0; i < 10; i++) {
-   Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
-//   Hamfast.weights[i] = 1000;
-   Indis.weights[i] = 0;
-   Jolly.weights[i] = -Arwen.weights[i];
+    Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
+    Hamfast.weights[i] = 1000;
+    Indis.weights[i] = 0;
+    Jolly.weights[i] = -Arwen.weights[i];
 }
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
 
 let editBrainIndex = 0;
-const activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
+let activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
 
 // Player / UI Configuration
 let redType = 'Human';   
@@ -166,6 +175,7 @@ let hintBallSize = 0.125;
 // Camera Settings
 let cameraPersp, cameraOrtho;
 let orthographicMode = false;
+let isMajesticRotation = true;
 
 // 3D GLOBAL VARIABLES
 let scene, camera, renderer, controls;
@@ -354,7 +364,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 8 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 9 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
@@ -602,15 +612,24 @@ function initGameData() {
     activePlayer = 1; 
 
     const mid = (N / 2) - 1;
-    currentSlices = { X: mid, Y: mid, Z: mid };
+    // Force the Z-slice to 0 when in 2D mode
+    currentSlices = { X: mid, Y: mid, Z: playMode === '2D' ? 0 : mid };
 
-    const centerIndices = [mid, mid + 1];
-    for (let x of centerIndices) {
-        for (let y of centerIndices) {
-            for (let z of centerIndices) {
-                gameCube[x][y][z] = (x + y + z) % 2 === 0 ? 1 : 2;
+    if (playMode === '3D') {
+        const centerIndices = [mid, mid + 1];
+        for (let x of centerIndices) {
+            for (let y of centerIndices) {
+                for (let z of centerIndices) {
+                    gameCube[x][y][z] = (x + y + z) % 2 === 0 ? 1 : 2;
+                }
             }
         }
+    } else {
+        // 2D Mode: Setup standard 4 pieces on the z=0 face
+        gameCube[mid][mid][0] = 2;             // Green
+        gameCube[mid + 1][mid + 1][0] = 2;     // Green
+        gameCube[mid][mid + 1][0] = 1;         // Red
+        gameCube[mid + 1][mid][0] = 1;         // Red
     }
 
     initGeometry();
@@ -1222,22 +1241,20 @@ async function runTournament() {
     } else {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
-	for (let i = 0; i < pIndices.length; i++) {
+        for (let i = 0; i < pIndices.length; i++) {
             for (let j = 0; j < pIndices.length; j++) {
-		if (i === j) continue; // A player doesn't play themselves
+                if (i === j) continue; 
 
-		// Each pair now plays tGamesVal matches. 
-		// In each match, the first player (idx1) is Red.
-		for (let g = 0; g < tGamesVal; g++) {
+                for (let g = 0; g < tGamesVal; g++) {
                     let p1 = BrainList[pIndices[i]];
                     let p2 = BrainList[pIndices[j]];
                     queue.push({ 
-			b1: p1, d1: tDepthVal, idx1: pIndices[i], name1: p1.name, 
-			b2: p2, d2: tDepthVal, idx2: pIndices[j], name2: p2.name 
+                        b1: p1, d1: tDepthVal, idx1: pIndices[i], name1: p1.name, 
+                        b2: p2, d2: tDepthVal, idx2: pIndices[j], name2: p2.name 
                     });
-		}
+                }
             }
-	}
+        }
     }
     
     let scores = {};
@@ -1307,29 +1324,31 @@ async function runTournament() {
                 scores[match.idx2].draws++;
             }
             resultsProcessed++;
-            log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
+            let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+            log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
         }
     } else {
-        let activeWorkers = 0;
+        let activeWorkersCount = 0;
         let runNext = () => {
             return new Promise(resolve => {
                 if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
                 let match = queue.shift();
-                activeWorkers++;
+                activeWorkersCount++;
                 
                 const worker = getWorker();
-                worker.currentResolve = () => resolve(); // Unblocks if cancelled
+                worker.currentResolve = () => resolve(); 
                 worker.onmessage = function(e) {
                     let res = e.data;
                     worker.currentResolve = null;
                     if (res.result === 'match_done') {
-                        if (res.winner === 1) {
+                        let winner = res.winner;
+                        if (winner === 1) {
                             globalStats.redWins++;
                             scores[match.idx1].wins++; scores[match.idx1].points += 1;
                             scores[match.idx2].losses++; scores[match.idx2].points -= 1;
                             headToHead[match.idx1][match.idx2] += 1;
                             headToHead[match.idx2][match.idx1] -= 1;
-                        } else if (res.winner === 2) {
+                        } else if (winner === 2) {
                             globalStats.greenWins++;
                             scores[match.idx2].wins++; scores[match.idx2].points += 1;
                             scores[match.idx1].losses++; scores[match.idx1].points -= 1;
@@ -1340,11 +1359,12 @@ async function runTournament() {
                             scores[match.idx1].draws++;
                             scores[match.idx2].draws++;
                         }
+                        resultsProcessed++;
+                        let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+                        log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
                     }
                     releaseWorker(worker);
-                    resultsProcessed++;
-                    log(`${resultsProcessed}/${totalMatches}, ${match.name1} vs ${match.name2}`);
-                    activeWorkers--;
+                    activeWorkersCount--;
                     runNext().then(resolve);
                 };
                 worker.postMessage({
@@ -1369,11 +1389,9 @@ async function runTournament() {
     }
     setEngineTaskState('NONE');
 }
-
-
-    async function runImprovement() {
-	let logCopy = duplicateLogs;
-	duplicateLogs = false;
+async function runImprovement() {
+    let logCopy = duplicateLogs;
+    duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
     
@@ -1439,7 +1457,7 @@ async function runTournament() {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
-	duplicateLogs = logCopy;
+    duplicateLogs = logCopy;
 }
 
 
@@ -1539,100 +1557,100 @@ document.addEventListener('keydown', (e) => {
     }
 
     switch(e.key) {
-        case '4': case '6': case '8':
-            N = parseInt(e.key);
-            if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
-            resetGame();
-            initLayout(); 
-            break;
-        case 'a':
-            gridMode = (gridMode + 1) % 3;
-            if(document.getElementById('grid-select')) document.getElementById('grid-select').value = gridMode;
-            update3D();
-            break;
-        case 'A':
-            showAxes = !showAxes;
-            if(document.getElementById('btn-axes')) document.getElementById('btn-axes').style.backgroundColor = showAxes ? 'green' : 'grey';
-            update3D();
-            break;
-        case 'c':
-            showCategories = !showCategories;
-            showValues = false;
-            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = showCategories ? 'green' : 'grey';
-            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = 'grey';
-            update3D();
-            break;
-        case 'v':
-            showValues = !showValues;
-            showCategories = false;
-            if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = showValues ? 'green' : 'grey';
-            if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = 'grey';
-            update3D();
-            break;
-        case 'S':
-            doStaticEval();
-            break;
-        case 'M':
-            doListMoves();
-            break;
-        case 'B':
-            playerBallSize = Math.min(0.9, playerBallSize + 0.05);
-            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
-            update3D();
-            break;
-        case 'b':
-            playerBallSize = Math.max(0.1, playerBallSize - 0.05);
-            if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
-            update3D();
-            break;
-        case 'H':
-            hintBallSize = Math.min(0.5, hintBallSize + 0.025);
-            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
-            update3D();
-            break;
-        case 'h':
-            hintBallSize = Math.max(0.05, hintBallSize - 0.025);
-            if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
-            update3D();
-            break;
-        case '<':
-            loadHistoryState(currentMoveIndex - 1);
-            break;
-        case '>':
-            loadHistoryState(currentMoveIndex + 1);
-            break;
-        case 'F':
-        case 'f':
-            toggleFullscreen();
-            break;
-        case 'I':
-        case 'i':
-            toggleCamera();
-            if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
-            break;
-        case 'p':
-        case 'P':
-            if (currentTask !== 'NONE') {
-                stopTasks();
-                setPlayState(true);
-                updateGameState();
-            } else {
-                if (isGameOver) break;
-                setPlayState(!isPlaying);
-                if (isPlaying) updateGameState();
-            }
-            break;
-        case 'r':
-        case 'R':
-            resetGame();
-            break;
-        case '.':
-        case '?':
-            if (overlay3D.textContent.trim() !== "") {
-                printToOverlay("");
-            } else {
-                printToOverlay(
-`Commands:
+    case '4': case '6': case '8':
+        N = parseInt(e.key);
+        if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
+        resetGame();
+        initLayout(); 
+        break;
+    case 'a':
+        gridMode = (gridMode + 1) % 3;
+        if(document.getElementById('grid-select')) document.getElementById('grid-select').value = gridMode;
+        update3D();
+        break;
+    case 'A':
+        showAxes = !showAxes;
+        if(document.getElementById('btn-axes')) document.getElementById('btn-axes').style.backgroundColor = showAxes ? 'green' : 'grey';
+        update3D();
+        break;
+    case 'c':
+        showCategories = !showCategories;
+        showValues = false;
+        if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = showCategories ? 'green' : 'grey';
+        if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = 'grey';
+        update3D();
+        break;
+    case 'v':
+        showValues = !showValues;
+        showCategories = false;
+        if(document.getElementById('btn-vals')) document.getElementById('btn-vals').style.backgroundColor = showValues ? 'green' : 'grey';
+        if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = 'grey';
+        update3D();
+        break;
+    case 'S':
+        doStaticEval();
+        break;
+    case 'M':
+        doListMoves();
+        break;
+    case 'B':
+        playerBallSize = Math.min(0.9, playerBallSize + 0.05);
+        if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+        update3D();
+        break;
+    case 'b':
+        playerBallSize = Math.max(0.1, playerBallSize - 0.05);
+        if(document.getElementById('slider-ball')) document.getElementById('slider-ball').value = playerBallSize;
+        update3D();
+        break;
+    case 'H':
+        hintBallSize = Math.min(0.5, hintBallSize + 0.025);
+        if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+        update3D();
+        break;
+    case 'h':
+        hintBallSize = Math.max(0.05, hintBallSize - 0.025);
+        if(document.getElementById('slider-hint')) document.getElementById('slider-hint').value = hintBallSize;
+        update3D();
+        break;
+    case '<':
+        loadHistoryState(currentMoveIndex - 1);
+        break;
+    case '>':
+        loadHistoryState(currentMoveIndex + 1);
+        break;
+    case 'F':
+    case 'f':
+        toggleFullscreen();
+        break;
+    case 'I':
+    case 'i':
+        toggleCamera();
+        if(document.getElementById('btn-camera')) document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity';
+        break;
+    case 'p':
+    case 'P':
+        if (currentTask !== 'NONE') {
+            stopTasks();
+            setPlayState(true);
+            updateGameState();
+        } else {
+            if (isGameOver) break;
+            setPlayState(!isPlaying);
+            if (isPlaying) updateGameState();
+        }
+        break;
+    case 'r':
+    case 'R':
+        resetGame();
+        break;
+    case '.':
+    case '?':
+        if (overlay3D.textContent.trim() !== "") {
+            printToOverlay("");
+        } else {
+            printToOverlay(
+		`Commands:
 4, 6, 8 : Set board size
 a       : Cycle grid mode
 A       : Toggle Axes
@@ -1649,8 +1667,8 @@ F / f   : Toggle Fullscreen
 I / i   : Toggle Infinity (Orthographic) mode
 . / ?   : Toggle this help display
 Esc/Spc : Exit Fullscreen`);
-            }
-            break;
+        }
+        break;
     }
 });
 
@@ -1709,6 +1727,9 @@ function resetGame() {
     setPlayState(false); 
     isGameOver = false;
     unplayedClickCount = 0;
+    // Unlock the Play button in case it was disabled by Game Over
+    const btnPlay = document.getElementById('btn-play');
+    if (btnPlay) btnPlay.disabled = false;
     
     updateGameState(); 
     redrawAllSlices();
@@ -1734,7 +1755,7 @@ function updateGameState(isViewOnly = false) {
     let winnerText = "";
 
     // Determine Game Over
-    if (!isViewOnly && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
+    if (!isViewOnly && !isGameOver && validMoves.length === 0 && currentMoveIndex === moveHistory.length - 1) {
         const opponent = activePlayer === 1 ? 2 : 1;
         const opponentMoves = getValidMovesForPlayer(gameCube, opponent);
 
@@ -1746,12 +1767,15 @@ function updateGameState(isViewOnly = false) {
             else winnerText = "DRAW!";
             log(`GAME OVER: ${winnerText}`);
             
-            const btnPlay = document.getElementById('btn-play');
+	    const btnPlay = document.getElementById('btn-play');
             if (btnPlay) {
                 btnPlay.textContent = 'Game Over';
                 btnPlay.style.backgroundColor = 'gray';
+                btnPlay.style.fontSize = '14px'; // Shrinks the text to fit
+                btnPlay.style.whiteSpace = 'nowrap'; // Prevents text from wrapping to a new line
                 btnPlay.disabled = true; 
             }
+
         } else {
             const pName = activePlayer === 1 ? "Red" : "Green";
             log(`${pName} has no moves. Passing...`);
@@ -1762,7 +1786,7 @@ function updateGameState(isViewOnly = false) {
         }
     }
 
-// Output UI HTML
+    // Output UI HTML
     if (headerDiv) {
         const pName = activePlayer === 1 ? "Red" : "Green";
         const color = activePlayer === 1 ? redColor : greenColor;
@@ -1987,6 +2011,12 @@ function redrawAllSlices() {
         const canvas = document.getElementById(`canvas-${axis}`);
         if (canvas) drawSlice(canvas, axis, currentSlices[axis]);
     });
+    
+    // Also target the large 2D board if it exists
+    const canvas2D = document.getElementById('canvas-Z-2D');
+    if (canvas2D) {
+        drawSlice(canvas2D, 'Z', currentSlices['Z']);
+    }
 }
 
 // 5. 3D LOGIC (Three.js)
@@ -2005,7 +2035,15 @@ function init3D() {
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.domElement.addEventListener('mousemove', on3DMouseMove);
         renderer.domElement.addEventListener('click', on3DClick);
+
+	// NEW: Stop the majestic rotation instantly on any mouse/touch input
+        const stopRotation = () => { isMajesticRotation = false; };
+        renderer.domElement.addEventListener('pointerdown', stopRotation, { passive: true });
+        renderer.domElement.addEventListener('pointermove', stopRotation, { passive: true });
+        renderer.domElement.addEventListener('wheel', stopRotation, { passive: true });   
+
     }
+
     renderer.setSize(size, size);
     if (!container.contains(renderer.domElement)) {
         container.appendChild(renderer.domElement);
@@ -2287,6 +2325,25 @@ function on3DClick(event) {
 function animate() {
     animationId = requestAnimationFrame(animate); 
     if (controls) controls.update();
+
+    // NEW: Complex 3D cinematic orbit using a Lissajous curve
+    if (isMajesticRotation && playMode === '3D') {
+        const time = Date.now() * 0.0004; // Master speed control
+        const radius = N * 2.0; // Distance from the center
+        
+        // Different frequency multipliers (0.7, 0.3, 0.5) create a sweeping, 
+        // non-repeating 3D flight path around all axes.
+        camera.position.x = Math.sin(time * 0.7) * radius;
+        
+        // We dampen the Y-axis slightly (* 0.8) so the camera doesn't fly 
+        // perfectly top-down or bottom-up, which can flip the 'up' vector
+        camera.position.y = Math.sin(time * 0.3) * (radius * 0.8); 
+        
+        camera.position.z = Math.cos(time * 0.5) * radius;
+        
+        camera.lookAt(0, 0, 0); // Keep the lens locked exactly on the center
+    }
+
     renderer.render(scene, camera);
 }
 
@@ -2337,7 +2394,7 @@ function initLayout() {
 
     let scaleInput = el('input', { type: 'text', value: S, title: '3D Render Scale', style: 'width: 30px; text-align: center;' });
     setupSmartInput(scaleInput, (val) => {
-        let safeS = Math.max(20, Math.min(60, parseInt(val) || 40));
+        let safeS = Math.max(20, Math.min(60, parseInt(val) || 45));
         S = safeS;
         initLayout();
         return safeS;
@@ -2373,9 +2430,9 @@ function initLayout() {
             return safeVal;
         });
         return el('div', {style: 'display: flex; flex-direction: column; align-items: center; gap: 1px;'}, 
-            el('span', {text: label, style: 'font-size: 0.7em;', title: title}), 
-            inp
-        );
+		  el('span', {text: label, style: 'font-size: 0.7em;', title: title}), 
+		  inp
+		 );
     }
 
     // COLUMN 1: CONTROLS
@@ -2383,352 +2440,376 @@ function initLayout() {
         class: 'col-controls', 
         style: `min-width: 280px; max-width: 280px; display: flex; flex-direction: column; gap: 8px; max-height: ${23 * S}px; overflow-y: auto; padding-right: 5px;` 
     },
-        
-        // 1. Title / Engine Toggle
-        el('button', { 
-            id: 'engine-toggle-btn',
-            title: 'Click to toggle between C++ and JS evaluation engines',
-            style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: sans-serif; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
-            onclick: (e) => {
-                if (engineMode === 'JS') {
-                    if (wasmModule) {
-                        engineMode = 'WASM';
-                        log("Switched to C++ Engine.");
-                    } else {
-                        alert("WASM module not loaded. Please compile ReversiEngine.cpp");
-                    }
-                } else {
-                    engineMode = 'JS';
-                    log("Switched to JS Engine.");
-                }
-                updateEngineButtonUI();
-            }
-        }),
+		    
+		    // 1. Title / Engine Toggle
+		    el('button', { 
+			id: 'engine-toggle-btn',
+			title: 'Click to toggle between C++ and JS evaluation engines',
+			style: `width: 100%; height: 48px; background-color: ${millTitleBg}; color: ${millTitleColor}; border-radius: 4px; border: 2px solid ${millTitleColor}; text-align: center; cursor: pointer; display: flex; align-items: center; justify-content: center; overflow: hidden; box-sizing: border-box; font-family: sans-serif; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);`,
+			onclick: (e) => {
+			    if (engineMode === 'JS') {
+				if (wasmModule) {
+				    engineMode = 'WASM';
+				    log("Switched to C++ Engine.");
+				} else {
+				    alert("WASM module not loaded. Please compile ReversiEngine.cpp");
+				}
+			    } else {
+				engineMode = 'JS';
+				log("Switched to JS Engine.");
+			    }
+			    updateEngineButtonUI();
+			}
+		    }),
 
+		    // 1.2 NEW: 2D/3D Mode Toggle
+		    el('button', { 
+			id: 'mode-toggle-btn',
+			text: playMode === '2D' ? '2D (click for 3D)' : '3D (click for 2D)',
+			title: 'Toggle between 2D and 3D play modes',
+			style: `width: 100%; height: 32px; font-size: 16px; background-color: ${playMode === '2D' ? color2D : color3D}; color: white; border-radius: 4px; border: 1px solid white; text-align: center; cursor: pointer; font-family: sans-serif; font-weight: bold; margin-top: 4px; margin-bottom: 2px;`,
 
-// 1.5 NEW: Help Link (Second Row)
-el('div', { style: 'text-align: center; margin: 4px 0;' }, 
-     // <--- Note the opening bracket here
-        el('a', { 
-            href: 'Reversi.html', 
-            target: '_blank', 
-            text: 'Click for rules and instructions', 
-            title: 'link to game rules and instructions',
-            style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
-        })
-),
+			onclick: () => {
+			    playMode = playMode === '2D' ? '3D' : '2D';
+			    backgroundColor = playMode === '2D' ? color2D : color3D;
+			    
+			    // Freeze Cat 9 (Inner Faces) in 2D mode
+			    activeParams = playMode === '2D' ? [0, 2, 3, 4, 5, 6, 7, 8] : [0, 2, 3, 4, 5, 6, 7, 8, 9];
+			    
+			    resetGame(); 
+			    initLayout(); 
+			}
+		    }),
+
+		    // 1.5 NEW: Help Link (Second Row)
+		    el('div', { style: 'text-align: center; margin: 4px 0;' }, 
+		       // <--- Note the opening bracket here
+		       el('a', { 
+			   href: 'Reversi.html', 
+			   target: '_blank', 
+			   text: 'Click here for rules and instructions', 
+			   title: 'link to game rules and instructions',
+			   style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
+		       })
+		      ),
 
 		    // 2. Status Box
-        el('div', { 
-            id: 'status-box',
-            title: 'General Status Info',
-            style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: sans-serif; text-align: center; font-weight: bold;`
-        }),
+		    el('div', { 
+			id: 'status-box',
+			title: 'General Status Info',
+			style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: sans-serif; text-align: center; font-weight: bold;`
+		    }),
 
-        // 3. Play Row
-        el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
-            el('button', { 
-                id: 'btn-play',
-                text: isPlaying ? 'Playing' : 'Play',
-                title: 'Start/Stop a game between the selected players. Also stops background tasks.',
-                style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+		    // 3. Play Row
+		    el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
+		       el('button', { 
+			   id: 'btn-play',
+			   text: isPlaying ? 'Playing' : 'Play',
+			   title: 'Start/Stop a game between the selected players. Also stops background tasks.',
+			   style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
 
-		onclick: (e) => { 
-		    if (currentTask !== 'NONE') {
-			stopTasks();
-			setPlayState(true);
-			updateGameState();
-		    } else {
-			if (isGameOver) return;
+			   onclick: (e) => { 
+			       if (currentTask !== 'NONE') {
+				   stopTasks();
+				   setPlayState(true);
+				   updateGameState();
+			       } else {
+				   if (isGameOver) return;
 
-			// NEW LOGIC: If we are viewing a past move, truncate the history to resume
-			if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
-			    log(`Resuming game from move ${currentMoveIndex}...`);
-			    moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
-			    // lastMoveRecord should be updated to the move that led to this state
-			    lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
-			}
+				   // NEW LOGIC: If we are viewing a past move, truncate the history to resume
+				   if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
+				       log(`Resuming game from move ${currentMoveIndex}...`);
+				       moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+				       // lastMoveRecord should be updated to the move that led to this state
+				       lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
+				   }
 
-			setPlayState(!isPlaying);
-			if (isPlaying) updateGameState();
-		    }
-		}
-            }),
-        el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
-            el('button', { 
-                id: 'btn-silence',
-                text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
-                title: 'Toggle Headless Mode for Tournaments/Evolution',
-                style: `background-color: ${silenceMode?'#800':'#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
-                onclick: (e) => { 
-                    silenceMode = !silenceMode; 
-                    e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
-                    e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
-                } 
-            }),
-            el('button', { 
-                text: 'Reset', 
-                title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
-                style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
-                onclick: resetGame
-            })
-          ),
-            el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
-                el('span', { text: 'N=', style: 'font-weight: bold;' }),
-                el('select', { 
-                    id: 'size-select',
-                    title: 'Board Size (N)',
-                    style: 'width: 40px; font-size: 16px; background-color: rgb(200,255,150);',
-                    onchange: (e) => { 
-                        N = parseInt(e.target.value); 
-                        resetGame(); 
-                        initLayout(); 
-                    } 
-                },
-                    el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
-                    el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
-                    el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
-                )
-            )
-        ),
-
-        // 4. Navigation & Board Reset Row
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { text: '<', title: 'Previous Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
-            historyInput,
-            el('button', { text: '>', title: 'Next Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
-            el('button', { text: '>>', title: 'End of Game', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
-                loadHistoryState(moveHistory.length - 1);
-                if (!isPlaying && !isGameOver) {
-                    setPlayState(true);
-                    updateGameState();
-                }
-            }})
-        ),
-
-        // 5. Player Selects
-        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
-            el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
-            el('select', { 
-                id: 'red-type-select', title: 'Red Player Type', style: 'flex: 1; min-width: 0;',
-                onchange: (e) => { 
-                    redType = e.target.value; greenType = redType; 
-                    let gs = document.getElementById('green-type-select');
-                    if (gs) gs.value = greenType;
-                    if(isPlaying) updateGameState(); 
-                } 
-            }),
-            el('span', { text: 'D=' }),
-            el('select', { 
-                id: 'red-depth-select', title: 'Red Search Depth', style: 'width: 45px; background-color: #add8e6;',
-                onchange: (e) => { 
-                    redDepth = parseInt(e.target.value); greenDepth = redDepth;
-                    let gs = document.getElementById('green-depth-select');
-                    if (gs) gs.value = greenDepth;
-                }
-            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(redDepth===d ? {selected: 'true'} : {}) })))
-        ),
-
-        el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
-            el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
-            el('select', { 
-                id: 'green-type-select', title: 'Green Player Type', style: 'flex: 1; min-width: 0;',
-                onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
-            }),
-            el('span', { text: 'D=' }),
-            el('select', { 
-                id: 'green-depth-select', title: 'Green Search Depth', style: 'width: 45px; background-color: #add8e6;',
-                onchange: (e) => { greenDepth = parseInt(e.target.value); }
-            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
-        ),
-
-        // 6. Game Info / Log Wrapper
-        el('div', { 
-            id: 'game-info-wrapper',
-            style: `background-color: ${scoreBgColor}; color: white; border-radius: 4px; border: 1px solid navy; display: flex; flex-direction: column; height: 160px; overflow: hidden;`
-        },
-            el('div', { id: 'game-score-header', title: 'Current Score', style: 'padding: 4px; border-bottom: 1px solid #555; text-align: center; min-height: 45px; display: flex; flex-direction: column; justify-content: center;' }, "Initializing..."),
-            el('div', { id: 'game-info-log', title: 'Engine Logs and Output', style: 'flex: 1; overflow-y: auto; padding: 4px; font-size: 0.85em; font-family: monospace; white-space: pre-wrap; background-color: #111;' })
-        ),
+				   setPlayState(!isPlaying);
+				   if (isPlaying) updateGameState();
+			       }
+			   }
+		       }),
+		       el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
+el('button', { 
+    id: 'btn-silence',
+    text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+    title: 'Toggle Headless Mode for Tournaments/Evolution',
+    style: `background-color: ${silenceMode ? '#800' : '#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
+    onclick: (e) => { 
+        // 1. Toggle the actual global variable
+        silenceMode = !silenceMode; 
         
-        // 7. Value / Moves Row
-        el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
-            el('button', { 
-                text: 'Value', title: 'Compute Static Value of Current Board',
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
-                onclick: () => doStaticEval() 
-            }),
-            el('button', { 
-                text: 'Moves', title: 'List Ranked Moves for Current Player',
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
-                onclick: () => doListMoves() 
-            }),
-            el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
-            el('select', { 
-                title: 'Search Depth for Static Eval and Moves List',
-                style: 'width: 45px; background-color: #add8e6;',
-                onchange: (e) => { evalDepth = parseInt(e.target.value); }
-            }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
-        ),
-
-        // Other options
-        el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
-            el('label', { text: 'Scale:' }),
-            el('div', { style: 'display: flex; gap: 2px;' },
-                el('button', { text: '<', title: 'Decrease Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
-                scaleInput,
-                el('button', { text: '>', title: 'Increase Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
-            ),
-            el('label', { text: 'W:' }), workerInput
-        ),
-
-        el('div', { style: 'display: flex; gap: 5px;' },
-            el('button', { 
-                text: 'Fullscreen', title: 'Toggle Fullscreen Mode',
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
-                onclick: () => toggleFullscreen() 
-            }),
-            el('button', { 
-                text: orthographicMode ? 'Perspective' : 'Infinity', title: 'Toggle Camera Projection Mode',
-                id: 'btn-camera',
-                style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
-                onclick: () => { toggleCamera(); document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity'; }
-            })
-        ),
-
-        el('div', { style: 'display: flex; gap: 5px;' },
-            el('button', { 
-                text: 'Hints', id: 'btn-hints', title: 'Toggle Hint Markers',
-                style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { showHints = !showHints; e.target.style.backgroundColor = showHints?'green':'grey'; redrawAllSlices(); update3D(); } 
-            }),
-            el('button', { 
-                text: 'Axes', id: 'btn-axes', title: 'Toggle XYZ Axes',
-                style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { showAxes = !showAxes; e.target.style.backgroundColor = showAxes?'green':'grey'; update3D(); } 
-            }),
-            el('button', { 
-                text: 'Hover', id: 'btn-hover', title: 'Toggle Hover Tooltips',
-                style: `flex:1; background-color: ${showHover?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { 
-                    showHover = !showHover; 
-                    e.target.style.backgroundColor = showHover?'green':'grey'; 
-                    if (!showHover && hoverTooltip) hoverTooltip.style.display = 'none';
-                } 
-            })
-        ),
+        // 2. Update the button's appearance immediately
+        e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+        e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
         
-        el('div', { style: 'display: flex; gap: 5px;' },
-            el('button', { 
-                text: 'Cats', id: 'btn-cats', title: 'Toggle Category Coloring',
-                style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { 
-                    showCategories = !showCategories; showValues = false; 
-                    document.getElementById('btn-vals').style.backgroundColor = 'grey';
-                    e.target.style.backgroundColor = showCategories?'green':'grey'; update3D(); 
-                } 
-            }),
-            el('button', { 
-                text: 'Vals', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
-                style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
-                onclick: (e) => { 
-                    showValues = !showValues; showCategories = false;
-                    document.getElementById('btn-cats').style.backgroundColor = 'grey';
-                    e.target.style.backgroundColor = showValues?'green':'grey'; update3D(); 
-                } 
-            })
-        ),
+        // 3. Log the change so you can see it in the console
+        log(`Headless mode (Silence) is now ${silenceMode ? 'ON' : 'OFF'}.`);
+    } 
+}),
+			  el('button', { 
+			      text: 'Reset', 
+			      title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
+			      style: 'background-color: red; color: yellow; font-weight: bold; flex: 1; cursor: pointer; padding: 4px; border: none;', 
+			      onclick: resetGame
+			  })
+			 ),
+		       el('div', { style: 'display: flex; align-items: center; justify-content: center; gap: 2px;' },
+			  el('span', { text: 'N=', style: 'font-weight: bold;' }),
+			  el('select', { 
+			      id: 'size-select',
+			      title: 'Board Size (N)',
+			      style: 'width: 40px; font-size: 16px; background-color: rgb(200,255,150);',
+			      onchange: (e) => { 
+				  N = parseInt(e.target.value); 
+				  resetGame(); 
+				  initLayout(); 
+			      } 
+			  },
+			     el('option', { value: '4', text: '4', ...(N===4 ? {selected: 'true'} : {}) }),
+			     el('option', { value: '6', text: '6', ...(N===6 ? {selected: 'true'} : {}) }),
+			     el('option', { value: '8', text: '8', ...(N===8 ? {selected: 'true'} : {}) })
+			    )
+			 )
+		      ),
 
-        el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
-            el('label', { text: 'Grid:' }),
-            el('select', { 
-                id: 'grid-select', title: 'Toggle 3D Grid Visibility',
-                style: 'flex: 1;',
-                onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
-            },
-                el('option', { value: '0', text: 'None', ...(gridMode===0 ? {selected: 'true'} : {}) }),
-                el('option', { value: '1', text: 'Orthogonal', ...(gridMode===1 ? {selected: 'true'} : {}) }),
-                el('option', { value: '2', text: 'All 26', ...(gridMode===2 ? {selected: 'true'} : {}) })
-            )
-        ),
+		    // 4. Navigation & Board Reset Row
+		    el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+		       el('button', { text: '<', title: 'Previous Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex - 1) }),
+		       historyInput,
+		       el('button', { text: '>', title: 'Next Move', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => loadHistoryState(currentMoveIndex + 1) }),
+		       el('button', { text: '>>', title: 'End of Game', style: 'flex: 0.5; font-weight:bold; cursor: pointer;', onclick: () => {
+			   loadHistoryState(moveHistory.length - 1);
+			   if (!isPlaying && !isGameOver) {
+			       setPlayState(true);
+			       updateGameState();
+			   }
+		       }})
+		      ),
 
-        el('div', { style: 'display: flex; gap: 5px;' },
-            el('button', { 
-                id: 'btn-pruning', text: 'α/β', title: 'Toggle Alpha-Beta Pruning',
-                style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
-                onclick: (e) => { 
-                    usePruning = !usePruning;
-                    e.target.style.backgroundColor = usePruning ? 'green' : 'red';
-                } 
-            }),
-            el('button', { 
-                id: 'btn-sym', text: 'S', title: 'Toggle Symmetry Filtering',
-                style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
-                onclick: (e) => { 
-                    useSymmetry = !useSymmetry;
-                    e.target.style.backgroundColor = useSymmetry ? 'green' : 'red';
-                } 
-            }),
-            el('button', { 
-                id: 'btn-rand', text: 'Rand', title: 'Toggle Random Selection for Equal Best Moves',
-                style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
-                onclick: (e) => { 
-                    useRandom = !useRandom;
-                    e.target.style.backgroundColor = useRandom ? 'green' : 'red';
-                } 
-            })
-        ),
+		    // 5. Player Selects
+		    el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+		       el('span', { text: 'Red:', style: `color: ${redColor}; font-weight: bold; width: 45px;` }),
+		       el('select', { 
+			   id: 'red-type-select', title: 'Red Player Type', style: 'flex: 1; min-width: 0;',
+			   onchange: (e) => { 
+			       redType = e.target.value; greenType = redType; 
+			       let gs = document.getElementById('green-type-select');
+			       if (gs) gs.value = greenType;
+			       if(isPlaying) updateGameState(); 
+			   } 
+		       }),
+		       el('span', { text: 'D=' }),
+		       el('select', { 
+			   id: 'red-depth-select', title: 'Red Search Depth', style: 'width: 45px; background-color: #add8e6;',
+			   onchange: (e) => { 
+			       redDepth = parseInt(e.target.value); greenDepth = redDepth;
+			       let gs = document.getElementById('green-depth-select');
+			       if (gs) gs.value = greenDepth;
+			   }
+		       }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(redDepth===d ? {selected: 'true'} : {}) })))
+		      ),
 
-        el('div', { style: 'display: flex; gap: 5px;' },
-            el('button', { 
-                id: 'btn-logs', text: 'Logs', title: 'Toggle Duplicate Logs to Console',
-                style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
-                onclick: (e) => { 
-                    duplicateLogs = !duplicateLogs;
-                    e.target.style.backgroundColor = duplicateLogs ? 'green' : 'red';
-                } 
-            }),
-            el('button', { 
-                id: 'btn-depths', text: 'Depths', title: 'Toggle Search Depth Visit Stats',
-                style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
-                onclick: (e) => { 
-                    showDepths = !showDepths;
-                    e.target.style.backgroundColor = showDepths ? 'green' : 'red';
-                } 
-            })
-        ),
-        
-        el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
-            el('div', { style: 'font-size: 0.9em; font-weight: bold;' }, "B:"),
-            el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, title: 'Player Stone Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
-            el('div', { style: 'font-size: 0.9em; font-weight: bold; margin-left: 5px;' }, "H:"),
-            el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, title: 'Hint Marker Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
-        ),
+		    el('div', { style: 'display: flex; gap: 5px; align-items: center; font-size: 0.9em;' },
+		       el('span', { text: 'Green:', style: `color: ${greenColor}; font-weight: bold; width: 45px;` }),
+		       el('select', { 
+			   id: 'green-type-select', title: 'Green Player Type', style: 'flex: 1; min-width: 0;',
+			   onchange: (e) => { greenType = e.target.value; if(isPlaying) updateGameState(); } 
+		       }),
+		       el('span', { text: 'D=' }),
+		       el('select', { 
+			   id: 'green-depth-select', title: 'Green Search Depth', style: 'width: 45px; background-color: #add8e6;',
+			   onchange: (e) => { greenDepth = parseInt(e.target.value); }
+		       }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(greenDepth===d ? {selected: 'true'} : {}) })))
+		      ),
 
-        // AI LAB / EVOLUTION PANEL
-        el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
-            el('button', {text: 'Import', title: 'Import Brains from a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
-            el('input', {id: 'brainFileName', value: 'brains.js', title: 'Filename to export', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
-            el('button', {text: 'Export', title: 'Export Brains to a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
-            el('button', {text: 'Def.', title: 'Restore Default Brains', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
-        ),
+		    // 6. Game Info / Log Wrapper
+		    el('div', { 
+			id: 'game-info-wrapper',
+			style: `background-color: ${scoreBgColor}; color: white; border-radius: 4px; border: 1px solid navy; display: flex; flex-direction: column; height: 160px; overflow: hidden;`
+		    },
+		       el('div', { id: 'game-score-header', title: 'Current Score', style: 'padding: 4px; border-bottom: 1px solid #555; text-align: center; min-height: 45px; display: flex; flex-direction: column; justify-content: center;' }, "Initializing..."),
+		       el('div', { id: 'game-info-log', title: 'Engine Logs and Output', style: 'flex: 1; overflow-y: auto; padding: 4px; font-size: 0.85em; font-family: monospace; white-space: pre-wrap; background-color: #111;' })
+		      ),
+		    
+		    // 7. Value / Moves Row
+		    el('div', { style: 'display: flex; gap: 5px; align-items: center;' },
+		       el('button', { 
+			   text: 'Value', title: 'Compute Static Value of Current Board',
+			   style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+			   onclick: () => doStaticEval() 
+		       }),
+		       el('button', { 
+			   text: 'Moves', title: 'List Ranked Moves for Current Player',
+			   style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer;',
+			   onclick: () => doListMoves() 
+		       }),
+		       el('span', { text: 'D=', style: 'font-weight: bold; font-size: 0.9em;' }),
+		       el('select', { 
+			   title: 'Search Depth for Static Eval and Moves List',
+			   style: 'width: 45px; background-color: #add8e6;',
+			   onchange: (e) => { evalDepth = parseInt(e.target.value); }
+		       }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(evalDepth===d ? {selected: 'true'} : {}) })))
+		      ),
+
+		    // Other options
+		    el('div', { style: 'display: flex; justify-content: space-between; align-items: center;' },
+		       el('label', { text: 'Scale:' }),
+		       el('div', { style: 'display: flex; gap: 2px;' },
+			  el('button', { text: '<', title: 'Decrease Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.max(20, S - 2); initLayout(); } }),
+			  scaleInput,
+			  el('button', { text: '>', title: 'Increase Render Scale', style: 'cursor: pointer; font-weight:bold; width: 25px;', onclick: () => { S = Math.min(60, S + 2); initLayout(); } })
+			 ),
+		       el('label', { text: 'W:' }), workerInput
+		      ),
+
+		    el('div', { style: 'display: flex; gap: 5px;' },
+		       el('button', { 
+			   text: 'Fullscreen', title: 'Toggle Fullscreen Mode',
+			   style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+			   onclick: () => toggleFullscreen() 
+		       }),
+		       el('button', { 
+			   text: orthographicMode ? 'Perspective' : 'Infinity', title: 'Toggle Camera Projection Mode',
+			   id: 'btn-camera',
+			   style: 'flex: 1; background-color: navy; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;',
+			   onclick: () => { toggleCamera(); document.getElementById('btn-camera').textContent = orthographicMode ? 'Perspective' : 'Infinity'; }
+		       })
+		      ),
+
+		    el('div', { style: 'display: flex; gap: 5px;' },
+		       el('button', { 
+			   text: 'Hints', id: 'btn-hints', title: 'Toggle Hint Markers',
+			   style: `flex:1; background-color: ${showHints?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+			   onclick: (e) => { showHints = !showHints; e.target.style.backgroundColor = showHints?'green':'grey'; redrawAllSlices(); update3D(); } 
+		       }),
+		       el('button', { 
+			   text: 'Axes', id: 'btn-axes', title: 'Toggle XYZ Axes',
+			   style: `flex:1; background-color: ${showAxes?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+			   onclick: (e) => { showAxes = !showAxes; e.target.style.backgroundColor = showAxes?'green':'grey'; update3D(); } 
+		       }),
+		       el('button', { 
+			   text: 'Hover', id: 'btn-hover', title: 'Toggle Hover Tooltips',
+			   style: `flex:1; background-color: ${showHover?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+			   onclick: (e) => { 
+			       showHover = !showHover; 
+			       e.target.style.backgroundColor = showHover?'green':'grey'; 
+			       if (!showHover && hoverTooltip) hoverTooltip.style.display = 'none';
+			   } 
+		       })
+		      ),
+		    
+		    el('div', { style: 'display: flex; gap: 5px;' },
+		       el('button', { 
+			   text: 'Cats', id: 'btn-cats', title: 'Toggle Category Coloring',
+			   style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+			   onclick: (e) => { 
+			       showCategories = !showCategories; showValues = false; 
+			       document.getElementById('btn-vals').style.backgroundColor = 'grey';
+			       e.target.style.backgroundColor = showCategories?'green':'grey'; update3D(); 
+			   } 
+		       }),
+		       el('button', { 
+			   text: 'Vals', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
+			   style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
+			   onclick: (e) => { 
+			       showValues = !showValues; showCategories = false;
+			       document.getElementById('btn-cats').style.backgroundColor = 'grey';
+			       e.target.style.backgroundColor = showValues?'green':'grey'; update3D(); 
+			   } 
+		       })
+		      ),
+
+		    el('div', { style: 'display: flex; align-items: center; gap: 5px;' },
+		       el('label', { text: 'Grid:' }),
+		       el('select', { 
+			   id: 'grid-select', title: 'Toggle 3D Grid Visibility',
+			   style: 'flex: 1;',
+			   onchange: (e) => { gridMode = parseInt(e.target.value); update3D(); }
+		       },
+			  el('option', { value: '0', text: 'None', ...(gridMode===0 ? {selected: 'true'} : {}) }),
+			  el('option', { value: '1', text: 'Orthogonal', ...(gridMode===1 ? {selected: 'true'} : {}) }),
+			  el('option', { value: '2', text: 'All 26', ...(gridMode===2 ? {selected: 'true'} : {}) })
+			 )
+		      ),
+
+		    el('div', { style: 'display: flex; gap: 5px;' },
+		       el('button', { 
+			   id: 'btn-pruning', text: 'α/β', title: 'Toggle Alpha-Beta Pruning',
+			   style: `flex: 1; background-color: ${usePruning?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+			   onclick: (e) => { 
+			       usePruning = !usePruning;
+			       e.target.style.backgroundColor = usePruning ? 'green' : 'red';
+			   } 
+		       }),
+		       el('button', { 
+			   id: 'btn-sym', text: 'S', title: 'Toggle Symmetry Filtering',
+			   style: `flex: 1; background-color: ${useSymmetry?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+			   onclick: (e) => { 
+			       useSymmetry = !useSymmetry;
+			       e.target.style.backgroundColor = useSymmetry ? 'green' : 'red';
+			   } 
+		       }),
+		       el('button', { 
+			   id: 'btn-rand', text: 'Rand', title: 'Toggle Random Selection for Equal Best Moves',
+			   style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+			   onclick: (e) => { 
+			       useRandom = !useRandom;
+			       e.target.style.backgroundColor = useRandom ? 'green' : 'red';
+			   } 
+		       })
+		      ),
+
+		    el('div', { style: 'display: flex; gap: 5px;' },
+		       el('button', { 
+			   id: 'btn-logs', text: 'Logs', title: 'Toggle Duplicate Logs to Console',
+			   style: `flex: 1; background-color: ${duplicateLogs?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+			   onclick: (e) => { 
+			       duplicateLogs = !duplicateLogs;
+			       e.target.style.backgroundColor = duplicateLogs ? 'green' : 'red';
+			   } 
+		       }),
+		       el('button', { 
+			   id: 'btn-depths', text: 'Depths', title: 'Toggle Search Depth Visit Stats',
+			   style: `flex: 1; background-color: ${showDepths?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
+			   onclick: (e) => { 
+			       showDepths = !showDepths;
+			       e.target.style.backgroundColor = showDepths ? 'green' : 'red';
+			   } 
+		       })
+		      ),
+		    
+		    el('div', { style: 'display: flex; gap: 5px; align-items: center; margin-top: 2px;' }, 
+		       el('div', { style: 'font-size: 0.9em; font-weight: bold;' }, "B:"),
+		       el('input', { id: 'slider-ball', type: 'range', min: '0.1', max: '0.9', step: '0.05', value: playerBallSize, title: 'Player Stone Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { playerBallSize = parseFloat(e.target.value); update3D(); } }),
+		       el('div', { style: 'font-size: 0.9em; font-weight: bold; margin-left: 5px;' }, "H:"),
+		       el('input', { id: 'slider-hint', type: 'range', min: '0.05', max: '0.5', step: '0.025', value: hintBallSize, title: 'Hint Marker Size', style: 'flex: 1; min-width: 0;', oninput: (e) => { hintBallSize = parseFloat(e.target.value); update3D(); } })
+		      ),
+
+		    // AI LAB / EVOLUTION PANEL
+		    el('div', {style: 'display: flex; gap: 3px; margin-top: 10px;'},
+		       el('button', {text: 'Import', title: 'Import Brains from a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: () => document.getElementById('brainFileInput').click()}),
+		       el('input', {id: 'brainFileName', value: 'brains.js', title: 'Filename to export', style: 'flex: 1.5; text-align: center; min-width: 0;'}),
+		       el('button', {text: 'Export', title: 'Export Brains to a JS file', style: 'flex: 1; cursor: pointer; background-color: #ddd;', onclick: exportBrainsJS}),
+		       el('button', {text: 'Def.', title: 'Restore Default Brains', style: 'flex: 0.8; cursor: pointer; background-color: #fcc;', onclick: () => { BrainList = JSON.parse(JSON.stringify(defaultBrainList)); editBrainIndex = 0; updateBrainUI(); }})
+		      ),
 
 
-        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
-            makeWeightInput('Mob', 0, 'Mobility'),
-            makeWeightInput('Dif', 2, 'Piece Difference'),
-            makeWeightInput('Cor', 3, 'Corners'),
-            makeWeightInput('C-Sq', 4, 'C-Squares'),
-            makeWeightInput('X-Sq', 5, 'X-Squares')
-        ),
-        el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
-            makeWeightInput('Edg', 6, 'Edges'),
-            makeWeightInput('IEd', 7, 'Inner Edges'),
-            makeWeightInput('Fac', 8, 'Faces'),
-            makeWeightInput('IFa', 9, 'Inner Faces'),
-            el('div', {style: 'width: 38px;'}) 
-        )
-    );
+		    el('div', {style: 'display: flex; justify-content: space-between; gap: 2px; margin-top: 4px;'},
+		       makeWeightInput('Mob', 0, 'Mobility'),
+		       makeWeightInput('Dif', 2, 'Piece Difference'),
+		       makeWeightInput('Cor', 3, 'Corners'),
+		       makeWeightInput('C-Sq', 4, 'C-Squares'),
+		       makeWeightInput('X-Sq', 5, 'X-Squares')
+		      ),
+		    el('div', {style: 'display: flex; justify-content: space-between; gap: 2px;'},
+		       makeWeightInput('Edg', 6, 'Edges'),
+		       makeWeightInput('IEd', 7, 'Inner Edges'),
+		       makeWeightInput('Fac', 8, 'Faces'),
+		       makeWeightInput('IFa', 9, 'Inner Faces'),
+		       el('div', {style: 'width: 38px;'}) 
+		      )
+		   );
 
     let impGenInp = el('input', {id: 'impGenerations', type: 'text', value: impGenVal, title: 'Generations', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
     setupSmartInput(impGenInp, val => { impGenVal = Math.max(1, parseInt(val) || 1); return impGenVal; });
@@ -2740,10 +2821,10 @@ el('div', { style: 'text-align: center; margin: 4px 0;' },
     setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
 
     let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
-        el('button', {text: 'Evolve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
-        el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
-        impGenInp, impGamesInp, impPercentInp
-    );
+			    el('button', {text: 'Evolve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
+			    el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+			    impGenInp, impGamesInp, impPercentInp
+			   );
     col1.appendChild(evoControlsDiv);
 
     // TOURNAMENT PANEL
@@ -2759,11 +2840,11 @@ el('div', { style: 'text-align: center; margin: 4px 0;' },
     }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
 
     let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
-        el('button', {text: 'Run Tournament', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
-        tGamesInp,
-        el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
-        tDepthSelect
-    );
+				el('button', {text: 'Run Tournament', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
+				tGamesInp,
+				el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+				tDepthSelect
+			       );
     col1.appendChild(tourneyControlsDiv);
 
     // COLUMN 2: SLICES
@@ -2801,28 +2882,46 @@ el('div', { style: 'text-align: center; margin: 4px 0;' },
         }
 
         col2.appendChild(el('div', { style: `display: flex; flex-direction: column; align-items: center; margin-bottom: 0;` },
-            el('div', { text: `${axis}-Axis`, style: 'text-align: center; font-size: 0.8em; margin-bottom: 2px;' }),
-            cvs,
-            radioContainer
-        ));
+			    el('div', { text: `${axis}-Axis`, style: 'text-align: center; font-size: 0.8em; margin-bottom: 2px;' }),
+			    cvs,
+			    radioContainer
+			   ));
     });
 
     // COLUMN 3: 3D VIEW
     const col3 = el('div', { class: 'col-3d' },
-        el('div', { id: 'view3d-container' })
-    );
+		    el('div', { id: 'view3d-container' })
+		   );
 
     // Append to DOM FIRST so getElementById works
     root.appendChild(col1);
-    root.appendChild(col2);
-    root.appendChild(col3);
+
+    if (playMode === '2D') {
+        const boardSize = 23 * S;
+        const col2D = el('div', {
+            id: 'col-2d-mode',
+            style: `display: flex; align-items: center; justify-content: center; margin-left: 15px; width: ${boardSize + 150}px;`
+        },
+			 el('canvas', {
+			     id: 'canvas-Z-2D',
+			     width: boardSize,
+			     height: boardSize,
+			     style: `border: 2px solid grey; background: ${backgroundColor}; display: block; cursor: pointer; box-shadow: 2px 2px 10px rgba(0,0,0,0.5);`,
+			     onclick: (e) => handleCanvasClick(e, 'Z')
+			 })
+			);
+        root.appendChild(col2D);
+    } else {
+        root.appendChild(col2);
+        root.appendChild(col3);
+        init3D();
+    }
 
     updateEngineButtonUI();
     updateBrainUI(); 
     setEngineTaskState('NONE');
     updateGameState();
     redrawAllSlices();
-    init3D();
 }
 
 // 7. START THE GAME
