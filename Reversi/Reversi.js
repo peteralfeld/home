@@ -468,10 +468,13 @@ function exportBrainsJS() {
 }
 
 function downloadRevisedBrain(brain) {
+let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
+    
     // 1. Create a descriptive header
     let content = `// Revised Parameters for ${brain.name}\n`;
     content += `// Date: ${new Date().toLocaleString()}\n`;
-    content += `// Board Size: ${N}x${N}x${N}\n\n`; // Track N
+    content += `// Board Size: ${boardDim}\n`; 
+    content += `// Play Mode: ${playMode}\n\n`;
     
     // 2. Format as a clean JS constant
     let cleanConstName = brain.name.replace(/[^a-zA-Z0-9]/g, '');
@@ -482,7 +485,7 @@ function downloadRevisedBrain(brain) {
 
     // 3. Generate a descriptive filename
     // Example output: ArwenOpt1_6x6x6.js
-    let fileName = `${brain.name}_${N}x${N}x${N}.js`;
+    let fileName = `${brain.name}-${boardDim}-${playMode}.js`;
 
     const blob = new Blob([content], { type: 'text/javascript;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -501,9 +504,11 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     tock = new Date();
     csv += "Ending Date:, ";
     csv += tock.toLocaleString() + "\n";
-    csv += "Duration:," + `"${commas(tock - tick)} ms"` + "\n";
+    let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
+    csv += "Duration:" + `"${commas(tock - tick)} ms"` + "\n";
     csv += "Number of Workers: " + numWorkers +"\n";
-    csv += `Board Size,${N}x${N}x${N}\n`;
+    csv += `Board Size,${boardDim}\n`;
+    csv += `Play Mode,${playMode}\n`; 
     csv += "Parameters: \n";
     csv += `Games per Pair,${gamesPerPair}\n`;
     csv += `Depth,${tDepthVal}\n\n`;
