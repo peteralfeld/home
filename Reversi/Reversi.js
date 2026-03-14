@@ -2162,8 +2162,7 @@ function update3DGrid() {
         if (child.material) child.material.dispose();
     }
     if (gridMode === 0) return; 
-
-    const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 });
+    const material = new THREE.LineBasicMaterial({ color: "rgb(150,200,255)", transparent: true, opacity: 0.8 });
     const points = [];
 
     for (let i = 0; i < N; i++) {
