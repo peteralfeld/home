@@ -1,7 +1,7 @@
 // Three-dimensional Reversi by Peter Alfeld. 
 // started 2/15/26
 // Players are Red (1) and Green (2). Red starts.
-// 3/13/26: 2D added ....
+// 3/13/26: 2D added
 
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
@@ -104,19 +104,23 @@ const Dwalin = {
 };
 
 
-let Frodo = makeBrain("Frodo", 0,0,0,0,0,0,0,0,0,0);
-let Hamfast = makeBrain("Hamfast", 0,0,0,0,0,0,0,0,0,0);
-let Indis = makeBrain("Indis", 0,0,0,0,0,0,0,0,0,0);
+const Frodo = { // 8x8 champion
+    name: "Frodo",
+    weights: [369, 0, 57, 1000, -11, -20, 108, -14, 114, -4]
+};
+
+const Hamfast = {  // 6x6x6 champion
+    name: "Hamfast",
+    weights: [14, 0, 9, 1000, -1, -7, 98, -3, 5, -1]
+};
+
+const Indis = { // 4x4x champion
+    name: "Indis",
+    weights: [15, 0, 22, 1000, -9, -19, 132, -2, 2, -2]
+};
+
+
 let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
-
-
-
-for (let i = 0; i < 10; i++) {
-    Frodo.weights[i] = Math.round((Arwen.weights[i] + Bilbo.weights[i]) / 2);
-    Hamfast.weights[i] = 1000;
-    Indis.weights[i] = 0;
-    Jolly.weights[i] = -Arwen.weights[i];
-}
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
@@ -1065,9 +1069,10 @@ async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
                     releaseWorker(worker);
                     runNext().then(resolve);
                 };
-                worker.postMessage({
+		worker.postMessage({
                     command: 'play_match', b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
-                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning,
+                    playMode: playMode // Tell the worker what mode we are in
                 });
             });
         };
@@ -1368,10 +1373,11 @@ async function runTournament() {
                     activeWorkersCount--;
                     runNext().then(resolve);
                 };
-                worker.postMessage({
+		worker.postMessage({
                     command: 'play_match',
                     b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
-                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning
+                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning,
+                    playMode: playMode // Tell the worker what mode we are in
                 });
             });
         };
@@ -1558,6 +1564,14 @@ document.addEventListener('keydown', (e) => {
     }
 
     switch(e.key) {
+    case '2':
+        // Toggle 2D/3D mode
+        playMode = playMode === '2D' ? '3D' : '2D';
+        backgroundColor = playMode === '2D' ? color2D : color3D;
+        activeParams = playMode === '2D' ? [0, 2, 3, 4, 5, 6, 7, 8] : [0, 2, 3, 4, 5, 6, 7, 8, 9];
+        resetGame(); 
+        initLayout(); 
+        break;
     case '4': case '6': case '8':
         N = parseInt(e.key);
         if(document.getElementById('size-select')) document.getElementById('size-select').value = N;
@@ -1588,11 +1602,17 @@ document.addEventListener('keydown', (e) => {
         if(document.getElementById('btn-cats')) document.getElementById('btn-cats').style.backgroundColor = 'grey';
         update3D();
         break;
+    case 's':
     case 'S':
         doStaticEval();
         break;
+    case 'm':
     case 'M':
         doListMoves();
+        break;
+    case 'w':
+    case 'W':
+        isMajesticRotation = !isMajesticRotation;
         break;
     case 'B':
         playerBallSize = Math.min(0.9, playerBallSize + 0.05);
@@ -1652,13 +1672,15 @@ document.addEventListener('keydown', (e) => {
         } else {
             printToOverlay(
 		`Commands:
+2       : switch to 2D mode
 4, 6, 8 : Set board size
 a       : Cycle grid mode
 A       : Toggle Axes
 c       : Toggle Categories
 v       : Toggle Clues (Values)
-S       : Compute Static Value
-M       : List sorted Moves
+S / s   : Compute Static Value
+M / m   : List sorted Moves
+w / W   : Toggle Majestic Movement
 B / b   : Increase/Decrease Player ball size
 H / h   : Increase/Decrease Hint ball size
 < / >   : History back/forward
@@ -2037,12 +2059,11 @@ function init3D() {
         renderer.domElement.addEventListener('mousemove', on3DMouseMove);
         renderer.domElement.addEventListener('click', on3DClick);
 
-	// NEW: Stop the majestic rotation instantly on any mouse/touch input
-        const stopRotation = () => { isMajesticRotation = false; };
+        // NEW: Stop the majestic rotation only on left-click
+        const stopRotation = (e) => { 
+            if (e.button === 0) isMajesticRotation = false; // 0 is left-click
+        };
         renderer.domElement.addEventListener('pointerdown', stopRotation, { passive: true });
-        renderer.domElement.addEventListener('pointermove', stopRotation, { passive: true });
-        renderer.domElement.addEventListener('wheel', stopRotation, { passive: true });   
-
     }
 
     renderer.setSize(size, size);
@@ -2503,7 +2524,7 @@ function initLayout() {
 
 		    // 3. Play Row
 		    el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
-		       el('button', { 
+el('button', { 
 			   id: 'btn-play',
 			   text: isPlaying ? 'Playing' : 'Play',
 			   title: 'Start/Stop a game between the selected players. Also stops background tasks.',
@@ -2514,6 +2535,8 @@ function initLayout() {
 				   stopTasks();
 				   setPlayState(true);
 				   updateGameState();
+				   redrawAllSlices();
+				   update3D();
 			       } else {
 				   if (isGameOver) return;
 
@@ -2526,28 +2549,30 @@ function initLayout() {
 				   }
 
 				   setPlayState(!isPlaying);
-				   if (isPlaying) updateGameState();
+				   updateGameState();
+				   redrawAllSlices();
+				   update3D();
 			       }
 			   }
 		       }),
 		       el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
-el('button', { 
-    id: 'btn-silence',
-    text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
-    title: 'Toggle Headless Mode for Tournaments/Evolution',
-    style: `background-color: ${silenceMode ? '#800' : '#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
-    onclick: (e) => { 
-        // 1. Toggle the actual global variable
-        silenceMode = !silenceMode; 
-        
-        // 2. Update the button's appearance immediately
-        e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
-        e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
-        
-        // 3. Log the change so you can see it in the console
-        log(`Headless mode (Silence) is now ${silenceMode ? 'ON' : 'OFF'}.`);
-    } 
-}),
+			  el('button', { 
+			      id: 'btn-silence',
+			      text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
+			      title: 'Toggle Headless Mode for Tournaments/Evolution',
+			      style: `background-color: ${silenceMode ? '#800' : '#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
+			      onclick: (e) => { 
+				  // 1. Toggle the actual global variable
+				  silenceMode = !silenceMode; 
+				  
+				  // 2. Update the button's appearance immediately
+				  e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
+				  e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
+				  
+				  // 3. Log the change so you can see it in the console
+				  log(`Headless mode (Silence) is now ${silenceMode ? 'ON' : 'OFF'}.`);
+			      } 
+			  }),
 			  el('button', { 
 			      text: 'Reset', 
 			      title: 'Stop ongoing background tasks and instantly reset the board to the starting state',
@@ -2923,6 +2948,7 @@ el('button', {
     setEngineTaskState('NONE');
     updateGameState();
     redrawAllSlices();
+    update3D();
 }
 
 // 7. START THE GAME

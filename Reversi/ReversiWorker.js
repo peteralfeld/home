@@ -241,13 +241,12 @@ self.onmessage = async function(e) {
             memArray = new Uint8Array(wasmExports.memory.buffer);
         }
     }
-
     // ========================================================
     // HEADLESS TOURNAMENT MODE (Runs entire match in one Worker)
     // ========================================================
-    if (data.command === 'play_match') {
-        const { b1, b2, depth1, depth2, nVal, pruning } = data;
-        if (N !== nVal || !initialized) { 
+if (data.command === 'play_match') {
+        const { b1, b2, depth1, depth2, nVal, pruning, playMode } = data; // Added playMode
+        if (N !== nVal || !initialized) {
             N = nVal; N2 = N*N; N3 = N*N*N;
             initGeometry(); initRays(); initialized = true;
         }
@@ -262,10 +261,19 @@ self.onmessage = async function(e) {
         let moves = new Int32Array(512);
 
         // Setup starting pieces
+// Setup starting pieces
         const mid = (N / 2) - 1;
-        let centerIndices = [mid, mid + 1];
-        for (let x of centerIndices) for (let y of centerIndices) for (let z of centerIndices) {
-            board[idx(x,y,z)] = (x + y + z) % 2 === 0 ? 1 : 2;
+        if (playMode === '3D') {
+            let centerIndices = [mid, mid + 1];
+            for (let x of centerIndices) for (let y of centerIndices) for (let z of centerIndices) {
+                board[idx(x,y,z)] = (x + y + z) % 2 === 0 ? 1 : 2;
+            }
+        } else {
+            // 2D Mode: Setup standard 4 pieces on the z=0 face
+            board[idx(mid, mid, 0)] = 2;             // Green
+            board[idx(mid + 1, mid + 1, 0)] = 2;     // Green
+            board[idx(mid, mid + 1, 0)] = 1;         // Red
+            board[idx(mid + 1, mid, 0)] = 1;         // Red
         }
 
         while (passes < 2) {
