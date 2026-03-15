@@ -89,7 +89,12 @@ const Arwen = {
     weights: [14, 0, 6, 1000, -1, -8, 91, -3, 4, -1]
 };
 
-const Dwalin = makeBrain("Dwalin", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
+const Dwalin = {
+    name: "Dwalin",
+    weights: [21, 0, 26, 1000, -8, -21, 75, -6, 5, -2]
+};
+
+
 
 const Hamfast = {
     name: "Hamfast",
@@ -119,7 +124,7 @@ const Frodo = { // 4x4x4 champion
 };
 
 
-let Jolly = makeBrain("Jolly", 0,0,0,0,0,0,0,0,0,0);
+let Jolly = makeBrain("Jolly", 1000,1000,1000,1000,1000,1000,1000,1000,1000,1000);
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
@@ -989,12 +994,17 @@ function normalizeBrain(brain) {
 
 function applyVector(base, vec, scale) {
     let newBrain = JSON.parse(JSON.stringify(base));
+    
+    // 1. Apply the raw mathematical step
     for (let param of activeParams) {
         let delta = vec[param] * scale;
-        let val = base.weights[param] + delta;
-        newBrain.weights[param] = Math.round(val);
-        if (newBrain.weights[param] === 0) newBrain.weights[param] = Math.random() > 0.5 ? 1 : -1;
+        newBrain.weights[param] = base.weights[param] + delta;
     }
+    
+    // 2. NEW: Instantly normalize the brain. 
+    // This automatically scales it to 1000, rounds it to integers, and prevents zeros.
+    normalizeBrain(newBrain);
+    
     return newBrain;
 }
 
