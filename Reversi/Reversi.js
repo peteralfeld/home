@@ -114,7 +114,7 @@ const Hamfast = {  // 6x6x6 champion
     weights: [14, 0, 9, 1000, -1, -7, 98, -3, 5, -1]
 };
 
-const Indis = { // 4x4x champion
+const Indis = { // 4x4x4 champion
     name: "Indis",
     weights: [15, 0, 22, 1000, -9, -19, 132, -2, 2, -2]
 };
