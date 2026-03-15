@@ -79,43 +79,42 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
 
 // Normalized to max parameter = 1000
 
-const Arwen = {
-    name: "Arwen",
+const Bilbo = {
+    name: "Bilbo",
     weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
 };
 
-const Bilbo = {
-    name: "Bilbo",
+const Arwen = {
+    name: "Arwen",
     weights: [14, 0, 6, 1000, -1, -8, 91, -3, 4, -1]
 };
 
-const Celebrian = makeBrain("Celebrian", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
+const Dwalin = makeBrain("Dwalin", 17, 0, 24, 1000, -8, -16, 72, -5, 6, -2);
 
-const Eowyn = {
+const Hamfast = {
+    name: "Hamfast",
+    weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
+};
+
+const Indis = {
+    name: "Indis",
+    weights: [9, 0, 16, 1000, -10, -14, 145, -2, 3, -3]
+};
+
+const Eowyn = { // 8x8 champion
     name: "Eowyn",
-    weights: [16, 0, 28, 1000, -10, -20, 191, -2, 3, -3]
+    weights: [369, 0, 57, 1000, -11, -20, 108, -14, 114, -4]
 };
 
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
-const Dwalin = {
-    name: "Dwalin",
-    weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
-};
-
-
-const Frodo = { // 8x8 champion
-    name: "Frodo",
-    weights: [369, 0, 57, 1000, -11, -20, 108, -14, 114, -4]
-};
-
-const Hamfast = {  // 6x6x6 champion
-    name: "Hamfast",
+const Celebrian = {  // 6x6x6 champion
+    name: "Celebrian",
     weights: [14, 0, 9, 1000, -1, -7, 98, -3, 5, -1]
 };
 
-const Indis = { // 4x4x4 champion
-    name: "Indis",
+const Frodo = { // 4x4x4 champion
+    name: "Frodo",
     weights: [15, 0, 22, 1000, -9, -19, 132, -2, 2, -2]
 };
 
@@ -369,7 +368,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 9 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 10 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
@@ -505,7 +504,7 @@ function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerP
     csv += "Ending Date:, ";
     csv += tock.toLocaleString() + "\n";
     let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
-    csv += "Duration:" + `"${commas(tock - tick)} ms"` + "\n";
+    csv += "Duration:," + `"${commas(tock - tick)} ms"` + "\n";
     csv += "Number of Workers: " + numWorkers +"\n";
     csv += `Board Size,${boardDim}\n`;
     csv += `Play Mode,${playMode}\n`; 
@@ -1401,6 +1400,7 @@ async function runTournament() {
     }
     setEngineTaskState('NONE');
 }
+
 async function runImprovement() {
     let logCopy = duplicateLogs;
     duplicateLogs = false;
@@ -1408,7 +1408,11 @@ async function runImprovement() {
     cancelBackgroundTasks = false;
     
     let brainIndex = editBrainIndex;
-    let baseBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    
+    // 1. The baseline we MUST beat to prove ultimate superiority
+    let absoluteOriginalBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    // 2. The active parent we mutate from
+    let baseBrain = JSON.parse(JSON.stringify(absoluteOriginalBrain));
     
     normalizeBrain(baseBrain); 
     let depth = tDepthVal;
@@ -1416,6 +1420,9 @@ async function runImprovement() {
     log(`EVOLUTION START: ${baseBrain.name}`);
     let successes = 0;
     let currentRate = impMutVal;
+    
+    let bestGauntletScore = 0;
+    let gauntletMultiplier = 10; // NEW: dynamic multiplier
     
     for (let g = 0; g < impGenVal; g++) {
         if (cancelBackgroundTasks) break;
@@ -1429,38 +1436,62 @@ async function runImprovement() {
             let noise = (Math.random() * 2) - 1; 
             let change = mutant.weights[i] * (currentRate / 100) * noise;
             if (Math.abs(change) > 1.0) {
-		changed = true;
-	    }
+                changed = true;
+            }
             mutant.weights[i] = Math.round(mutant.weights[i] + change);
             if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
-	}
+        }
         if (!changed) continue; 
         
-	let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
+        // 1. Fast Scouting Test against CURRENT parent
+        let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
         if (cancelBackgroundTasks) break;
         
-	if (netScore > 0) {
-            log(`Gen ${g+1}: Hit! (Score: +${netScore}). Starting Line Search...`);
+        if (netScore > 0) {
+            log(`Gen ${g+1}: Scout Hit! (+${netScore} vs Parent). Line Search...`);
             let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
             if (cancelBackgroundTasks) break;
             
             normalizeBrain(optimized); 
             
-            successes++;
+            // 2. The Verification Gauntlet against the BASELINE
+            let vGames = impGamesVal * gauntletMultiplier; 
+            log(`Line Search done. Gauntlet against BASELINE (${vGames} pairs)...`);
+            let vScore = await playBalancedMatch(optimized, absoluteOriginalBrain, vGames, depth);
             
-            // 1. Strip away "Opt" and any following numbers to get the base name
-            // This turns "ArwenOpt1" back into "Arwen"
-            let baseName = BrainList[brainIndex].name.replace(/Opt\d+$/, "");
-            
-            baseBrain = optimized;
-            
-            // 2. Combine them without an underscore
-            baseBrain.name = `${baseName}Opt${successes}`;
-            
-            BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
-            updateBrainUI();
+            if (cancelBackgroundTasks) break;
 
-            downloadRevisedBrain(baseBrain);
+            // Calculate the absolute maximum possible score (a perfect sweep)
+            let maxPossibleScore = vGames * 2;
+
+            // 3. Strict acceptance
+            if (vScore > bestGauntletScore) {
+                successes++;
+                bestGauntletScore = vScore; 
+                
+                let baseName = absoluteOriginalBrain.name.replace(/Opt\d+$/, "");
+                baseBrain = optimized; 
+                baseBrain.name = `${baseName}Opt${successes}`;
+                
+                BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
+                updateBrainUI();
+                downloadRevisedBrain(baseBrain);
+                
+                log(`VERIFIED! New High Score vs Baseline: +${vScore}! Crowned ${baseBrain.name}.`);
+
+                // --- NEW: THE CEILING BREAKER ---
+                // If the mutant achieved a perfect sweep, the baseline is obsolete.
+                if (vScore === maxPossibleScore) {
+                    log(`PERFECT SWEEP DETECTED! The baseline brain is completely outclassed.`);
+                    gauntletMultiplier *= 2; // Double the game volume as requested
+                    absoluteOriginalBrain = JSON.parse(JSON.stringify(baseBrain)); // Set new baseline
+                    bestGauntletScore = 0; // Reset the high score
+                    log(`--> Doubled Gauntlet to ${gauntletMultiplier}x. Setting ${baseBrain.name} as the new baseline!`);
+                }
+
+            } else {
+                log(`REJECTED! Score +${vScore} vs Baseline failed to beat the record (+${bestGauntletScore}).`);
+            }
         }
     }
     if (cancelBackgroundTasks) {
@@ -1471,8 +1502,6 @@ async function runImprovement() {
     setEngineTaskState('NONE');
     duplicateLogs = logCopy;
 }
-
-
 
 function triggerBlink() {
     let el = document.getElementById('press-play-msg');
