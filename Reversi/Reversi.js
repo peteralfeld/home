@@ -124,7 +124,7 @@ const Frodo = { // 4x4x4 champion
 };
 
 
-let Jolly = makeBrain("Jolly", 1000,1000,1000,1000,1000,1000,1000,1000,1000,1000);
+let Jolly = makeBrain("Jolly", 1000,0,1000,1000,-1000,-1000,1000,-1000,1000,-1000);
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 

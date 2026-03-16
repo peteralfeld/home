@@ -16,6 +16,17 @@
 }
 
 
+red {
+    color: rgb(255, 0, 0); /* or just 'red' */
+    font-weight: bold;
+}
+
+green {
+    color: rgb(0, 255, 0); /* or just 'green' */
+	      
+    font-weight: bold;
+}
+
 
 body {
     background-color: var(--bgColor); 

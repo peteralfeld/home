@@ -6,13 +6,13 @@
 </head>
 <body>
 
-  <H1> 3D Reversi Rules and User's Guide</H1>
+  <H1><a href = "index.html"> 3D Reversi Rules and User's Guide</a></H1>
 
   <H2>Scope</H2>
 
   <p> On this site you can play the game of Reversi in 2D or 3D, against a human, or one a number of AI players.   You can also develop your own AI players and see how they do against the built-in ones.    The focus of this site, and the reason for creating is, to make it possible to play in 3D.  But 2D is available also.
 
-  <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page. 
+  <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> (or on the main heading of this page) and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page.  It probably is best to open the game table in a different window and refer to it, and try things out, as you proceed.  However, you can also see a static image of the game table <a href = "GameTable.png"> here. </a>
 
 <h2> The Rules of the Game </h2>
 								       
@@ -73,7 +73,7 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
 <LI>Neither player may skip a valid move, or choose not to flip some of the opponent's enclosed pieces.</LI>
 <LI>As the game proceeds the number of red and green pieces undergo large swings back and forth.   This gives an advantage to the last player.   Any, potentially large, gain on the last turn cannot be undone by the opponent.</li>
 <LI>Since a player may not have have a legal placement, and thereby forfeit that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.
-<Ii> Corners are very special.   Once a player places piece in a corner it will never change color there.   Much of the game strategy consists of gaining corners, and preventing the opponents from gaining corners.  Similar considerations apply to edges.</li>
+<Ii> Corners are very special.   Once a player places piece in a corner it will never change color there.  Moreover, any connected chain that ends at a corner, or a point, that is connected to the corner by a chain, can no longer change color.   Much of the game strategy consists of gaining corners, and preventing the opponents from gaining corners.  Similar considerations apply to edges.</li>
 <li> Usually a game consists of 60 (64 board points - the four points occupied from the beginning.  But since a player may have to forfeit a turn it may take longer, and it may also end early with empty spots left on the board, but no legal placements being available for either player.   For example, if it was Green's turn in the last board of the above sequence, Green could play 3-5.  As a result, all pieces would turn green, neither player would have a legal move available, and the game would end with nine green pieces, and zero red pieces.
 
   </OL>
@@ -83,7 +83,36 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
 <p> The 3D game is played exactly like the 2D game, except that now there are more neighbors for each point, and the chains of enclosed pieces can run in  more directions.    In fact, the number of directions increases from 8 to 26 neighbors.    To see this note that an interior point and its neighbors in the grid form a 3x3x3 cube which contains 27 points.   The innermost point is not a neighbor of itself, so that point has a total of 3<sup>3</sup>-1=27-1 = 26 neighbors, each corresponding to a potential chain of enclosed opposing pieces.  (On the 2x2 board we have 3<sup>2</sup>-1 = 8 neighbors, and in n dimensions we have 3<sup>n</sup>-1 neighbors.   You can place pieces in a three dimensional array by using the interactive 3D display or in a two-dimensional cross section of the board.
 
   <H2>User's Guide </H2>
-You can start the game <a href="index.html"> right here.</a>
+<p> You can start the game <a href="index.html"> right here.</a> If you wonder what a specific control does you can hover over it and see a one or two word explanation pop up.  However, you may prefer to read the detailed information below to know what this software does and get an idea of how it works.
+
+  <H3>Game Boards and Controls</H3>
+
+<p> The Table with the controls, the 3D game board, and three Cross sections by default measures about 1631 by 1039 pixels.   This is quite large (certainly unrealistic to be used on a smartphone)  but it fits on most modern lap or desktop screens.   You may need to change the resolution setting on your screen to accommodate the whole table.   You can also shrink the size of the table in the line labeled <e>Scale:</a>.  Click on "<" or ">".  See below for more information.
+
+  <p> The default game table, meant for playing 3D Reversi,  consists of three columns.  The first column contains the game controls.   The second consists of three cross sections, each of which is perpendicular to one of the three axes. The third column contains the three-dimensional board.  You can also toggle the display to play in just two dimensions (by clicking on the button in the second row of the control column).   In that case the middle column (with the cross sections) disappears and the game board turns two dimensional.
+
+    <H3> Playing the Game </H3>
+
+  <p> Players may be human or one of ten AI players.   To play a game select the participants int the lines labeled <red> Red: </red> and <green>Green: </green>, and then clock on the <i>Play</i> button in undo the fifth row of the control column (and originally labeled <e>Play</e>.  Pieces that are already marked are shown as red or green circles in the 2D displays, and as red or green balls in the 3D display.  Also present by default are smaller red or green circles or Balls whose colors indicate whose turn it is, and where that player can legally place a marker.
+
+    <H3> The 3D Game Board </H3>
+
+    The 3D game board is moving in space initially to suggest that this is an interactive 3D display, and you can manipulate the game board to help you visualize the 3D game state.  Specifically, you can:
+
+    <OL>
+      <LI> Left-click anywhere in the display to stop its movement.  You can also toggle the movement by typing <e>w</e> or <e>W</e> anywhere in the game table.</LI>
+      <LI> Left-drag the display to rotate the 3D board and view it from any angle.</li>
+      <li> Middle-drag to zoom in or out. </li>	
+      <li>Right-drag to move the board.</li>
+      <li> Cycle the grid from blank to parallel to the axes (the default) to showing all 26 directions,by using the keyboard command 'a'. </li>
+      <li> Turn the board full-screen with the keyboard command 'f' or 'F'. Repeat, or use Escape key or the space bar to exit full-screen. </LI>
+      <li> Type a period or a question mark to see a complete  list of available keyboard commands.  Repeat to remove that list.</li>
+      </OL>
+
+<H3> The 3D cross-sections</H3>
+
+You can also place markers on the 2D intersections.   There is one intersection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible intersections is being displayed.
+
 
 
 </body>
