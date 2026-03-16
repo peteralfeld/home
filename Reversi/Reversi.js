@@ -250,6 +250,11 @@ function stopTasks() {
             w.terminate();
         }
         activeWorkers.clear();
+
+	for (let w of workerPool) {
+            w.terminate();
+        }
+
         workerPool = []; // Wipe the pool so fresh, untainted workers spawn next time
         
         log("Background tasks manually stopped.");
@@ -1094,9 +1099,20 @@ async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
         let concurrent = Math.min(numWorkers, queue.length);
         for(let i=0; i<concurrent; i++) pool.push(runNext());
         await Promise.all(pool);
+        for(let i=0; i<concurrent; i++) pool.push(runNext());
+        await Promise.all(pool);
+
+        // --- ADD THIS TO PREVENT AW SNAP CRASHES ---
+        // Force the browser to garbage collect the WASM memory
+        for (let w of workerPool) {
+            w.terminate();
+        }
+        workerPool = [];
+        // -------------------------------------------
     }
     return aWins - bWins;
 }
+
 
 async function runRoundRobin(brains, gamesPerSide, depth) {
     let scores = [0, 0, 0]; 
@@ -1400,6 +1416,10 @@ async function runTournament() {
         let concurrent = Math.min(numWorkers, queue.length);
         for(let i=0; i<concurrent; i++) pool.push(runNext());
         await Promise.all(pool);
+for (let w of workerPool) {
+            w.terminate();
+        }
+        workerPool = [];
     }
     
     if (cancelBackgroundTasks) {
