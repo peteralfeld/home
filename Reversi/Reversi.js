@@ -263,9 +263,6 @@ function stopTasks() {
 }
 
 function setEngineTaskState(taskName) {
-    // CHANGE: Update the global variable IMMEDIATELY.
-    // This ensures that when updateGameState() runs at the end of this function,
-    // it sees the new 'TOURNEY' or 'EVO' state right away.
     currentTask = taskName; 
 
     let statusBox = document.getElementById('status-box');
@@ -276,26 +273,51 @@ function setEngineTaskState(taskName) {
         else statusBox.textContent = 'Ready to play';
     }
     
-    let btn = document.getElementById('btn-play');
-    if (btn) {
-        if (taskName === 'TOURNEY') {
-            btn.textContent = 'Tournament';
-            btn.style.fontSize = '14px';
-            btn.style.backgroundColor = 'purple';
-        } else if (taskName === 'EVO') {
-            btn.textContent = 'Evolution';
-            btn.style.fontSize = '14px';
-            btn.style.backgroundColor = 'purple';
+    let btnPlay = document.getElementById('btn-play');
+    let btnTourney = document.getElementById('btn-tourney');
+    let btnEvolve = document.getElementById('btn-evolve');
+
+    // 1. Manage the Play Button
+    if (btnPlay) {
+        if (taskName !== 'NONE') {
+            btnPlay.disabled = true;
+            btnPlay.style.backgroundColor = 'gray';
+            btnPlay.style.cursor = 'not-allowed';
+            btnPlay.textContent = 'Play';
         } else {
-            btn.style.fontSize = '18px';
-            btn.textContent = isPlaying ? 'Playing' : 'Play';
-            btn.style.backgroundColor = isPlaying ? 'orange' : 'green';
+            btnPlay.disabled = isGameOver; 
+            btnPlay.style.backgroundColor = isPlaying ? 'orange' : 'green';
+            btnPlay.style.cursor = isGameOver ? 'not-allowed' : 'pointer';
+            btnPlay.textContent = isPlaying ? 'Playing' : 'Play';
         }
     }
 
-    // Now call the UI refresh. 
-    // Because currentTask was set at the top, the logic we added to the 
-    // headerDiv block will now correctly identify that it should NOT show "Press Play".
+    // 2. Manage the Tournament Button
+    if (btnTourney) {
+        if (taskName === 'TOURNEY') {
+            btnTourney.textContent = 'Stop Tourney';
+            btnTourney.style.backgroundColor = 'red';
+            btnTourney.disabled = false;
+        } else {
+            btnTourney.textContent = 'Run Tournament';
+            btnTourney.style.backgroundColor = 'orange';
+            btnTourney.disabled = (taskName === 'EVO'); // Lock if Evo is running
+        }
+    }
+
+    // 3. Manage the Evolution Button
+    if (btnEvolve) {
+        if (taskName === 'EVO') {
+            btnEvolve.textContent = 'Stop Evolution';
+            btnEvolve.style.backgroundColor = 'red';
+            btnEvolve.disabled = false;
+        } else {
+            btnEvolve.textContent = 'Evolve';
+            btnEvolve.style.backgroundColor = 'orange';
+            btnEvolve.disabled = (taskName === 'TOURNEY'); // Lock if Tourney is running
+        }
+    }
+
     updateGameState(); 
 }
 
@@ -2588,36 +2610,26 @@ function initLayout() {
 		    // 3. Play Row
 		    el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
 el('button', { 
-			   id: 'btn-play',
-			   text: isPlaying ? 'Playing' : 'Play',
-			   title: 'Start/Stop a game between the selected players. Also stops background tasks.',
-			   style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+                   id: 'btn-play',
+                   text: isPlaying ? 'Playing' : 'Play',
+                   title: 'Start/Stop a game between the selected players on the board.',
+                   style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+                   onclick: (e) => { 
+                       if (isGameOver || currentTask !== 'NONE') return;
 
-			   onclick: (e) => { 
-			       if (currentTask !== 'NONE') {
-				   stopTasks();
-				   setPlayState(true);
-				   updateGameState();
-				   redrawAllSlices();
-				   update3D();
-			       } else {
-				   if (isGameOver) return;
+                       // Resume from history feature
+                       if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
+                           log(`Resuming game from move ${currentMoveIndex}...`);
+                           moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+                           lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
+                       }
 
-				   // NEW LOGIC: If we are viewing a past move, truncate the history to resume
-				   if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
-				       log(`Resuming game from move ${currentMoveIndex}...`);
-				       moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
-				       // lastMoveRecord should be updated to the move that led to this state
-				       lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
-				   }
-
-				   setPlayState(!isPlaying);
-				   updateGameState();
-				   redrawAllSlices();
-				   update3D();
-			       }
-			   }
-		       }),
+                       setPlayState(!isPlaying);
+                       updateGameState();
+                       redrawAllSlices();
+                       update3D();
+                   }
+               }),
 		       el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
 			  el('button', { 
 			      id: 'btn-silence',
@@ -2908,14 +2920,18 @@ el('button', {
 
     let impPercentInp = el('input', {id: 'impPercent', type: 'text', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
     setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
-
-    let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
-			    el('button', {text: 'Evolve', title: 'Run Line Search Evolution on Selected Brain', style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', onclick: runImprovement}),
-			    el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
-			    impGenInp, impGamesInp, impPercentInp
-			   );
-    col1.appendChild(evoControlsDiv);
-
+let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
+    el('button', {
+        id: 'btn-evolve', 
+        text: 'Evolve', 
+        title: 'Run or Stop Line Search Evolution', 
+        style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', 
+        onclick: () => currentTask === 'EVO' ? stopTasks() : runImprovement()
+    }),
+    el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+    impGenInp, impGamesInp, impPercentInp
+);
+col1.appendChild(evoControlsDiv);
     // TOURNAMENT PANEL
     col1.appendChild(el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}));
 
@@ -2928,12 +2944,18 @@ el('button', {
         onchange: (e) => { tDepthVal = parseInt(e.target.value); }
     }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
 
-    let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
-				el('button', {text: 'Run Tournament', title: 'Run a Round-Robin Tournament', style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', onclick: runTournament}),
-				tGamesInp,
-				el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
-				tDepthSelect
-			       );
+let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
+    el('button', {
+        id: 'btn-tourney', 
+        text: 'Run Tournament', 
+        title: 'Run or Stop a Round-Robin Tournament', 
+        style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', 
+        onclick: () => currentTask === 'TOURNEY' ? stopTasks() : runTournament()
+    }),
+    tGamesInp,
+    el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+    tDepthSelect
+);
     col1.appendChild(tourneyControlsDiv);
 
     // COLUMN 2: SLICES

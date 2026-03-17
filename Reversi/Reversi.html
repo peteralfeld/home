@@ -10,7 +10,11 @@
 
   <H2>Scope</H2>
 
-  <p> On this site you can play the game of Reversi in 2D or 3D, against a human, or one a number of AI players.   You can also develop your own AI players and see how they do against the built-in ones.    The focus of this site, and the reason for creating is, to make it possible to play in 3D.  But 2D is available also.
+  <p> On this site you can play the game of Reversi in 2D or 3D, against a human, or one a number of AI players.   You can also play a <e>Tournament</e> among AI players or run an <e>Evolution</e> to try to try to improve the ability of one of the AI players. 
+You can also develop your own AI players and see how they do against the built-in ones.    The focus of this site, and the reason for creating is, to make it possible to play in 3D.  But 2D is available also.
+
+
+
 
   <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> (or on the main heading of this page) and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page.  It probably is best to open the game table in a different window and refer to it, and try things out, as you proceed.  However, you can also see a static image of the game table <a href = "GameTable.png"> here. </a>
 
@@ -112,6 +116,32 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
 <H3> The 3D cross-sections</H3>
 
 You can also place markers on the 2D intersections.   There is one intersection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible intersections is being displayed.
+
+H3> The Control Column </H3>
+
+This section contains a description of the available controls, listed from top to bottom.
+
+<UL>
+  <LI><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JavaScript (JS) or WASM (C++) based.  </LI>  The number of workers indicated the maximum number of concurrent threads run on your machine.
+  <LI><e>3D/2D</e> This button let's you switch back and forth between the 2D and the 3D display.   You can accomplish the same using the keyboard command '2'.</LI>
+  <LI><e>Click here...</e> Click here to see this page.</LI>
+  <LI><e>Ready to Play</e>This is a textfield giving general status info.</li>
+  <LI><e>Play...</e>This line contains four items:
+    <OL><LI>The actual <i>play button</i>.   This starts or stops a single game.   The label and color of the button change with the status of the game.   </LI>
+      <LI><i>Silence></i> on or off.   By default the game board (2D or 3D) does not show the status of the boards  while a tournament of an evolution is in progress, to increase speed.   This button toggles this option on or off. For a single game, the status of the board is always shown.</e></LI>
+      <LI><i>Reset</i>  This button interrupts and resets any ongoing game, tournament, or evolution. It has no impact on settings like search depths, AI players, etc. To rest the game Table to all of its original settings reload the web page.   To exit the game board close the web page.</LI>
+<LI><i>N</i> is the size of the board.  Possible choices are 4, 6, or 8.   The default is 6.  Playing on a 4x4x4 board is very different from playing on a larger board since corners can be occupied in the first move.   Playing on an 8x8x8 board takes a very  long time since a typical game runs for 504 placements.  As far as strategy and actual game play, a 6x6x6 board is sufficiently rich and there appear to be no general new features when going to an 8x8x8 board.  </LI>
+    </OL>
+
+
+<LI><e><0> >></e> These buttons let you scroll through ANY ONGOING game. You can also go to any move by entering its number in the text field. The button labeled >>" takes you back to the current game state.  You can continue the game from any previous game state, and you can change parameters like the player or the search depth. To avoid accidentally messing up the game,  using any of these facilities interrupts the game.  When you are ready to continue from the currently displayed state press the Play button.</LI>
+
+<LI><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are paced by left-clicking on an eligible spot on one of the game boards.   You can also choose one of ten AI players, described below.  The AI player proceeds by evaluating boards as described below, and looking a number of plies (half movers, i.e., placements by just one player) ahead.   The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spend by the AI.  The choice of D has no impact on any human player.</LI>
+
+
+
+
+</UL>
 
 
 
