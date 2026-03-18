@@ -26,7 +26,9 @@ let millTitleBg = "#ffffcc";
 
 let S = 45;   
 let N = 6;    
-let numWorkers = navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency - 2) : 4; 
+
+let numWorkers = navigator.hardwareConcurrency ? Math.max(1, Math.floor(navigator.hardwareConcurrency * 0.8)) : 4;
+
 let duplicateLogs = true; 
 
 // ENGINE STATE
@@ -45,6 +47,13 @@ let activeWorkers = new Set(); // Tracks currently calculating threads
 function getWorker() {
     let w = workerPool.length > 0 ? workerPool.pop() : new Worker('ReversiWorker.js');
     activeWorkers.add(w);
+    
+    // NEW: Send the heavy WASM module ONLY ONCE when the thread is created
+    if (!w.hasWasm) {
+        w.postMessage({ command: 'init_wasm', wasmModule: wasmModule });
+        w.hasWasm = true;
+    }
+    
     return w;
 }
 
@@ -52,8 +61,20 @@ function releaseWorker(worker) {
     worker.onmessage = null; 
     worker.currentResolve = null;
     activeWorkers.delete(worker);
-    workerPool.push(worker); 
+    
+    // --- NEW: The Rolling Restart ---
+    worker.gamesPlayed = (worker.gamesPlayed || 0) + 1;
+    
+    if (worker.gamesPlayed >= 50) {
+        // Hard flush the fragmented V8 memory back to the OS
+        worker.terminate(); 
+    } else {
+        // Still healthy, put it back in the pool
+        workerPool.push(worker); 
+    }
 }
+
+
 async function loadWasmEngine() {
     try {
         const response = await fetch('ReversiEngine.wasm');
@@ -69,6 +90,7 @@ async function loadWasmEngine() {
         log("JS Engine loaded successfully.");
     }
     log("Ready to Play, \nBoard Size = " +N+"x"+N+"x"+N+".");
+    log("Using "+numWorkers+ " of " + navigator.hardwareConcurrency + " available workers");
 }
 loadWasmEngine(); 
 
@@ -526,6 +548,7 @@ let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000); 
 }
 
 function downloadTournamentResults(scores, headToHead, displayPlayers, gamesPerPair, globalStats) {
@@ -873,7 +896,7 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
             worker.postMessage({
                 id: i, tasks: chunk, rootPlayerId: player,
                 weights: activeBrain.weights, pruning: usePruning, nVal: N,
-                engineMode: engineMode, wasmModule: wasmModule 
+                engineMode: engineMode
             });
         });
     });
@@ -1044,97 +1067,88 @@ function isSameBrain(b1, b2) {
 
 async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
     let aWins = 0, bWins = 0, draws = 0;
-    let queue = [];
-    for(let c=0; c<gamesPerSide; c++) {
-        queue.push({ b1: bA, d1: depth, idx1: 'A', b2: bB, d2: depth, idx2: 'B' });
-        queue.push({ b1: bB, d1: depth, idx1: 'B', b2: bA, d2: depth, idx2: 'A' });
-    }
     
     if (!silenceMode) {
-        for(let match of queue) {
-            if (cancelBackgroundTasks) break;
-            initGameData(); 
-            isPlaying = true;
-            
-            let passes = 0;
-            while (passes < 2 && !isGameOver && isPlaying) {
-                if (cancelBackgroundTasks) break;
-                let pId = activePlayer;
-                let d = pId === 1 ? match.d1 : match.d2;
-                let b = pId === 1 ? match.b1 : match.b2;
-                await new Promise(r => setTimeout(r, 10)); 
-                if (cancelBackgroundTasks) break;
-                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
-                if (cancelBackgroundTasks) break;
-                
-                if (res.bestMove && isPlaying) {
-                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
-                    passes = 0;
-                    await new Promise(r => setTimeout(r, 10)); 
-                } else {
-                    passes++;
-                    activePlayer = activePlayer === 1 ? 2 : 1;
-                    updateGameState();
+        // [Keep all of your existing non-silenceMode code exactly as it is here]
+        // ...
+        
+    } else {
+        // --- NEW CONTINUOUS DISPATCHER (PUMP) MODEL ---
+        await new Promise(resolve => {
+            let totalGames = gamesPerSide * 2;
+            let gamesStarted = 0;
+            let gamesCompleted = 0;
+            let activeCount = 0; // Tracks how many workers are currently busy
+
+            function pump() {
+                // 1. Exit condition: Are we done or was it cancelled?
+                if (cancelBackgroundTasks || gamesCompleted === totalGames) {
+                    if (activeCount === 0) resolve();
+                    return;
+                }
+
+                // 2. Feed available workers until we hit our concurrency limit 
+                //    OR we run out of games to start.
+                while (gamesStarted < totalGames && activeCount < numWorkers) {
+                    let gameIndex = gamesStarted++;
+                    activeCount++;
+
+                    // Determine who is Red and who is Green for this specific match
+                    let isEven = (gameIndex % 2 === 0);
+                    let match_b1 = isEven ? bA : bB;
+                    let match_b2 = isEven ? bB : bA;
+                    let idx1 = isEven ? 'A' : 'B';
+                    let idx2 = isEven ? 'B' : 'A';
+
+                    let worker = getWorker();
+                    
+                    // Fallback to safely unblock if stopTasks() murders the worker
+                    worker.currentResolve = () => {
+                        releaseWorker(worker);
+                        activeCount--;
+                        gamesCompleted++;
+                        pump();
+                    };
+
+                    worker.onmessage = function(e) {
+                        worker.currentResolve = null;
+                        let res = e.data;
+                        
+                        if (res.result === 'match_done') {
+                            if (res.winner === 1) {
+                                if (idx1 === 'A') aWins++; else bWins++;
+                            } else if (res.winner === 2) {
+                                if (idx2 === 'A') aWins++; else bWins++;
+                            } else draws++;
+                        }
+                        
+                        releaseWorker(worker);
+                        activeCount--;
+                        gamesCompleted++;
+                        
+                        // The worker is free! Instantly loop back to give it more work
+                        pump(); 
+                    };
+
+                    worker.postMessage({
+                        command: 'play_match', b1: match_b1, b2: match_b2, 
+                        depth1: depth, depth2: depth,
+                        nVal: N, engineMode: engineMode,  
+                        pruning: usePruning, playMode: playMode 
+                    });
                 }
             }
-            isPlaying = false;
-            let s1 = 0, s2 = 0;
-            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
-                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
-            }
-            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
-            if (winner === 1) {
-                if (match.idx1 === 'A') aWins++; else bWins++;
-            } else if (winner === 2) {
-                if (match.idx2 === 'A') aWins++; else bWins++;
-            } else draws++;
-        }
-    } else {
-        let runNext = () => {
-            return new Promise(resolve => {
-                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
-                let match = queue.shift();
-                
-                const worker = getWorker();
-                worker.currentResolve = () => resolve(); // Unblocks if cancelled
-                worker.onmessage = function(e) {
-                    let res = e.data;
-                    worker.currentResolve = null;
-                    if (res.result === 'match_done') {
-                        if (res.winner === 1) {
-                            if (match.idx1 === 'A') aWins++; else bWins++;
-                        } else if (res.winner === 2) {
-                            if (match.idx2 === 'A') aWins++; else bWins++;
-                        } else draws++;
-                    }
-                    releaseWorker(worker);
-                    runNext().then(resolve);
-                };
-		worker.postMessage({
-                    command: 'play_match', b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
-                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning,
-                    playMode: playMode // Tell the worker what mode we are in
-                });
-            });
-        };
-        let pool = [];
-        let concurrent = Math.min(numWorkers, queue.length);
-        for(let i=0; i<concurrent; i++) pool.push(runNext());
-        await Promise.all(pool);
-        for(let i=0; i<concurrent; i++) pool.push(runNext());
-        await Promise.all(pool);
 
-        // --- ADD THIS TO PREVENT AW SNAP CRASHES ---
-        // Force the browser to garbage collect the WASM memory
-        for (let w of workerPool) {
-            w.terminate();
-        }
-        workerPool = [];
-        // -------------------------------------------
+            // Ignite the engine
+            pump();
+        });
+        
+        // CRITICAL: We NO LONGER terminate the workerPool here!
+        // The workers simply go back into the pool, warm and ready for the next phase.
     }
+    
     return aWins - bWins;
 }
-
 
 async function runRoundRobin(brains, gamesPerSide, depth) {
     let scores = [0, 0, 0]; 
@@ -1428,7 +1442,7 @@ async function runTournament() {
 		worker.postMessage({
                     command: 'play_match',
                     b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
-                    nVal: N, engineMode: engineMode, wasmModule: wasmModule, pruning: usePruning,
+                    nVal: N, engineMode: engineMode, pruning: usePruning,
                     playMode: playMode // Tell the worker what mode we are in
                 });
             });
@@ -1454,8 +1468,6 @@ for (let w of workerPool) {
 }
 
 async function runImprovement() {
-    let logCopy = duplicateLogs;
-    duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
     
@@ -1552,7 +1564,6 @@ async function runImprovement() {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
-    duplicateLogs = logCopy;
 }
 
 function triggerBlink() {

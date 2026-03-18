@@ -172,6 +172,10 @@ function fastEvaluation(board, player) {
 let global_moves = new Array(128).fill(0).map(()=>new Int32Array(512));
 let global_temp_boards = new Array(128).fill(0).map(()=>new Uint8Array(512));
 
+// Define these flat arrays at the top of ReversiWorker.js alongside the others
+let global_scored_moves_m = new Array(128).fill(0).map(()=>new Int32Array(512));
+let global_scored_moves_s = new Array(128).fill(0).map(()=>new Int32Array(512));
+
 function alphaBetaJS(board, depth, alpha, beta, maxPlayer, currentPlayer, passed) {
     aiNodesVisited++;
     if(depth >= 0 && depth < 20) depthVisits[depth] = (depthVisits[depth] || 0) + 1;
@@ -187,63 +191,95 @@ function alphaBetaJS(board, depth, alpha, beta, maxPlayer, currentPlayer, passed
         return alphaBetaJS(board, depth - 1, alpha, beta, maxPlayer, opponentId, true);
     }
 
-    let scoredMoves = [];
+    let sMovesM = global_scored_moves_m[safeDepth];
+    let sMovesS = global_scored_moves_s[safeDepth];
     let tempBoard = global_temp_boards[safeDepth];
 
+    // Evaluate and store in flat arrays
     for(let i=0; i<moveCount; i++) {
         simulateMove(board, tempBoard, moves[i], currentPlayer);
-        scoredMoves.push({ m: moves[i], score: fastEvaluation(tempBoard, maxPlayer) });
+        sMovesM[i] = moves[i];
+        sMovesS[i] = fastEvaluation(tempBoard, maxPlayer);
     }
 
     if(currentPlayer === maxPlayer) {
+        // Inline descending insertion sort (Zero object creation)
+        for (let i = 1; i < moveCount; i++) {
+            let keyM = sMovesM[i];
+            let keyS = sMovesS[i];
+            let j = i - 1;
+            while (j >= 0 && sMovesS[j] < keyS) {
+                sMovesM[j + 1] = sMovesM[j];
+                sMovesS[j + 1] = sMovesS[j];
+                j = j - 1;
+            }
+            sMovesM[j + 1] = keyM;
+            sMovesS[j + 1] = keyS;
+        }
+        
         let maxEval = -Infinity;
-        scoredMoves.sort((a,b) => b.score - a.score);
         for(let i=0; i<moveCount; i++) {
             let nextAlpha = usePruning ? alpha : -Infinity;
             let nextBeta = usePruning ? beta : Infinity;
-            simulateMove(board, tempBoard, scoredMoves[i].m, currentPlayer);
+            simulateMove(board, tempBoard, sMovesM[i], currentPlayer);
             let ev = alphaBetaJS(tempBoard, depth - 1, nextAlpha, nextBeta, maxPlayer, opponentId, false);
             if(ev > maxEval) maxEval = ev;
             if(usePruning) {
                 if(ev > alpha) alpha = ev;
                 if(beta <= alpha) break;
             }
-        } return maxEval;
+        }
+        return maxEval;
     } else {
+        // Inline ascending insertion sort (Zero object creation)
+        for (let i = 1; i < moveCount; i++) {
+            let keyM = sMovesM[i];
+            let keyS = sMovesS[i];
+            let j = i - 1;
+            while (j >= 0 && sMovesS[j] > keyS) {
+                sMovesM[j + 1] = sMovesM[j];
+                sMovesS[j + 1] = sMovesS[j];
+                j = j - 1;
+            }
+            sMovesM[j + 1] = keyM;
+            sMovesS[j + 1] = keyS;
+        }
+        
         let minEval = Infinity;
-        scoredMoves.sort((a,b) => a.score - b.score);
         for(let i=0; i<moveCount; i++) {
             let nextAlpha = usePruning ? alpha : -Infinity;
             let nextBeta = usePruning ? beta : Infinity;
-            simulateMove(board, tempBoard, scoredMoves[i].m, currentPlayer);
+            simulateMove(board, tempBoard, sMovesM[i], currentPlayer);
             let ev = alphaBetaJS(tempBoard, depth - 1, nextAlpha, nextBeta, maxPlayer, opponentId, false);
             if(ev < minEval) minEval = ev;
             if(usePruning) {
                 if(ev < beta) beta = ev;
                 if(beta <= alpha) break;
             }
-        } return minEval;
+        }
+        return minEval;
     }
 }
 
+
 // --- WORKER INTERFACE ---
 self.onmessage = async function(e) {
-    const data = e.data;
+const data = e.data;
     
-    // CACHE WEBASSEMBLY ACROSS MESSAGES
-    if (data.engineMode === 'WASM' && data.wasmModule) {
-        if (!wasmInstanceCache) {
-            wasmInstanceCache = await WebAssembly.instantiate(data.wasmModule, {
+    // --- NEW: One-Time WASM Initialization ---
+    if (data.command === 'init_wasm') {
+        if (data.wasmModule && !wasmInstanceCache) {
+            // Synchronous instantiation (no await needed)
+            wasmInstanceCache = new WebAssembly.Instance(data.wasmModule, {
                 env: { emscripten_notify_memory_growth: function() {} }
             });
             wasmExports = wasmInstanceCache.exports;
             boardPtr = wasmExports.get_board_ptr();
             memArray = new Uint8Array(wasmExports.memory.buffer);
         }
+        return; // Stop here! The worker is primed and ready.
     }
-    // ========================================================
-    // HEADLESS TOURNAMENT MODE (Runs entire match in one Worker)
-    // ========================================================
+
 if (data.command === 'play_match') {
         const { b1, b2, depth1, depth2, nVal, pruning, playMode } = data; // Added playMode
         if (N !== nVal || !initialized) {
@@ -330,8 +366,7 @@ if (data.command === 'play_match') {
             newBoard = t;
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
-// Yield to the event loop so the browser watchdog doesn't kill the worker
-            await new Promise(r => setTimeout(r, 0));
+	    await new Promise(r => setTimeout(r, 0));
         }
 
         let s1 = 0, s2 = 0;
