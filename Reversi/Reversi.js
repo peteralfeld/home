@@ -24,7 +24,7 @@ let color3D = "rgb(0,0,0)";   // Black for 3D
 let backgroundColor = color3D; // Starts in 3D mode
 let millTitleBg = "#ffffcc";
 
-let S = 45;   
+let S = 43;   
 let N = 6;    
 
 let numWorkers = navigator.hardwareConcurrency ? Math.max(1, Math.floor(navigator.hardwareConcurrency * 0.8)) : 4;
@@ -89,7 +89,7 @@ async function loadWasmEngine() {
         updateEngineButtonUI();
         log("JS Engine loaded successfully.");
     }
-    log("Ready to Play, \nBoard Size = " +N+"x"+N+"x"+N+".");
+    log("Ready to Go, \nBoard Size = " +N+"x"+N+"x"+N+".");
     log("Using "+numWorkers+ " of " + navigator.hardwareConcurrency + " available workers");
 }
 loadWasmEngine(); 
@@ -287,14 +287,6 @@ function stopTasks() {
 function setEngineTaskState(taskName) {
     currentTask = taskName; 
 
-    let statusBox = document.getElementById('status-box');
-    if (statusBox) {
-        if (taskName === 'TOURNEY') statusBox.textContent = 'Running Tournament...';
-        else if (taskName === 'EVO') statusBox.textContent = 'Running Evolution...';
-        else if (isPlaying) statusBox.textContent = 'Playing Game';
-        else statusBox.textContent = 'Ready to play';
-    }
-    
     let btnPlay = document.getElementById('btn-play');
     let btnTourney = document.getElementById('btn-tourney');
     let btnEvolve = document.getElementById('btn-evolve');
@@ -1281,7 +1273,6 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
 
 async function runTournament() {
     tick = new Date();
-
     setEngineTaskState('TOURNEY');
     cancelBackgroundTasks = false;
     
@@ -1291,21 +1282,15 @@ async function runTournament() {
     let queue = [];
     let globalStats = { redWins: 0, greenWins: 0, draws: 0 };
     
+    // 1. Build the list of participants
     if (checks.length === 0) {
         let rIdx = redType.startsWith('AI_') ? parseInt(redType.split('_')[1]) : 0;
         let gIdx = greenType.startsWith('AI_') ? parseInt(greenType.split('_')[1]) : 0;
-        let b1 = BrainList[rIdx], b2 = BrainList[gIdx];
-        
         displayPlayers = [
-            { id: 0, name: b1.name, params: b1, depth: redDepth },
-            { id: 1, name: b2.name, params: b2, depth: greenDepth }
+            { id: 0, name: BrainList[rIdx].name, params: BrainList[rIdx], depth: redDepth },
+            { id: 1, name: BrainList[gIdx].name, params: BrainList[gIdx], depth: greenDepth }
         ];
         pIndices = [0, 1];
-        
-        for(let g=0; g<tGamesVal; g++) {
-            if (g % 2 === 0) queue.push({ b1: b1, d1: redDepth, idx1: 0, name1: b1.name, b2: b2, d2: greenDepth, idx2: 1, name2: b2.name });
-            else queue.push({ b1: b2, d1: greenDepth, idx1: 1, name1: b2.name, b2: b1, d2: redDepth, idx2: 0, name2: b1.name });
-        }
     } else if (checks.length < 2) { 
         log("Need at least 2 participants."); 
         setEngineTaskState('NONE');
@@ -1313,22 +1298,21 @@ async function runTournament() {
     } else {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
-        for (let i = 0; i < pIndices.length; i++) {
-            for (let j = 0; j < pIndices.length; j++) {
-                if (i === j) continue; 
+    }
 
-                for (let g = 0; g < tGamesVal; g++) {
-                    let p1 = BrainList[pIndices[i]];
-                    let p2 = BrainList[pIndices[j]];
-                    queue.push({ 
-                        b1: p1, d1: tDepthVal, idx1: pIndices[i], name1: p1.name, 
-                        b2: p2, d2: tDepthVal, idx2: pIndices[j], name2: p2.name 
-                    });
-                }
+    // 2. Build the Match Queue
+    for (let i = 0; i < pIndices.length; i++) {
+        for (let j = i + 1; j < pIndices.length; j++) {
+            let p1 = displayPlayers.find(p => p.id === pIndices[i]);
+            let p2 = displayPlayers.find(p => p.id === pIndices[j]);
+            for (let g = 0; g < tGamesVal; g++) {
+                // Ensure balanced starts: alternate who is Red/Green
+                if (g % 2 === 0) queue.push({ b1: p1.params, d1: p1.depth, idx1: p1.id, name1: p1.name, b2: p2.params, d2: p2.depth, idx2: p2.id, name2: p2.name });
+                else queue.push({ b1: p2.params, d1: p2.depth, idx1: p2.id, name1: p2.name, b2: p1.params, d2: p1.depth, idx2: p1.id, name2: p1.name });
             }
         }
     }
-    
+
     let scores = {};
     let headToHead = {};
     pIndices.forEach(i => {
@@ -1336,82 +1320,38 @@ async function runTournament() {
         headToHead[i] = {};
         pIndices.forEach(j => headToHead[i][j] = 0);
     });
-    
-    log(`Tournament Start`);
+
+    log(`Tournament Start (${queue.length} matches)`);
     let resultsProcessed = 0;
     let totalMatches = queue.length;
-    
-    if (!silenceMode) {
-        for(let match of queue) {
-            if (cancelBackgroundTasks) break;
-            initGameData(); 
-            isPlaying = true;
-            
-            let passes = 0;
-            while (passes < 2 && !isGameOver && isPlaying) {
-                if (cancelBackgroundTasks) break;
-                let pId = activePlayer;
-                let d = pId === 1 ? match.d1 : match.d2;
-                let b = pId === 1 ? match.b1 : match.b2;
-                
-                await new Promise(r => setTimeout(r, 10)); 
-                if (cancelBackgroundTasks) break;
-                
-                let res = await getBestMoveAI_Async(gameCube, pId, d, b);
-                if (cancelBackgroundTasks) break;
-                
-                if (res.bestMove && isPlaying) {
-                    executeMove(res.bestMove.x, res.bestMove.y, res.bestMove.z);
-                    passes = 0;
-                    await new Promise(r => setTimeout(r, 10)); 
-                } else {
-                    passes++;
-                    activePlayer = activePlayer === 1 ? 2 : 1;
-                    updateGameState();
-                }
+
+    // 3. The Continuous Dispatcher Pump
+    await new Promise(resolve => {
+        let gamesStarted = 0;
+        let gamesCompleted = 0;
+        let activeCount = 0;
+
+        function pump() {
+            if (cancelBackgroundTasks || gamesCompleted === totalMatches) {
+                if (activeCount === 0) resolve();
+                return;
             }
-            isPlaying = false;
-            
-            let s1 = 0, s2 = 0;
-            for(let x=0;x<N;x++) for(let y=0;y<N;y++) for(let z=0;z<N;z++) {
-                if(gameCube[x][y][z] === 1) s1++; else if(gameCube[x][y][z] === 2) s2++;
-            }
-            let winner = s1 > s2 ? 1 : (s2 > s1 ? 2 : 0);
-            
-            if (winner === 1) {
-                globalStats.redWins++;
-                scores[match.idx1].wins++; scores[match.idx1].points += 1;
-                scores[match.idx2].losses++; scores[match.idx2].points -= 1;
-                headToHead[match.idx1][match.idx2] += 1;
-                headToHead[match.idx2][match.idx1] -= 1;
-            } else if (winner === 2) {
-                globalStats.greenWins++;
-                scores[match.idx2].wins++; scores[match.idx2].points += 1;
-                scores[match.idx1].losses++; scores[match.idx1].points -= 1;
-                headToHead[match.idx2][match.idx1] += 1;
-                headToHead[match.idx1][match.idx2] -= 1;
-            } else {
-                globalStats.draws++;
-                scores[match.idx1].draws++;
-                scores[match.idx2].draws++;
-            }
-            resultsProcessed++;
-            let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
-            log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
-        }
-    } else {
-        let activeWorkersCount = 0;
-        let runNext = () => {
-            return new Promise(resolve => {
-                if (cancelBackgroundTasks || queue.length === 0) { resolve(); return; }
-                let match = queue.shift();
-                activeWorkersCount++;
-                
-                const worker = getWorker();
-                worker.currentResolve = () => resolve(); 
+
+            while (gamesStarted < totalMatches && activeCount < numWorkers) {
+                let match = queue[gamesStarted++];
+                activeCount++;
+                let worker = getWorker();
+
+                worker.currentResolve = () => {
+                    releaseWorker(worker);
+                    activeCount--;
+                    gamesCompleted++;
+                    pump();
+                };
+
                 worker.onmessage = function(e) {
-                    let res = e.data;
                     worker.currentResolve = null;
+                    let res = e.data;
                     if (res.result === 'match_done') {
                         let winner = res.winner;
                         if (winner === 1) {
@@ -1432,32 +1372,27 @@ async function runTournament() {
                             scores[match.idx2].draws++;
                         }
                         resultsProcessed++;
-                        let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
-                        log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
+                        if (!silenceMode) {
+                            let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+                            log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
+                        }
                     }
                     releaseWorker(worker);
-                    activeWorkersCount--;
-                    runNext().then(resolve);
+                    activeCount--;
+                    gamesCompleted++;
+                    pump();
                 };
-		worker.postMessage({
-                    command: 'play_match',
-                    b1: match.b1, b2: match.b2, depth1: match.d1, depth2: match.d2,
-                    nVal: N, engineMode: engineMode, pruning: usePruning,
-                    playMode: playMode // Tell the worker what mode we are in
+
+                worker.postMessage({
+                    command: 'play_match', b1: match.b1, b2: match.b2, 
+                    depth1: match.d1, depth2: match.d2,
+                    nVal: N, engineMode: engineMode, pruning: usePruning, playMode: playMode 
                 });
-            });
-        };
-        
-        let pool = [];
-        let concurrent = Math.min(numWorkers, queue.length);
-        for(let i=0; i<concurrent; i++) pool.push(runNext());
-        await Promise.all(pool);
-for (let w of workerPool) {
-            w.terminate();
+            }
         }
-        workerPool = [];
-    }
-    
+        pump();
+    });
+
     if (cancelBackgroundTasks) {
         log("Tournament cancelled by user.");
     } else {
@@ -1584,6 +1519,11 @@ function handleBoardClick() {
 
     if (!isPlaying && !isGameOver) { 
         if (currentMoveIndex === 0) {
+            
+            // --- NEW: Change the text instantly on click ---
+            let msgEl = document.getElementById('press-play-msg');
+            if (msgEl) msgEl.textContent = "Press Play to Start!";
+            
             unplayedClickCount++;
             if (unplayedClickCount > 1) triggerBlink();
         }
@@ -1924,7 +1864,7 @@ function updateGameState(isViewOnly = false) {
         } 
         // 2. IDLE GUARD: Only show "Press Play" if NO task is running and we are at the start.
         else if (currentTask === 'NONE' && currentMoveIndex === 0 && !isPlaying && !isGameOver) {
-            html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Press Play to Start</div>`;
+            html = `<div id="press-play-msg" style="font-size: 1.3em; font-weight: bold; color: magenta; display: flex; align-items: center; justify-content: center; height: 100%;">Ready to Go!</div>`;
         } 
         // 3. DEFAULT: Standard Gameplay UI.
         else {
@@ -1948,12 +1888,6 @@ function updateGameState(isViewOnly = false) {
         headerDiv.innerHTML = html;
     }
     
-    // Update the 1-line top status monitor if we aren't in a headless loop
-    if (currentTask === 'NONE') {
-        let sb = document.getElementById('status-box');
-        if (sb) sb.textContent = isPlaying ? 'Playing Game' : 'Ready to play';
-    }
-
     // Defer AI trigger to prevent locking UI thread / memory exhaustion
     if (!isViewOnly && !isGameOver && validMoves.length > 0 && currentMoveIndex === moveHistory.length - 1) {
         let pType = activePlayer === 1 ? redType : greenType;
@@ -2336,18 +2270,25 @@ function update3D() {
         return; 
     }
 
-    if (showValues) {
+if (showValues) {
         const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
+        
+        // --- NEW: Grab the brain currently selected in the UI ---
+        const inspectBrain = BrainList[editBrainIndex] || BrainList[0];
+
         for(let x=0; x<N; x++) {
             for(let y=0; y<N; y++) {
                 for(let z=0; z<N; z++) {
                     const cat = categoryMap[x][y][z];
-                    const weight = currentBrain.weights[cat] || 0;
+                    
+                    // --- CHANGED: Read from inspectBrain instead of currentBrain ---
+                    const weight = inspectBrain.weights[cat] || 0;
+                    
                     let col = 0x888888;
                     if (weight > 0) {
-                        if (weight >= 500) col = 0xFFD700; 
-                        else col = 0x00FF00; 
-                    } else if (weight < 0) col = 0xFF0000; 
+                        if (weight >= 500) col = 0xFFD700; // Gold for high value
+                        else col = 0x00FF00;               // Green for positive
+                    } else if (weight < 0) col = 0xFF0000; // Red for negative
 
                     const mat = new THREE.MeshStandardMaterial({ 
                         color: col, roughness: 0.4, metalness: 0.1, transparent: true, opacity: 0.6
@@ -2599,7 +2540,7 @@ function initLayout() {
 			}
 		    }),
 
-		    // 1.5 NEW: Help Link (Second Row)
+		    // 2.0 Help Link (Third Row)
 		    el('div', { style: 'text-align: center; margin: 4px 0;' }, 
 		       // <--- Note the opening bracket here
 		       el('a', { 
@@ -2610,13 +2551,6 @@ function initLayout() {
 			   style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
 		       })
 		      ),
-
-		    // 2. Status Box
-		    el('div', { 
-			id: 'status-box',
-			title: 'General Status Info',
-			style: `background-color: ${scoreBgColor}; color: yellow; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; padding: 2px 5px; font-size: 0.85em; border: 1px solid navy; font-family: sans-serif; text-align: center; font-weight: bold;`
-		    }),
 
 		    // 3. Play Row
 		    el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },

@@ -125,7 +125,6 @@ This section contains a description of the available controls, listed from top t
   <LI><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JavaScript (JS) or WASM (C++) based.  </LI>  The number of workers indicated the maximum number of concurrent threads run on your machine.
   <LI><e>3D/2D</e> This button let's you switch back and forth between the 2D and the 3D display.   You can accomplish the same using the keyboard command '2'.</LI>
   <LI><e>Click here...</e> Click here to see this page.</LI>
-  <LI><e>Ready to Play</e>This is a textfield giving general status info.</li>
   <LI><e>Play...</e>This line contains four items:
     <OL><LI>The actual <i>play button</i>.   This starts or stops a single game.   The label and color of the button change with the status of the game.   </LI>
       <LI><i>Silence></i> on or off.   By default the game board (2D or 3D) does not show the status of the boards  while a tournament of an evolution is in progress, to increase speed.   This button toggles this option on or off. For a single game, the status of the board is always shown.</e></LI>
@@ -138,9 +137,11 @@ This section contains a description of the available controls, listed from top t
 
 <LI><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are paced by left-clicking on an eligible spot on one of the game boards.   You can also choose one of ten AI players, described below.  The AI player proceeds by evaluating boards as described below, and looking a number of plies (half movers, i.e., placements by just one player) ahead.   The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spend by the AI.  The choice of D has no impact on any human player.</LI>
 
+<li>
+The next two rows contain two textfields that give information about the current status and processes.    The first (initially labeled <e> Ready to Go </li>) gives the current score of any ongoing game, or states that an evolution or a torunament is in progress.   </li>
 
 
-
+<li> The second, larger and scorllable, textfield gives more detailed information.  Any log output goes to the game console (invoke it with CTL-Shift-J) by default is duplicated in this textfield.   You can trun of the duplication by clicking on the <i>Logs</i> button described below. </li>
 </UL>
 
 

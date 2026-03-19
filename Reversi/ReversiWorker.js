@@ -366,7 +366,6 @@ if (data.command === 'play_match') {
             newBoard = t;
 
             currentPlayer = currentPlayer === 1 ? 2 : 1;
-	    await new Promise(r => setTimeout(r, 0));
         }
 
         let s1 = 0, s2 = 0;
