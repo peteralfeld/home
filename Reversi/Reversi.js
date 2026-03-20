@@ -116,6 +116,11 @@ const Dwalin = {
     weights: [21, 0, 26, 1000, -8, -21, 75, -6, 5, -2]
 };
 
+const Eowyn = {
+    name: "Eowyn",
+    weights: [13, 0, 6, 1000, -1, -8, 94, -3, 4, -1]
+};
+
 
 
 const Hamfast = {
@@ -128,10 +133,7 @@ const Indis = {
     weights: [9, 0, 16, 1000, -10, -14, 145, -2, 3, -3]
 };
 
-const Eowyn = { // 8x8 champion
-    name: "Eowyn",
-    weights: [369, 0, 57, 1000, -11, -20, 108, -14, 114, -4]
-};
+
 
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
@@ -165,7 +167,6 @@ let tDepthVal = 4;
 let impGenVal = 1000; 
 let impGamesVal = 10; 
 let impMutVal = 10;
-let silenceMode = true;
 
 // Game State Controls
 let isPlaying = false;    
@@ -1060,12 +1061,6 @@ function isSameBrain(b1, b2) {
 async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
     let aWins = 0, bWins = 0, draws = 0;
     
-    if (!silenceMode) {
-        // [Keep all of your existing non-silenceMode code exactly as it is here]
-        // ...
-        
-    } else {
-        // --- NEW CONTINUOUS DISPATCHER (PUMP) MODEL ---
         await new Promise(resolve => {
             let totalGames = gamesPerSide * 2;
             let gamesStarted = 0;
@@ -1129,15 +1124,14 @@ async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
                         pruning: usePruning, playMode: playMode 
                     });
                 }
-            }
-
+	    }
             // Ignite the engine
             pump();
         });
         
         // CRITICAL: We NO LONGER terminate the workerPool here!
         // The workers simply go back into the pool, warm and ready for the next phase.
-    }
+
     
     return aWins - bWins;
 }
@@ -1188,18 +1182,35 @@ async function runRoundRobin(brains, gamesPerSide, depth) {
 }
 
 async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, depth) {
+    // 1. NEW: Normalize X immediately so the convergence trap works perfectly
+    let X = JSON.parse(JSON.stringify(firstStepBrain)); 
+    normalizeBrain(X); 
+
+    // 2. Compute the step vector (V) AFTER normalization
     let V = {};
     for (let p of activeParams) {
-        V[p] = firstStepBrain.weights[p] - originBrain.weights[p];
+        V[p] = X.weights[p] - originBrain.weights[p];
     }
     
-    let X = JSON.parse(JSON.stringify(firstStepBrain)); 
     let expanding = true;
     let iterations = 0;
 
     while (iterations < 30) {
         if (cancelBackgroundTasks) break;
         iterations++;
+
+        // 3. NEW: The Ultimate Failsafe - Break immediately if the vector is zero
+        let isZeroStep = true;
+        for (let p of activeParams) {
+            if (V[p] !== 0) {
+                isZeroStep = false;
+                break;
+            }
+        }
+        if (isZeroStep) {
+            log(`Line Search converged (step size reached zero).`);
+            break;
+        }
 
         let A = applyVector(X, V, 1.0);
         let B = applyVector(X, V, -1.0);
@@ -1250,14 +1261,14 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
                 for(let p of activeParams) V[p] *= 2;
                 log("--> A is winner. Doubling step.");
             } else {
-                for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+                for(let p of activeParams) V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
                 log("--> A is winner. Halving step.");
             }
         } else if (scoreBX > scoreAX && scoreBX > 0) {
             // B is better
             X = B;
             expanding = false;
-            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            for(let p of activeParams) V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
             log("--> B is winner. Reversing/Halving step.");
         } else {
             // Anomaly: A and B both > X
@@ -1265,14 +1276,18 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
             let scoreAB = await playBalancedMatch(A, B, gamesPerSide, depth);
             X = (scoreAB >= 0) ? A : B;
             expanding = false;
-            for(let p of activeParams) V[p] = V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
+            for(let p of activeParams) V[p] = (V[p] > 0) ? Math.floor(V[p] / 2) : Math.ceil(V[p] / 2);
         }
     }
     return X;
 }
 
 async function runTournament() {
+    let logCopy = duplicateLogs;
+    log("running Tournament");
+    duplicateLogs = false;
     tick = new Date();
+    log("Tournament started at " + tick.toLocaleString());
     setEngineTaskState('TOURNEY');
     cancelBackgroundTasks = false;
     
@@ -1299,20 +1314,23 @@ async function runTournament() {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
     }
-
-    // 2. Build the Match Queue
+// 2. Build the Match Queue
     for (let i = 0; i < pIndices.length; i++) {
         for (let j = i + 1; j < pIndices.length; j++) {
             let p1 = displayPlayers.find(p => p.id === pIndices[i]);
             let p2 = displayPlayers.find(p => p.id === pIndices[j]);
+            
+            // NEW: tGamesVal now guarantees mathematically balanced pairs.
+            // A value of 10 means 10 games as Red and 10 games as Green (20 total).
             for (let g = 0; g < tGamesVal; g++) {
-                // Ensure balanced starts: alternate who is Red/Green
-                if (g % 2 === 0) queue.push({ b1: p1.params, d1: p1.depth, idx1: p1.id, name1: p1.name, b2: p2.params, d2: p2.depth, idx2: p2.id, name2: p2.name });
-                else queue.push({ b1: p2.params, d1: p2.depth, idx1: p2.id, name1: p2.name, b2: p1.params, d2: p1.depth, idx2: p1.id, name2: p1.name });
+                // Game 1: P1 plays Red (First Mover), P2 plays Green
+                queue.push({ b1: p1.params, d1: p1.depth, idx1: p1.id, name1: p1.name, b2: p2.params, d2: p2.depth, idx2: p2.id, name2: p2.name });
+                // Game 2: P2 plays Red (First Mover), P1 plays Green
+                queue.push({ b1: p2.params, d1: p2.depth, idx1: p2.id, name1: p2.name, b2: p1.params, d2: p1.depth, idx2: p1.id, name2: p1.name });
             }
         }
     }
-
+    
     let scores = {};
     let headToHead = {};
     pIndices.forEach(i => {
@@ -1321,7 +1339,7 @@ async function runTournament() {
         pIndices.forEach(j => headToHead[i][j] = 0);
     });
 
-    log(`Tournament Start (${queue.length} matches)`);
+    log(`Tournament Start (${queue.length} games)`);
     let resultsProcessed = 0;
     let totalMatches = queue.length;
 
@@ -1372,10 +1390,8 @@ async function runTournament() {
                             scores[match.idx2].draws++;
                         }
                         resultsProcessed++;
-                        if (!silenceMode) {
                             let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
                             log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
-                        }
                     }
                     releaseWorker(worker);
                     activeCount--;
@@ -1400,9 +1416,16 @@ async function runTournament() {
         downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
     }
     setEngineTaskState('NONE');
+    tock = new Date();
+    log("Tournament done at " + tock.toLocaleString());
+    log("Tournament duration = " + commas(tock-tick) + "ms");
+    duplicateLogs = logCopy;
 }
 
 async function runImprovement() {
+    let logCopy = duplicateLogs;
+    log("running Evolution");
+    duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
     
@@ -1489,7 +1512,7 @@ async function runImprovement() {
                 }
 
             } else {
-                log(`REJECTED! Score +${vScore} vs Baseline failed to beat the record (+${bestGauntletScore}).`);
+log(`REJECTED! Score ${vScore > 0 ? '+' : ''}${vScore} vs Baseline failed to beat the record (+${bestGauntletScore}).`);
             }
         }
     }
@@ -1499,6 +1522,7 @@ async function runImprovement() {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
+    duplicateLogs = logCopy;
 }
 
 function triggerBlink() {
@@ -2243,7 +2267,7 @@ function update3D() {
     const hRadius = hintBallSize / 2;
     const stoneGeo = new THREE.SphereGeometry(pRadius, 32, 32);
     const hintGeo = new THREE.SphereGeometry(hRadius, 16, 16);
-    const bestMoveGeo = new THREE.SphereGeometry(hRadius * 2, 16, 16);
+    const bestMoveGeo = new THREE.SphereGeometry(pRadius * 2, 32, 32);
 
     if (showCategories) {
         const catColors = [
@@ -2303,10 +2327,13 @@ if (showValues) {
         return;
     }
 
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
+const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
     const greenMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, roughness: 0.2, metalness: 0.1 });
     const hintColorHex = (activePlayer === 1) ? 0x7f0000 : 0x007f00;
     const hintMat = new THREE.MeshStandardMaterial({ color: hintColorHex, transparent: true, opacity: 0.8, roughness: 0.2 });
+    
+    // NEW: Bright yellow material for the best moves
+    const bestMoveMat = new THREE.MeshStandardMaterial({ color: 0xffff00, transparent: true, opacity: 0.9, roughness: 0.2 });
 
     for(let x=0; x<N; x++) {
         for(let y=0; y<N; y++) {
@@ -2326,8 +2353,11 @@ if (showValues) {
         validMoves.forEach(moveStr => {
             const [x, y, z] = moveStr.split(',').map(Number);
             const isBest = bestMoves.some(m => m.x === x && m.y === y && m.z === z);
+            
             const geometry = isBest ? bestMoveGeo : hintGeo;
-            const mesh = new THREE.Mesh(geometry, hintMat);
+            const material = isBest ? bestMoveMat : hintMat; // Toggle to yellow if it's the best
+            
+            const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
             mesh.userData = { isHint: true, x: x, y: y, z: z };
             stoneGroup.add(mesh);
@@ -2467,10 +2497,12 @@ function initLayout() {
         return safeVal;
     });
 
-    let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center;' });
+let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center; background-color: yellow;' });
     setupSmartInput(workerInput, (val) => {
         let safeW = Math.max(1, Math.min(32, parseInt(val) || 4)); 
         numWorkers = safeW;
+	updateEngineButtonUI();
+	log(" switching to " + numWorkers + " workers ");
         return safeW;
     });
 
@@ -2576,23 +2608,6 @@ el('button', {
                    }
                }),
 		       el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
-			  el('button', { 
-			      id: 'btn-silence',
-			      text: silenceMode ? 'Silence: ON' : 'Silence: OFF', 
-			      title: 'Toggle Headless Mode for Tournaments/Evolution',
-			      style: `background-color: ${silenceMode ? '#800' : '#080'}; flex: 1; color: white; font-weight: bold; cursor: pointer; padding: 4px; border: none;`, 
-			      onclick: (e) => { 
-				  // 1. Toggle the actual global variable
-				  silenceMode = !silenceMode; 
-				  
-				  // 2. Update the button's appearance immediately
-				  e.target.textContent = silenceMode ? 'Silence: ON' : 'Silence: OFF'; 
-				  e.target.style.backgroundColor = silenceMode ? '#800' : '#080';
-				  
-				  // 3. Log the change so you can see it in the console
-				  log(`Headless mode (Silence) is now ${silenceMode ? 'ON' : 'OFF'}.`);
-			      } 
-			  }),
 			  el('button', { 
 			      text: 'Reset', 
 			      title: 'Stop ongoing background tasks and instantly reset the board to the starting state',

@@ -113,11 +113,11 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
       <li> Type a period or a question mark to see a complete  list of available keyboard commands.  Repeat to remove that list.</li>
       </OL>
 
-<H3> The 3D cross-sections</H3>
+<H3> The 2D cross-sections</H3>
 
 You can also place markers on the 2D intersections.   There is one intersection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible intersections is being displayed.
 
-H3> The Control Column </H3>
+<H3> The Control Column </H3>
 
 This section contains a description of the available controls, listed from top to bottom.
 
@@ -127,7 +127,6 @@ This section contains a description of the available controls, listed from top t
   <LI><e>Click here...</e> Click here to see this page.</LI>
   <LI><e>Play...</e>This line contains four items:
     <OL><LI>The actual <i>play button</i>.   This starts or stops a single game.   The label and color of the button change with the status of the game.   </LI>
-      <LI><i>Silence></i> on or off.   By default the game board (2D or 3D) does not show the status of the boards  while a tournament of an evolution is in progress, to increase speed.   This button toggles this option on or off. For a single game, the status of the board is always shown.</e></LI>
       <LI><i>Reset</i>  This button interrupts and resets any ongoing game, tournament, or evolution. It has no impact on settings like search depths, AI players, etc. To rest the game Table to all of its original settings reload the web page.   To exit the game board close the web page.</LI>
 <LI><i>N</i> is the size of the board.  Possible choices are 4, 6, or 8.   The default is 6.  Playing on a 4x4x4 board is very different from playing on a larger board since corners can be occupied in the first move.   Playing on an 8x8x8 board takes a very  long time since a typical game runs for 504 placements.  As far as strategy and actual game play, a 6x6x6 board is sufficiently rich and there appear to be no general new features when going to an 8x8x8 board.  </LI>
     </OL>
@@ -138,13 +137,23 @@ This section contains a description of the available controls, listed from top t
 <LI><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are paced by left-clicking on an eligible spot on one of the game boards.   You can also choose one of ten AI players, described below.  The AI player proceeds by evaluating boards as described below, and looking a number of plies (half movers, i.e., placements by just one player) ahead.   The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spend by the AI.  The choice of D has no impact on any human player.</LI>
 
 <li>
-The next two rows contain two textfields that give information about the current status and processes.    The first (initially labeled <e> Ready to Go </li>) gives the current score of any ongoing game, or states that an evolution or a tournament is in progress.   </li>
+The next two rows contain two textfields that give information about the current status and processes.    The first (initially labeled <e> Ready to Go </e>) gives the current score of any ongoing game, or states that an evolution or a tournament is in progress.   </li>
 
 
 <li> The second, larger and scrollable, textfield gives more detailed information.  Any log output goes to the game console (invoke it with CTL-Shift-J) by default is duplicated in this textfield.   You can turn of the duplication by clicking on the <i>Logs</i> button described below. </li>
+</LI>
+
+<li><e>Value, Moves, D</e>  The <i>value</i> button prints the numerical score of the current board position to the console and the large status window.    The <i>Moves</i> button similarly lists the available moves and their respective scores.   The available best moves are shown as large yellow circles or balls in the 2D and 3D displays.   (Note, however, that at the beginning of a game the software checks moves for symmetry and lists only one of each group of equivalent moves.)a
+The depth menu <i>D=</i>in that row determined the depth at which the scores and the moves are computed. </li>
+
+<li><e>Scale: W:</e> <UL> <li>The <i>Scale</i> controls change the size of the 3D display.   They can be used to adjust the size of the board to your particular computer.   If the height of the board becomes larger than the height of the control column becomes scrollable.   For the best experience you want to keep the scale large enough to accommodate the full control column.</LI>
+<LI> The textfield labeled <i>W:</i> letss you specify the number of simultaneous threads, called <i>Workers</i> in JavaScript, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then chooses W to be 80 percent of that maximum number.   This leaves 20% for routine system tasks.   You can increase that number up to the maximum available, or choose it to be as small as 1.  You may want to choose smaller numbers for experiments, or to reduce memory issues for massive computations.  There is a more detailed discussion of the number of workers below </li>
+   </li>
 </UL>
 
+<H3>Parallel Processing </H3>
 
+<p>This is a crucial aspect of the game.   Modern computers are able to run several threads simultaneousluy.  For example, my system has three <e>cores</e> and can run up to 32 threads.   Thereads are called <e>workers</e> in JavaScript.   
 
 </body>
 </html>
