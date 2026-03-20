@@ -113,8 +113,9 @@ const Arwen = {
 
 const Dwalin = {
     name: "Dwalin",
-    weights: [21, 0, 26, 1000, -8, -21, 75, -6, 5, -2]
+    weights: [18, 0, 23, 1000, -8, -20, 76, -6, 5, -2]
 };
+
 
 const Eowyn = {
     name: "Eowyn",
@@ -1285,6 +1286,7 @@ async function performLineSearch(originBrain, firstStepBrain, gamesPerSide, dept
 async function runTournament() {
     let logCopy = duplicateLogs;
     log("running Tournament");
+    log("check console for progress");
     duplicateLogs = false;
     tick = new Date();
     log("Tournament started at " + tick.toLocaleString());
@@ -1409,6 +1411,10 @@ async function runTournament() {
         pump();
     });
 
+    tock = new Date();
+    log("Tournament done at " + tock.toLocaleString());
+    log("Tournament duration = " + commas(tock-tick) + "ms");
+    duplicateLogs = logCopy;
     if (cancelBackgroundTasks) {
         log("Tournament cancelled by user.");
     } else {
@@ -1416,15 +1422,12 @@ async function runTournament() {
         downloadTournamentResults(scores, headToHead, displayPlayers, tGamesVal, globalStats);
     }
     setEngineTaskState('NONE');
-    tock = new Date();
-    log("Tournament done at " + tock.toLocaleString());
-    log("Tournament duration = " + commas(tock-tick) + "ms");
-    duplicateLogs = logCopy;
 }
 
 async function runImprovement() {
     let logCopy = duplicateLogs;
     log("running Evolution");
+    log("check console for progress");
     duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
@@ -1516,13 +1519,13 @@ log(`REJECTED! Score ${vScore > 0 ? '+' : ''}${vScore} vs Baseline failed to bea
             }
         }
     }
+    duplicateLogs = logCopy;
     if (cancelBackgroundTasks) {
         log("Evolution cancelled by user.");
     } else {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
     setEngineTaskState('NONE');
-    duplicateLogs = logCopy;
 }
 
 function triggerBlink() {
