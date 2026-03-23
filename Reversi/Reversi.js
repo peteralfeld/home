@@ -92,7 +92,7 @@ if (isAutoResume && startupChk && startupChk.generation <= startupChk.maxGenerat
 
 let numWorkers = (startupChk && startupChk.numWorkers) 
     ? startupChk.numWorkers 
-    : (navigator.hardwareConcurrency ? Math.max(1, Math.floor(navigator.hardwareConcurrency * 0.8)) : 4);
+    : (navigator.hardwareConcurrency ? Math.max(1, navigator.hardwareConcurrency) : 4);
 let duplicateLogs = true;
 
 // ENGINE STATE
@@ -203,10 +203,11 @@ const Indis = {
 
 const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
-const Celebrian = {  // 6x6x6 champion
+const Celebrian = {
     name: "Celebrian",
-    weights: [14, 0, 9, 1000, -1, -7, 98, -3, 5, -1]
+    weights: [13, 0, 7, 1000, -1, -9, 105, -2, 4, -1]
 };
+
 
 const Frodo = { // 4x4x4 champion
     name: "Frodo",
@@ -480,7 +481,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 11 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 12 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
