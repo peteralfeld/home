@@ -6,30 +6,94 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
 import { TrackballControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/TrackballControls';
 
+// --- CHECKPOINTING SYSTEM ---
+const EVO_SAVE_KEY = 'reversi_evo_checkpoint';
+
+
+function saveEvolutionCheckpoint(nextGen, maxGens, originalBrain, currentBrain, bestScore, multiplier, successes, mode, boardN, cellS, searchDepth, workers, impGames, impMut) {
+    const checkpoint = {
+        generation: nextGen,
+        maxGenerations: maxGens,
+        absOriginal: originalBrain,
+        brain: currentBrain,
+        score: bestScore,
+        gauntletMultiplier: multiplier,
+        successes: successes,
+        playMode: mode,        
+        N: boardN,             
+        S: cellS,              
+        depth: searchDepth,
+        numWorkers: workers,    // NEW
+        impGamesVal: impGames,  // NEW
+        impMutVal: impMut       // NEW
+    };
+    localStorage.setItem(EVO_SAVE_KEY, JSON.stringify(checkpoint));
+}
+
+function loadEvolutionCheckpoint() {
+    const data = localStorage.getItem(EVO_SAVE_KEY);
+    return data ? JSON.parse(data) : null;
+}
+
+function clearEvolutionCheckpoint() {
+    localStorage.removeItem(EVO_SAVE_KEY);
+}
+
+
 // Timing parameters:
 let tick;
 let tock;
 let startTime;
 
-// CONFIGURATION & STATE
+// =================================================================
+// 2. CONFIGURATION & STATE
+// =================================================================
 let redColor = "rgb(255,50,50)";  
 let greenColor = "rgb(50,255,50)";
 let millTitleColor = "navy";
 let scoreBgColor = "#333333";
 let eligibleColor = "rgb(255,255,0)"; 
 let gridColor = "rgb(255,255,255)";
-let playMode = '3D'; // default is 3D
-let color2D = "rgb(0,50,50)"; // color for 2D
-let color3D = "rgb(0,0,0)";   // Black for 3D
-let backgroundColor = color3D; // Starts in 3D mode
+let color2D = "rgb(0,50,50)"; 
+let color3D = "rgb(0,0,0)";   
 let millTitleBg = "#ffffcc";
 
+// 1. Declare the defaults FIRST
+let playMode = '3D'; 
 let S = 43;   
 let N = 6;    
+let backgroundColor = color3D; 
+let activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9];
 
-let numWorkers = navigator.hardwareConcurrency ? Math.max(1, Math.floor(navigator.hardwareConcurrency * 0.8)) : 4;
+// 2. --- THE EARLY STATE RESTORE ---
+const urlParams = new URLSearchParams(window.location.search);
+const isAutoResume = urlParams.get('resume') === '1';
 
-let duplicateLogs = true; 
+let startupChk = loadEvolutionCheckpoint();
+
+if (isAutoResume && startupChk && startupChk.generation <= startupChk.maxGenerations) {
+    // 1. We have a ticket! Restore the layout variables.
+    playMode = startupChk.playMode || '3D';
+    N = startupChk.N || 6;
+    S = startupChk.S || 43;
+    
+    backgroundColor = playMode === '2D' ? color2D : color3D;
+    activeParams = playMode === '2D' ? [0, 2, 3, 4, 5, 6, 7, 8] : [0, 2, 3, 4, 5, 6, 7, 8, 9];
+    
+    // 2. Shred the ticket! Hide the "?resume=1" from the URL bar silently
+    // so if the user manually hits the Refresh button later, it acts as a fresh load.
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+} else {
+    // No ticket? This is a fresh manual load by the user!
+    clearEvolutionCheckpoint(); // DESTROY the zombie checkpoint
+    startupChk = null;          // Ensure nothing auto-resumes later
+}
+
+let numWorkers = (startupChk && startupChk.numWorkers) 
+    ? startupChk.numWorkers 
+    : (navigator.hardwareConcurrency ? Math.max(1, Math.floor(navigator.hardwareConcurrency * 0.8)) : 4);
+let duplicateLogs = true;
 
 // ENGINE STATE
 let engineMode = 'WASM'; 
@@ -39,6 +103,7 @@ let currentAIEpoch = 0; // Tracks resets to kill orphaned workers
 // GLOBAL TASK CANCELLATION
 let cancelBackgroundTasks = false;
 let currentTask = 'NONE'; // 'TOURNEY', 'EVO', or 'NONE'
+let backgroundTasksRunning = false;
 
 // WORKER POOL
 let workerPool = [];
@@ -155,7 +220,6 @@ let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
 
 let editBrainIndex = 0;
-let activeParams = [0, 2, 3, 4, 5, 6, 7, 8, 9]; 
 
 // Player / UI Configuration
 let redType = 'Human';   
@@ -165,9 +229,9 @@ let greenDepth = 4;
 let evalDepth = 4; 
 let tGamesVal = 10;
 let tDepthVal = 4;
-let impGenVal = 1000; 
-let impGamesVal = 10; 
-let impMutVal = 10;
+let impGenVal = (startupChk && startupChk.maxGenerations) ? startupChk.maxGenerations : 1000; 
+let impGamesVal = (startupChk && startupChk.impGamesVal) ? startupChk.impGamesVal : 10; 
+let impMutVal = (startupChk && startupChk.impMutVal) ? startupChk.impMutVal : 10;
 
 // Game State Controls
 let isPlaying = false;    
@@ -515,7 +579,7 @@ function exportBrainsJS() {
 }
 
 function downloadRevisedBrain(brain) {
-let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
+    let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
     
     // 1. Create a descriptive header
     let content = `// Revised Parameters for ${brain.name}\n`;
@@ -1062,76 +1126,76 @@ function isSameBrain(b1, b2) {
 async function playBalancedMatch(bA, bB, gamesPerSide, depth) {
     let aWins = 0, bWins = 0, draws = 0;
     
-        await new Promise(resolve => {
-            let totalGames = gamesPerSide * 2;
-            let gamesStarted = 0;
-            let gamesCompleted = 0;
-            let activeCount = 0; // Tracks how many workers are currently busy
+    await new Promise(resolve => {
+        let totalGames = gamesPerSide * 2;
+        let gamesStarted = 0;
+        let gamesCompleted = 0;
+        let activeCount = 0; // Tracks how many workers are currently busy
 
-            function pump() {
-                // 1. Exit condition: Are we done or was it cancelled?
-                if (cancelBackgroundTasks || gamesCompleted === totalGames) {
-                    if (activeCount === 0) resolve();
-                    return;
-                }
+        function pump() {
+            // 1. Exit condition: Are we done or was it cancelled?
+            if (cancelBackgroundTasks || gamesCompleted === totalGames) {
+                if (activeCount === 0) resolve();
+                return;
+            }
 
-                // 2. Feed available workers until we hit our concurrency limit 
-                //    OR we run out of games to start.
-                while (gamesStarted < totalGames && activeCount < numWorkers) {
-                    let gameIndex = gamesStarted++;
-                    activeCount++;
+            // 2. Feed available workers until we hit our concurrency limit 
+            //    OR we run out of games to start.
+            while (gamesStarted < totalGames && activeCount < numWorkers) {
+                let gameIndex = gamesStarted++;
+                activeCount++;
 
-                    // Determine who is Red and who is Green for this specific match
-                    let isEven = (gameIndex % 2 === 0);
-                    let match_b1 = isEven ? bA : bB;
-                    let match_b2 = isEven ? bB : bA;
-                    let idx1 = isEven ? 'A' : 'B';
-                    let idx2 = isEven ? 'B' : 'A';
+                // Determine who is Red and who is Green for this specific match
+                let isEven = (gameIndex % 2 === 0);
+                let match_b1 = isEven ? bA : bB;
+                let match_b2 = isEven ? bB : bA;
+                let idx1 = isEven ? 'A' : 'B';
+                let idx2 = isEven ? 'B' : 'A';
 
-                    let worker = getWorker();
+                let worker = getWorker();
+                
+                // Fallback to safely unblock if stopTasks() murders the worker
+                worker.currentResolve = () => {
+                    releaseWorker(worker);
+                    activeCount--;
+                    gamesCompleted++;
+                    pump();
+                };
+
+                worker.onmessage = function(e) {
+                    worker.currentResolve = null;
+                    let res = e.data;
                     
-                    // Fallback to safely unblock if stopTasks() murders the worker
-                    worker.currentResolve = () => {
-                        releaseWorker(worker);
-                        activeCount--;
-                        gamesCompleted++;
-                        pump();
-                    };
+                    if (res.result === 'match_done') {
+                        if (res.winner === 1) {
+                            if (idx1 === 'A') aWins++; else bWins++;
+                        } else if (res.winner === 2) {
+                            if (idx2 === 'A') aWins++; else bWins++;
+                        } else draws++;
+                    }
+                    
+                    releaseWorker(worker);
+                    activeCount--;
+                    gamesCompleted++;
+                    
+                    // The worker is free! Instantly loop back to give it more work
+                    pump(); 
+                };
 
-                    worker.onmessage = function(e) {
-                        worker.currentResolve = null;
-                        let res = e.data;
-                        
-                        if (res.result === 'match_done') {
-                            if (res.winner === 1) {
-                                if (idx1 === 'A') aWins++; else bWins++;
-                            } else if (res.winner === 2) {
-                                if (idx2 === 'A') aWins++; else bWins++;
-                            } else draws++;
-                        }
-                        
-                        releaseWorker(worker);
-                        activeCount--;
-                        gamesCompleted++;
-                        
-                        // The worker is free! Instantly loop back to give it more work
-                        pump(); 
-                    };
-
-                    worker.postMessage({
-                        command: 'play_match', b1: match_b1, b2: match_b2, 
-                        depth1: depth, depth2: depth,
-                        nVal: N, engineMode: engineMode,  
-                        pruning: usePruning, playMode: playMode 
-                    });
-                }
-	    }
-            // Ignite the engine
-            pump();
-        });
-        
-        // CRITICAL: We NO LONGER terminate the workerPool here!
-        // The workers simply go back into the pool, warm and ready for the next phase.
+                worker.postMessage({
+                    command: 'play_match', b1: match_b1, b2: match_b2, 
+                    depth1: depth, depth2: depth,
+                    nVal: N, engineMode: engineMode,  
+                    pruning: usePruning, playMode: playMode 
+                });
+            }
+	}
+        // Ignite the engine
+        pump();
+    });
+    
+    // CRITICAL: We NO LONGER terminate the workerPool here!
+    // The workers simply go back into the pool, warm and ready for the next phase.
 
     
     return aWins - bWins;
@@ -1316,7 +1380,7 @@ async function runTournament() {
         pIndices = checks.map(c => parseInt(c.value));
         displayPlayers = pIndices.map(i => ({ id: i, name: BrainList[i].name, params: BrainList[i], depth: tDepthVal }));
     }
-// 2. Build the Match Queue
+    // 2. Build the Match Queue
     for (let i = 0; i < pIndices.length; i++) {
         for (let j = i + 1; j < pIndices.length; j++) {
             let p1 = displayPlayers.find(p => p.id === pIndices[i]);
@@ -1392,8 +1456,8 @@ async function runTournament() {
                             scores[match.idx2].draws++;
                         }
                         resultsProcessed++;
-                            let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
-                            log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
+                        let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+                        log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
                     }
                     releaseWorker(worker);
                     activeCount--;
@@ -1425,36 +1489,59 @@ async function runTournament() {
 }
 
 async function runImprovement() {
+    if (isAIThinking || backgroundTasksRunning) return;
+
     let logCopy = duplicateLogs;
     log("running Evolution");
     log("check console for progress");
     duplicateLogs = false;
     setEngineTaskState('EVO');
     cancelBackgroundTasks = false;
+    backgroundTasksRunning = true;
     
     let brainIndex = editBrainIndex;
-    
-    // 1. The baseline we MUST beat to prove ultimate superiority
-    let absoluteOriginalBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
-    // 2. The active parent we mutate from
-    let baseBrain = JSON.parse(JSON.stringify(absoluteOriginalBrain));
-    
-    normalizeBrain(baseBrain); 
     let depth = tDepthVal;
-    
-    log(`EVOLUTION START: ${baseBrain.name}`);
-    let successes = 0;
     let currentRate = impMutVal;
     
-    let bestGauntletScore = 0;
-    let gauntletMultiplier = 10; // NEW: dynamic multiplier
+    // Default baseline configurations
+    let absoluteOriginalBrain = JSON.parse(JSON.stringify(BrainList[brainIndex]));
+    let baseBrain = JSON.parse(JSON.stringify(absoluteOriginalBrain));
+    normalizeBrain(baseBrain); 
     
-    for (let g = 0; g < impGenVal; g++) {
-        if (cancelBackgroundTasks) break;
-        log(`Gen ${g+1}/${impGenVal} (Rate: ${Math.round(currentRate)}%)`);
+    let bestGauntletScore = 0;
+    let gauntletMultiplier = 10;
+    let successes = 0;
+    let currentGen = 1;
+    let maxGens = impGenVal; // Using your exact input variable
+    
+    // --- 1. RESUME FROM CHECKPOINT ---
+    let chk = loadEvolutionCheckpoint();
+    if (chk && chk.generation <= chk.maxGenerations) {
+        currentGen = chk.generation;
+        maxGens = chk.maxGenerations;
+        absoluteOriginalBrain = chk.absOriginal;
+        baseBrain = chk.brain;
+        bestGauntletScore = chk.score;
+        gauntletMultiplier = chk.gauntletMultiplier;
+        successes = chk.successes;
         
+        // Restore the evolved brain back into the UI dropdown
+        BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain));
+        updateBrainUI();
+        
+        log(`Resuming from Checkpoint: Generation ${currentGen} of ${maxGens}...`);
+    } else {
+        log(`EVOLUTION START: ${baseBrain.name}`);
+        clearEvolutionCheckpoint(); // Wipe any old junk data
+    }
+
+    // --- 2. SINGLE GENERATION EXECUTION ---
+    if (currentGen <= maxGens) {
+        log(`Gen ${currentGen}/${maxGens} (Rate: ${Math.round(currentRate)}%)`);
+        
+        // Mutate using your exact random noise logic
         let mutant = JSON.parse(JSON.stringify(baseBrain));
-        mutant.name = baseBrain.name + `G${g+1}`;
+        mutant.name = baseBrain.name.replace(/G\d+$/, "") + `G${currentGen}`;
         
         let changed = false;
         for (let i of activeParams) {
@@ -1466,30 +1553,34 @@ async function runImprovement() {
             mutant.weights[i] = Math.round(mutant.weights[i] + change);
             if (mutant.weights[i] === 0) mutant.weights[i] = Math.random() > 0.5 ? 1 : -1;
         }
-        if (!changed) continue; 
         
-        // 1. Fast Scouting Test against CURRENT parent
+        // Force at least one mutation if the noise was perfectly zero
+        if (!changed) { 
+            let p = activeParams[Math.floor(Math.random() * activeParams.length)];
+            mutant.weights[p] += (Math.random() > 0.5) ? 1 : -1;
+            if (mutant.weights[p] === 0) mutant.weights[p] = (Math.random() > 0.5) ? 1 : -1;
+        }
+        
+        // Fast Scouting Test against CURRENT parent
         let netScore = await playBalancedMatch(mutant, baseBrain, impGamesVal, depth);
-        if (cancelBackgroundTasks) break;
+        if (cancelBackgroundTasks) { backgroundTasksRunning = false; return; }
         
         if (netScore > 0) {
-            log(`Gen ${g+1}: Scout Hit! (+${netScore} vs Parent). Line Search...`);
+            log(`Gen ${currentGen}: Scout Hit! (+${netScore} vs Parent). Line Search...`);
             let optimized = await performLineSearch(baseBrain, mutant, impGamesVal, depth);
-            if (cancelBackgroundTasks) break;
+            if (cancelBackgroundTasks) { backgroundTasksRunning = false; return; }
             
             normalizeBrain(optimized); 
             
-            // 2. The Verification Gauntlet against the BASELINE
+            // The Verification Gauntlet against the BASELINE
             let vGames = impGamesVal * gauntletMultiplier; 
             log(`Line Search done. Gauntlet against BASELINE (${vGames} pairs)...`);
             let vScore = await playBalancedMatch(optimized, absoluteOriginalBrain, vGames, depth);
             
-            if (cancelBackgroundTasks) break;
+            if (cancelBackgroundTasks) { backgroundTasksRunning = false; return; }
 
-            // Calculate the absolute maximum possible score (a perfect sweep)
+            // Strict acceptance & Ceiling Breaker
             let maxPossibleScore = vGames * 2;
-
-            // 3. Strict acceptance
             if (vScore > bestGauntletScore) {
                 successes++;
                 bestGauntletScore = vScore; 
@@ -1498,34 +1589,50 @@ async function runImprovement() {
                 baseBrain = optimized; 
                 baseBrain.name = `${baseName}Opt${successes}`;
                 
+                // Update UI immediately 
                 BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
                 updateBrainUI();
                 downloadRevisedBrain(baseBrain);
                 
                 log(`VERIFIED! New High Score vs Baseline: +${vScore}! Crowned ${baseBrain.name}.`);
 
-                // --- NEW: THE CEILING BREAKER ---
-                // If the mutant achieved a perfect sweep, the baseline is obsolete.
                 if (vScore === maxPossibleScore) {
                     log(`PERFECT SWEEP DETECTED! The baseline brain is completely outclassed.`);
-                    gauntletMultiplier *= 2; // Double the game volume as requested
+                    gauntletMultiplier *= 2; 
                     absoluteOriginalBrain = JSON.parse(JSON.stringify(baseBrain)); // Set new baseline
-                    bestGauntletScore = 0; // Reset the high score
+                    bestGauntletScore = 0; 
                     log(`--> Doubled Gauntlet to ${gauntletMultiplier}x. Setting ${baseBrain.name} as the new baseline!`);
                 }
-
             } else {
-log(`REJECTED! Score ${vScore > 0 ? '+' : ''}${vScore} vs Baseline failed to beat the record (+${bestGauntletScore}).`);
+                log(`REJECTED! Score ${vScore > 0 ? '+' : ''}${vScore} vs Baseline failed to beat the record (+${bestGauntletScore}).`);
             }
         }
+        
+        if (cancelBackgroundTasks) { backgroundTasksRunning = false; return; }
+
+// --- 3. SAVE AND RELOAD ---
+saveEvolutionCheckpoint(currentGen + 1, maxGens, absoluteOriginalBrain, baseBrain, bestGauntletScore, gauntletMultiplier, successes, playMode, N, S, depth, numWorkers, impGamesVal, impMutVal);
+        log(`Generation ${currentGen} saved. Refreshing browser to clear memory...`);
+        
+    setTimeout(() => {
+            // Append the secret ticket to the URL to force a reload
+            window.location.search = "?resume=1"; 
+    }, 1000);
+	
+        return; // HALT execution right here! The reload takes over.
     }
+
+    // --- 4. EVOLUTION COMPLETELY FINISHED ---
     duplicateLogs = logCopy;
     if (cancelBackgroundTasks) {
         log("Evolution cancelled by user.");
     } else {
         log(`EVOLUTION DONE (${successes} upgrades)`);
     }
+    
+    clearEvolutionCheckpoint();
     setEngineTaskState('NONE');
+    backgroundTasksRunning = false;
 }
 
 function triggerBlink() {
@@ -1799,6 +1906,9 @@ function updateNavUI() {
 }
 
 function resetGame() {
+    // 0. Wipe the memory so the page stops auto-reloading
+    clearEvolutionCheckpoint();
+
     // 1. Stop any background work first
     if (currentTask !== 'NONE') {
         stopTasks();
@@ -2297,7 +2407,7 @@ function update3D() {
         return; 
     }
 
-if (showValues) {
+    if (showValues) {
         const debugGeo = new THREE.SphereGeometry(0.12, 16, 16);
         
         // --- NEW: Grab the brain currently selected in the UI ---
@@ -2330,7 +2440,7 @@ if (showValues) {
         return;
     }
 
-const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xff3333, roughness: 0.2, metalness: 0.1 });
     const greenMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, roughness: 0.2, metalness: 0.1 });
     const hintColorHex = (activePlayer === 1) ? 0x7f0000 : 0x007f00;
     const hintMat = new THREE.MeshStandardMaterial({ color: hintColorHex, transparent: true, opacity: 0.8, roughness: 0.2 });
@@ -2500,7 +2610,7 @@ function initLayout() {
         return safeVal;
     });
 
-let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center; background-color: yellow;' });
+    let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center; background-color: yellow;' });
     setupSmartInput(workerInput, (val) => {
         let safeW = Math.max(1, Math.min(32, parseInt(val) || 4)); 
         numWorkers = safeW;
@@ -2589,27 +2699,27 @@ let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number 
 
 		    // 3. Play Row
 		    el('div', { style: 'display: flex; gap: 5px; align-items: stretch;' },
-el('button', { 
-                   id: 'btn-play',
-                   text: isPlaying ? 'Playing' : 'Play',
-                   title: 'Start/Stop a game between the selected players on the board.',
-                   style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
-                   onclick: (e) => { 
-                       if (isGameOver || currentTask !== 'NONE') return;
+		       el('button', { 
+			   id: 'btn-play',
+			   text: isPlaying ? 'Playing' : 'Play',
+			   title: 'Start/Stop a game between the selected players on the board.',
+			   style: `flex: 1; background-color: ${isPlaying?'orange':'green'}; color: white; font-size: 18px; font-weight: bold; padding: 10px; cursor: pointer; border: none; border-radius: 4px;`,
+			   onclick: (e) => { 
+			       if (isGameOver || currentTask !== 'NONE') return;
 
-                       // Resume from history feature
-                       if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
-                           log(`Resuming game from move ${currentMoveIndex}...`);
-                           moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
-                           lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
-                       }
+			       // Resume from history feature
+			       if (!isPlaying && currentMoveIndex < moveHistory.length - 1) {
+				   log(`Resuming game from move ${currentMoveIndex}...`);
+				   moveHistory = moveHistory.slice(0, currentMoveIndex + 1);
+				   lastMoveRecord = moveHistory[currentMoveIndex].lastMove;
+			       }
 
-                       setPlayState(!isPlaying);
-                       updateGameState();
-                       redrawAllSlices();
-                       update3D();
-                   }
-               }),
+			       setPlayState(!isPlaying);
+			       updateGameState();
+			       redrawAllSlices();
+			       update3D();
+			   }
+		       }),
 		       el('div', {style: 'display: flex; gap: 3px; margin-top: 4px;'},
 			  el('button', { 
 			      text: 'Reset', 
@@ -2883,18 +2993,18 @@ el('button', {
 
     let impPercentInp = el('input', {id: 'impPercent', type: 'text', value: impMutVal, title: 'Mutation %', style: 'flex: 1; text-align: center; padding: 2px; min-width: 0;'});
     setupSmartInput(impPercentInp, val => { impMutVal = Math.max(1, parseInt(val) || 1); return impMutVal; });
-let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
-    el('button', {
-        id: 'btn-evolve', 
-        text: 'Evolve', 
-        title: 'Run or Stop Line Search Evolution', 
-        style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', 
-        onclick: () => currentTask === 'EVO' ? stopTasks() : runImprovement()
-    }),
-    el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
-    impGenInp, impGamesInp, impPercentInp
-);
-col1.appendChild(evoControlsDiv);
+    let evoControlsDiv = el('div', {style: 'display: flex; gap: 4px; margin-top: 4px; align-items: stretch; justify-content: space-between; height: 24px;'},
+			    el('button', {
+				id: 'btn-evolve', 
+				text: 'Evolve', 
+				title: 'Run or Stop Line Search Evolution', 
+				style: 'background-color: orange; font-weight: bold; cursor: pointer; padding: 2px 4px; flex: 1.5;', 
+				onclick: () => currentTask === 'EVO' ? stopTasks() : runImprovement()
+			    }),
+			    el('select', {id: 'editBrainSelect', title: 'Select Brain to Edit/Evolve', style: 'flex: 0.8; text-align: center; min-width: 0;', onchange: (e) => { editBrainIndex = parseInt(e.target.value); updateBrainUI(); }}),
+			    impGenInp, impGamesInp, impPercentInp
+			   );
+    col1.appendChild(evoControlsDiv);
     // TOURNAMENT PANEL
     col1.appendChild(el('div', {id: 'participants', style: 'background: #222; margin-top: 6px;'}));
 
@@ -2907,18 +3017,18 @@ col1.appendChild(evoControlsDiv);
         onchange: (e) => { tDepthVal = parseInt(e.target.value); }
     }, ...[2,4,6,8,10,12,14,16,18,20].map(d => el('option', { value: d.toString(), text: d.toString(), ...(tDepthVal===d ? {selected: 'true'} : {}) })));
 
-let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
-    el('button', {
-        id: 'btn-tourney', 
-        text: 'Run Tournament', 
-        title: 'Run or Stop a Round-Robin Tournament', 
-        style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', 
-        onclick: () => currentTask === 'TOURNEY' ? stopTasks() : runTournament()
-    }),
-    tGamesInp,
-    el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
-    tDepthSelect
-);
+    let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top: 4px; align-items: center;'},
+				el('button', {
+				    id: 'btn-tourney', 
+				    text: 'Run Tournament', 
+				    title: 'Run or Stop a Round-Robin Tournament', 
+				    style: 'background-color: orange; font-weight: bold; flex: 1; cursor: pointer; padding: 4px;', 
+				    onclick: () => currentTask === 'TOURNEY' ? stopTasks() : runTournament()
+				}),
+				tGamesInp,
+				el('span', {text: 'D=', style: 'font-size: 0.9em;'}),
+				tDepthSelect
+			       );
     col1.appendChild(tourneyControlsDiv);
 
     // COLUMN 2: SLICES
@@ -2997,6 +3107,17 @@ let tourneyControlsDiv = el('div', {style: 'display: flex; gap: 5px; margin-top:
     updateGameState();
     redrawAllSlices();
     update3D();
+
+    //  Auto-resume evolution if a checkpoint exists
+    let chk = loadEvolutionCheckpoint();
+    if (chk && chk.generation <= chk.maxGenerations) {
+        log(`Recovered Checkpoint! Warming up workers...`);
+        setTimeout(() => {
+            // Automatically fire the improvement function
+            runImprovement(); 
+        }, 1500); // Give the Web Workers 1.5 seconds to fully boot up first
+    }
+
 }
 
 // 7. START THE GAME
