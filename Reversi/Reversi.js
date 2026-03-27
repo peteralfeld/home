@@ -166,51 +166,52 @@ function makeBrain(name, w0, w1, w2, w3, w4, w5, w6, w7, w8, w9) {
 
 // Normalized to max parameter = 1000
 
-const Bilbo = {
-    name: "Bilbo",
+
+const Frodo = {
+    name: "Frodo",
     weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
 };
 
-const Arwen = {
-    name: "Arwen",
+const Eowyn = {
+    name: "Eowyn",
     weights: [14, 0, 6, 1000, -1, -8, 91, -3, 4, -1]
 };
 
-const Dwalin = {
-    name: "Dwalin",
+const Hamfast = {
+    name: "Hamfast",
     weights: [18, 0, 23, 1000, -8, -20, 76, -6, 5, -2]
 };
 
 
-const Eowyn = {
-    name: "Eowyn",
+const Bilbo = {
+    name: "Bilbo",
     weights: [13, 0, 6, 1000, -1, -8, 94, -3, 4, -1]
 };
 
 
 
-const Hamfast = {
-    name: "Hamfast",
+const Celebrian = {
+    name: "Celebrian",
     weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
 };
 
-const Indis = {
-    name: "Indis",
-    weights: [9, 0, 16, 1000, -10, -14, 145, -2, 3, -3]
+const Arwen = {
+    name: "Arwen",
+    weights: [13, 0, 7, 1000, -1, -9, 97, -2, 4, -1]
 };
 
 
 
-const Galadriel = makeBrain("Galadriel", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
+const Indis = makeBrain("Indis", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
-const Celebrian = {
-    name: "Celebrian",
+const Dwalin = {
+    name: "Dwalin",
     weights: [13, 0, 7, 1000, -1, -9, 105, -2, 4, -1]
 };
 
 
-const Frodo = { // 4x4x4 champion
-    name: "Frodo",
+const Galadriel = { 
+    name: "Galadriel",
     weights: [15, 0, 22, 1000, -9, -19, 132, -2, 2, -2]
 };
 
@@ -220,7 +221,10 @@ let Jolly = makeBrain("Jolly", 1000,0,1000,1000,-1000,-1000,1000,-1000,1000,-100
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
 
+
+
 let editBrainIndex = 0;
+
 
 // Player / UI Configuration
 let redType = 'Human';   
@@ -2876,7 +2880,7 @@ function initLayout() {
 		    
 		    el('div', { style: 'display: flex; gap: 5px;' },
 		       el('button', { 
-			   text: 'Cats', id: 'btn-cats', title: 'Toggle Category Coloring',
+			   text: 'Categories', id: 'btn-cats', title: 'Toggle Category Coloring',
 			   style: `flex:1; background-color: ${showCategories?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
 			   onclick: (e) => { 
 			       showCategories = !showCategories; showValues = false; 
@@ -2885,7 +2889,7 @@ function initLayout() {
 			   } 
 		       }),
 		       el('button', { 
-			   text: 'Vals', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
+			   text: 'Values', id: 'btn-vals', title: 'Toggle Heuristic Value Coloring',
 			   style: `flex:1; background-color: ${showValues?'green':'grey'}; color: white; border: none; padding: 5px; cursor: pointer;`,
 			   onclick: (e) => { 
 			       showValues = !showValues; showCategories = false;
@@ -2926,7 +2930,7 @@ function initLayout() {
 			   } 
 		       }),
 		       el('button', { 
-			   id: 'btn-rand', text: 'Rand', title: 'Toggle Random Selection for Equal Best Moves',
+			   id: 'btn-rand', text: 'Random', title: 'Toggle Random Selection for Equal Best Moves',
 			   style: `flex: 1; background-color: ${useRandom?'green':'red'}; color: white; border: none; padding: 5px; cursor: pointer; font-weight: bold;`,
 			   onclick: (e) => { 
 			       useRandom = !useRandom;

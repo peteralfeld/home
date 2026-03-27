@@ -18,7 +18,31 @@ You can also develop your own AI players and see how they do against the built-i
 
   <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> (or on the main heading of this page) and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page.  It probably is best to open the game table in a different window and refer to it, and try things out, as you proceed.  However, you can also see a static image of the game table <a href = "GameTable.png"> here. </a>
 
-<h2> The Rules of the Game </h2>
+<p> If you are familiar with my <a href="../Mill/Mill.html"> Mill </a> game you will find that the Reversi game is organized similarly.  
+
+  <H2> Comparison of Mill and Reversi </H2>
+
+  You can <a href = "#go-on"> skip </a> this section if you are only interested in the Reversi game.    I developed the <a href="../Mill/Mill.html"> Mill game </a> first and learned a lot in the process.   While the organization and the basic approach for the two games are closely related, there are some significant differences:
+
+<UL>
+
+  <LI>The main difference between the two games, and the reason for the existence of this Reversi site, is that this version of Reversi can be played on a three-dimensional board.   The board can manipulated and examine in a 3D display that is run by the systems video card</LI>
+  <LI> The branching factor in the Reversi Gam,e is much greater than that in the Mill game.   Static evaluations for the 3D version take significantly longer.   </LI>
+<LI> However, the implementation of  the basic algorithm, and efficient exploration of the current game tree, is much more efficient.   On my system the Reversi code routinely achieves 100 or 99% utilization of the CPU. </LI>
+<LI>The genetic algorithm for AI improvements is much more sophisticated for the Reversi game.</LI>
+<LI> Some features of the Mill game, specifically the ability to play by a game clock, and the ability to use or create an opening book, were not implemented in the Reversi game.   </li>
+
+</LI> There is just one version of the Mill Game.  There are several for the Reversi Game.  You can play Reversi in 2D, or #D, and on a 4x4, 6x6, or 8x8 board and its 3D analogs.   Different AI players due differently on different boards.  There is a specialist for each type, as discussed below.
+<LI> As for the implementation of the Mill game, the efficiency of memory management and multip[rocess utilization took a large chunk of the development time.   The most computer intensive part of the game is the genetic algorithm to improve the parameters of an AI player.   Memory issues led to a genetic algorithm that restarts fresh, essentially by reloading the game and engine, after each generation.  Moreover, for quite a while the algorithm used to regularly crash my system and cause the computer to reboot.   With the Help of Gemini, I was able eventually to trace this to a know issue with my particular Motherboard and CPU which I could fix by doing open heart surgery via the BIOS on my mother board.  The system now routinely runs for days without crashing, and using 100% of the CPU.  This is gratifying.   Developing the Reversi software has been quite a ride!
+  <?LI>
+
+  </UL>
+
+
+
+
+
+<h2 id = "go-on"> The Rules of the Game </h2>
 								       
 <p> The game of <i>Reversi</i>   (also known as <i>Othello</i>) is usually played on an 8x8 2D Board, as shown in Figure 1.   The novel feature of this online version is that you can play it in 3D.   But the easiest way to understand the rules is to start with the 2D rules.   The transfer of those rules to the 3D case will be straightforward. <table style ="float: left">
   <tr><TD><IMG SRC = "start.png" style = "height: 270px; width: auto; float: left; margin-right:10px"><img></td></tr>
@@ -147,13 +171,120 @@ The next two rows contain two textfields that give information about the current
 The depth menu <i>D=</i>in that row determined the depth at which the scores and the moves are computed. </li>
 
 <li><e>Scale: W:</e> <UL> <li>The <i>Scale</i> controls change the size of the 3D display.   They can be used to adjust the size of the board to your particular computer.   If the height of the board becomes larger than the height of the control column becomes scrollable.   For the best experience you want to keep the scale large enough to accommodate the full control column.</LI>
-<LI> The textfield labeled <i>W:</i> letss you specify the number of simultaneous threads, called <i>Workers</i> in JavaScript, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then chooses W to be 80 percent of that maximum number.   This leaves 20% for routine system tasks.   You can increase that number up to the maximum available, or choose it to be as small as 1.  You may want to choose smaller numbers for experiments, or to reduce memory issues for massive computations.  There is a more detailed discussion of the number of workers below </li>
+<LI> The textfield labeled <i>W:</i> lets you specify the number of simultaneous threads, called <i>Workers</i> in JavaScript, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then uses up to that number of threads simultaneously.  There may be circumstances where you may want to reduce that number.   For example, you may be using your computer for other compute intensive tasks at the time.   You can find a more detailed discussion of parallel processing below </li>
    </li>
+</UL>
+<LI> <e> Fullscreen, Infinity</e>   This row is effective only in 3D Mode.   Clicking on <i>Fullscreen</i> will make the 3D display occupy the entire screen. You cab also enter or exit full screen mode by typing <i>f</i> or <i>F</i> on the 3D screen.  (Typing a period will give you a complete list of keyboard commands.)   By default the display shows the 3D board as it would look from a point near the board.    You can zoom in or out with the middle mouse wheel.  Clicking on <i>Infinity</i> will change the display to the view from infinity, i.e, there is no perspective at all.  (You can still enlarge or reduce the size of the display with the middle mouse button. 
+</LI>
+
+<LI> <e> Hints, Axes, Hover, Cats, Vals </e>   The buttons in the next two rows let you toggle the following number of display items.   If the color of the button is green that time is effective, otherwise the color is Gray.  All five buttons toggle the corresponding feature.
+  <UL>
+    <LI> <i>Hints</i>: These are on by default.    The system will show you the points where the current player can play as small red or green balls or circles.</li>
+    <LI> <i>Axes</i>: As you may expect, this will draw the <i>x</i>, <i>y</i>, and <i>x</i> axes in the 3D display.
+</LI>
+<LI> <i>Hover</i> When active, this will show you the coordinates of a marker location by hovering above the point. </LI>
+		     <LI> <i>Categories</i>: Crucial for AI playing is the location of a point.  Corners are best, points next to a corner are bad, for example.   There is more information below.   This button will mark the various categories by colored balls in the 3D display.</LI>
+		     <LI><i>Values: </i>: This is a similar display, but linked to a specific player, by default the player selected in the evolution menu.</li>
+</i>
+</UL>
+<LI> <e>Grid</e>: lets you choose the kind of grid drawn on the 3D screen.    You have the following options:
+  <UL>
+    <LI><i>none</i>: No grid lines at all.
+    </LI>
+    <LI><i>Orthogonal</i> The default: All grid lines parallel to one of the axes are show.</LI>
+    <LI>Grid lines in all 26 directions are shown. This makes for a rather dense display, but you can have a psychedelic experience by watching the 3D board rotate in space for a while...  </LI>
+   </UL> 
+
+<LI><e>&alpha;/&beta;, S, Random</e>:   These buttons turn certain features on and off.   For regular play, however, it is best to keep all of them active.
+		       <UL>
+
+			 <LI><i>&alpha;/&beta;</i>   The AI plays by evaluating all possible play up to a certain depth, and finding the move that gives the best score to the current player.   The number of positions (nodes in the game tree) that needs to be explored can be reduced dramatically using the &alpha;/&beta; algorithm.   Turning it off will greatly increase the time taken for each move. 
+			 <LI>At the beginning many moves are equivalent by symmetry.   With this feature turned on equivalent moves are identified and namely one of them is considered.  For example, at the first move (ply) there are only two possibilities, moving in the direction of a coordinate axes, or playing a corner in the 4x4x4 cube containing the center.   On the 4x4x4 or 8x8x8 grid the sound kind of move is best, on 6x6x6 board it is worst since you are building a bridge to a corner for your opponent.   Checking for symmetry is expensive, and it becomes less effective as the game proceeds.   Thus it is turned off after the first time the symmetry check does not reduce the number of moves. </LI>
+			 <LI><i>Random</i>:  When selected the system chooses randomly among all moves with the same highest score.   Otherwise it picks the first.  However, due to the vagaries of when workers finish their tasks, and how this affects the search for the best move, deactivating symmetry will not ensure that two subsequent games are identical.
+</LI>
+</ul>
+			 <LI><e> Logs, Depths</e>:  These two buttons modify the logs printed to the Console and to the Control Panel.  The console is a feature of your browse, and you can activate by typing CTL-Shift-J (and in other ways).  I recommend you keep it open while you use this software. The specific effects of those two buttons are:
+
+			   <UL>
+			     <LI><i>Logs</i>:  On by default, this toggles the duplication of console output in the large status window in the control column, during a game.  That duplication is turned off, regardless of the state of the button, during a tournament or an evolution.   The reason for that is that the duplication requires the manipulation of a large and growing string  which interferes with the efficiency of the algorithm execution.
+
+			       <LI><i>Depths</i>: Off by default, this feature will print information about individual moves, including the time spent on it, and the number of times different levels of the game tree where visited.   For example, if you have an AI compute the first move at search depth 8, you will find that with 32 workers the search takes about three seconds, and the algorithm visits a little more than two million nodes in the game tree. </LI>
+</LI>
+			   </UL>
+<LI>
+  The textfields corresponding to these categories show the numerical values corresponding to the player specified with the menu on the left in the next row.   You can change the values of those textfields, and change the behavior of the corresponding AI.
+  </LI>
+
+<LI><e>Evolve </e>  Clicking on this button will start a genetic algorithm to improve the player chosen with the menu next to the button.   The algorithm will apply random mutations, run tournaments among the various mutations, and allow the best performers to survive. Whenever a new mutant is found that's superior to each of its predecessors a file with the JS code defining the parameters will be uploaded to your system.   The three textfields in this row let you specify the maximum number of generations, the number of games in each tournament, and the maximum percentage of the random mutations.  The depth of the tournament games is set with the same menu as the depth of tournaments, on the right in the bottom row of the control column./LI>
+
+
+<LI><e>Run Tournament</e>  The last two rows in the control column let you conduct a tournament among the selected AI players.   The menu in the last row let you choose the depth of the AI searches in each game, and the textfield to the left of that menu let's you specify the number of games per pairing.
+  </LI>
+
+  
+
+
+		       </UL>
+		       </LI>
+<LI><e>B:, H:<w> The two sliders in this row let you adjust the size of the marker and hint balls in the 3D display. </LI>
+<LI><e>Import</e> The controls in this row let you import or export JS code defining the current AI players.  <i>Def</i> resets the parameters to their built-in values.  </LI>
+<LI><e>Evolving a brain </e>  Each of the parameters multiplies the difference in the corresponding numbers for the two players. Specifically, 
+AIs are determined by the following multipliers:
+  <UL>
+
+    <LI> 
+      <e>Mob</e>
+ (mobility): the number of possible moves.
+    </LI>
+    <LI><e>Dif</e> (Piece Difference): the number of markers on the board.
+    </LI>
+    <LI><e>Core </e>   The number of pieces occupying a corner.
+    </LI>
+    <LI><e>C-SQ</e> The number of edge pieces occupying a point next to a corner.  This factor is negative, you don't want to build a bridge for your opponent leading to a corner.
+      </LI>
+
+    <LI><e>X-Sq</e>  number of pieces diagonally adjacent to a corner.
+      </LI>
+
+
+    <LI><e>Edg</e> (Edges) Pieces ON an edge but not adjacent to a corner.
+      </LI>
+
+    <LI><e>IEd</e> (inner Edges) Pieces that are adjacent to an edge and not in a previous category.
+      </LI>
+
+
+    <LI><e>Fac</e> (Faces)Surface Pieces on the boundary of the game cube and not being adjacent to an edge or a corner.
+      </LI>
+
+
+    <LI><e>IFa</e>  Pieces exactly one step inward from a face and not in a previous category.   This parameter does not play any role in the 2D version.
+      </LI>
+
+    </UL>
+
+<LI>
+<e>Mob</e>
+  </LI>
+  </LI>
+
+</LI>
+
+
+
+
+
+
+
 </UL>
 
 <H3>Parallel Processing </H3>
 
-<p>This is a crucial aspect of the game.   Modern computers are able to run several threads simultaneousluy.  For example, my system has three <e>cores</e> and can run up to 32 threads.   Thereads are called <e>workers</e> in JavaScript.   
+<p> Modern computers usually have a number of cores, or CPUs, and can run several  <e>threads</e> simultaneously. This is known as <e>parallel processing</e>, which JS handles by passing messages between the main thread and each of the individual sub threads, which in JS are referred to as <e>workers</e>. The issues involved in parallel processing are complex.   The default number of workers in this software is the maximum number that your system can support.  If your system does not provide this information, then N is set to 4.  However, you can set the value in the text field equal to any positive integer. The system will create as many workers as you specify, and then use them all if it can. <p> My own system provides 32 threads. When running a tournament or an Evolution the system frequently runs at a CPU utilization of 100 percent.  However, the savings as far as the time required for the computation of a move, and the number of nodes visited, is not nearly as dramatic. <p> To illustrate this I had the system compute the first ply on the 6x6x6 board at depth 8, with the number of workers ranging from 1 to 32. JS does not let you measure CPU time accurately, and CPU time is of limited utility when running processes simultaneously.   The times shown here are wall-clock time measured in milliseconds.  However, other than routine system tasks, there were no other processes running on the system at that time. This chart shows wall-clock time  plotted against the number of workers, on a log-log scale: <p>
+        <img src="Workers.png" style="width: 810px; height: auto">
+  <p> The red line shows what one would naively expect. Thus when using <i>W</i>  workers, the CPU time should be <i>T/W</i> where <i>T</i> is the time taken  by one worker. The fat looking dots represent the actual wall clock time taken by three separate runs.   The fact that those three times are very similar for each number of workers indicates that the shape of the curve formed by the dots is not random.  Thus increasing the number of workers in some circumstances actually increases the time used for the calculation.   The reason for this is that the evaluation of some positions takes longer than others, and if the number of computer intensive positions is concentrated on a small number of workers the time required will increase.  Of course, the precise values of the individual worker times depend on the current position.
+
+
 
 </body>
 </html>
