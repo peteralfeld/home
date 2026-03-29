@@ -268,13 +268,14 @@ AIs are determined by the following multipliers:
 
 
 <h3>The Basic Playing Algorithm</h3>
-<p>The engine's decision-making process is built on a classic artificial intelligence technique known as the <strong>Minimax algorithm</strong>, enhanced by <strong>Alpha-Beta pruning</strong> and a customizable <strong>Static Evaluation</strong> function. When you ask the AI to make a move, it doesn't just look at the current board; it envisions a branching "game tree" of possible futures.</p>
 
-<h4>Minimax and the Game Tree</h4>
-<p>When the AI calculates its move, it looks ahead a specific number of turns, defined by the <strong>Search Depth (D)</strong>. It explores all valid moves it can make, then all valid responses the opponent can make, and so on, building a massive mathematical tree of potential board states. Because Reversi is a strictly zero-sum game, the AI assumes that the opponent will always choose the move that is worst for the AI. The algorithm systematically tries to maximize the AI's score while anticipating that the opponent will actively minimize it—hence the name "Minimax."</p>
+<p>The engine's decision-making process is built on a classic artificial intelligence technique known as the <e>Minimax algorithm</e>, enhanced by <e>Alpha-Beta pruning</e> and a customizable <e>Static Evaluation</e> function. When you ask the AI to make a move, it doesn't just look at the current board; it envisions a branching "game tree" of possible futures.</p>
 
-<h4>Static Evaluation</h4>
-<p>Unless the board is almost entirely full, the AI cannot look ahead to the absolute end of the game. Once it reaches its search depth limit, it must evaluate the board as it currently stands. This is where the <strong>Static Evaluation</strong> function comes in.</p>
+
+<p>When the AI calculates its move, it looks ahead a specific number of turns, defined by the <e>Search Depth (D)</e>. It explores all valid moves it can make, then all valid responses the opponent can make, and so on, building a massive mathematical tree of potential board states. Because Reversi is a strictly zero-sum game, the AI assumes that the opponent will always choose the move that is worst for the AI. The algorithm systematically tries to maximize the AI's score while anticipating that the opponent will actively minimize it—hence the name "Minimax."</p>
+
+
+<p>Unless the board is almost entirely full, the AI cannot look ahead to the absolute end of the game. Once it reaches its search depth limit, it must evaluate the board as it currently stands. This is where the <e>Static Evaluation</e> function comes in.</p>
 
 <p>The engine scores the board by evaluating the net difference between your position and the opponent's position across the various strategic categories you define in the AI's Brain (such as Mobility, Piece Difference, Corners, and Edges). Mathematically, the evaluation score is computed as a linear combination of these factors:</p>
 
@@ -283,12 +284,12 @@ $$\text{Score}=\sum(W_k \times \Delta_k)$$
 <p>Where $W_k$ is the weight of a specific parameter, and $\Delta_k$ is the net difference between the number of AI pieces and opponent pieces in that specific category. The sequence of moves that leads to the highest guaranteed static evaluation score is ultimately chosen as the best move.</p>
 
 <h4>Alpha-Beta Pruning</h4>
-<p>Evaluating every single possible branch of the game tree is computationally overwhelming, especially on a deeply complex 3D board. To solve this, the engine employs an optimization called <strong>Alpha-Beta pruning</strong>.</p>
+<p>Evaluating every single possible branch of the game tree is computationally overwhelming, especially on a deeply complex 3D board. To solve this, the engine employs an optimization called <e>Alpha-Beta pruning</e>.</p>
 
 <p>As the AI searches the tree, it constantly keeps track of the best score it can guarantee so far (Alpha) and the worst score the opponent can force (Beta). If the algorithm begins evaluating a branch and discovers that the opponent has a response that makes it mathematically worse than a move the AI has <i>already</i> evaluated elsewhere, it immediately aborts (or "prunes") that entire branch. By completely skipping these useless calculations, the engine can search significantly deeper in the exact same amount of time, without ever altering the final, optimal decision.</p>
 
 <h4>Parallel Processing</h4>
-<p>To maximize efficiency, the engine distributes this massive game tree across multiple <strong>Web Workers</strong>. These background threads calculate independent branches of the Alpha-Beta search simultaneously, utilizing every available core of your computer's processor to return the optimal move as quickly as possible.</p>
+<p>To maximize efficiency, the engine distributes this massive game tree across multiple <e>Web Workers</e>. These background threads calculate independent branches of the Alpha-Beta search simultaneously, utilizing every available core of your computer's processor to return the optimal move as quickly as possible.</p>
 
 
 <H3>Parallel Processing </H3>

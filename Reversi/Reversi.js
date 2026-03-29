@@ -310,7 +310,7 @@ function commas(z) {
 }
 
 function log(msg) {
-    console.log(msg); 
+    console.log(new Date().toLocaleString() + ": " + msg); 
     if (duplicateLogs) {
 	let logDiv = document.getElementById('game-info-log');
 	if (logDiv) {
@@ -1461,7 +1461,15 @@ async function runTournament() {
                             scores[match.idx2].draws++;
                         }
                         resultsProcessed++;
-                        let resultText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+let etaMs = tick.getTime() + (new Date() - tick) * totalMatches / resultsProcessed;
+let etaDate = new Date(etaMs);
+let msIn24Hours = 24 * 60 * 60 * 1000;
+let isFarFuture = (etaMs - Date.now()) > msIn24Hours;
+let ETA = isFarFuture 
+    ? etaDate.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+    : etaDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+let winText = winner === 0 ? "Draw" : (winner === 1 ? `${match.name1} wins` : `${match.name2} wins`);
+let resultText = `${winText} | ETA: ${ETA}`;
                         log(`Game ${resultsProcessed}/${totalMatches}: ${match.name1} vs ${match.name2} -> ${resultText}`);
                     }
                     releaseWorker(worker);
