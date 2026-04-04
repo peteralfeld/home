@@ -25,19 +25,44 @@ You can also develop your own AI players and see how they do against the built-i
   You can <a href = "#go-on"> skip </a> this section if you are only interested in the Reversi game.    I developed the <a href="../Mill/Mill.html"> Mill game </a> first and learned a lot in the process.   While the organization and the basic approach for the two games are closely related, there are some significant differences:
 
 <UL>
-
-  <LI>The main difference between the two games, and the reason for the existence of this Reversi site, is that this version of Reversi can be played on a three-dimensional board.   The board can manipulated and examine in a 3D display that is run by the systems video card</LI>
-  <LI> The branching factor in the Reversi Gam,e is much greater than that in the Mill game.   Static evaluations for the 3D version take significantly longer.   </LI>
+  <LI>The <e>main difference</e> between the two games, and the reason for the existence of this <e>Reversi</e> site, is that this version of Reversi can be played on a three-dimensional board.   You can manipulate  and examine the board in a 3D display that is run by your system's <e>video card</e>.  Utilizing the video card is a new experience for me.</LI>
+  <LI> The branching factor in the Reversi Game is much greater than that in the Mill game.   Static evaluations for the 3D version take significantly longer than for the 2D version of Reversi, or the Mill Game..   </LI>
 <LI> However, the implementation of  the basic algorithm, and efficient exploration of the current game tree, is much more efficient.   On my system the Reversi code routinely achieves 100 or 99% utilization of the CPU. </LI>
 <LI>The genetic algorithm for AI improvements is much more sophisticated for the Reversi game.</LI>
-<LI> Some features of the Mill game, specifically the ability to play by a game clock, and the ability to use or create an opening book, were not implemented in the Reversi game.   </li>
+  <LI> Some features of the Mill game, specifically the ability to play by a game clock, and the ability to use or create an opening book, were not implemented in the Reversi game.  They did not appear to be crucial after I developed the Mill game.
+</LI>
+  <LI> In the Mill Game, the C++ web assembly version heavily outperforms the JS version.   The reason for this is that the Mill Game was written in idiomatic JS as I first learned it.  In the Reversi Game the performance of JS and C++ are almost identical.  
+The Reversi Code is much more C++ like, in several aspects:
+    <UL>
+      <LI> <e>Little or no Garbage Collection Overhead.</e>
+One of the biggest performance killers in JS is the Garbage Collector. Creating temporary objects for moves inside a deep recursive loop like &alpha;/&beta; search causes memory churn. Once memory fills up, the engine pauses execution to clean it up.
+In the Reversi JS code, memory allocation inside the search loop has been entirely eradicated.  The use of global variables pre-allocates all necessary memory for the maximum search depth upfront.
+Instead of creating new arrays for the board state, the code swaps pointers instead for replacing objects. Because new nothing is allocated during the search, the JS Garbage Collector never fires.
+      </LI>
+      <LI>
+<e> Typed Arrays and Cache Locality.</e>
+Standard JS arrays are not continuous blocks of memory; they are essentially inefficient and expensive HashMaps that can accommodate objects of all kinds.  This makes them more versatile and much less efficient.
+By exclusively using <e>Int32Array</e> and <e>Uint8Array</e> to represent the board and the pre-computed lookup tables the JS engine is forced to allocate contiguous blocks of memory. This provides the exact same CPU cache locality as the C-style arrays used in the C++ file defining the Reversi engine. When the CPU fetches a board position, the next positions are already pulled into the L1/L2 cache, maximizing throughput.
+  </LI>
+  <LI>
+<e> JIT Compilation of Monomorphic Hot Paths.</e>
+ The JS Reversi engine uses Just-In-Time (JIT) compilation. It monitors the code as it runs and compiles "hot paths" (frequently executed loops) directly into highly optimized machine code.
+For the JIT compiler to do this effectively, the functions must be <i>monomorphic</i>, meaning the variables passed into them always have the exact same type. Because the &alpha;/&beta; function strictly passes Typed Arrays and integers back and forth, the JIT compiler strips away all of JS's usual dynamic type-checking overhead. By the time the search reaches depth 4 or 6, V8 has likely compiled The &alpha;/&beta; JS code  into assembly code that looks almost identical to the compiled WebAssembly from the C++ file.
+  </LI>
+    <LI>
+<e> Inline Sorting.</e>
+Sorting moves is computationally expensive. The standard Array.prototype.sort() in JS requires passing a callback function, which introduces massive overhead when called millions of times. By implementing an inline descending/ascending insertion sort directly within the JS  &alpha;/&beta; search, that callback overhead is completely bypassed.
+</li>
 
-</LI> There is just one version of the Mill Game.  There are several for the Reversi Game.  You can play Reversi in 2D, or #D, and on a 4x4, 6x6, or 8x8 board and its 3D analogs.   Different AI players due differently on different boards.  There is a specialist for each type, as discussed below.
-<LI> As for the implementation of the Mill game, the efficiency of memory management and multip[rocess utilization took a large chunk of the development time.   The most computer intensive part of the game is the genetic algorithm to improve the parameters of an AI player.   Memory issues led to a genetic algorithm that restarts fresh, essentially by reloading the game and engine, after each generation.  Moreover, for quite a while the algorithm used to regularly crash my system and cause the computer to reboot.   With the Help of Gemini, I was able eventually to trace this to a know issue with my particular Motherboard and CPU which I could fix by doing open heart surgery via the BIOS on my mother board.  The system now routinely runs for days without crashing, and using 100% of the CPU.  This is gratifying.   Developing the Reversi software has been quite a ride!
-  <?LI>
 
+
+<LI> There is just one version of the Mill Game.  By contrast, there are <e>several versions</e> of the Reversi Game.  You can play Reversi in 2D, or 3D, and on a 4x4, 6x6, or 8x8 board and its 3D analogs.   Different AI players perform differently on different boards.  There is a specialist for each type, as discussed below.
+
+
+<LI> As for the implementation of the Mill game, the efficiency of memory management and multiprocess`s utilization took a large chunk of the development time.   The most computer intensive part of the game is the genetic algorithm to improve the parameters of an AI player.   Memory issues led to a genetic algorithm that restarts fresh, essentially by reloading the game and engine, after each generation.  Moreover, for quite a while the algorithm used to regularly crash my system and cause the computer to reboot.   With the Help of Gemini, I was able eventually to trace this to a know issue with my particular Motherboard and CPU which I could fix by doing open heart surgery via the BIOS on my mother board.  The system now routinely runs for days without crashing, and using 100% of the CPU.  This is gratifying.   Developing the Reversi software has been quite a ride!
+  </LI>
   </UL>
-
+</UL>
 
 
 
@@ -47,8 +72,8 @@ You can also develop your own AI players and see how they do against the built-i
 <p> The game of <i>Reversi</i>   (also known as <i>Othello</i>) is usually played on an 8x8 2D Board, as shown in Figure 1.   The novel feature of this online version is that you can play it in 3D.   But the easiest way to understand the rules is to start with the 2D rules.   The transfer of those rules to the 3D case will be straightforward. <table style ="float: left">
   <tr><TD><IMG SRC = "start.png" style = "height: 270px; width: auto; float: left; margin-right:10px"><img></td></tr>
   <tr><td><b>Fig. 1: Initial Board </b> </td><tr> </table>
-The game is played by two players, usually denoted as Black and White.   However, when I first played Reversi many years ago the players were Red and Green and I have used that color scheme on this site.  The players have a supply of <i>markers</i> (or <i>pieces</i>) that are red on one side and green on the other.   Thus the markers can be <i>reversed</i> (or <i>turned</i> or <i>flipped</i>) and switch color.
-Figure 1 shows the initial state of the 8x8 2D Board.  There is a grid with 8x8 = 64 intersections. At the start of the game there are red markers on 4-5 (horizontal-vertical) and 5-4, and green markers on 4-4 and 5-5.  The players take flips placing markers on the board.  Their goal is to enclose contiguous chains of the opponents pieces between two pieces of their own. If they can do that the pieces in the enclosed chain change colors.   The player with the most pieces at the end wins.  For example, at the beginning, Red could play on 4-3 or 3-4 and flip 4-4, or play on 6-5 or 5-6 and flip 5-5.
+The game is played by two players, usually denoted as Black and White.   However, when I first played Reversi many years ago the players were <red>Red</red> and <green>Green</green> and I have used that color scheme on this site.  The players have a supply of <i>markers</i> (or <i>pieces</i>) that are red on one side and green on the other.   Thus the markers can be <i>reversed</i> (or <i>turned</i> or <i>flipped</i>) and switch color.
+Figure 1 shows the initial state of the 8x8 2D Board.  There is a grid with 8x8 = 64 intersections. At the start of the game there are red markers on 4-5 (horizontal-vertical) and 5-4, and green markers on 4-4 and 5-5.  The players take turns placing markers on the board.  Their goal is to enclose contiguous chains of the opponents pieces between two pieces of their own. If they can do that the pieces in the enclosed chain change colors.   The player with the most pieces at the end wins.  For example, at the beginning, Red could play on 4-3 or 3-4 and flip 4-4, or play on 6-5 or 5-6 and flip 5-5.
 
 
 <p> The following four boards illustrate a possible sequence of the first four moves.   The picture shows the status of the board <e>after the indicated move.
@@ -100,8 +125,10 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
 <LI>once a piece is placed it may change color but it never moves, and it never gets removed from the board.</LI>
 <LI>Neither player may skip a valid move, or choose not to flip some of the opponent's enclosed pieces.</LI>
 <LI>As the game proceeds the number of red and green pieces undergo large swings back and forth.   This gives an advantage to the last player.   Any, potentially large, gain on the last turn cannot be undone by the opponent.</li>
-<LI>Since a player may not have have a legal placement, and thereby forfeit that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.
-<Ii> Corners are very special.   Once a player places piece in a corner it will never change color there.  Moreover, any connected chain that ends at a corner, or a point, that is connected to the corner by a chain, can no longer change color.   Much of the game strategy consists of gaining corners, and preventing the opponents from gaining corners.  Similar considerations apply to edges.</li>
+  <LI>If  a player has no legal placement, and thereby forfeits that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.
+</LI>
+
+ <LI> <e>Corners</e> are very special.   Once a player places a piece at a corner it will never change color there.  Moreover, any connected chain that ends at a corner, or a point, that is connected to the corner by a chain, can no longer change color.   Much of the game strategy consists of gaining corners (and making the set of non-changeable pieces grow) and preventing the opponents from gaining corners.  Similar considerations apply to <e>edges.<e?</li>
 <li> Usually a game consists of 60 (64 board points - the four points occupied from the beginning.  But since a player may have to forfeit a turn it may take longer, and it may also end early with empty spots left on the board, but no legal placements being available for either player.   For example, if it was Green's turn in the last board of the above sequence, Green could play 3-5.  As a result, all pieces would turn green, neither player would have a legal move available, and the game would end with nine green pieces, and zero red pieces.
 
   </OL>
@@ -139,14 +166,14 @@ pieces contained in enclosed chains <e>must be</e> flipped.</li>
 
 <H3> The 2D cross-sections</H3>
 
-You can also place markers on the 2D intersections.   There is one intersection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible intersections is being displayed.
+You can also place markers on the 2D crosssections.   There is one crosssection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible crosssections is being displayed.
 
 <H3> The Control Column </H3>
 
 This section contains a description of the available controls, listed from top to bottom.
 
 <UL>
-  <LI><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JavaScript (JS) or WASM (C++) based.  </LI>  The number of workers indicated the maximum number of concurrent threads run on your machine.
+  <LI><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JS (JS) or WASM (C++) based.  </LI>  The number of workers indicated the maximum number of concurrent threads run on your machine.
   <LI><e>3D/2D</e> This button let's you switch back and forth between the 2D and the 3D display.   You can accomplish the same using the keyboard command '2'.</LI>
   <LI><e>Click here...</e> Click here to see this page.</LI>
   <LI><e>Play...</e>This line contains four items:
@@ -171,7 +198,7 @@ The next two rows contain two textfields that give information about the current
 The depth menu <i>D=</i>in that row determined the depth at which the scores and the moves are computed. </li>
 
 <li><e>Scale: W:</e> <UL> <li>The <i>Scale</i> controls change the size of the 3D display.   They can be used to adjust the size of the board to your particular computer.   If the height of the board becomes larger than the height of the control column becomes scrollable.   For the best experience you want to keep the scale large enough to accommodate the full control column.</LI>
-<LI> The textfield labeled <i>W:</i> lets you specify the number of simultaneous threads, called <i>Workers</i> in JavaScript, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then uses up to that number of threads simultaneously.  There may be circumstances where you may want to reduce that number.   For example, you may be using your computer for other compute intensive tasks at the time.   You can find a more detailed discussion of parallel processing below </li>
+<LI> The textfield labeled <i>W:</i> lets you specify the number of simultaneous threads, called <i>Workers</i> in JS, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then uses up to that number of threads simultaneously.  There may be circumstances where you may want to reduce that number.   For example, you may be using your computer for other compute intensive tasks at the time.   You can find a more detailed discussion of parallel processing below </li>
    </li>
 </UL>
 <LI> <e> Fullscreen, Infinity</e>   This row is effective only in 3D Mode.   Clicking on <i>Fullscreen</i> will make the 3D display occupy the entire screen. You cab also enter or exit full screen mode by typing <i>f</i> or <i>F</i> on the 3D screen.  (Typing a period will give you a complete list of keyboard commands.)   By default the display shows the 3D board as it would look from a point near the board.    You can zoom in or out with the middle mouse wheel.  Clicking on <i>Infinity</i> will change the display to the view from infinity, i.e, there is no perspective at all.  (You can still enlarge or reduce the size of the display with the middle mouse button. 
@@ -259,44 +286,35 @@ AIs are determined by the following multipliers:
 <LI><e>Run Tournament</e>  The last two rows in the control column let you conduct a tournament among the selected AI players.   The menu in the last row let you choose the depth of the AI searches in each game, and the textfield to the left of that menu let's you specify the number of games per pairing.
   </LI>
 
-
-
-
 </UL>
-
-
-
-
-<h3>The Basic Playing Algorithm</h3>
-
-<p>The engine's decision-making process is built on a classic artificial intelligence technique known as the <e>Minimax algorithm</e>, enhanced by <e>Alpha-Beta pruning</e> and a customizable <e>Static Evaluation</e> function. When you ask the AI to make a move, it doesn't just look at the current board; it envisions a branching "game tree" of possible futures.</p>
-
-
-<p>When the AI calculates its move, it looks ahead a specific number of turns, defined by the <e>Search Depth (D)</e>. It explores all valid moves it can make, then all valid responses the opponent can make, and so on, building a massive mathematical tree of potential board states. Because Reversi is a strictly zero-sum game, the AI assumes that the opponent will always choose the move that is worst for the AI. The algorithm systematically tries to maximize the AI's score while anticipating that the opponent will actively minimize it—hence the name "Minimax."</p>
-
-
-<p>Unless the board is almost entirely full, the AI cannot look ahead to the absolute end of the game. Once it reaches its search depth limit, it must evaluate the board as it currently stands. This is where the <e>Static Evaluation</e> function comes in.</p>
-
-<p>The engine scores the board by evaluating the net difference between your position and the opponent's position across the various strategic categories you define in the AI's Brain (such as Mobility, Piece Difference, Corners, and Edges). Mathematically, the evaluation score is computed as a linear combination of these factors:</p>
-
-$$\text{Score}=\sum(W_k \times \Delta_k)$$
-
-<p>Where $W_k$ is the weight of a specific parameter, and $\Delta_k$ is the net difference between the number of AI pieces and opponent pieces in that specific category. The sequence of moves that leads to the highest guaranteed static evaluation score is ultimately chosen as the best move.</p>
-
-<h4>Alpha-Beta Pruning</h4>
-<p>Evaluating every single possible branch of the game tree is computationally overwhelming, especially on a deeply complex 3D board. To solve this, the engine employs an optimization called <e>Alpha-Beta pruning</e>.</p>
-
-<p>As the AI searches the tree, it constantly keeps track of the best score it can guarantee so far (Alpha) and the worst score the opponent can force (Beta). If the algorithm begins evaluating a branch and discovers that the opponent has a response that makes it mathematically worse than a move the AI has <i>already</i> evaluated elsewhere, it immediately aborts (or "prunes") that entire branch. By completely skipping these useless calculations, the engine can search significantly deeper in the exact same amount of time, without ever altering the final, optimal decision.</p>
-
-<h4>Parallel Processing</h4>
-<p>To maximize efficiency, the engine distributes this massive game tree across multiple <e>Web Workers</e>. These background threads calculate independent branches of the Alpha-Beta search simultaneously, utilizing every available core of your computer's processor to return the optimal move as quickly as possible.</p>
-
 
 <H3>Parallel Processing </H3>
 
 <p> Modern computers usually have a number of cores, or CPUs, and can run several  <e>threads</e> simultaneously. This is known as <e>parallel processing</e>, which JS handles by passing messages between the main thread and each of the individual sub threads, which in JS are referred to as <e>workers</e>. The issues involved in parallel processing are complex.   The default number of workers in this software is the maximum number that your system can support.  If your system does not provide this information, then N is set to 4.  However, you can set the value in the text field equal to any positive integer. The system will create as many workers as you specify, and then use them all if it can. <p> My own system provides 32 threads. When running a tournament or an Evolution the system frequently runs at a CPU utilization of 100 percent.  However, the savings as far as the time required for the computation of a move, and the number of nodes visited, is not nearly as dramatic. <p> To illustrate this I had the system compute the first ply on the 6x6x6 board at depth 8, with the number of workers ranging from 1 to 32. JS does not let you measure CPU time accurately, and CPU time is of limited utility when running processes simultaneously.   The times shown here are wall-clock time measured in milliseconds.  However, other than routine system tasks, there were no other processes running on the system at that time. This chart shows wall-clock time  plotted against the number of workers, on a log-log scale: <p>
         <img src="Workers.png" style="width: 810px; height: auto">
   <p> The red line shows what one would naively expect. Thus when using <i>W</i>  workers, the CPU time should be <i>T/W</i> where <i>T</i> is the time taken  by one worker. The fat looking dots represent the actual wall clock time taken by three separate runs.   The fact that those three times are very similar for each number of workers indicates that the shape of the curve formed by the dots is not random.  Thus increasing the number of workers in some circumstances actually increases the time used for the calculation.   The reason for this is that the evaluation of some positions takes longer than others, and if the number of computer intensive positions is concentrated on a small number of workers the time required will increase.  Of course, the precise values of the individual worker times depend on the current position.
+
+
+
+
+<h3>The AI algorithm</H3>
+
+
+<p> A rudimentary understanding of how the computer plays is useful for understanding how to use the controls. Here is an extremely terse introduction: The moves available to the computer form a tree rooted at the current board position. The computer examines that tree to a certain depth. It uses a formula (the <e>static evaluation</e>) to assign a value to each relevant leaf of the tree. It then determines which best static value the player can obtain with perfect play, and makes the required move. 
+
+<p> There are many references to <e>time</e> on this page. A JavaScript code running in a browser has no facility to measure the amount of time used by the CPU, and in any case, the concept of CPU time becomes ambiguous when using parallel processes. All times in these notes are <e>elapsed wall-clock time</e>, but care was taken to ensure that they are measured only when the computer was essentially doing nothing but running the Reversi software. As a result, those stated times are reasonably comparable and reproducible on the particular machine they were obtained.
+
+<p> The following Table illustrates the performance of the computer algorithms on my particular Windows 11 machine. The software offers two engines, one written in JavaScript (JS), and one written in C++. As discussed above, the JS engine performs essentially just as well as the C++ engine, which is a significant difference between the Mill and the JS codes. 
+Note that, while the JS version works with essentially any browser, the C++ engine may not work on your particular computer. It requires a compiled version of the C++ code that is part of the package.
+
+<p> The Table shows the time and the number opf nodes visited in the Game Tree, for the computation of the first move on the 6x6x6 board, at depths running from 2 to 14 plies (i.e, half moves, move by just one player), employing 32 workers..   There are two blocks in the Table, the first one corresponding to the C++ engine, the second corresponding to the JS engine. The Table shows data for a computation of the first move.  The row headed <i>Nodes</i> gives the number of nodes of the tree visited by the code for this particular depth. This number is only a little larger than the number of leaves where the static evaluation is performed. The next row gives the <i>Time</i> measured in milliseconds (ms). The third row of each block, <i>Nodes/Time</i>, gives the number of nodes that were visited each millisecond. The row labeled Time Factor gives the ratio of the time for the current depth and the time for the preceding depth. It is a measure of the branching factor, i.e., the average number of nodes attached to a single node two levels higher in the tree.
+
+  <p> It is evident that JS and C++ have similar performances, and that the branching factor 20.  It seems reasonable for a human to play against an AI at a depth of 8 or 10 (looking ahead 4 or 5 moves).   This will make the computer move in a few seconds or minutes.   Human players of course can take any amount of time they wish.
+
+
+
+
+    <H3> AI Players </H3>
 
 
 

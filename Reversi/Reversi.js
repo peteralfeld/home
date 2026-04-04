@@ -122,12 +122,19 @@ function getWorker() {
     return w;
 }
 
+
 function releaseWorker(worker) {
     worker.onmessage = null; 
     worker.currentResolve = null;
     activeWorkers.delete(worker);
     
-    // --- NEW: The Rolling Restart ---
+    // --- NEW: Trust the C++ memory management ---
+    if (engineMode === 'WASM') {
+        workerPool.push(worker); 
+        return; // Exit immediately, no rolling restart needed
+    }
+    
+    // --- The JS Rolling Restart (Fallback only) ---
     worker.gamesPlayed = (worker.gamesPlayed || 0) + 1;
     
     if (worker.gamesPlayed >= 50) {
@@ -138,7 +145,6 @@ function releaseWorker(worker) {
         workerPool.push(worker); 
     }
 }
-
 
 async function loadWasmEngine() {
     try {
@@ -172,13 +178,13 @@ const Frodo = {
     weights: [14, 0, 9, 1000, -1, -7, 94, -3, 5, -1]
 };
 
-const Eowyn = {
-    name: "Eowyn",
+const Celebrian = {
+    name: "Celebrian",
     weights: [14, 0, 6, 1000, -1, -8, 91, -3, 4, -1]
 };
 
-const Hamfast = {
-    name: "Hamfast",
+const Indis = {
+    name: "Indis",
     weights: [18, 0, 23, 1000, -8, -20, 76, -6, 5, -2]
 };
 
@@ -190,8 +196,8 @@ const Bilbo = {
 
 
 
-const Celebrian = {
-    name: "Celebrian",
+const Eowyn = {
+    name: "Eowyn",
     weights: [84, 0, 17, 1000, -4, -26, 72, -10, 19, -4]
 };
 
@@ -202,7 +208,7 @@ const Arwen = {
 
 
 
-const Indis = makeBrain("Indis", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
+const Jolly = makeBrain("Jolly", 20, 0, 40, 1000, -10, -20, 100, -5, 10, -2);
 
 const Dwalin = {
     name: "Dwalin",
@@ -210,13 +216,18 @@ const Dwalin = {
 };
 
 
-const Galadriel = { 
-    name: "Galadriel",
+const Hamfast = { 
+    name: "Hamfast",
     weights: [15, 0, 22, 1000, -9, -19, 132, -2, 2, -2]
 };
 
 
-let Jolly = makeBrain("Jolly", 1000,0,1000,1000,-1000,-1000,1000,-1000,1000,-1000);
+const Galadriel = {
+    name: "Galadriel",
+    weights: [141, 0, 10, 1000, -8, -70, 89, -20, 14, -4]
+};
+
+
 
 let defaultBrainList = [Arwen, Bilbo, Celebrian, Dwalin, Eowyn, Frodo, Galadriel, Hamfast, Indis, Jolly];
 let BrainList = JSON.parse(JSON.stringify(defaultBrainList)); 
@@ -232,8 +243,9 @@ let greenType = 'Human';
 let redDepth = 4;        
 let greenDepth = 4;
 let evalDepth = 4; 
+let tDepthVal = (startupChk && startupChk.depth) ? startupChk.depth : 4;
 let tGamesVal = 10;
-let tDepthVal = 4;
+
 let impGenVal = (startupChk && startupChk.maxGenerations) ? startupChk.maxGenerations : 1000; 
 let impGamesVal = (startupChk && startupChk.impGamesVal) ? startupChk.impGamesVal : 10; 
 let impMutVal = (startupChk && startupChk.impMutVal) ? startupChk.impMutVal : 10;
@@ -583,14 +595,15 @@ function exportBrainsJS() {
     dlAnchorElem.click();
 }
 
-function downloadRevisedBrain(brain) {
+function downloadRevisedBrain(brain, depth) {
     let boardDim = playMode === '2D' ? `${N}x${N}` : `${N}x${N}x${N}`;
     
     // 1. Create a descriptive header
     let content = `// Revised Parameters for ${brain.name}\n`;
     content += `// Date: ${new Date().toLocaleString()}\n`;
     content += `// Board Size: ${boardDim}\n`; 
-    content += `// Play Mode: ${playMode}\n\n`;
+    content += `// Play Mode: ${playMode}\n`;
+    content += `// Search Depth: ${depth}\n\n`;
     
     // 2. Format as a clean JS constant
     let cleanConstName = brain.name.replace(/[^a-zA-Z0-9]/g, '');
@@ -1605,7 +1618,7 @@ async function runImprovement() {
                 // Update UI immediately 
                 BrainList[brainIndex] = JSON.parse(JSON.stringify(baseBrain)); 
                 updateBrainUI();
-                downloadRevisedBrain(baseBrain);
+                downloadRevisedBrain(baseBrain, depth);
                 
                 log(`VERIFIED! New High Score vs Baseline: +${vScore}! Crowned ${baseBrain.name}.`);
 
