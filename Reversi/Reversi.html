@@ -6,317 +6,928 @@
 </head>
 <body>
 
-  <H1><a href = "index.html"> 3D Reversi Rules and User's Guide</a></H1>
+  <h1><a href="index.html">3D Reversi Rules and User's Guide</a></h1>
 
-  <H2>Scope</H2>
+  <div id="toc" style="background-color: var(--refBoxBg); padding: 15px; border: 1px solid var(--borderBlue); margin-bottom: 20px;">
+    <h2 style="margin-top: 0;">Table of Contents</h2>
+    <ul>
+      <li><a href="#scope">Scope</a></li>
+      <li><a href="#comparison">Comparison of Mill and Reversi</a></li>
+      <li><a href="#rules">The Rules of the Game</a>
+        <ul>
+          <li><a href="#3d-game">The 3D Game</a></li>
+        </ul>
+      </li>
+      <li><a href="#users-guide">User's Guide</a>
+        <ul>
+          <li><a href="#boards-controls">Game Boards and Controls</a></li>
+          <li><a href="#playing">Playing the Game</a></li>
+          <li><a href="#3d-board">The 3D Game Board</a></li>
+          <li><a href="#2d-cross">The 2D cross-sections</a></li>
+          <li><a href="#control-column">The Control Column</a></li>
+          <li><a href="#keyboard">Keyboard Commands</a></li>
+          <li><a href="#parallel">Parallel Processing</a></li>
+          <li><a href="#ai-algorithm">The AI algorithm</a></li>
+          <li><a href="#ai-players">AI Players</a></li>
+          <li><a href="#ai-rankings">AI Tournament Rankings</a></li>
+        </ul>
+      </li>
+    </ul>
+  </div>
 
-  <p> On this site you can play the game of Reversi in 2D or 3D, against a human, or one a number of AI players.   You can also play a <e>Tournament</e> among AI players or run an <e>Evolution</e> to try to try to improve the ability of one of the AI players. 
-You can also develop your own AI players and see how they do against the built-in ones.    The focus of this site, and the reason for creating is, to make it possible to play in 3D.  But 2D is available also.
+  <h2 id="scope">Scope</h2>
+  <p>On this site you can play the game of Reversi in 2D or 3D, against a human, or one of a number of AI players. You can also play a <e>Tournament</e> among AI players or run an <e>Evolution</e> to try to improve the ability of one of the AI players. You can also develop your own AI players and see how they do against the built-in ones. The focus of this site, and the reason for creating it, is to make it possible to play in 3D. But 2D is available also.</p>
+  
+  <p>If you are up to it, or you feel adventurous, you can click <a href="index.html">right here</a> (or on the main heading of this page) and start playing Reversi right away. Otherwise, read the information here and then proceed to the actual game page. It probably is best to open the game table in a different window and refer to it, and try things out, as you proceed. However, you can also see a static image of the game table <a href="GameTable.png">here.</a></p>
+  
+  <p>If you are familiar with my <a href="../Mill/Mill.html">Mill</a> game you will find that the Reversi game is organized similarly.</p>
+  
+  <p><a href="#toc">&uarr; Back to contents</a></p>
 
+  <h2 id="comparison">Comparison of Mill and Reversi</h2>
+  <p>You can <a href="#rules">skip</a> this section if you are interested only in the Reversi game. I developed the <a href="../Mill/Mill.html">Mill game</a> first and learned a lot in the process. While the organization and the basic approach for the two games are closely related, there are some significant differences:</p>
 
+  <ul>
+    <li>The <e>main difference</e> between the two games, and the reason for the existence of this <e>Reversi</e> site, is that this version of Reversi can be played on a three-dimensional board. You can manipulate and examine the board in a 3D display that is run by your system's <e>video card</e>. Utilizing the video card is a new experience for me.</li>
+    <li>The branching factor in the Reversi Game is much greater than that in the Mill game. Static evaluations for the 3D version take significantly longer than for the 2D version of Reversi, or the Mill Game.</li>
+    <li>However, the implementation of the basic algorithm, and efficient exploration of the current game tree, is much more efficient. On my system the Reversi code routinely achieves 100 or 99% utilization of the CPU.</li>
+    <li>The genetic algorithm for AI improvements is much more sophisticated for the Reversi game.</li>
+    <li>Some features of the Mill game, specifically the ability to play by a game clock, and the ability to use or create an opening book, were not implemented in the Reversi game. They did not appear to be crucial after I developed the Mill game.</li>
+    <li>In the Mill Game, the C++ web assembly version heavily outperforms the JS version. The reason for this is that the Mill Game was written in idiomatic JS as I first learned it. In the Reversi Game the performance of JS and C++ are almost identical. The Reversi Code is much more C++ like, in several aspects:
+      <ul>
+        <li><e>Little or no Garbage Collection Overhead.</e> One of the biggest performance killers in JS is the Garbage Collector. Creating temporary objects for moves inside a deep recursive loop like &alpha;/&beta; search causes memory churn. Once memory fills up, the engine pauses execution to clean it up. In the Reversi JS code, memory allocation inside the search loop has been entirely eradicated. The use of global variables pre-allocates all necessary memory for the maximum search depth upfront. Instead of creating new arrays for the board state, the code swaps pointers instead for replacing objects. Because nothing new is allocated during the search, the JS Garbage Collector never fires.</li>
+        <li><e>Typed Arrays and Cache Locality.</e> Standard JS arrays are not continuous blocks of memory; they are essentially inefficient and expensive HashMaps that can accommodate objects of all kinds. This makes them more versatile and much less efficient. By exclusively using <e>Int32Array</e> and <e>Uint8Array</e> to represent the board and the pre-computed lookup tables the JS engine is forced to allocate contiguous blocks of memory. This provides the exact same CPU cache locality as the C-style arrays used in the C++ file defining the Reversi engine. When the CPU fetches a board position, the next positions are already pulled into the L1/L2 cache, maximizing throughput.</li>
+        <li><e>JIT Compilation of Monomorphic Hot Paths.</e> The JS Reversi engine uses Just-In-Time (JIT) compilation. It monitors the code as it runs and compiles "hot paths" (frequently executed loops) directly into highly optimized machine code. For the JIT compiler to do this effectively, the functions must be <i>monomorphic</i>, meaning the variables passed into them always have the exact same type. Because the &alpha;/&beta; function strictly passes Typed Arrays and integers back and forth, the JIT compiler strips away all of JS's usual dynamic type-checking overhead. By the time the search reaches depth 4 or 6, V8 has likely compiled The &alpha;/&beta; JS code into assembly code that looks almost identical to the compiled WebAssembly from the C++ file.</li>
+        <li><e>Inline Sorting.</e> Sorting moves is computationally expensive. The standard Array.prototype.sort() in JS requires passing a callback function, which introduces massive overhead when called millions of times. By implementing an inline descending/ascending insertion sort directly within the JS &alpha;/&beta; search, that callback overhead is completely bypassed.</li>
+      </ul>
+    </li>
+    <li>There is just one version of the Mill Game. By contrast, there are <e>several versions</e> of the Reversi Game. You can play Reversi in 2D, or 3D, and on a 4x4, 6x6, or 8x8 board and its 3D analogs. Different AI players perform differently on different boards. There is a specialist for each type, as discussed below.</li>
+    <li>As for the implementation of the Mill game, the efficiency of memory management and multiprocessor utilization took a large chunk of the development time. The most computer intensive part of the game is the genetic algorithm to improve the parameters of an AI player. Memory issues led to a genetic algorithm that restarts fresh, essentially by reloading the game and engine, after each generation. Moreover, for quite a while the algorithm used to regularly crash my system and cause the computer to reboot. With the Help of Gemini, I was able eventually to trace this to a known issue with my particular motherboard and CPU which I could fix by doing open heart surgery via the BIOS on my motherboard. The system now routinely runs for days without crashing, and using 100% of the CPU. This is gratifying. Developing the Reversi software has been quite a ride!</li>
+  </ul>
+  
+  <p><a href="#toc">&uarr; Back to contents</a></p>
 
+  <h2 id="rules">The Rules of the Game</h2>
+  <p>The game of <i>Reversi</i> (also known as <i>Othello</i>) is usually played on an 8x8 2D Board, as shown in Figure 1. The novel feature of this online version is that you can play it in 3D. But the easiest way to understand the rules is to start with the 2D rules. The transfer of those rules to the 3D case will be straightforward.</p>
 
-  <p> If you are up to it, or you feel adventurous,  you can click <a href="index.html"> right here</a> (or on the main heading of this page) and start playing Reversi right away.   Otherwise, read the information here and then proceed to the actual game page.  It probably is best to open the game table in a different window and refer to it, and try things out, as you proceed.  However, you can also see a static image of the game table <a href = "GameTable.png"> here. </a>
+  <table style="float: left; margin-bottom: 20px;">
+    <tr>
+      <td><img src="start.png" style="height: 270px; width: auto; float: left; margin-right: 10px;"></td>
+    </tr>
+    <tr>
+      <td><b>Fig. 1: Initial Board</b></td>
+    </tr>
+  </table>
 
-<p> If you are familiar with my <a href="../Mill/Mill.html"> Mill </a> game you will find that the Reversi game is organized similarly.  
+  <p>The game is played by two players, usually denoted as Black and White. However, when I first played Reversi many years ago the players were <red>Red</red> and <green>Green</green> and I have used that color scheme on this site. The players have a supply of <i>markers</i> (or <i>pieces</i>) that are red on one side and green on the other. Thus the markers can be <i>reversed</i> (or <i>turned</i> or <i>flipped</i>) and switch color.</p>
+  
+  <p>Figure 1 shows the initial state of the 8x8 2D Board. There is a grid with 8x8 = 64 intersections. At the start of the game there are red markers on 4-5 (horizontal-vertical) and 5-4, and green markers on 4-4 and 5-5. The players take turns placing markers on the board. Their goal is to enclose contiguous chains of the opponent's pieces between two pieces of their own. If they can do that the pieces in the enclosed chain change colors. The player with the most pieces at the end wins. For example, at the beginning, Red could play on 4-3 or 3-4 and flip 4-4, or play on 6-5 or 5-6 and flip 5-5.</p>
 
-  <H2> Comparison of Mill and Reversi </H2>
+  <p>The following four boards illustrate a possible sequence of the first four moves. The picture shows the status of the board <e>after</e> the indicated move.</p>
 
-  You can <a href = "#go-on"> skip </a> this section if you are only interested in the Reversi game.    I developed the <a href="../Mill/Mill.html"> Mill game </a> first and learned a lot in the process.   While the organization and the basic approach for the two games are closely related, there are some significant differences:
-
-<UL>
-  <LI>The <e>main difference</e> between the two games, and the reason for the existence of this <e>Reversi</e> site, is that this version of Reversi can be played on a three-dimensional board.   You can manipulate  and examine the board in a 3D display that is run by your system's <e>video card</e>.  Utilizing the video card is a new experience for me.</LI>
-  <LI> The branching factor in the Reversi Game is much greater than that in the Mill game.   Static evaluations for the 3D version take significantly longer than for the 2D version of Reversi, or the Mill Game..   </LI>
-<LI> However, the implementation of  the basic algorithm, and efficient exploration of the current game tree, is much more efficient.   On my system the Reversi code routinely achieves 100 or 99% utilization of the CPU. </LI>
-<LI>The genetic algorithm for AI improvements is much more sophisticated for the Reversi game.</LI>
-  <LI> Some features of the Mill game, specifically the ability to play by a game clock, and the ability to use or create an opening book, were not implemented in the Reversi game.  They did not appear to be crucial after I developed the Mill game.
-</LI>
-  <LI> In the Mill Game, the C++ web assembly version heavily outperforms the JS version.   The reason for this is that the Mill Game was written in idiomatic JS as I first learned it.  In the Reversi Game the performance of JS and C++ are almost identical.  
-The Reversi Code is much more C++ like, in several aspects:
-    <UL>
-      <LI> <e>Little or no Garbage Collection Overhead.</e>
-One of the biggest performance killers in JS is the Garbage Collector. Creating temporary objects for moves inside a deep recursive loop like &alpha;/&beta; search causes memory churn. Once memory fills up, the engine pauses execution to clean it up.
-In the Reversi JS code, memory allocation inside the search loop has been entirely eradicated.  The use of global variables pre-allocates all necessary memory for the maximum search depth upfront.
-Instead of creating new arrays for the board state, the code swaps pointers instead for replacing objects. Because new nothing is allocated during the search, the JS Garbage Collector never fires.
-      </LI>
-      <LI>
-<e> Typed Arrays and Cache Locality.</e>
-Standard JS arrays are not continuous blocks of memory; they are essentially inefficient and expensive HashMaps that can accommodate objects of all kinds.  This makes them more versatile and much less efficient.
-By exclusively using <e>Int32Array</e> and <e>Uint8Array</e> to represent the board and the pre-computed lookup tables the JS engine is forced to allocate contiguous blocks of memory. This provides the exact same CPU cache locality as the C-style arrays used in the C++ file defining the Reversi engine. When the CPU fetches a board position, the next positions are already pulled into the L1/L2 cache, maximizing throughput.
-  </LI>
-  <LI>
-<e> JIT Compilation of Monomorphic Hot Paths.</e>
- The JS Reversi engine uses Just-In-Time (JIT) compilation. It monitors the code as it runs and compiles "hot paths" (frequently executed loops) directly into highly optimized machine code.
-For the JIT compiler to do this effectively, the functions must be <i>monomorphic</i>, meaning the variables passed into them always have the exact same type. Because the &alpha;/&beta; function strictly passes Typed Arrays and integers back and forth, the JIT compiler strips away all of JS's usual dynamic type-checking overhead. By the time the search reaches depth 4 or 6, V8 has likely compiled The &alpha;/&beta; JS code  into assembly code that looks almost identical to the compiled WebAssembly from the C++ file.
-  </LI>
-    <LI>
-<e> Inline Sorting.</e>
-Sorting moves is computationally expensive. The standard Array.prototype.sort() in JS requires passing a callback function, which introduces massive overhead when called millions of times. By implementing an inline descending/ascending insertion sort directly within the JS  &alpha;/&beta; search, that callback overhead is completely bypassed.
-</li>
-
-
-
-<LI> There is just one version of the Mill Game.  By contrast, there are <e>several versions</e> of the Reversi Game.  You can play Reversi in 2D, or 3D, and on a 4x4, 6x6, or 8x8 board and its 3D analogs.   Different AI players perform differently on different boards.  There is a specialist for each type, as discussed below.
-
-
-<LI> As for the implementation of the Mill game, the efficiency of memory management and multiprocess`s utilization took a large chunk of the development time.   The most computer intensive part of the game is the genetic algorithm to improve the parameters of an AI player.   Memory issues led to a genetic algorithm that restarts fresh, essentially by reloading the game and engine, after each generation.  Moreover, for quite a while the algorithm used to regularly crash my system and cause the computer to reboot.   With the Help of Gemini, I was able eventually to trace this to a know issue with my particular Motherboard and CPU which I could fix by doing open heart surgery via the BIOS on my mother board.  The system now routinely runs for days without crashing, and using 100% of the CPU.  This is gratifying.   Developing the Reversi software has been quite a ride!
-  </LI>
-  </UL>
-</UL>
-
-
-
-
-<h2 id = "go-on"> The Rules of the Game </h2>
-								       
-<p> The game of <i>Reversi</i>   (also known as <i>Othello</i>) is usually played on an 8x8 2D Board, as shown in Figure 1.   The novel feature of this online version is that you can play it in 3D.   But the easiest way to understand the rules is to start with the 2D rules.   The transfer of those rules to the 3D case will be straightforward. <table style ="float: left">
-  <tr><TD><IMG SRC = "start.png" style = "height: 270px; width: auto; float: left; margin-right:10px"><img></td></tr>
-  <tr><td><b>Fig. 1: Initial Board </b> </td><tr> </table>
-The game is played by two players, usually denoted as Black and White.   However, when I first played Reversi many years ago the players were <red>Red</red> and <green>Green</green> and I have used that color scheme on this site.  The players have a supply of <i>markers</i> (or <i>pieces</i>) that are red on one side and green on the other.   Thus the markers can be <i>reversed</i> (or <i>turned</i> or <i>flipped</i>) and switch color.
-Figure 1 shows the initial state of the 8x8 2D Board.  There is a grid with 8x8 = 64 intersections. At the start of the game there are red markers on 4-5 (horizontal-vertical) and 5-4, and green markers on 4-4 and 5-5.  The players take turns placing markers on the board.  Their goal is to enclose contiguous chains of the opponents pieces between two pieces of their own. If they can do that the pieces in the enclosed chain change colors.   The player with the most pieces at the end wins.  For example, at the beginning, Red could play on 4-3 or 3-4 and flip 4-4, or play on 6-5 or 5-6 and flip 5-5.
-
-
-<p> The following four boards illustrate a possible sequence of the first four moves.   The picture shows the status of the board <e>after the indicated move.
-
-    <table>
-      <tr>
-        <td>
-	<table>
-	  <tr>	<td><IMG SRC="1.png" style="height: 270px; width: auto"></td><tr>
+  <table>
+    <tr>
+      <td>
+        <table>
+          <tr><td><img src="1.png" style="height: 270px; width: auto;"></td></tr>
           <tr><td>Red places on 3-4 and flips 4-4</td></tr>
-          </table>
-        <td>
-        <td>
-	<table>
-	  <tr>	<td><IMG SRC="2.png" style="height: 270px; width: auto"></td><tr>
+        </table>
+      </td>
+      <td>
+        <table>
+          <tr><td><img src="2.png" style="height: 270px; width: auto;"></td></tr>
           <tr><td>Green places on 3-3 and flips 4-4</td></tr>
-          </table>
-        <td>
-        <td>
-	<table>
-	  <tr>	<td><IMG SRC="3.png" style="height: 270px; width: auto"></td><tr>
-          <tr><td>Red places on 4-3 and flips 4-4 </td></tr>
-          </table>
-        <td>
-        <td>
-	<table>
-	  <tr>	<td><IMG SRC="4.png" style="height: 270px; width: auto"></td><tr>
+        </table>
+      </td>
+      <td>
+        <table>
+          <tr><td><img src="3.png" style="height: 270px; width: auto;"></td></tr>
+          <tr><td>Red places on 4-3 and flips 4-4</td></tr>
+        </table>
+      </td>
+      <td>
+        <table>
+          <tr><td><img src="4.png" style="height: 270px; width: auto;"></td></tr>
           <tr><td>Green places on 5-3 and flips 4-3 and 5-4</td></tr>
-          </table>
-        <td>
+        </table>
+      </td>
+    </tr>
+  </table>
 
+  <p>Here is a list of specific rules:</p>
+  <ol>
+    <li>Starting with Red, the players take turns placing their pieces. The player whose turn it is is <i>the current player</i>, the other player is <i>the opponent</i>.</li>
+    <li>Any stone placed by the current player must flip at least one of the opponent's pieces.</li>
+    <li>The current player must play a legal placement if possible. If no legal placement is available the current player forfeits the turn, and the opponent becomes the current player.</li>
+    <li>After each placement all of the opponent's pieces contained in enclosed chains <e>must be</e> flipped.</li>
+    <li>The game ends when neither player can make a legal move. The player with more pieces wins.</li>
+    <li>The game is a <i>draw</i> if both players have the same number of pieces at the end of the game.</li>
+  </ol>
+
+  <p>To illustrate some aspects of the game, note the following:</p>
+  <ul>
+    <li>Once a piece is placed it may change color but it never moves, and it never gets removed from the board.</li>
+    <li>Neither player may skip a valid move, or choose not to flip some of the opponent's enclosed pieces.</li>
+    <li>As the game proceeds the number of red and green pieces undergo large swings back and forth. This gives an advantage to the last player. Any, potentially large, gain on the last turn cannot be undone by the opponent.</li>
+    <li>If a player has no legal placement, and thereby forfeits that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.</li>
+    <li><e>Corners</e> are very special. Once a player places a piece at a corner it will never change color there. Moreover, any connected chain that ends at a corner, or a point, that is connected to the corner by a chain, can no longer change color. Much of the game strategy consists of gaining corners (and making the set of non-changeable pieces grow) and preventing the opponents from gaining corners. Similar considerations apply to <e>edges.</e></li>
+    <li>Usually a game consists of 60 (64 board points - the four points occupied from the beginning) moves. But since a player may have to forfeit a turn it may take longer, and it may also end early with empty spots left on the board, but no legal placements being available for either player. For example, if it was Green's turn in the last board of the above sequence, Green could play 3-5. As a result, all pieces would turn green, neither player would have a legal move available, and the game would end with nine green pieces, and zero red pieces.</li>
+  </ul>
+
+  <h3 id="3d-game">The 3D Game</h3>
+  <p>The 3D game is played exactly like the 2D game, except that now there are more neighbors for each point, and the chains of enclosed pieces can run in more directions. In fact, the number of directions increases from 8 to 26 neighbors. To see this note that an interior point and its neighbors in the grid form a 3x3x3 cube which contains 27 points. The innermost point is not a neighbor of itself, so that point has a total of 3<sup>3</sup>-1 = 26 neighbors, each corresponding to a potential chain of enclosed opposing pieces. (On a 2D board we have 3<sup>2</sup>-1 = 8 neighbors, and in n dimensions we have 3<sup>n</sup>-1 neighbors). You can place pieces in a three-dimensional array by using the interactive 3D display or in a two-dimensional cross section of the board.</p>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h2 id="users-guide">User's Guide</h2>
+  <p>You can start the game <a href="index.html">right here.</a> If you wonder what a specific control does you can hover over it and see a one or two word explanation pop up. However, you may prefer to read the detailed information below to know what this software does and get an idea of how it works.</p>
+
+  <h3 id="boards-controls">Game Boards and Controls</h3>
+  <p>The Table with the controls, the 3D game board, and three Cross sections by default measures about 1631 by 1039 pixels. This is quite large (certainly unrealistic to be used on a smartphone) but it fits on most modern lap or desktop screens. You may need to change the resolution setting on your screen to accommodate the whole table. You can also shrink the size of the table in the line labeled <e>Scale:</e> click on "&lt;" or "&gt;". See below for more information.</p>
+
+  <p>The default game table, meant for playing 3D Reversi, consists of three columns. The first column contains the game controls. The second consists of three cross sections, each of which is perpendicular to one of the three axes. The third column contains the three-dimensional board. You can also toggle the display to play in just two dimensions (by clicking on the button in the second row of the control column). In that case the middle column (with the cross sections) disappears and the game board turns two-dimensional.</p>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="playing">Playing the Game</h3>
+  <p>Players may be human or one of ten AI players. To play a game select the participants in the lines labeled <red>Red:</red> and <green>Green:</green>, and then click on the <i>Play</i> button in the fifth row of the control column (originally labeled <e>Play</e>). Pieces that are already marked are shown as red or green circles in the 2D displays, and as red or green balls in the 3D display. Also present by default are smaller red or green circles or Balls whose colors indicate whose turn it is, and where that player can legally place a marker.</p>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="3d-board">The 3D Game Board</h3>
+  <p>The 3D game board is moving in space initially to suggest that this is an interactive 3D display, and you can manipulate the game board to help you visualize the 3D game state. Specifically, you can:</p>
+  <ol>
+    <li>Left-click anywhere in the display to stop its movement. You can also toggle the movement by typing <e>w</e> or <e>W</e> anywhere in the game table.</li>
+    <li>Left-drag the display to rotate the 3D board and view it from any angle.</li>
+    <li>Middle-drag to zoom in or out.</li>
+    <li>Right-drag to move the board.</li>
+    <li>Cycle the grid from blank to parallel to the axes (the default) to showing all 26 directions, by using the keyboard command 'a'.</li>
+    <li>Turn the board full-screen with the keyboard command 'f' or 'F'. Repeat, or use the Escape key or the space bar to exit full-screen.</li>
+    <li>Type a period or a question mark to see a complete list of available keyboard commands. Repeat to remove that list.</li>
+  </ol>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="2d-cross">The 2D cross-sections</h3>
+  <p>You can also place markers on the 2D cross sections. There is one cross section for each axis. You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible cross sections is being displayed.</p>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="control-column">The Control Column</h3>
+  <p>This section contains a description of the available controls, listed from top to bottom.</p>
+
+  <ul>
+    <li><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JS (JS) or WASM (C++) based. The number of workers indicates the maximum number of concurrent threads run on your machine.</li>
+    <li><e>3D/2D</e> This button lets you switch back and forth between the 2D and the 3D display. You can accomplish the same using the keyboard command '2'.</li>
+    <li><e>Click here...</e> Click here to see this page.</li>
+    <li><e>Play...</e> This line contains three items:
+      <ol>
+        <li>The actual <i>play button</i>. This starts or stops a single game. The label and color of the button change with the status of the game.</li>
+        <li><i>Reset</i> This button interrupts and resets any ongoing game, tournament, or evolution. It has no impact on settings like search depths, AI players, etc. To reset the game Table to all of its original settings reload the web page. To exit the game board close the web page.</li>
+        <li><i>N</i> is the size of the board. Possible choices are 4, 6, or 8. The default is 6. Playing on a 4x4x4 board is very different from playing on a larger board since corners can be occupied in the first move. Playing on an 8x8x8 board takes a very long time since a typical game runs for 504 placements. As far as strategy and actual game play, a 6x6x6 board is sufficiently rich and there appear to be no general new features when going to an 8x8x8 board.</li>
+      </ol>
+    </li>
+    <li><e>&lt;&lt; &gt;&gt;</e> These buttons let you scroll through ANY ONGOING game. You can also go to any move by entering its number in the text field. The button labeled "&gt;&gt;" takes you back to the current game state. You can continue the game from any previous game state, and you can change parameters like the player or the search depth. To avoid accidentally messing up the game, using any of these facilities interrupts the game. When you are ready to continue from the currently displayed state press the Play button.</li>
+    <li><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are placed by left-clicking on an eligible spot on one of the game boards. You can also choose one of ten AI players, described below. The AI player proceeds by evaluating boards as described below, and looking a number of plies (half moves, i.e., placements by just one player) ahead. The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spent by the AI. The choice of D has no impact on any human player.</li>
+    <li>The next two rows contain two textfields that give information about the current status and processes. The first (initially labeled <e>Ready to Go</e>) gives the current score of any ongoing game, or states that an evolution or a tournament is in progress.</li>
+    <li>The second, larger and scrollable, textfield gives more detailed information. Any log output goes to the game console (invoke it with CTL-Shift-J) by default is duplicated in this textfield. You can turn off the duplication by clicking on the <i>Logs</i> button described below.</li>
+    <li><e>Value, Moves, D</e> The <i>Value</i> button prints the numerical score of the current board position to the console and the large status window. The <i>Moves</i> button similarly lists the available moves and their respective scores. The available best moves are shown as large yellow circles or balls in the 2D and 3D displays. (Note, however, that at the beginning of a game the software checks moves for symmetry and lists only one of each group of equivalent moves.) The depth menu <i>D=</i> in that row determines the depth at which the scores and the moves are computed.</li>
+    <li><e>Scale: W:</e> 
+      <ul>
+        <li>The <i>Scale</i> controls change the size of the 3D display. They can be used to adjust the size of the board to your particular computer. If the height of the board becomes larger than the height of the control column, the column becomes scrollable. For the best experience you want to keep the scale large enough to accommodate the full control column.</li>
+        <li>The textfield labeled <i>W:</i> lets you specify the number of simultaneous threads, called <i>Workers</i> in JS, used by the code. This is a crucial parameter. The software queries your system for the maximum number of available threads, and then uses up to that number of threads simultaneously. There may be circumstances where you may want to reduce that number. For example, you may be using your computer for other compute intensive tasks at the time. You can find a more detailed discussion of parallel processing below.</li>
+      </ul>
+    </li>
+    <li><e>Fullscreen, Infinity</e> This row is effective only in 3D Mode. Clicking on <i>Fullscreen</i> will make the 3D display occupy the entire screen. You can also enter or exit full screen mode by typing <i>f</i> or <i>F</i> on the 3D screen. (Typing a period will give you a complete list of keyboard commands.) By default the display shows the 3D board as it would look from a point near the board. You can zoom in or out with the middle mouse wheel. Clicking on <i>Infinity</i> will change the display to the view from infinity, i.e., there is no perspective at all. (You can still enlarge or reduce the size of the display with the middle mouse button.)</li>
+    <li><e>Hints, Axes, Hover, Cats, Vals</e> The buttons in the next two rows let you toggle the following number of display items. If the color of the button is green that item is active, otherwise the color is Gray. All five buttons toggle the corresponding feature.
+      <ul>
+        <li><i>Hints</i>: These are on by default. The system will show you the points where the current player can play as small red or green balls or circles.</li>
+        <li><i>Axes</i>: As you may expect, this will draw the <i>x</i>, <i>y</i>, and <i>z</i> axes in the 3D display.</li>
+        <li><i>Hover</i>: When active, this will show you the coordinates of a marker location by hovering above the point.</li>
+        <li><i>Categories</i>: Crucial for AI playing is the location of a point. Corners are best, points next to a corner are bad, for example. There is more information below. This button will mark the various categories by colored balls in the 3D display.</li>
+        <li><i>Values</i>: This is a similar display, but linked to a specific player, by default the player selected in the evolution menu.</li>
+      </ul>
+    </li>
+    <li><e>Grid</e>: lets you choose the kind of grid drawn on the 3D screen. You have the following options:
+      <ul>
+        <li><i>None</i>: No grid lines at all.</li>
+        <li><i>Orthogonal</i>: The default. All grid lines parallel to one of the axes are shown.</li>
+        <li>Grid lines in all 26 directions are shown. This makes for a rather dense display, but you can have a psychedelic experience by watching the 3D board rotate in space for a while...</li>
+      </ul>
+    </li>
+    <li><e>&alpha;/&beta;, S, Random</e>: These buttons turn certain features on and off. For regular play, however, it is best to keep all of them active.
+      <ul>
+        <li><i>&alpha;/&beta;</i>: The AI plays by evaluating all possible play up to a certain depth, and finding the move that gives the best score to the current player. The number of positions (nodes in the game tree) that needs to be explored can be reduced dramatically using the &alpha;/&beta; algorithm. Turning it off will greatly increase the time taken for each move.</li>
+        <li><i>S</i> (Symmetry): At the beginning many moves are equivalent by symmetry. With this feature turned on equivalent moves are identified and only one of them is considered. For example, at the first move (ply) there are only two possibilities, moving in the direction of a coordinate axis, or playing a corner in the 4x4x4 cube containing the center. On the 4x4x4 or 8x8x8 grid the same kind of move is best, on the 6x6x6 board it is worst since you are building a bridge to a corner for your opponent. Checking for symmetry is expensive, and it becomes less effective as the game proceeds. Thus it is turned off after the first time the symmetry check does not reduce the number of moves.</li>
+        <li><i>Random</i>: When selected the system chooses randomly among all moves with the same highest score. Otherwise it picks the first. However, due to the vagaries of when workers finish their tasks, and how this affects the search for the best move, deactivating symmetry will not ensure that two subsequent games are identical.</li>
+      </ul>
+    </li>
+    <li><e>Logs, Depths</e>: These two buttons modify the logs printed to the Console and to the Control Panel. The console is a feature of your browser, and you can activate it by typing CTL-Shift-J (and in other ways). I recommend you keep it open while you use this software. The specific effects of those two buttons are:
+      <ul>
+        <li><i>Logs</i>: On by default, this toggles the duplication of console output in the large status window in the control column, during a game. That duplication is turned off, regardless of the state of the button, during a tournament or an evolution. The reason for that is that the duplication requires the manipulation of a large and growing string which interferes with the efficiency of the algorithm execution.</li>
+        <li><i>Depths</i>: Off by default, this feature will print information about individual moves, including the time spent on it, and the number of times different levels of the game tree were visited. For example, if you have an AI compute the first move at search depth 8, you will find that with 32 workers the search takes about three seconds, and the algorithm visits a little more than two million nodes in the game tree.</li>
+      </ul>
+    </li>
+    <li><e>B:, H:</e> The two sliders in this row let you adjust the size of the marker and hint balls in the 3D display.</li>
+    <li><e>Import</e>: The controls in this row let you import or export JS code defining the current AI players. <i>Def</i> resets the parameters to their built-in values.</li>
+    <li><e id="parms">Mob, Dif, Cor...</e> Here you can change the parameters that determine the play of a particular AI. During a static evaluation, each of these parameters multiplies the difference in the corresponding numbers for the two players. Specifically, the parameters correspond to the following characteristics of the board state:
+      <ul>
+        <li><e>Mob</e> (Mobility): the number of possible moves.</li>
+        <li><e>Dif</e> (Piece Difference): the number of markers on the board.</li>
+        <li><e>Cor</e> The number of pieces occupying a corner.</li>
+        <li><e>C-SQ</e> The number of edge pieces occupying a point next to a corner. This factor is negative, you don't want to build a bridge for your opponent leading to a corner.</li>
+        <li><e>X-Sq</e> Number of pieces diagonally adjacent to a corner.</li>
+        <li><e>Edg</e> (Edges): Pieces ON an edge but not adjacent to a corner.</li>
+        <li><e>IEd</e> (Inner Edges): Pieces that are adjacent to an edge and not in a previous category.</li>
+        <li><e>Fac</e> (Faces): Surface Pieces on the boundary of the game cube and not being adjacent to an edge or a corner.</li>
+        <li><e>IFa</e> Pieces exactly one step inward from a face and not in a previous category. This parameter does not play any role in the 2D version.</li>
+      </ul>
+      <p>The textfields corresponding to these categories show the numerical values corresponding to the player specified with the menu on the left in the next row. You can change the values of those textfields, and change the behavior of the corresponding AI.</p>
+    </li>
+    <li><e>Evolve</e>: Clicking on this button will start a genetic algorithm to improve the player chosen with the menu next to the button. The algorithm will apply random mutations, run tournaments among the various mutations, and allow the best performers to survive. Whenever a new mutant is found that's superior to each of its predecessors a file with the JS code defining the parameters will be uploaded to your system. The three textfields in this row let you specify the maximum number of generations, the number of games in each tournament, and the maximum percentage of the random mutations. The depth of the tournament games is set with the same menu as the depth of tournaments, on the right in the bottom row of the control column.</li>
+    <li><e>Run Tournament</e> The last two rows in the control column let you conduct a tournament among the selected AI players. The menu in the last row lets you choose the depth of the AI searches in each game, and the textfield to the left of that menu lets you specify the number of games per pairing.</li>
+  </ul>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="keyboard">Keyboard Commands</h3>
+  <p>The following keyboard commands are available:</p>
+  <ul>
+    <li><e>2</e>: switch to 2D mode</li>
+    <li><e>4, 6, 8</e>: Set board size</li>
+    <li><e>a</e>: Cycle grid mode</li>
+    <li><e>A</e>: Toggle Axes</li>
+    <li><e>c</e>: Toggle Categories</li>
+    <li><e>v</e>: Toggle Clues (Values)</li>
+    <li><e>S / s</e>: Compute Static Value</li>
+    <li><e>M / m</e>: List sorted Moves</li>
+    <li><e>w / W</e>: Toggle Majestic Movement</li>
+    <li><e>B / b</e>: Increase/Decrease Player ball size</li>
+    <li><e>H / h</e>: Increase/Decrease Hint ball size</li>
+    <li><e>&lt; / &gt;</e>: History back/forward</li>
+    <li><e>p</e>: Play / Stop</li>
+    <li><e>r</e>: Reset game</li>
+    <li><e>F / f</e>: Toggle Fullscreen</li>
+    <li><e>I / i</e>: Toggle Infinity (Orthographic) mode</li>
+    <li><e>. / ?</e>: Toggle this help display</li>
+    <li><e>Esc/Spc</e>: Exit Fullscreen</li>
+  </ul>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="parallel">Parallel Processing</h3>
+  <p>Modern computers usually have a number of cores, or CPUs, and can run several <e>threads</e> simultaneously. This is known as <e>parallel processing</e>, which JS handles by passing messages between the main thread and each of the individual sub threads, which in JS are referred to as <e>workers</e>. The issues involved in parallel processing are complex. The default number of workers in this software is the maximum number that your system can support. If your system does not provide this information, then the number of workers (W) is set to 4. However, you can set the value in the text field equal to any positive integer. The system will create as many workers as you specify, and then use them all if it can.</p>
+  
+  <p>My own system provides 32 threads. When running a tournament or an Evolution the system frequently runs at a CPU utilization of 100 percent. However, the savings as far as the time required for the computation of a move, and the number of nodes visited, is not nearly as dramatic.</p>
+  
+  <p>To illustrate this I had the system compute the first ply on the 6x6x6 board at depth 8, with the number of workers ranging from 1 to 32. JS does not let you measure CPU time accurately, and CPU time is of limited utility when running processes simultaneously. The times shown here are wall-clock time measured in milliseconds. However, other than routine system tasks, there were no other processes running on the system at that time. This chart shows wall-clock time plotted against the number of workers, on a log-log scale:</p>
+  
+  <img src="Workers.png" style="width: 810px; height: auto;">
+  
+  <p>The red line shows what one would naively expect. Thus when using <i>W</i> workers, the CPU time should be <i>T/W</i> where <i>T</i> is the time taken by one worker. The fat looking dots represent the actual wall clock time taken by three separate runs. The fact that those three times are very similar for each number of workers indicates that the shape of the curve formed by the dots is not random. Thus increasing the number of workers in some circumstances actually increases the time used for the calculation. The reason for this is that the evaluation of some positions takes longer than others, and if the number of computer intensive positions is concentrated on a small number of workers the time required will increase. Of course, the precise values of the individual worker times depend on the current position.</p>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="ai-algorithm">The AI algorithm</h3>
+  <p>A rudimentary understanding of how the computer plays is useful for understanding how to use the controls. Here is an extremely terse introduction: The moves available to the computer form a tree rooted at the current board position. The computer examines that tree to a certain depth. It uses a formula (the <e>static evaluation</e>) to assign a value to each relevant leaf of the tree. It then determines which best static value the player can obtain with perfect play, and makes the required move.</p>
+
+  <p>There are many references to <e>time</e> on this page. A JavaScript code running in a browser has no facility to measure the amount of time used by the CPU, and in any case, the concept of CPU time becomes ambiguous when using parallel processes. All times in these notes are <e>elapsed wall-clock time</e>, but care was taken to ensure that they are measured only when the computer was essentially doing nothing but running the Reversi software. As a result, those stated times are reasonably comparable and reproducible on the particular machine they were obtained.</p>
+
+  <p>The following Table illustrates the performance of the computer algorithms on my particular Windows 11 machine. The software offers two engines, one written in JavaScript (JS), and one written in C++. As discussed above, the JS engine performs essentially just as well as the C++ engine, which is a significant difference between the Mill and the JS codes. Note that, while the JS version works with essentially any browser, the C++ engine may not work on your particular computer. It requires a compiled version of the C++ code that is part of the package.</p>
+
+  <p>The Table shows the time and the number of nodes visited in the Game Tree, for the computation of the first move on the 6x6x6 board, at depths running from 2 to 14 plies (i.e., half moves, move by just one player), employing 32 workers, and running on Google Chrome. There are two blocks in the Table, the first one corresponding to the C++ engine, the second corresponding to the JS engine. The Table shows data for a computation of the first move. The row headed <e>Nodes</e> gives the number of nodes of the tree visited by the code for this particular depth. This number is only a little larger than the number of leaves where the static evaluation is performed. The next row gives the <e>Time</e> measured in milliseconds (ms). The third row of each block, <e>Nodes/Time</e>, gives the number of nodes that were visited each millisecond. The row labeled <e>Time Factor</e> gives the ratio of the time for the current depth and the time for the preceding depth. It is a measure of the branching factor, i.e., the average number of nodes attached to a single node two levels higher in the tree.</p>
+
+  <table style="background-color: transparent; color: white; border-collapse: collapse; border: none; font-family: sans-serif; text-align: right;">
+    <thead>
+      <tr>
+        <th style="border: none; padding: 0; text-align: left;">Metric</th>
+        <th style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;Engine</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 2</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 4</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 6</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 8</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 10</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 12</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 14</th>
       </tr>
-      </table>
-
-    <p> Here is a list of specific rules:
-      <OL>
-	<li> Starting with Red, the players take turns placing their pieces.   The player whose turn it is is <i>the current player</i>, the other player is <i>the opponent</i>.</li>
-	<LI> Any stone placed by the current player must flip at least one of the opponent's pieces.</li>
-	<li> The current player must play a legal placement if possible.   If no legal placement is available the current player forfeits the turn, and the opponent becomes the current player.  </li>
-	<LI> After each placement all of the opponent's
-pieces contained in enclosed chains <e>must be</e> flipped.</li>
-        <LI> The game ends when neither player can make a legal move. The player with more pieces wins.</li>
-	<li> The game is a <i>draw</i> if both players have the same number of pieces at the end of the game.</li>
-
-
-<p>      To illustrate some aspects of the game, note the following:
-     
-
-<LI>once a piece is placed it may change color but it never moves, and it never gets removed from the board.</LI>
-<LI>Neither player may skip a valid move, or choose not to flip some of the opponent's enclosed pieces.</LI>
-<LI>As the game proceeds the number of red and green pieces undergo large swings back and forth.   This gives an advantage to the last player.   Any, potentially large, gain on the last turn cannot be undone by the opponent.</li>
-  <LI>If  a player has no legal placement, and thereby forfeits that turn, the opponent effectively is able to place more than one piece at a time, which of course is a great advantage.
-</LI>
-
- <LI> <e>Corners</e> are very special.   Once a player places a piece at a corner it will never change color there.  Moreover, any connected chain that ends at a corner, or a point, that is connected to the corner by a chain, can no longer change color.   Much of the game strategy consists of gaining corners (and making the set of non-changeable pieces grow) and preventing the opponents from gaining corners.  Similar considerations apply to <e>edges.<e?</li>
-<li> Usually a game consists of 60 (64 board points - the four points occupied from the beginning.  But since a player may have to forfeit a turn it may take longer, and it may also end early with empty spots left on the board, but no legal placements being available for either player.   For example, if it was Green's turn in the last board of the above sequence, Green could play 3-5.  As a result, all pieces would turn green, neither player would have a legal move available, and the game would end with nine green pieces, and zero red pieces.
-
-  </OL>
-
-<H3> The 3D Game</H3>
-
-<p> The 3D game is played exactly like the 2D game, except that now there are more neighbors for each point, and the chains of enclosed pieces can run in  more directions.    In fact, the number of directions increases from 8 to 26 neighbors.    To see this note that an interior point and its neighbors in the grid form a 3x3x3 cube which contains 27 points.   The innermost point is not a neighbor of itself, so that point has a total of 3<sup>3</sup>-1=27-1 = 26 neighbors, each corresponding to a potential chain of enclosed opposing pieces.  (On the 2x2 board we have 3<sup>2</sup>-1 = 8 neighbors, and in n dimensions we have 3<sup>n</sup>-1 neighbors.   You can place pieces in a three dimensional array by using the interactive 3D display or in a two-dimensional cross section of the board.
-
-  <H2>User's Guide </H2>
-<p> You can start the game <a href="index.html"> right here.</a> If you wonder what a specific control does you can hover over it and see a one or two word explanation pop up.  However, you may prefer to read the detailed information below to know what this software does and get an idea of how it works.
-
-  <H3>Game Boards and Controls</H3>
-
-<p> The Table with the controls, the 3D game board, and three Cross sections by default measures about 1631 by 1039 pixels.   This is quite large (certainly unrealistic to be used on a smartphone)  but it fits on most modern lap or desktop screens.   You may need to change the resolution setting on your screen to accommodate the whole table.   You can also shrink the size of the table in the line labeled <e>Scale:</a>.  Click on "<" or ">".  See below for more information.
-
-  <p> The default game table, meant for playing 3D Reversi,  consists of three columns.  The first column contains the game controls.   The second consists of three cross sections, each of which is perpendicular to one of the three axes. The third column contains the three-dimensional board.  You can also toggle the display to play in just two dimensions (by clicking on the button in the second row of the control column).   In that case the middle column (with the cross sections) disappears and the game board turns two dimensional.
-
-    <H3> Playing the Game </H3>
-
-  <p> Players may be human or one of ten AI players.   To play a game select the participants int the lines labeled <red> Red: </red> and <green>Green: </green>, and then clock on the <i>Play</i> button in undo the fifth row of the control column (and originally labeled <e>Play</e>.  Pieces that are already marked are shown as red or green circles in the 2D displays, and as red or green balls in the 3D display.  Also present by default are smaller red or green circles or Balls whose colors indicate whose turn it is, and where that player can legally place a marker.
-
-    <H3> The 3D Game Board </H3>
-
-    The 3D game board is moving in space initially to suggest that this is an interactive 3D display, and you can manipulate the game board to help you visualize the 3D game state.  Specifically, you can:
-
-    <OL>
-      <LI> Left-click anywhere in the display to stop its movement.  You can also toggle the movement by typing <e>w</e> or <e>W</e> anywhere in the game table.</LI>
-      <LI> Left-drag the display to rotate the 3D board and view it from any angle.</li>
-      <li> Middle-drag to zoom in or out. </li>	
-      <li>Right-drag to move the board.</li>
-      <li> Cycle the grid from blank to parallel to the axes (the default) to showing all 26 directions,by using the keyboard command 'a'. </li>
-      <li> Turn the board full-screen with the keyboard command 'f' or 'F'. Repeat, or use Escape key or the space bar to exit full-screen. </LI>
-      <li> Type a period or a question mark to see a complete  list of available keyboard commands.  Repeat to remove that list.</li>
-      </OL>
-
-<H3> The 2D cross-sections</H3>
-
-You can also place markers on the 2D crosssections.   There is one crosssection for each axes.   You can toggle a display of the axes in the 3D board by typing 'A'. The radio buttons underneath each 2D board let you choose which of the possible crosssections is being displayed.
-
-<H3> The Control Column </H3>
-
-This section contains a description of the available controls, listed from top to bottom.
-
-<UL>
-  <LI><e>Reversi...</e> This gives the current version number of the software (version 10 as of this writing) and indicates whether the engine is JS (JS) or WASM (C++) based.  </LI>  The number of workers indicated the maximum number of concurrent threads run on your machine.
-  <LI><e>3D/2D</e> This button let's you switch back and forth between the 2D and the 3D display.   You can accomplish the same using the keyboard command '2'.</LI>
-  <LI><e>Click here...</e> Click here to see this page.</LI>
-  <LI><e>Play...</e>This line contains four items:
-    <OL><LI>The actual <i>play button</i>.   This starts or stops a single game.   The label and color of the button change with the status of the game.   </LI>
-      <LI><i>Reset</i>  This button interrupts and resets any ongoing game, tournament, or evolution. It has no impact on settings like search depths, AI players, etc. To rest the game Table to all of its original settings reload the web page.   To exit the game board close the web page.</LI>
-<LI><i>N</i> is the size of the board.  Possible choices are 4, 6, or 8.   The default is 6.  Playing on a 4x4x4 board is very different from playing on a larger board since corners can be occupied in the first move.   Playing on an 8x8x8 board takes a very  long time since a typical game runs for 504 placements.  As far as strategy and actual game play, a 6x6x6 board is sufficiently rich and there appear to be no general new features when going to an 8x8x8 board.  </LI>
-    </OL>
-
-
-<LI><e><0> >></e> These buttons let you scroll through ANY ONGOING game. You can also go to any move by entering its number in the text field. The button labeled >>" takes you back to the current game state.  You can continue the game from any previous game state, and you can change parameters like the player or the search depth. To avoid accidentally messing up the game,  using any of these facilities interrupts the game.  When you are ready to continue from the currently displayed state press the Play button.</LI>
-
-<LI><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are paced by left-clicking on an eligible spot on one of the game boards.   You can also choose one of ten AI players, described below.  The AI player proceeds by evaluating boards as described below, and looking a number of plies (half movers, i.e., placements by just one player) ahead.   The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spend by the AI.  The choice of D has no impact on any human player.</LI>
-
-<li>
-The next two rows contain two textfields that give information about the current status and processes.    The first (initially labeled <e> Ready to Go </e>) gives the current score of any ongoing game, or states that an evolution or a tournament is in progress.   </li>
-
-
-<li> The second, larger and scrollable, textfield gives more detailed information.  Any log output goes to the game console (invoke it with CTL-Shift-J) by default is duplicated in this textfield.   You can turn of the duplication by clicking on the <i>Logs</i> button described below. </li>
-</LI>
-
-<li><e>Value, Moves, D</e>  The <i>value</i> button prints the numerical score of the current board position to the console and the large status window.    The <i>Moves</i> button similarly lists the available moves and their respective scores.   The available best moves are shown as large yellow circles or balls in the 2D and 3D displays.   (Note, however, that at the beginning of a game the software checks moves for symmetry and lists only one of each group of equivalent moves.)a
-The depth menu <i>D=</i>in that row determined the depth at which the scores and the moves are computed. </li>
-
-<li><e>Scale: W:</e> <UL> <li>The <i>Scale</i> controls change the size of the 3D display.   They can be used to adjust the size of the board to your particular computer.   If the height of the board becomes larger than the height of the control column becomes scrollable.   For the best experience you want to keep the scale large enough to accommodate the full control column.</LI>
-<LI> The textfield labeled <i>W:</i> lets you specify the number of simultaneous threads, called <i>Workers</i> in JS, used by the code.  This is a crucial parameter.   The software queries your system for the maxim number of available threads, and then uses up to that number of threads simultaneously.  There may be circumstances where you may want to reduce that number.   For example, you may be using your computer for other compute intensive tasks at the time.   You can find a more detailed discussion of parallel processing below </li>
-   </li>
-</UL>
-<LI> <e> Fullscreen, Infinity</e>   This row is effective only in 3D Mode.   Clicking on <i>Fullscreen</i> will make the 3D display occupy the entire screen. You cab also enter or exit full screen mode by typing <i>f</i> or <i>F</i> on the 3D screen.  (Typing a period will give you a complete list of keyboard commands.)   By default the display shows the 3D board as it would look from a point near the board.    You can zoom in or out with the middle mouse wheel.  Clicking on <i>Infinity</i> will change the display to the view from infinity, i.e, there is no perspective at all.  (You can still enlarge or reduce the size of the display with the middle mouse button. 
-</LI>
-
-<LI> <e> Hints, Axes, Hover, Cats, Vals </e>   The buttons in the next two rows let you toggle the following number of display items.   If the color of the button is green that time is effective, otherwise the color is Gray.  All five buttons toggle the corresponding feature.
-  <UL>
-    <LI> <i>Hints</i>: These are on by default.    The system will show you the points where the current player can play as small red or green balls or circles.</li>
-    <LI> <i>Axes</i>: As you may expect, this will draw the <i>x</i>, <i>y</i>, and <i>x</i> axes in the 3D display.
-</LI>
-<LI> <i>Hover</i> When active, this will show you the coordinates of a marker location by hovering above the point. </LI>
-		     <LI> <i>Categories</i>: Crucial for AI playing is the location of a point.  Corners are best, points next to a corner are bad, for example.   There is more information below.   This button will mark the various categories by colored balls in the 3D display.</LI>
-		     <LI><i>Values: </i>: This is a similar display, but linked to a specific player, by default the player selected in the evolution menu.</li>
-</i>
-</UL>
-<LI> <e>Grid</e>: lets you choose the kind of grid drawn on the 3D screen.    You have the following options:
-  <UL>
-    <LI><i>none</i>: No grid lines at all.
-    </LI>
-    <LI><i>Orthogonal</i> The default: All grid lines parallel to one of the axes are show.</LI>
-    <LI>Grid lines in all 26 directions are shown. This makes for a rather dense display, but you can have a psychedelic experience by watching the 3D board rotate in space for a while...  </LI>
-   </UL> 
-
-<LI><e>&alpha;/&beta;, S, Random</e>:   These buttons turn certain features on and off.   For regular play, however, it is best to keep all of them active.
-		       <UL>
-
-			 <LI><i>&alpha;/&beta;</i>   The AI plays by evaluating all possible play up to a certain depth, and finding the move that gives the best score to the current player.   The number of positions (nodes in the game tree) that needs to be explored can be reduced dramatically using the &alpha;/&beta; algorithm.   Turning it off will greatly increase the time taken for each move. 
-			 <LI>At the beginning many moves are equivalent by symmetry.   With this feature turned on equivalent moves are identified and namely one of them is considered.  For example, at the first move (ply) there are only two possibilities, moving in the direction of a coordinate axes, or playing a corner in the 4x4x4 cube containing the center.   On the 4x4x4 or 8x8x8 grid the sound kind of move is best, on 6x6x6 board it is worst since you are building a bridge to a corner for your opponent.   Checking for symmetry is expensive, and it becomes less effective as the game proceeds.   Thus it is turned off after the first time the symmetry check does not reduce the number of moves. </LI>
-			 <LI><i>Random</i>:  When selected the system chooses randomly among all moves with the same highest score.   Otherwise it picks the first.  However, due to the vagaries of when workers finish their tasks, and how this affects the search for the best move, deactivating symmetry will not ensure that two subsequent games are identical.
-</LI>
-</ul>
-			 <LI><e> Logs, Depths</e>:  These two buttons modify the logs printed to the Console and to the Control Panel.  The console is a feature of your browse, and you can activate by typing CTL-Shift-J (and in other ways).  I recommend you keep it open while you use this software. The specific effects of those two buttons are:
-
-			   <UL>
-			     <LI><i>Logs</i>:  On by default, this toggles the duplication of console output in the large status window in the control column, during a game.  That duplication is turned off, regardless of the state of the button, during a tournament or an evolution.   The reason for that is that the duplication requires the manipulation of a large and growing string  which interferes with the efficiency of the algorithm execution.
-
-			       <LI><i>Depths</i>: Off by default, this feature will print information about individual moves, including the time spent on it, and the number of times different levels of the game tree where visited.   For example, if you have an AI compute the first move at search depth 8, you will find that with 32 workers the search takes about three seconds, and the algorithm visits a little more than two million nodes in the game tree. </LI>
-</LI>
-			   </UL>
-		       </LI>
-
-<LI><e>B:, H:</e> The two sliders in this row let you adjust the size of the marker and hint balls in the 3D display. </LI>
-<LI><e>Import</e>: The controls in this row let you import or export JS code defining the current AI players.  <i>Def</i> resets the parameters to their built-in values.  </LI>
-<LI><e>Mob, Dif, Cor. ... </e>  Each of the parameters in the next two rows multiplies the difference in the corresponding numbers for the two players. Specifically, 
-AIs are determined by the following multipliers:
-  <UL>
-
-    <LI> 
-      <e>Mob</e>
- (mobility): the number of possible moves.
-    </LI>
-    <LI><e>Dif</e> (Piece Difference): the number of markers on the board.
-    </LI>
-    <LI><e>Core </e>   The number of pieces occupying a corner.
-    </LI>
-    <LI><e>C-SQ</e> The number of edge pieces occupying a point next to a corner.  This factor is negative, you don't want to build a bridge for your opponent leading to a corner.
-      </LI>
-
-    <LI><e>X-Sq</e>  number of pieces diagonally adjacent to a corner.
-      </LI>
-
-
-    <LI><e>Edg</e> (Edges) Pieces ON an edge but not adjacent to a corner.
-      </LI>
-
-    <LI><e>IEd</e> (inner Edges) Pieces that are adjacent to an edge and not in a previous category.
-      </LI>
-
-
-    <LI><e>Fac</e> (Faces)Surface Pieces on the boundary of the game cube and not being adjacent to an edge or a corner.
-      </LI>
-
-
-    <LI><e>IFa</e>  Pieces exactly one step inward from a face and not in a previous category.   This parameter does not play any role in the 2D version.
-      </LI>
-
-    </UL>
-			   
-
-
-
-  The textfields corresponding to these categories show the numerical values corresponding to the player specified with the menu on the left in the next row.   You can change the values of those textfields, and change the behavior of the corresponding AI.
-
-<LI><e>Evolve</e>:  Clicking on this button will start a genetic algorithm to improve the player chosen with the menu next to the button.   The algorithm will apply random mutations, run tournaments among the various mutations, and allow the best performers to survive. Whenever a new mutant is found that's superior to each of its predecessors a file with the JS code defining the parameters will be uploaded to your system.   The three textfields in this row let you specify the maximum number of generations, the number of games in each tournament, and the maximum percentage of the random mutations.  The depth of the tournament games is set with the same menu as the depth of tournaments, on the right in the bottom row of the control column.</LI>
-<LI><e>Run Tournament</e>  The last two rows in the control column let you conduct a tournament among the selected AI players.   The menu in the last row let you choose the depth of the AI searches in each game, and the textfield to the left of that menu let's you specify the number of games per pairing.
-  </LI>
-
-</UL>
-
-<H3>Parallel Processing </H3>
-
-<p> Modern computers usually have a number of cores, or CPUs, and can run several  <e>threads</e> simultaneously. This is known as <e>parallel processing</e>, which JS handles by passing messages between the main thread and each of the individual sub threads, which in JS are referred to as <e>workers</e>. The issues involved in parallel processing are complex.   The default number of workers in this software is the maximum number that your system can support.  If your system does not provide this information, then N is set to 4.  However, you can set the value in the text field equal to any positive integer. The system will create as many workers as you specify, and then use them all if it can. <p> My own system provides 32 threads. When running a tournament or an Evolution the system frequently runs at a CPU utilization of 100 percent.  However, the savings as far as the time required for the computation of a move, and the number of nodes visited, is not nearly as dramatic. <p> To illustrate this I had the system compute the first ply on the 6x6x6 board at depth 8, with the number of workers ranging from 1 to 32. JS does not let you measure CPU time accurately, and CPU time is of limited utility when running processes simultaneously.   The times shown here are wall-clock time measured in milliseconds.  However, other than routine system tasks, there were no other processes running on the system at that time. This chart shows wall-clock time  plotted against the number of workers, on a log-log scale: <p>
-        <img src="Workers.png" style="width: 810px; height: auto">
-  <p> The red line shows what one would naively expect. Thus when using <i>W</i>  workers, the CPU time should be <i>T/W</i> where <i>T</i> is the time taken  by one worker. The fat looking dots represent the actual wall clock time taken by three separate runs.   The fact that those three times are very similar for each number of workers indicates that the shape of the curve formed by the dots is not random.  Thus increasing the number of workers in some circumstances actually increases the time used for the calculation.   The reason for this is that the evaluation of some positions takes longer than others, and if the number of computer intensive positions is concentrated on a small number of workers the time required will increase.  Of course, the precise values of the individual worker times depend on the current position.
-
-
-
-
-<h3>The AI algorithm</H3>
-
-
-<p> A rudimentary understanding of how the computer plays is useful for understanding how to use the controls. Here is an extremely terse introduction: The moves available to the computer form a tree rooted at the current board position. The computer examines that tree to a certain depth. It uses a formula (the <e>static evaluation</e>) to assign a value to each relevant leaf of the tree. It then determines which best static value the player can obtain with perfect play, and makes the required move. 
-
-<p> There are many references to <e>time</e> on this page. A JavaScript code running in a browser has no facility to measure the amount of time used by the CPU, and in any case, the concept of CPU time becomes ambiguous when using parallel processes. All times in these notes are <e>elapsed wall-clock time</e>, but care was taken to ensure that they are measured only when the computer was essentially doing nothing but running the Reversi software. As a result, those stated times are reasonably comparable and reproducible on the particular machine they were obtained.
-
-<p> The following Table illustrates the performance of the computer algorithms on my particular Windows 11 machine. The software offers two engines, one written in JavaScript (JS), and one written in C++. As discussed above, the JS engine performs essentially just as well as the C++ engine, which is a significant difference between the Mill and the JS codes. 
-Note that, while the JS version works with essentially any browser, the C++ engine may not work on your particular computer. It requires a compiled version of the C++ code that is part of the package.
-
-<p> The Table shows the time and the number opf nodes visited in the Game Tree, for the computation of the first move on the 6x6x6 board, at depths running from 2 to 14 plies (i.e, half moves, move by just one player), employing 32 workers..   There are two blocks in the Table, the first one corresponding to the C++ engine, the second corresponding to the JS engine. The Table shows data for a computation of the first move.  The row headed <i>Nodes</i> gives the number of nodes of the tree visited by the code for this particular depth. This number is only a little larger than the number of leaves where the static evaluation is performed. The next row gives the <i>Time</i> measured in milliseconds (ms). The third row of each block, <i>Nodes/Time</i>, gives the number of nodes that were visited each millisecond. The row labeled Time Factor gives the ratio of the time for the current depth and the time for the preceding depth. It is a measure of the branching factor, i.e., the average number of nodes attached to a single node two levels higher in the tree.
-
-  <p> It is evident that JS and C++ have similar performances, and that the branching factor 20.  It seems reasonable for a human to play against an AI at a depth of 8 or 10 (looking ahead 4 or 5 moves).   This will make the computer move in a few seconds or minutes.   Human players of course can take any amount of time they wish.
-
-
-
-
-    <H3> AI Players </H3>
-
-
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;34</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,608</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;77,397</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,107,038</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;43,071,461</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;961,661,893</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;24,316,471,858</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;92</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;2,680</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;55,060</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,254,422</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;21,034,466</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Nodes/Time</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;34.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;434.7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;841.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;786.2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;782.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;766.6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,156.0</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time Factor</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;6.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;15.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;29.1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;20.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;22.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;16.8</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;34</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,608</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;77,370</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,104,391</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;42,871,518</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;959,278,928</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;113</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;2,774</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;58,083</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,379,941</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Nodes/Time</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;8.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;200.6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;684.7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;758.6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;738.1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;695.2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time Factor</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;3.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;8.7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;24.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;20.9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;23.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Time (JS/C++)</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;Ratio</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;4.00</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2.17</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.23</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.04</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.05</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.10</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>It is evident that JS and C++ perform similarly. It seems reasonable for a human to play against an AI at a depth of 8 or 10 (looking ahead 4 or 5 full moves). This will make the computer move in a few seconds or minutes. Human players of course can take any amount of time they wish.</p>
+
+  <p>The following Table shows similar data for computing the first move on the 2D 8x8 Board, again with 32 workers. This is the classic version of Reversi. All possible first moves are equivalent by symmetry. Therefore, for these particular data, the Symmetry check was turned off. Clearly the branching factor is smaller for a 2D Board, than in 3D, and as a consequence play can take place at a larger search depth. Depth 10 and 12 are reasonable AI search depths, and with some patience you might even play against an AI thinking at depth 14. It would be looking seven full moves ahead, which is likely to make the game challenging even for expert Reversi players. Remarkably, the JS Engine actually performs better than the C++ engine for most values of the search depth.</p>
+
+  <table style="background-color: transparent; color: white; border-collapse: collapse; border: none; font-family: sans-serif; text-align: right;">
+    <thead>
+      <tr>
+        <th style="border: none; padding: 0; text-align: left;">Metric</th>
+        <th style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;Engine</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 2</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 4</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 6</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 8</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 10</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 12</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 14</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 16</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 18</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;17</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;203</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1,839</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;19,935</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;224,686</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,484,667</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;27,714,174</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;306,469,888</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;3,871,006,168</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;91</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;957</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13,285</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;150,430</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,838,486</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;21,775,397</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Nodes/Time</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;17.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;101.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;141.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;219.1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;234.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;187.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;184.2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;166.7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;177.8</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time Factor</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;C++</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;2.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;6.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;7.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;10.5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13.9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;11.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;12.2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;11.8</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;17</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;203</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1,839</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;19,935</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;224,686</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,484,667</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;27,714,174</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;306,469,888</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;3,871,006,168</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;79</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;934</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;11,602</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;140,105</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,438,403</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;34,851,094</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Nodes/Time</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;17.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;40.6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;204.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;252.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;240.6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;214.2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;197.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;213.1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;111.1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time Factor</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;JS</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;5.0</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;8.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;11.8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;12.4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;12.1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;10.3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;24.2</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Time Ratio</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;JS/C++</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.00</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2.50</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.69</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.87</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.98</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.87</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.93</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;0.78</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1.60</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="ai-players">AI Players</h3>
+  <p>The following Table lists the built-in AI players and their <a href="#parms">parameters</a> explained above. They are ordered by decreasing performance in a specific tournament on the 6x6x6 board at depth 4, with 32 workers running on Google Chrome, playing 100 games for each pairing, for a total of 9000 games. So Arwen is the top player in that tournament, and Jolly places last, by definition. Jolly's parameters values represent my first guess at reasonable values, all other players are descendants of Jolly, in one way or another, by the built-in evolution process. Multiplying all weights with a constant positive factor will not alter the game play of the AI, therefore the largest weight is normalized to be 1000. All weights are integer. Unsurprisingly, placing a marker in a corner, almost whenever you can, receives the highest priority.</p>
+
+  <table style="background-color: transparent; color: white; border-collapse: collapse; border: none; font-family: sans-serif; text-align: right;">
+    <thead>
+      <tr>
+        <th style="border: none; padding: 0; text-align: left;">Player</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Mob</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Dif</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Cor</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;C-Sq</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;X-Sq</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Edg</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;IEd</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Fac</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;IFa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Arwen</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;13</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;7</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-1</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-9</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;97</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-2</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;4</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Bilbo</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;94</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Celebrian</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;14</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;91</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Dwalin</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;13</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;105</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Eowyn</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;84</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;17</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-4</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-26</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;72</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-10</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;19</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-4</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Frodo</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;14</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-7</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;94</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-3</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-1</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Galadriel</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;141</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;10</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-70</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;89</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-20</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;14</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-4</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Hamfast</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;15</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;22</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-19</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;132</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;2</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-2</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Indis</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;18</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;23</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-8</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-20</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;76</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-6</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-2</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Jolly</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;20</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;40</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,000</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-10</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-20</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;100</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;10</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-2</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+  <h3 id="ai-rankings">AI Tournament Rankings</h3>
+  <p>The following Table shows the outcomes of tournaments among all 10 AI players, on various boards and at various depths. The players are indicated by the first letter of their name, and also by a specific background color, to help recognize patterns. As mentioned before, the names reflect the performance of the players at search depth 4 on the 6x6x6 3D board, as indicated in the last row of the Table. There is a remarkable diversity among the rankings in the various board and depth combinations. As many as half the players (A, C, E, G, and H) are the champion in at least one combination. Eowyn earns the most gold medals, 5 total. Even Jolly, whose parameters are based essentially on guess work, places second in two disciplines, on the 4x4x4 3D board at depths 2 and 6. On the other hand, Jolly places dead last in 5 of the tournaments.</p>
+
+  <table class="tournament-table">
+    <thead>
+      <tr>
+        <th>Board</th>
+        <th>Depth</th>
+        <th>Rank 1</th>
+        <th>Rank 2</th>
+        <th>Rank 3</th>
+        <th>Rank 4</th>
+        <th>Rank 5</th>
+        <th>Rank 6</th>
+        <th>Rank 7</th>
+        <th>Rank 8</th>
+        <th>Rank 9</th>
+        <th>Rank 10</th>
+        <th>Time (s)</th>
+        <th>Red Wins</th>
+        <th>Green Wins</th>
+        <th>Draws</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class='transparent'>6x6</td>
+        <td class='transparent'>2</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-H'>H</td>
+        <td class='transparent'>7,939</td>
+        <td class='transparent'>1,779</td>
+        <td class='transparent'>6,392</td>
+        <td class='transparent'>829</td>
+      </tr>
+      <tr>
+        <td class='transparent'>6x6</td>
+        <td class='transparent'>4</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-D'>D</td>
+        <td class='transparent'>67,399</td>
+        <td class='transparent'>6,961</td>
+        <td class='transparent'>1,783</td>
+        <td class='transparent'>256</td>
+      </tr>
+      <tr>
+        <td class='transparent'>6x6</td>
+        <td class='transparent'>6</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-H'>H</td>
+        <td class='transparent'>521,201</td>
+        <td class='transparent'>3,925</td>
+        <td class='transparent'>5,043</td>
+        <td class='transparent'>32</td>
+      </tr>
+      <tr>
+        <td class='transparent'>8x8</td>
+        <td class='transparent'>2</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-J'>J</td>
+        <td class='transparent'>75,390</td>
+        <td class='transparent'>4,183</td>
+        <td class='transparent'>4,447</td>
+        <td class='transparent'>370</td>
+      </tr>
+      <tr>
+        <td class='transparent'>8x8</td>
+        <td class='transparent'>4</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-J'>J</td>
+        <td class='transparent'>1,405,360</td>
+        <td class='transparent'>4,044</td>
+        <td class='transparent'>4,753</td>
+        <td class='transparent'>203</td>
+      </tr>
+      <tr>
+        <td class='transparent'>8x8</td>
+        <td class='transparent'>6</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-J'>J</td>
+        <td class='transparent'>23,074,428</td>
+        <td class='transparent'>3,779</td>
+        <td class='transparent'>4,923</td>
+        <td class='transparent'>298</td>
+      </tr>
+      <tr>
+        <td class='transparent'>4x4x4</td>
+        <td class='transparent'>2</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-G'>G</td>
+        <td class='transparent'>16,055</td>
+        <td class='transparent'>1,792</td>
+        <td class='transparent'>7,126</td>
+        <td class='transparent'>82</td>
+      </tr>
+      <tr>
+        <td class='transparent'>4x4x4</td>
+        <td class='transparent'>4</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-B'>B</td>
+        <td class='transparent'>450,601</td>
+        <td class='transparent'>7,215</td>
+        <td class='transparent'>1,665</td>
+        <td class='transparent'>120</td>
+      </tr>
+      <tr>
+        <td class='transparent'>4x4x4</td>
+        <td class='transparent'>6</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-J'>J</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-G'>G</td>
+        <td class='transparent'>9,329,508</td>
+        <td class='transparent'>4,393</td>
+        <td class='transparent'>4,383</td>
+        <td class='transparent'>224</td>
+      </tr>
+      <tr>
+        <td class='transparent'>6x6x6</td>
+        <td class='transparent'>2</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-J'>J</td>
+        <td class='transparent'>1,600,027</td>
+        <td class='transparent'>4,754</td>
+        <td class='transparent'>4,129</td>
+        <td class='transparent'>117</td>
+      </tr>
+      <tr>
+        <td class='transparent'>6x6x6</td>
+        <td class='transparent'>4</td>
+        <td class='player player-A'>A</td>
+        <td class='player player-B'>B</td>
+        <td class='player player-C'>C</td>
+        <td class='player player-D'>D</td>
+        <td class='player player-E'>E</td>
+        <td class='player player-F'>F</td>
+        <td class='player player-G'>G</td>
+        <td class='player player-H'>H</td>
+        <td class='player player-I'>I</td>
+        <td class='player player-J'>J</td>
+        <td class='transparent'>78,061,633</td>
+        <td class='transparent'>4,312</td>
+        <td class='transparent'>4,578</td>
+        <td class='transparent'>110</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
 
 </body>
 </html>

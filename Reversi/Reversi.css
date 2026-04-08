@@ -73,3 +73,63 @@ e { color: rgb(200,255,200);
         height: auto !important;
     }
 }
+
+
+:root {
+  /* Scientifically Maximized Contrast Palette (Dark) */
+  --color-a: rgb(190, 30, 45);    /* Deep Red */
+  --color-b: rgb(28, 85, 165);    /* Strong Blue */
+  --color-c: rgb(34, 113, 50);    /* Forest Green */
+  --color-d: rgb(118, 42, 131);   /* Royal Purple */
+  --color-e: rgb(175, 90, 20);    /* Burnt Orange/Brown */
+  --color-f: rgb(20, 115, 115);   /* Dark Teal */
+  --color-g: rgb(190, 40, 110);   /* Magenta/Crimson */
+  --color-h: rgb(110, 110, 30);   /* Dark Olive */
+  --color-i: rgb(70, 80, 130);    /* Slate Blue */
+  --color-j: rgb(85, 85, 85);     /* Charcoal/Neutral */
+}
+
+
+
+/* Specific class so it doesn't mess up your other Reversi tables */
+.tournament-table {
+  border-collapse: collapse;
+  width: 100%;
+  color: var(--textColor);
+  margin-top: 20px;
+}
+
+.tournament-table th, 
+.tournament-table td {
+  border: 1px solid var(--borderBlue);
+  padding: 0; 
+  text-align: center;
+  height: 35px;
+}
+
+.tournament-table th {
+  background-color: var(--refBoxBg);
+  font-weight: bold;
+}
+
+/* Player cell styling */
+.player {
+  color: white;
+  font-weight: bold;
+}
+
+.player-A { background-color: var(--color-a); }
+.player-B { background-color: var(--color-b); }
+.player-C { background-color: var(--color-c); }
+.player-D { background-color: var(--color-d); }
+.player-E { background-color: var(--color-e); }
+.player-F { background-color: var(--color-f); }
+.player-G { background-color: var(--color-g); }
+.player-H { background-color: var(--color-h); }
+.player-I { background-color: var(--color-i); }
+.player-J { background-color: var(--color-j); }
+
+/* Non-player cells will naturally inherit the dark background */
+.transparent {
+  background-color: transparent;
+}

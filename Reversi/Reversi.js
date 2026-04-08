@@ -912,6 +912,17 @@ async function getBestMoveAI_Async(board, player, depth, activeBrain) {
         }
     }
 
+if (M1.length === 1) {
+        techLog(`Only 1 unique move available. Skipping deep search.`);
+        return { 
+            bestMove: M1[0], 
+            maxEval: 0, // Dummy score since we skipped evaluation
+            ranked: [{ move: M1[0], score: 0 }], 
+            totalNodes: 0, 
+            timeTakenMs: Math.round(performance.now() - startTime) 
+        };
+    }
+
     let combinedDepthVisits = {};
     combinedDepthVisits[depth] = 1; 
     let totalNodes = 1;
