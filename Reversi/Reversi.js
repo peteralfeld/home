@@ -497,7 +497,7 @@ function updateEngineButtonUI() {
     const btn = document.getElementById('engine-toggle-btn');
     if (!btn) return;
     const eng = engineMode === 'WASM' ? (wasmModule ? 'C++' : '...') : 'JS';
-    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 12 (${numWorkers} Workers) ${eng}</h2>`;
+    btn.innerHTML = `<h2 style="margin: 0; white-space: nowrap; font-size: 1.2em;">REVERSI V. 13 (${numWorkers} Workers) ${eng}</h2>`;
 }
 
 function updateBrainUI() {
