@@ -1,9 +1,21 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>3D Reversi Rules and User's Guide</title>
     <link rel="stylesheet" href="Reversi.css">
+    
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']]
+        }
+      };
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
+
 <body>
 
   
@@ -17,7 +29,7 @@
         </OL>
 
 
-  <div id="toc" style="background-color: transparent);">
+  <div id="toc" style="background-color: transparent;">
     <h2 style="margin-top: 0;">Table of Contents</h2>
     <ul>
       <li><a href="#scope">Scope</a></li>
@@ -40,7 +52,9 @@
           <li><a href="#ai-players">AI Players</a></li>
           <li><a href="#ai-rankings">AI Tournament Rankings</a></li>
           <li><a href="#Recommendations">Recommendations </a></li>
-        </ul>
+	  <li><a href="#alpha-beta"> Appendix I: &alpha;/&beta; Pruning</a></li>
+	  <li><a href="#evolution-algorithm">Appendix II: The Genetic Improvement Algorithm</a></li>
+</ul>
       </li>
     </ul>
   </div>
@@ -197,7 +211,7 @@
         <li><i>N</i> is the size of the board. Possible choices are 4, 6, or 8. The default is 6. Playing on a 4x4x4 board is very different from playing on a larger board since corners can be occupied in the first move. Playing on an 8x8x8 board takes a very long time since a typical game runs for 504 placements. As far as strategy and actual game play, a 6x6x6 board is sufficiently rich and there appear to be no general new features when going to an 8x8x8 board.</li>
       </ol>
     </li>
-    <li><e>&lt;&lt; &gt;&gt;</e> These buttons let you scroll through ANY ONGOING game. You can also go to any move by entering its number in the text field. The button labeled "&gt;&gt;" takes you back to the current game state. You can continue the game from any previous game state, and you can change parameters like the player or the search depth. To avoid accidentally messing up the game, using any of these facilities interrupts the game. When you are ready to continue from the currently displayed state press the Play button.</li>
+    <li><e>&lt;&lt; &gt;&gt;</e> These buttons let you scroll through any ongoing game. You can also go to any move by entering its number in the text field. The button labeled "&gt;&gt;" takes you back to the current game state. You can continue the game from any previous game state, and you can change parameters like the player or the search depth. To avoid accidentally messing up the game, using any of these facilities interrupts the game. When you are ready to continue from the currently displayed state press the Play button.</li>
     <li><red>Red:</red> and <green>Green:</green> The next two rows let you pick each player. The default is <e>Human</e>, the pieces are placed by left-clicking on an eligible spot on one of the game boards. You can also choose one of ten AI players, described below. The AI player proceeds by evaluating boards as described below, and looking a number of plies (half moves, i.e., placements by just one player) ahead. The number of <i>D</i> of plies is set with the menu on the right side of that row. The greater the depth the more time is spent by the AI. The choice of D has no impact on any human player.</li>
     <li>The next two rows contain two textfields that give information about the current status and processes. The first (initially labeled <e>Ready to Go</e>) gives the current score of any ongoing game, or states that an evolution or a tournament is in progress.</li>
     <li>The second, larger and scrollable, textfield gives more detailed information. Any log output goes to the game console (invoke it with CTL-Shift-J) by default is duplicated in this textfield. You can turn off the duplication by clicking on the <i>Logs</i> button described below.</li>
@@ -979,7 +993,144 @@
 
 <h3 id="Recommendations">Recommendations</h3>
 
-  For an enjoyable 3D game against the computer I recommend using the 6x6x6 board and a search depth of 6 or 8, against Arwen, Bilbo, Eowyn, or Galadriel.    The 8x8x8 game requires too many moves and the 4x4x4 board is too atypical, you can get a corner on the very first move.   (Google Gemini likens the 4x4x4 play to a "knife fight in a phone booth".)  For an enjoyable 2D game I recommend the classic 8x8 board, at depth 8 against Eowyn, or depth 10 against Galadriel.  (At depth 10, in a 32 game match between Galadriel and Eowyn, Galadriel beat Eowyn every time.)  You may have a hard time against Galadriel at that depth, I can't beat her.
+  For an enjoyable 3D game against the computer I recommend using the 6x6x6 board and a search depth of 6 or 8, against Arwen, Bilbo, Eowyn, or Galadriel.    The 8x8x8 game requires too many moves and the 4x4x4 board is too atypical, you can get a corner on the very first move.   (Google Gemini likens the 4x4x4 play to a "knife fight in a phone booth".)  For an enjoyable 2D game I recommend the classic 8x8 board, at depth 8 against Eowyn, or depth 10 against Galadriel.  (At depth 10, in a 32 game match between Galadriel and Eowyn, Galadriel beat Eowyn every time.)  You may have a hard time playing against Galadriel at that depth, I can't beat her.
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+
+<h3 id="alpha-beta"> Appendix I: &alpha;/&beta; Pruning</h3>
+
+  <p>You may have noticed the button labeled <e>&alpha;/&beta;</e> (alpha/beta) in the control column, and wondered about its purpose. It toggles a feature called <e>&alpha;/&beta; Pruning</e>, which is a mathematical trick that allows the computer to look many moves ahead in a reasonable amount of time.
+
+  <p> When the computer is deciding what move to choose next, it builds a <e>game tree</e> (which usually is visualized upside down). The current board is the <e>root</e> of the tree. Every possible legal move creates a new <e>branch</e>. Every possible response by the opponent creates another layer of branches, and so on, down to the specified <e>search depth</e> (D). At the very bottom of the tree (the <e>leaves</e>), the computer uses its player parameters (Corners, Edges, Mobility, etc., see <a href="#parms"> above</a>) to calculate a <e>static score</e> for that specific board layout.</p>
+
+  <p>The AI assumes both players will play perfectly. It wants to choose the branch that maximizes its own score, while assuming the opponent will always choose the branch that minimizes the AI's score. This "maximize mine, minimize yours" strategy is called <e>Minimax</e>.</p>
+
+  <p>The game tree grows exponentially with depth. For example, if there are 10 legal moves each turn, looking just 6 plies creates a tree with 1,000,000 leaves. Looking 8 plies ahead creates 100,000,000 leaves. As the depth increases the computer quickly runs out of time and memory.</p>
+
+  <p>&alpha;/&beta; pruning alleviates this problem. It is an algorithm that finds the exact same best move as Minimax, but without having to look at every single node. It works by keeping track of two values as it searches the tree:</p>
+  <ul>
+    <li><e>&alpha;:</e> The minimum score the AI is already guaranteed to get, based on previous evaluations.</li>
+    <li><e>&beta;:</e> The maximum score the opponent is already guaranteed to allow.</li>
+  </ul>
+
+  <p>As the computer evaluates branches, it constantly updates these guarantees. If it is evaluating a new branch and recognizes that there is a response known to the opponent that makes this path worse than a better path that the player has already identified it stops evaluating that entire branch. It <e>prunes</e> the game tree. It doesn't need to calculate exactly how bad the rest of that branch gets, because it already knows it will never choose to go down that path in the first place.</p>
+
+  <p>The efficiency of this pruning is staggering. It can be shown that in ideal circumstances &alpha;/&beta; pruning  reduces the number of boards the computer has to check to roughly its square root. In practical terms, this means that in the exact same amount of time it takes a brute force (visiting all nodes) algorithm to look 6 moves ahead, an &alpha;/&beta; optimized computer can look 12 moves ahead.   &alpha;/&beta; pruning <e> doubles</e> the feasible search depth.</p> 
+  <p>Turning this feature off via the <e>&alpha;/&beta;</e> button will drastically slow down the AI, as it will be forced to manually evaluate millions of dead-end branches that it would have otherwise gracefully ignored. The purpose of including this button is to enable you to observe the effectiveness of &alpha;/&beta; pruning. However, you definitely want to keep it on during actual game play!
+
+
+  <p><a href="#toc">&uarr; Back to contents</a></p>
+
+<h3 id="evolution-algorithm">Appendix II: The Genetic Improvement Algorithm</h3>
+
+
+  <p>If you click the <e>Evolve</e> button in the control column, the software initiates a highly computer-intensive autonomous improvement cycle, modeled on the process of evolution by mutation and natural selection. The algorithm combines random genetic mutation with a deterministic line search to optimize the AI's parameter weights ($w_1 \dots w_9$).  
+
+  <p> Starting with the parameters of Jolly, which were based essentially on guess work, the parameters of all players were generated by this algorithm.   In fact, if you find a set of parameters that consistently beats Arwen on the 6x6x6 board at depth 4, please write to me (pa@math.utah.edu).
+
+    <p> Note that the quest of obtaining effective AI parameters is not a classical optimization problem.   There is no scalar valued objective function that is maximized or minimized, and no gradient.   The objective is to find parameters that make the AI more likely to win.  The problem is not even transitive: if A beats B, and B beats C, then we cannot conclude that A beats C.
+
+    <p>The algorithm relies on few of key parameters set in the UI (set in the menu and textfields in the row containing the button labeled Evolve and the menu in the bottom row of the control column):
+
+      <UL>
+<LI>
+The player to be improved.  Note that you can modify the values of those parameters in the 9 textfields above the evolve button, prior to starting the evolution.
+</li>
+<LI>
+The maximum number of generations.  This choice is not critical, the default is 1000, and you can choose even larger values. Any improved sets of parameters are uploaded as soon as they have been found, and you can terminate the evolution at at any time at your convenience, without losing the improvements already made.
+</li>
+<LI>
+The number $n$ of games per match, the default being $n=10$.
+</li>
+<LI>The maximum percentage $R$ of the change at each mutation, the default being $R=10$.
+</LI>
+<LI>
+The depth $D$ at which all games are being played during the evolution.   This depth is selected in the menu in the last row of the control column and may be different from the depth set anywhere else in the upper parts of the control column.
+</li>
+</UL>
+
+
+  <p>The execution follows this algorithm for each generation:</p>
+
+  <ol>
+    <li><b>Normalization</b>
+      <ul>
+        <li>Denote the parent parameters by $w_i$.</li>
+        <li>To make the parameter set unique, all brains are normalized before testing.</li>
+        <li>Find the maximum absolute weight: $M = \max(|w_i|)$.</li>
+        <li>Calculate the scale factor: $S = 1000 / M$.</li>
+        <li>Apply the scale and round to nearest integer: $w_i = \text{round}(w_i \times S)$.</li>
+        <li>If any $w_i$ resolves to $0$, it is randomly forced to be either $+1$ or $-1$ to ensure a zero-weight doesn't get permanently stuck during percentage-based mutation.</li>
+      </ul>
+    </li>
+
+    <li><b>Mutation (The Scout Generation)</b>
+      <ul>
+        <li>Generate a mutant from the parent by applying random noise scaled by the Mutation Rate ($R$).</li>
+        <li>For each parameter, calculate a change: $\Delta w_i = \text{round}(w_i \times (R / 100) \times \text{rand}(-1.0, 1.0))$.</li>
+        <li>Apply the change: $w'_i = w_i + \Delta w_i$.</li>
+        <li> If $\Delta w_i = 0$ for all $i$ (meaning no mutation occurred), randomly pick one parameter and force it randomly to change $\pm 1$.
+      </ul>
+    </li>
+
+    <li><b>The Scout Match</b>
+      <ul>
+        <li>Play a  match (i.e., $n$ games as Red, $n$ games as Green for each player) between the mutant and the parent.</li>
+        <li>Calculate the net score: $Net = \text{number of mutant wins} - \text{number of parent wins}$.</li>
+        <li>If $Net \le 0$, the mutant is discarded. The generation ends, and a new generation begins at Step 2.</li>
+        <li>If $Net > 0$, the algorithm assumes it has found a mathematically advantageous trajectory and proceeds to the Line Search.</li>
+      </ul>
+    </li>
+
+    <li><b> Line Search</b>
+      <ul>
+        <li>Let $X$ equal the normalized mutant.</li>
+        <li>Calculate the directional step vector: $V_i = X_i - \text{Parent}_i$.</li>
+        <li>Set a boolean flag: `expanding = true`.</li>
+        <li>Iterate up to a maximum of 30 steps:
+          <ol type="a">
+            <li>Generate two new test points along the vector: $A = \text{Normalize}(X + V)$ and $B = \text{Normalize}(X - V)$.</li>
+            <li>Convergence Check: If $A == X$ and $B == X$, the integer math has collapsed to a single point. The Line Search terminates.</li>
+            <li>Play Scout Matches: $A$ vs $X$, and $B$ vs $X$. (If a match draws, retry it).</li>
+            <li>Evaluate the topology based on the match scores:
+              <ul>
+                <li><b>X beats both A and B:</b> $X$ is a local maximum. Set `expanding = false` and halve the step vector: $V = \text{round}(V / 2)$.</li>
+                <li><b>A beats X:</b> We moved in a promising direction. Move our center: $X \leftarrow A$. If `expanding == true`, double the step vector ($V \leftarrow V \times 2$) to accelerate. If `expanding == false`, halve the step vector ($V \leftarrow \text{round}(V / 2)$).</li>
+                <li><b>B beats X:</b> We overshot the maximum. Move our center: $X \leftarrow B$. Set `expanding = false` and halve the step vector ($V \leftarrow \text{round}(V / 2)$) to reverse direction and narrow the search.</li>
+                <li><b>Tie-break (Anomaly):</b> If both $A$ and $B$ beat $X$, play $A$ vs $B$. Set $X$ to the winner, set `expanding = false`, and halve the step vector.</li>
+              </ul>
+            </li>
+          </ol>
+        </li>
+        <li>Once the loop terminates or converges, $X$ is the new successful generation.</li>
+      </ul>
+    </li>
+
+    <li><b>The Verification Gauntlet</b>
+      <ul>
+        <li>The Optimized Brain ($X$) must now prove itself against the <b>Absolute Baseline</b>.</li>
+        <li>The Gauntlet size is equal to: $\text{Scout Games} \times \text{Multiplier}$ (Multiplier starts at 10).</li>
+        <li>Play the Gauntlet match. If the net score of $X$ is strictly greater than the previous `Best Score` record, $X$ is accepted:
+          <ul>
+            <li>$X$ is crowned the new Champion and becomes the <b>Parent</b> for all future generations.</li>
+            <li>The `Best Score` record is updated.</li>
+            <li><i>Perfect Sweep Condition:</i> If $X$ wins every single game in the Gauntlet (Net Score equals the maximum possible), $X$ replaces the Absolute Baseline entirely, the `Best Score` is reset to 0, and the Gauntlet Multiplier is doubled for future generations.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+
+    <li><b>State Checkpointing (Memory Management)</b>
+      <ul>
+        <li>Generating millions of game-tree nodes eventually causes JavaScript's V8 Garbage Collector to fragment and freeze the browser.</li>
+        <li>To bypass this, at the end of every generation, the engine writes its entire state (Baseline, Parent, Multiplier, Current Generation, etc.) to the browser's `localStorage`.</li>
+        <li>The engine then executes `window.location.search = "?resume=1"`, forcing the browser to perform a hard reload.</li>
+        <li>This perfectly flushes the RAM. On boot, the `Reversi.js` script detects the URL parameter, loads the checkpoint, immediately spawns fresh Web Workers, and seamlessly loops back to Step 2 for the next generation.</li>
+      </ul>
+    </li>
+  </ol>
+
 
   <p><a href="#toc">&uarr; Back to contents</a></p>
 
