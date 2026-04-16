@@ -23,9 +23,9 @@ function saveEvolutionCheckpoint(nextGen, maxGens, originalBrain, currentBrain, 
         N: boardN,             
         S: cellS,              
         depth: searchDepth,
-        numWorkers: workers,    // NEW
-        impGamesVal: impGames,  // NEW
-        impMutVal: impMut       // NEW
+        numWorkers: workers,    
+        impGamesVal: impGames,  
+        impMutVal: impMut       
     };
     localStorage.setItem(EVO_SAVE_KEY, JSON.stringify(checkpoint));
 }
@@ -2728,9 +2728,10 @@ function initLayout() {
 		       el('a', { 
 			   href: 'Reversi.html', 
 			   target: '_blank', 
-			   text: 'Click here for rules and instructions', 
+			   text: 'Click here for the User Manual', 
 			   title: 'link to game rules and instructions',
-			   style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
+			   //			   style: 'color: rgb(200,200,255); font-weight: bold; text-decoration: none; font-size: 0.9em;'
+			   style: 'color: rgb(255,50,50); font-weight: bold; text-decoration: none; font-size: 0.9em;'			   
 		       })
 		      ),
 
