@@ -993,7 +993,8 @@
 
 <h3 id="Recommendations">Recommendations</h3>
 
-  For an enjoyable 3D game against the computer I recommend using the 6x6x6 board and a search depth of 6 or 8, against Arwen, Bilbo, Eowyn, or Galadriel.    The 8x8x8 game requires too many moves and the 4x4x4 board is too atypical, you can get a corner on the very first move.   (Google Gemini likens the 4x4x4 play to a "knife fight in a phone booth".)  For an enjoyable 2D game I recommend the classic 8x8 board, at depth 8 against Eowyn, or depth 10 against Galadriel.  (At depth 10, in a 32 game match between Galadriel and Eowyn, Galadriel beat Eowyn every time.)  You may have a hard time playing against Galadriel at that depth, I can't beat her.
+  For an enjoyable 3D game against the computer I recommend using the 6x6x6 board and a search depth of 4, 6, or 8 against Arwen. (Arwen won a 16 game match among Arwen, Bilbo, and Eowyn at depth 6.  I did not run a tournament at depth 8, but I would bet on Arwen.)    The 8x8x8 game requires too many moves and the 4x4x4 board is too atypical, you can get a corner on the very first move.   (Google Gemini likens the 4x4x4 play to a "knife fight in a phone booth".)  For an enjoyable 2D game I recommend the classic 8x8 board, at depth 8 against Eowyn, or depth 10 against Galadriel.  (At depth 10, in a 32 game match between Galadriel and Eowyn, Galadriel beat Eowyn every time.)  You may have a hard time playing against Galadriel at that depth, I can't beat her.
+
 
   <p><a href="#toc">&uarr; Back to contents</a></p>
 
@@ -1016,8 +1017,114 @@
 
   <p>As the computer evaluates branches, it constantly updates these guarantees. If it is evaluating a new branch and recognizes that there is a response known to the opponent that makes this path worse than a better path that the player has already identified it stops evaluating that entire branch. It <e>prunes</e> the game tree. It doesn't need to calculate exactly how bad the rest of that branch gets, because it already knows it will never choose to go down that path in the first place.</p>
 
-  <p>The efficiency of this pruning is staggering. It can be shown that in ideal circumstances &alpha;/&beta; pruning  reduces the number of boards the computer has to check to roughly its square root. In practical terms, this means that in the exact same amount of time it takes a brute force (visiting all nodes) algorithm to look 6 moves ahead, an &alpha;/&beta; optimized computer can look 12 moves ahead.   &alpha;/&beta; pruning <e> doubles</e> the feasible search depth.</p> 
-  <p>Turning this feature off via the <e>&alpha;/&beta;</e> button will drastically slow down the AI, as it will be forced to manually evaluate millions of dead-end branches that it would have otherwise gracefully ignored. The purpose of including this button is to enable you to observe the effectiveness of &alpha;/&beta; pruning. However, you definitely want to keep it on during actual game play!
+
+  
+  <p>The efficiency of this pruning is staggering. It can be shown that in ideal circumstances &alpha;/&beta; pruning  reduces the number of boards the computer has to check to roughly its square root. In practical terms, this means that in the exact same amount of time it takes a brute force (visiting all nodes) algorithm to look 6 moves ahead, an &alpha;/&beta; optimized computer can look 12 moves ahead.   &alpha;/&beta; pruning <e> doubles</e> the feasible search depth.</p>
+
+<p>More specifically, consider this Table
+
+<table style="background-color: transparent; color: white; border-collapse: collapse; border: none; font-family: sans-serif; text-align: right;">
+    <thead>
+      <tr>
+        <th style="border: none; padding: 0; text-align: left;">Metric</th>
+        <th style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;Pruning</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 2</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 4</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 6</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 8</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 10</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 12</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 14</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 16</th>
+        <th style="border: none; padding: 0;">&nbsp;&nbsp;Depth 18</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;Off</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;17</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;317</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;9,913</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;455,221</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;28,031,793</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,180,176,417</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;Off</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;31</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;47</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,824</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;123,360</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;7,034,588</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;-</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Nodes</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;On</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;17</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;203</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1,839</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;19,935</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;224,686</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2,484,667</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;27,714,174</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;306,469,888</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;3,871,006,168</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;">Time (ms)</td>
+        <td style="border: none; padding: 0; text-align: left;">&nbsp;&nbsp;On</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;5</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;9</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;79</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;934</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;11,602</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;140,105</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;1,438,403</td>
+        <td style="border: none; padding: 0;">&nbsp;&nbsp;34,851,094</td>
+      </tr>
+      <tr>
+        <td style="border: none; padding: 0; text-align: left;"><br>Node Ratio</td>
+        <td style="border: none; padding: 0; text-align: left;"><br>&nbsp;&nbsp;(Off/On)</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;1</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;2</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;5</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;23</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;125</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;877</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+        <td style="border: none; padding: 0;"><br>&nbsp;&nbsp;-</td>
+      </tr>
+    </tbody>
+</table>
+
+<p> and the corresponding Figure:
+
+  <figure style="margin: 20px 0; text-align: center;">
+    <img src="AB.png" style="width: 810px; height: auto;">
+    <figcaption><b>The Effectiveness of &alpha;/&beta; Pruning</b></figcaption>
+  </figure>
+
+  <p> They demonstrate the effectiveness of $\alpha/\beta$ pruning, showing the number of nodes visited at various depths, with or without pruning, for the first move on the 8x8 board.   By symmetry, there is only one unique move possible, so the symmetry check is turned off for this illustration. The vertical axis is on a logarithmic scale, each major grid line represents a 10 fold interest.  Thus exponential functions show as straight lines.   Both the red graph (no pruning) and the blue graph (with pruning) are very close to straight lines, demonstrating the exponential growth.   The red graph is much steeper than the blue graph.   A search depth of $D=14$ without pruning would involve around 170 billion nodes, and might take a week, so I did not try to computer it.   The <e>Node Factor</e> is the ratio (rounded to an integer) of the node counts for the search with out, and with pruning.    For example, for the reasonable playing depth of 12, it equals 877.  It increases significantly with the search depth.
+
+
+  <p>Turning  off pruning via the <e>&alpha;/&beta;</e> button will drastically slow down the AI, as it will be forced to manually evaluate millions of dead-end branches that it would have otherwise gracefully ignored. The purpose of including this button is to enable you to observe the effectiveness of &alpha;/&beta; pruning. However, you definitely want to keep it on during actual game play!
+
+  
+
+
+    
+
 
 
   <p><a href="#toc">&uarr; Back to contents</a></p>
