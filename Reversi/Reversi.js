@@ -2647,12 +2647,20 @@ function initLayout() {
         return safeVal;
     });
 
-    let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center; background-color: yellow;' });
+let workerInput = el('input', { type: 'text', value: numWorkers, title: 'Number of Background Web Workers', style: 'width: 30px; text-align: center; background-color: yellow;' });
     setupSmartInput(workerInput, (val) => {
-        let safeW = Math.max(1, Math.min(32, parseInt(val) || 4)); 
+        // Removed the Math.min upper bound constraint
+        let safeW = Math.max(1, parseInt(val) || 4); 
+        
+        // Fetch hardware limits and print a console warning if exceeded
+        let systemMax = navigator.hardwareConcurrency || 4;
+        if (safeW > systemMax) {
+            log(`You requested ${safeW} workers, but your system only reports ${systemMax} hardware threads. This may degrade performance.`);
+        }
+
         numWorkers = safeW;
-	updateEngineButtonUI();
-	log(" switching to " + numWorkers + " workers ");
+        updateEngineButtonUI();
+        log(" switching to " + numWorkers + " workers ");
         return safeW;
     });
 
