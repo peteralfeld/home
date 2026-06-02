@@ -23,7 +23,7 @@ If you have any questions, suggestions, or comments on these pages, or you find 
 
   <p>   Anything you see <a href="me.html"> in this color </a> is a clickable link that takes you to more information, or, more frequently, to software and documentation.   For example, if you click on the link in the preceding sentence, or on my name in the headline of this page, you are directed  to a short summary of my life's story.  Moreover, I'll use <e>this color</e> for highlighting key words and phrases, and   <i>this color</i> for emphasis.  I'm planning to keep this format for all new items on this web site, even though some of the older web sites (linked below) come with their own distinct formats.
 
-<p>    One of my first projects after retirement was to learn <e>JavaScript</e> which is universally used to create interactive web pages.   Virtually all browsers support JS and while it has its idiosyncrasies and weaknesses, its ubiquity makes it relevant and useful.    For JS codes no downloads are required. On the other hand, I learned, to my surprise and chagrin, that browsers actually limit the computational resources they make available to code that you run within your browser.   You don't get full access to the memory on your machine, or to the full number of threads it can run simultaneously, and computations turn to a crawl when you make your browser window invisible to work on something else. To me, this rules out JS as a general computing language.   It can be used in a stand alone fashion, but there are more powerful alternatives (e.g., Java, Python or C++).  <p> I also learned something I was unaware of for many years:   JavaScript is unrelated to Java!  According to my elder son, JS relates to Java the same way a butterfly relates to butter!
+<p>    One of my first projects after retirement was to learn <e>JavaScript</e> which is universally used to create interactive web pages.   Virtually all browsers support JS and while it has its idiosyncrasies and weaknesses, its ubiquity makes it relevant and useful.    For JS codes no downloads are required. On the other hand, I learned, to my surprise and chagrin, that browsers actually limit the computational resources they make available to code that you run within your browser.   You don't get full access to the memory on your machine, or to the full number of threads it can run simultaneously, and computations turn to a crawl when you make your browser window invisible to work on something else. To me, this rules out JS as a general computing language.   It can be used in a stand alone fashion, but there are more powerful alternatives (e.g., Java, Python or C++).  <p> I also learned something I was unaware of for many years:   JavaScript is unrelated to Java!  According to my older son, JS relates to Java the same way a butterfly relates to butter!
 
     <a href="financial/FI.html"><H2> A financial Calculator </H2></a>
 
@@ -38,8 +38,12 @@ If you have any questions, suggestions, or comments on these pages, or you find 
 
       <A href="Reversi"><H2>The Game of Reversi (Othello) in 3D!</H2></a>
 
-      The tradional game of reversi is played on an 8x8 two dimesnional board.   This site let's you play the game on a three deimensional (4x4x4, 6x6x6, or 8x8x8) board that you can view and manipulate in space, using the graphics card on your system.   You can go to the <a href="Reversi"> actuyal game bopard</a> or read the <a href="Reversi/Reversi.html"> User's Guide </a> first.
+      The traditional game of <e>Reversi</e> is played on an 8x8 two dimensional board.   This site let's you play the game on a <e>three dimensional</e> (4x4x4, 6x6x6, or 8x8x8) board that you can view and manipulate in space, using the graphics card on your system.   You can go to the <a href="Reversi"> actual game board</a> or read the <a href="Reversi/Reversi.html"> User's Guide </a> first.
 
+
+      <A href="tets/tets.html"><H2>Tetrahedral Decompositions and Shellability</H2>
+
+	The subject mentioned in the headline played a large role in my research over many years.   I wrote some softawre that let's you visualize and examine tetrahedral decompositions.   Clicking on the headline takes you straiht to the software, if you'd rather first look at the user's guide <a href = "tets/manual.html"> click here.</a>
 
       <H2> Legacy Websites </H2>
 
