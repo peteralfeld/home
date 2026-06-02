@@ -1,0 +1,102 @@
+Configuration Name,Cube (6)
+Generated On,5/28/2026, 11:31:15 AM
+
+Vertex Coordinates
+Index,X,Y,Z
+0,0,0,0
+1,1,0,0
+2,1,1,0
+3,0,1,0
+4,0,0,1
+5,1,0,1
+6,1,1,1
+7,0,1,1
+
+Summary Statistics
+Category,Count
+Tetrahedra,6
+Total Faces,18
+Boundary Faces,12
+Interior Faces,6
+Total Edges,19
+Boundary Edges,18
+Interior Edges,1
+Total Vertices,8
+Boundary Vertices,8
+Interior Vertices,0
+Shelling a0,1
+Shelling a1,4
+Shelling a2,1
+Shelling a3,0
+
+Tetrahedra
+Index,v0,v1,v2,v3,6 x Volume
+0,0,1,2,6,1
+1,0,1,5,6,1
+2,0,4,5,6,1
+3,0,2,3,6,1
+4,0,3,6,7,1
+5,0,4,6,7,1
+
+Interior Faces
+Index,v0,v1,v2,Opposite Node 1,Opposite Node 2
+0,0,1,6,2,5
+1,0,2,6,1,3
+2,0,5,6,1,4
+3,0,4,6,5,7
+4,0,3,6,2,7
+5,0,6,7,3,4
+
+Boundary Faces
+Index,v0,v1,v2,Opposite Node
+0,0,1,2,6
+1,1,2,6,0
+2,0,1,5,6
+3,1,5,6,0
+4,0,4,5,6
+5,4,5,6,0
+6,0,2,3,6
+7,2,3,6,0
+8,0,3,7,6
+9,3,6,7,0
+10,0,4,7,6
+11,4,6,7,0
+
+Interior Edges
+Index,v0,v1,Degree
+0,0,6,6
+
+Boundary Edges
+Index,v0,v1,Degree
+0,0,1,2
+1,0,2,2
+2,1,2,1
+3,1,6,2
+4,2,6,2
+5,0,5,2
+6,1,5,1
+7,5,6,2
+8,0,4,2
+9,4,5,1
+10,4,6,2
+11,0,3,2
+12,2,3,1
+13,3,6,2
+14,0,7,2
+15,3,7,1
+16,6,7,2
+17,4,7,1
+
+Interior Vertices
+Index,v0,Degree
+
+Boundary Vertices
+Index,v0,Degree
+0,0,6
+1,1,2
+2,2,2
+3,6,6
+4,5,2
+5,4,2
+6,3,2
+7,7,2

@@ -1,0 +1,135 @@
+
+:root {
+    /* --- Core Colors --- */
+    --bgColor: rgb(15,40,100);
+    --textColor: white;
+    
+    /* --- Link Colors --- */
+    --linkColor: #87CEEB;       /* Sky Blue */
+    --linkHover: #FFFFFF;       /* White */
+
+    /* --- UI Colors --- */
+    --headerGold: #FFD700;
+    --borderBlue: #6495ED;
+    --refBoxBg: rgba(0, 0, 0, 0.3); /* Transparent dark for reference boxes */
+    
+}
+
+
+red {
+    color: rgb(255, 0, 0); /* or just 'red' */
+    font-weight: bold;
+}
+
+green {
+    color: rgb(0, 255, 0); /* or just 'green' */
+	      
+    font-weight: bold;
+}
+
+
+body {
+    background-color: var(--bgColor); 
+    color: var(--textColor);
+    font-family: Calibri, 'Carlito', sans-serif;
+    font-size: 18px;
+    margin: 8px; /* Standard browser margin */
+}
+
+/* Global Link Styles */
+a, a:visited {
+    color: var(--linkColor);
+    text-decoration: none;   
+    font-weight: bold;       
+    transition: color 0.2s;  
+}
+
+a:hover {
+    color: var(--linkHover);
+    text-decoration: underline; 
+    cursor: pointer;         
+}
+
+
+i {
+    color: #FFD700;      /* Gold color */
+    font-weight: bold;   /* Make it thick */
+}
+
+
+e { color: rgb(200,255,200);
+    font-weight: bold;
+/*    font-size: 24px; */
+  }
+    
+
+
+@media screen and (max-width: 600px) {
+    img[style*="float: left"] {
+        float: none !important;
+        display: block;
+        margin: 0 auto 20px auto; /* Centers the image */
+        max-width: 100%; /* Prevents image from being wider than the screen */
+        height: auto !important;
+    }
+}
+
+
+:root {
+  /* Scientifically Maximized Contrast Palette (Dark) */
+  --color-a: rgb(190, 30, 45);    /* Deep Red */
+  --color-b: rgb(28, 85, 165);    /* Strong Blue */
+  --color-c: rgb(34, 113, 50);    /* Forest Green */
+  --color-d: rgb(118, 42, 131);   /* Royal Purple */
+  --color-e: rgb(175, 90, 20);    /* Burnt Orange/Brown */
+  --color-f: rgb(20, 115, 115);   /* Dark Teal */
+  --color-g: rgb(190, 40, 110);   /* Magenta/Crimson */
+  --color-h: rgb(110, 110, 30);   /* Dark Olive */
+  --color-i: rgb(70, 80, 130);    /* Slate Blue */
+  --color-j: rgb(85, 85, 85);     /* Charcoal/Neutral */
+}
+
+
+
+/* Specific class so it doesn't mess up your other Reversi tables */
+.tournament-table {
+  border-collapse: collapse;
+  width: 100%;
+  color: var(--textColor);
+  margin-top: 20px;
+}
+
+.tournament-table th, 
+.tournament-table td {
+  border: 1px solid var(--borderBlue);
+  padding: 0; 
+  text-align: center;
+  height: 35px;
+}
+
+.tournament-table th {
+  background-color: var(--refBoxBg);
+  font-weight: bold;
+}
+
+/* Player cell styling */
+.player {
+  color: white;
+  font-weight: bold;
+}
+
+.player-A { background-color: var(--color-a); }
+.player-B { background-color: var(--color-b); }
+.player-C { background-color: var(--color-c); }
+.player-D { background-color: var(--color-d); }
+.player-E { background-color: var(--color-e); }
+.player-F { background-color: var(--color-f); }
+.player-G { background-color: var(--color-g); }
+.player-H { background-color: var(--color-h); }
+.player-I { background-color: var(--color-i); }
+.player-J { background-color: var(--color-j); }
+
+/* Non-player cells will naturally inherit the dark background */
+.transparent {
+  background-color: transparent;
+}

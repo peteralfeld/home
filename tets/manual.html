@@ -1,0 +1,438 @@
+html <!DOCTYPE>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Tetrahedra</title>
+    <link rel="stylesheet" href="manual.css">
+    
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']]
+        }
+      };
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+    
+    <style>
+        #toc ul {
+            list-style-type: none;
+        }
+        #toc > ul {
+            padding-left: 0;
+        }
+        #toc li {
+            margin-bottom: 5px;
+        }
+        .to-top {
+            text-decoration: none;
+            font-size: 0.9em;
+            margin-left: 8px;
+            color: #6495ED; /* Matches var(--borderBlue) */
+        }
+        .to-top:hover {
+            text-decoration: none;
+            color: #FFD700;
+        }
+    </style>
+</head>
+
+<body>
+
+
+    <div style="font-size: 2.2em; font-weight: bold; margin-bottom: 20px; margin-top: 10px;">
+        <a href="tets.html" target="_blank">Tetrahedral Decompositions and Shellability</a>
+    </div>
+
+    <h2 id="toc">Table of Contents</h2>
+    <ul>
+        <li><a href="#intro">1. Introduction</a>
+            <ul>
+                <li><a href="#triangulations">1.1. Triangulations</a></li>
+                <li><a href="#tetrahedral">1.2. Tetrahedral Decompositions</a>
+                    <ul>
+                        <li><a href="#bipyramid">1.2.1. A Bipyramid</a></li>
+                        <li><a href="#morgan-scott">1.2.2. The Morgan-Scott Split</a></li>
+                        <li><a href="#rudin">1.2.3. Rudin's Unshellable Triangulation</a></li>
+                        <li><a href="#ssw">1.2.4. The Schumaker-Sorokina-Worsey Macro Element</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li><a href="#guide">2. User's Guide</a>
+            <ul>
+                <li><a href="#startup">2.1. The Startup Screen</a></li>
+                <li><a href="#graphics-display">2.2. The Graphics Display</a></li>
+                <li><a href="#control-column">2.3. The Control Column</a>
+                    <ul>
+                        <li><a href="#name-version">2.3.1. Name and Version</a></li>
+                        <li><a href="#documentation">2.3.2. Documentation</a></li>
+                        <li><a href="#cs">2.3.3. <i>CS:</i> Configuration Selection and Loading</a>
+                            <ul>
+                                <li><a href="#built-in">2.3.3.1. Built-in Configurations</a></li>
+                                <li><a href="#importing">2.3.3.2. Importing Configurations</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#do">2.3.4. <i>DO:</i> Display Options</a></li>
+                        <li><a href="#ca">2.3.5. <i>CA:</i> Mouse Click Action</a></li>
+                        <li><a href="#fs">2.3.6. <i>FS:</i> Facet Selection and Processing</a></li>
+                        <li><a href="#sp">2.3.7. <i>SP:</i> Slicing by a Plane</a></li>
+                        <li><a href="#co">2.3.8. <i>CO:</i> Face Coloring</a></li>
+                        <li><a href="#es-et">2.3.9. <i>ES</i> and <i>ET:</i> Edge Rendering</a>
+                            <ul>
+                                <li><a href="#es">2.3.9.1. <i>ES:</i> Edge Style</a></li>
+                                <li><a href="#et">2.3.9.2. <i>ET:</i> Edge Thickness</a></li>
+                            </ul>
+                        </li>
+                        <li><a href="#ex">2.3.10. <i>EX:</i> Exploding the Configuration</a></li>
+                        <li><a href="#op">2.3.11. <i>OP:</i> Opacity</a></li>
+                        <li><a href="#al-dl">2.3.12. <i>AL</i> and <i>DL:</i> Lighting Model</a></li>
+                        <li><a href="#cm-an-so">2.3.13. <i>CM</i>, <i>AN</i>, and <i>SO:</i> Animation and Video Recording</a>
+                            <ul>
+                                <li><a href="#cm">2.3.13.1. <i>CM:</i> Camera Movement</a></li>
+                                <li><a href="#an">2.3.13.2. <i>AN:</i> Animation</a></li>
+                                <li><a href="#so">2.3.13.3. <i>SO:</i> Sound</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+    </ul>
+  
+    <h2 id="intro">1. Introduction</h2>
+
+    <p>The original purpose of this project was to visualize Rudin's 1958 example of an unshellable tetrahedral decomposition. However, the software can be used to visualize in various ways any <e>configuration</e> of tetrahedra in three-dimensional space. There are some built-in decompositions, and you can create your own by creating and uploading a suitable file. If you are familiar with triangulations and tetrahedral decompositions, you can skip this introduction and go right to the <a href="#guide">User's Guide</a> below. To invoke the software (in a new window), click on the title of this page or <a href="tets.html" target="_blank">right here.</a><a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h3 id="triangulations">1.1. Triangulations</h3>
+
+    <p>We start by describing the relevant concepts in two dimensions, where they can be easily visualized. The generalization to three dimensions will then be straightforward.</p>
+
+    <p>A set $\Delta$ of triangles in the plane is called a <i>triangulation</i> provided that:</p>
+    <ol>
+        <li>If a pair of triangles in $\Delta$ intersect, then their intersection is either a common vertex, or a common edge.</li>
+        <li>The union of all triangles in $\Delta$ is <e>homeomorphic</e> to a disk.</li>
+    </ol>
+      
+    <figure style="float: left; margin: 0 15px 15px 0; max-width: 50%;">
+        <img src="MS.png" style="height: 270px; width: auto;" alt="Morgan-Scott Split">    
+        <figcaption style="text-align: center; font-size: 0.9em;">Fig. 1: The Morgan-Scott Split</figcaption>
+    </figure>
+  
+    <p>The second requirement means that the union of the triangles can be continuously deformed into a circle and its interior. The significance of that requirement is that there are no holes, disjoint pieces, or pinch points. This definition is common in applied mathematics; in pure mathematics, the concept of a triangulation is much more general.</p>
+
+    <p>It turns out that any triangulation is <i>shellable</i>. This means that it can be built one triangle at a time, starting with one triangle, and at each stage joining the new triangle to the growing triangulation at precisely one or two edges, maintaining a triangulation throughout the process. The process is called <i>shelling</i>, a triangle being joined along just one edge is called a <i>flap</i>, and a triangle being joined along two edges is called a <i>fill</i>.</p>
+
+    <p>An example of a triangulation, known as the <e>Morgan-Scott split</e>, is shown in the Figure. It has a total of six vertices and seven triangles. The triangulation can be shelled, for example, by starting with triangle [0,1,2], adding the flaps [0,1,3], [1,2,5], and [0,2,4] in any sequence, and then adding the fills [0,3,4], [1,3,5], and [2,4,5] in any sequence. The union of the triangles has $V_B = 3$ boundary vertices ($v_3$, $v_4$, and $v_5$) and $V_I=3$ interior vertices ($v_0$, $v_1$, and $v_2$).</p>
+
+    <p>A major property of triangulations is the fact that the numbers of various quantities of facets (vertices, edges, and triangles) satisfy certain identities known as the <e>Euler Relations</e>. In fact, let $E_B$ and $E_I$ denote the number of boundary and interior edges, respectively, and $N$ the number of triangles, we have:</p>
+    <p>$$ V_B = E_B, \quad E_I = 3V_I + V_B -3, \quad \hbox{and} \quad N =2V_I + V_B -2.$$</p>
+    <p>This can be seen easily by using induction and shelling.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <div style="clear: both;"></div>
+
+    <h3 id="tetrahedral">1.2. Tetrahedral Decompositions</h3>
+
+    <p>The concept of a triangulation of a polygon can be easily transferred to the concept of a <e>tetrahedral decomposition</e> of a polyhedron. Thus, we use tetrahedra instead of triangles, and consider interior and boundary (triangular) faces, edges, and vertices. We build a tetrahedral decomposition by starting with a tetrahedron and adding one tetrahedron at a time, joining each new tetrahedron at precisely one, two, or three faces to the growing selection. If we can do this such that at each stage of this process we have a tetrahedral decomposition of a polyhedron that is homeomorphic to a ball, we say that the tetrahedral decomposition is <i>shellable</i>.</p>
+
+    <p>Perhaps surprisingly (it was a surprise to me when I first learned about it), when moving from triangulations to tetrahedral decompositions, we lose two major properties:</p>
+    <ol>
+        <li>For tetrahedral decompositions, combinatorial parameters like the number of tetrahedra, and interior and boundary edges and faces, are not uniquely determined by the number of boundary and interior vertices.</li>
+        <li>A tetrahedral decomposition may <i>not</i> be <i>shellable</i>.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ol>
+
+    <h4 id="bipyramid">1.2.1. A Bipyramid</h4>
+
+    <p>However, let's first look at the issue of the greater complexity of the combinatorics. Consider the example of a <i>bipyramid</i> which is obtained by gluing one tetrahedron to another along one common face, as shown in Figure 2. However, the bipyramid can also be decomposed into three tetrahedra, without introducing additional vertices, by drawing the line from the north to the south pole and partitioning the bipyramid like an orange, as shown in Figure 3. (This kind of partition is in fact called an <e>orange</e> in some of the literature.)</p>
+
+    <table style="margin-left: auto; margin-right: auto; text-align: center;">
+        <tr>
+            <td><img src="bp2.png" style="height: 270px; width: auto" alt="bipyramid partitioned into two tetrahedra"></td>
+            <td><img src="bp3.png" style="height: 270px; width: auto" alt="bipyramid partitioned into three tetrahedra"></td>
+        </tr>
+        <tr>
+            <td>Fig. 2: Bipyramid partitioned<br>into two tetrahedra.</td>
+            <td>Fig. 3: Bipyramid partitioned<br>into three tetrahedra.</td>
+        </tr>
+    </table>
+
+    <p>A somewhat more complex example is provided by a <i>cube</i>, which can be partitioned into an orange with six segments, or a more complicated configuration with five tetrahedra. Both partitions can be examined within the software.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="morgan-scott">1.2.2. The Morgan-Scott Split</h4>
+
+    <p>To get a better sense of the utility of this software, consider a slightly more complicated decomposition. To show some of the visualization facilities of the software, consider the three-dimensional version of the Morgan-Scott split. Thus, we have a small tetrahedron in the center of a large tetrahedron, and the space between the two is filled with fourteen more tetrahedra, for a total of 15 subtetrahedra. The configuration is shown in Figure 4. The tetrahedra are rendered semi-transparent so that the interior of the decomposition is visible.</p>
+  
+<table style="margin-left: auto; margin-right: auto; text-align: center;">
+        <tr>
+            <td><a href="https://youtu.be/s1Znz1DRxc8" target="_blank"><img src="MS3D.png" style="height: 400px; width: auto" alt="The Morgan-Scott Split into fifteen subtetrahedra"></a></td>
+        </tr>
+        <tr>
+            <td>Fig. 4: The Morgan-Scott Split</td>
+        </tr>
+</table>
+
+    <p>It is notoriously difficult to understand a three-dimensional structure by looking at a stationary 2-dimensional projection. It may help to see an animation showing the structure from different angles, with different separations, and different levels of opacity. Click on the picture to see just such an animation. The effects shown in the video can also be obtained interactively, as described below (and the music can be turned off, or you can replace it with your own).<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="rudin">1.2.3. Rudin's Unshellable Triangulation</h4>
+
+    <p>The original impetus for developing this software was to visualize Mary Ellen Rudin's ingenious and famous 1958 example of an unshellable tetrahedral decomposition. That decomposition played a significant role in my research. Rudin decomposes a tetrahedron \(T\) into 41 subtetrahedra, all of which have all of their 14 vertices on the boundary of \(T\). The decomposition is unshellable because no matter which tetrahedron you decide to place last, it will have one vertex <i>in the interior</i> of at least one face of $T$, and no other vertices on that face. Thus, removing the tetrahedron will create a <e>pinch point</e> where the remaining decomposition is infinitely thin at an interior point of a face. It is thus not homeomorphic to a ball, which has no such points. Thus, by definition, \(T\) is not shellable.</p>
+
+    <table style="margin-left: auto; margin-right: auto; text-align: center;">
+        <tr>
+            <td><a href="https://youtu.be/1HsVYLrIr3Q" target="_blank"><img src="Rudin.png" style="height: 400px; width: auto" alt="Rudin's Unshellable Configuration"></a></td>
+        </tr>
+        <tr>
+            <td>Fig. 5: Rudin's Unshellable Configuration.</td>
+        </tr>
+    </table>
+
+    <p>Figure 5 shows a static view of Rudin's example. All tetrahedra are shown in blue, except one which is shown in yellow with its vertices marked by red balls. As shown in the figure, the base of the yellow tetrahedron is contained in one face, and the remaining vertex (marked by the bottommost red ball in the picture) is <i>in the interior</i> of another face of $T$. This happens no matter which tetrahedron you pick. Indeed, it could be worse; there are four tetrahedra in the decomposition that have one vertex in each of the four faces of the overall tetrahedron. Again, by clicking on the Figure you can see an animation of Rudin's example.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="ssw">1.2.4. The Schumaker-Sorokina-Worsey Macro Element</h4>
+
+    <p>One application of tetrahedral decomposition is the construction of spline spaces for use in applications. Of particular interest are so-called <e>macro elements</e> where the splines are such that on each tetrahedron they are determined by the data on only that tetrahedron, in a manner that is the same for all tetrahedra. One would like to have a low polynomial degree. One technique to obtain this is to divide each tetrahedron in the decomposition (referred to as a macrotetrahedron) into microtetrahedra in such a way that you can use a piecewise polynomial function of low degree on each macrotetrahedron without reducing the degree of differentiability.</p>
+
+    <p>The Clough-Tocher and Morgan-Scott splits are examples of such macro elements. The most extreme case, however, is a split of a tetrahedron into as many as 504 microtetrahedra, obtained by Schumaker, Sorokina, and Worsey. It makes it possible to use a piecewise quadratic function that is $C^1$ continuous (once differentiable).</p>
+
+<table style="margin-left: auto; margin-right: auto; text-align: center;">
+        <tr>
+            <td><a href="https://youtu.be/RxjmaKg9GAQ" target="_blank"><img src="T504.png" style="height: 400px; width: auto" alt="The SSW Split into 504 subtetrahedra"></a></td>
+        </tr>
+        <tr>
+            <td>Fig. 6: The SSW Split</td>
+        </tr>
+    </table>
+
+    <p>The split is illustrated in Figure 6. Again, you can see a static screenshot, and clicking on the image will show you an animation.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h2 id="guide">2. User's Guide</h2>
+
+    <p>This software lets you display and examine a collection of tetrahedra in three-dimensional space. Usually, the tetrahedra will form a tetrahedral decomposition of a polyhedron, but there is no restriction on their arrangement. They can overlap, be disjoint, form cavities, etc. There are several configurations that are built into the software, and that are readily available. However, you can define your own set of tetrahedra by creating and uploading a suitable file as described below.</p>
+
+    <p>All the (JavaScript) software is contained in the file <a href="tets.html">tets.html</a>. There are also a number of supportive files providing Figures and sample data files, for example. In that sense, the software is open source, and access is free. You are welcome to modify the software and use it for your own purposes provided you do not use it for commercial purposes, and you acknowledge its source in any web sites or publications of your own.</p>
+
+    <p>This User's Guide follows what you see on the screen, starting with the startup screen and then working sequentially through the available controls.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h3 id="startup">2.1. The Startup Screen</h3>
+
+    <p>When you first load the software, for example, by clicking <a href="tets.html">right here</a>, you'll see Rudin's triangulation moving in space, expanding and contracting, and changing its opacity periodically. In the upper left corner of the screen are listed some keyboard commands that you can use to obtain the kind of working setup you like. In particular, your options include:</p>
+
+    <ul>
+        <li><i>W</i> or <i>w</i>: Enter the default work setup. The current configuration is shown stationary, with no explosion and 100% opacity, in windowed mode, with the control column being visible. There is no single button that will take you back to the startup screen, but of course you can reload the software.</li>
+        <li><i>Escape</i>: Show the controls without changing anything else. Pressing Escape again will have no additional effect.</li>
+        <li><i>X</i> or <i>x</i>: Toggle the display of the control column.</li>
+        <li><i>F</i> or <i>f</i>: Toggle between full screen and windowed modes.</li>
+        <li><i>C</i> or <i>c</i>: Toggles the onscreen partial list of available keyboard commands.</li>
+    </ul>
+
+    <p>I anticipate that usually you will want to turn on the control column using <i>w</i> or <i>x</i>, and go from there. But you can also type <i>f</i> followed by <i>c</i> and lose yourself in a mesmerizing screensaver display!</p>
+
+    <p>For reference, here is a list of the remaining available keyboard commands:</p>
+
+    <ul>
+        <li><i>m, M</i>: Open this user manual in a new tab.</li>
+        <li><i>r / R</i>: Record and upload a video, with dynamic or constant opacity, starting at the current onscreen view.</li>
+        <li><i>l, L</i>: Toggle the camera path between Lissajous (i.e., not periodic) and periodic.</li>
+        <li><i>p, P</i>: Save and upload a .png screenshot.</li>
+        <li><i>a, A</i>: Toggle the animation of the current configuration.</li>
+        <li><i>v, V</i>: Decrease or increase the speed of the current expansion during animation.</li>
+        <li><i>s, S (Hold)</i>: Move a slice through the configuration away from, or towards, the screen.</li>
+        <li><i>o, O</i>: Decrease or increase the opacity of the tetrahedra.</li>
+        <li><i>e, E</i>: Decrease or increase the amount of explosion.</li>
+        <li><i>b, B</i>: Toggle the visibility of centroid balls.</li>
+        <li><i>i, I</i>: Toggle the display of global vertex indices.</li>
+        <li><i>h, H</i>: Toggle the indication of vertex indices when hovering over a centroid ball. Hovering over a ball will display the tetrahedron's index along with the indices of its vertices.</li>
+        <li><i>&lt; , &gt;</i>: Decrease or increase the size of the vertex indices.</li>
+        <li><i>?</i>: Toggle the display of the onscreen list of keyboard commands.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+    <h3 id="graphics-display">2.2. The Graphics Display</h3>
+
+<p>    The graphics display can be manipulated with the mouse.
+Left-drag  to rotate it and view it from any angle.
+Middle-drag, or use your mouse wheel, to zoom in or out.
+Right-drag to move (translate) the display.  Clicking with the left mouse button has various effects described elsewhere.   
+
+    <h3 id="control-column">2.3. The Control Column</h3>
+
+    <p>The remainder of this manual works from top to bottom through the controls available in the Column to the left of the graphics display. If that column is invisible, you can make it visible by using the keyboard command <i>x</i> or <i>X</i>.</p>
+
+    <p>The information here will make more sense if you can keep another window open where you can see the controls and perhaps try their effects. To open such a window in a new tab <a href="tets.html" target="_blank">click here</a>. However, if the software is unavailable for some reason, or if you prefer, you can open a screenshot in a new tab by clicking <a href="Tets.png" target="_blank">here</a>. You will see the control column on the left, and a colorful rendering of an icosahedron on the right.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="name-version">2.3.1. Name and Version</h4>
+
+    <p>The first row of the control column contains the name of the software (<i>Tetrahedra</i>) and the current version number. As of this writing, the version number is 9.0.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="documentation">2.3.2. Documentation</h4>
+
+    <p>The second row of the control column contains a button that opens this documentation page in a new Tab. You can accomplish the same effect with the keyboard commands <i>m</i> or <i>M</i>.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="cs">2.3.3. <i>CS:</i> Configuration Selection and Loading</h4>
+
+    <p>The remaining items form groups of controls labeled with a two-letter code at the left. Each of those groups contains one or more rows. If you hover over any of those groups, a popup window will give you a brief description of the purpose of that group.</p>
+
+    <p>The first such group is labeled <i>CS</i>. It lets you select the set of tetrahedra that you wish to display. You can use either one of the built-in configurations or import your own.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h5 id="built-in">2.3.3.1. Built-in Configurations</h5>
+
+    <p>Below is a Table of the available built-in configurations. The columns contain the name of the configuration, the number $V$ of vertices, the number $N$ of tetrahedra, and links to a stationary image, a (silent) animation video, and a spreadsheet with detailed combinatorics of the configuration. You can start the software, make sure the control panel is available, and use the menu in the first row of the <i>CS</i> block to select the configuration for examination.</p>
+
+<table border="1" cellpadding="5" style="border-collapse: collapse;">
+        <tr><th>Name</th><th>$V$</th><th>$N$</th><th>Image</th><th>Video</th><th>Combinatorics</th></tr>
+        <tr><td>Tetrahedron</td><td>4</td><td>1</td><td><a href="Tetrahedron-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/QAZ4Q-OuW3s" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Tetrahedron-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Bipyramid 2</td><td>5</td><td>2</td><td><a href="Bipyramind(2)-5-19-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/W7RtIE7I_q4" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Bipyramind(2)-5-19-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Bipyramid 3</td><td>5</td><td>3</td><td><a href="Bipyramid_(3)-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/SODNMQDrntA" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Bipyramid_(3)-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Clough-Tocher</td><td>5</td><td>4</td><td><a href="Clough-Tocher-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/-SAyWJ5-IjM" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Clough-Tocher-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Cube 5</td><td>8</td><td>5</td><td><a href="Cube_(5)-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/nBtj37bfd2g" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Cube_(5)-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Cube 6</td><td>8</td><td>6</td><td><a href="Cube_(6)-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/g4ek2Jj7zV0" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Cube_(6)-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Octahedron</td><td>7</td><td>8</td><td><a href="Octahedron-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/24XnoLMAlg8" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Octahedron-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Icosahedron</td><td>13</td><td>20</td><td><a href="Icosahedron-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/ZQPh4B4N_30" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Icosahedron-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Dodecahedron</td><td>33</td><td>60</td><td><a href="Dodecahedron-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/OoVa2GLSOJU" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Dodecahedron-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Double Clough-Tocher</td><td>9</td><td>16</td><td><a href="Double-CT-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/wY2NR6SKTSk" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Double-CT-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Morgan-Scott</td><td>8</td><td>15</td><td><a href="Morgan-Scott-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/AXTHRTEsoE4" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Morgan-Scott-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>T60 Macro</td><td>19</td><td>60</td><td><a href="T60-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/LWbYWz3CJ74" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="T60-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>T504 Macro</td><td>117</td><td>504</td><td><a href="T504-05-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/Vfw73XVHrfI" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="T504-05-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+        <tr><td>Rudin-5-28-26</td><td>14</td><td>41</td><td><a href="Rudin-5-28-26.png" target="_blank"><img src="screenshot.png" style="height:20px; width: auto" alt="Screenshot"></a></td><td><a href="https://youtu.be/Kf2jcK3rZZQ" target="_blank"><img src="video.png" style="height:20px; width: auto" alt="Video"></a></td><td><a href="Rudin-5-28-26.csv" target="_blank"><img src="combinatorics.png" style="height:20px; width: auto" alt="Combinatorics"></a></td></tr>
+    </table>
+
+    <p><a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h5 id="importing">2.3.3.2. Importing Configurations</h5>
+
+    <p>You can examine whatever collection of tetrahedra you like by creating and importing a file with the extension <em>.tri</em>. That file needs to contain the following (and no other) data:</p>
+
+    <ol>
+        <li>The total number $V$ of vertices and $T$ of tetrahedra, in the first line, separated by blanks.</li>
+        <li>$V$ lines, each of which contains the coordinates of a vertex, separated by blanks.</li>
+        <li>$T$ lines, each for each tetrahedron, giving the indices of the vertices of that tetrahedron, separated by blanks. The vertex indices run from 0 to $V-1$.</li>
+    </ol>
+
+    <p>For example, the built-in split of a bipyramid into three segments could also be described by a file with these contents:</p>
+
+    <pre>
+ 5 3
+ 0 0 0
+ -2 -2 1
+ -2 1 -2
+ 1 -2 -2
+ -2 -2 -2
+ 0 1 2 4 
+ 0 2 3 4 
+ 0 3 1 4
+    </pre>
+
+    <p>That precise file is actually available in the same directory as this web page; it is called <a href="bp3.tri">bp3.tri</a>. The button labeled <em>Load tri File</em> in the second row of the <i>CS</i> block enters your browser's file selection procedure and lets you upload the file. The button labeled <em>Combinatorics</em> next to the load button will upload a spreadsheet describing the combinatorics of the current configuration. For an example, click on any button labeled <em>Combinatorics</em> in the above Table.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="do">2.3.4. <i>DO:</i> Display Options</h4>
+
+    <p>The three buttons in this row let you choose certain options for the display:</p>
+
+    <ul>
+        <li><i>Idx: OFF</i>: This will toggle the drawing of vertex indices in the display. If present, they show up as small green numbers. You can decrease or increase their size using the keyboard commands <i>&lt;</i> and <i>&gt;</i>.</li>
+        <li><i>Balls: OFF</i>: This button toggles the display of white balls at the centroids of the tetrahedra. The purpose of those balls is to make it easy to select specific tetrahedra with the mouse. Simply click on the appropriate centroid ball. The effect of that action is determined with the menu in the next section.</li>
+        <li><i>Hover: ON</i>: This button turns the hover functionality on and off. When turned on, hovering over a centroid ball will display a pop-up label that states the index of the selected tetrahedron and the indices of its vertices.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+    <h4 id="ca">2.3.5. <i>CA:</i> Mouse Click Action</h4>
+
+    <p>The Menu in this section lets you select the effect of clicking on one of the centroid balls:</p>
+
+    <ul>
+        <li><i>No Effect</i>: (the default) means there is no action.</li>
+        <li><i>Toggle Tet Visibility</i>: This toggles the visibility of the selected tetrahedron.</li>
+        <li><i>Highlight</i>: This highlights the selected tetrahedron, by drawing it in yellow, and marking its vertices with red balls. For an example of an application of this facility see this <a href="Rudin.webm">video.</a> It lets you follow a selected tetrahedron in an animation of Rudin's example.</li>
+        <li><i>Toggle local indices</i>: With the display of vertex indices turned off globally, this will toggle the display of the vertex indices of the selected tetrahedron.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+    
+    <h4 id="fs">2.3.6. <i>FS:</i> Facet Selection and Processing</h4>
+
+    <p>The controls in this block let you select certain facets (vertices, edges, faces, and tetrahedra) and cause various actions on them. The four menus in the first row let you select a specific facet. You can use the menus only sequentially, moving from left to right. Each menu lists only those vertices that are connected by an edge to a vertex chosen with one of the preceding menus. Thus you use the first two menus to select an edge, the first three to select a face, etc.</p>
+
+    <p>However, the button in the second row, showing the label <em>Topological Mode</em> or <em>Simple Set Mode</em> toggles the restriction on or off. With the restriction off you can select any set of 1, 2, 3, or 4 vertices, but you still need to work from left to right.</p>
+
+    <p>The remaining two rows contain buttons that determine what is to be done with the selected facet:</p>
+
+    <ul>
+        <li><i>Draw</i>: In topological mode, this will draw all tetrahedra that contain the selected facet. In simple set mode, it will draw all tetrahedra that contain at least one of the selected vertices.</li>
+        <li><i>Toggle Vis</i>: This will toggle the visibility of the selected tetrahedra.</li>
+        <li><i>Emphasize</i>: Toggle the emphasis (draw in yellow with red vertex balls) of all selected tetrahedra.</li>
+        <li><i>Align Cam</i>: Align the camera such that the plane determined by the first three vertices (which usually are a face in the triangulation) is parallel to the screen. This may be useful for the slicing option described below.</li>
+        <li><i>Sel idx</i>: Toggle the vertex indices of the selected tetrahedra on and off. This works regardless of whether or not vertex indices are drawn globally.</li>
+        <li><i>Reset All</i>: Return all menus in the first row of this block to no vertex selected.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+    <h4 id="sp">2.3.7. <i>SP:</i> Slicing by a Plane</h4>
+    
+    <p>These controls let you draw a planar slice of the configuration with the cutting plane parallel to the screen. (After doing so you can rotate, translate, zoom, and animate the display of the slice as usual.) There are two modes: <i>Pure Slice</i> will draw just the slice, and <i>Show Bg</i> will draw the part of the configuration behind the slicing plane. The slider in the second row of this block defines the location of the slicing plane. At either end of that scale, the entire configuration is drawn, i.e., the slicing feature is off. You can use the keyboard commands <i>s</i> and <i>S</i> to move the slider smoothly through its domain, backward or forward, respectively.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="co">2.3.8. <i>CO:</i> Face Coloring</h4> 
+
+    <p>This menu lets you select the coloring mode for the triangular facets in your configuration. You have the following options:</p>
+    <ul>
+        <li><i>Glue Mode</i>: This is the default. Boundary faces are all drawn in the same color (blue). Each interior face is drawn in a different color. Thus you can build the configuration by gluing together faces of the same color.</li>
+        <li><i>Distinct Colors</i>: Each tetrahedron is assigned a distinct color, and all four of its faces are drawn in that color.</li>
+        <li><i>Uniform</i>: All faces are drawn in the same color (blue, the same color as the default for boundary faces).</li>
+        <li><i>Transparent</i>: All tetrahedra are transparent, and you can only see their edges.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+    <h4 id="es-et">2.3.9. <i>ES</i> and <i>ET:</i> Edge Rendering</h4>
+
+    <p>You have these options:<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h5 id="es">2.3.9.1. <i>ES:</i> Edge Style</h5>
+
+    <p>You can select the way edges are drawn. Edges can be drawn in white (the default) with a distinct color for each edge, or they can be made invisible.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h5 id="et">2.3.9.2. <i>ET:</i> Edge Thickness</h5>
+    <p>This slider lets you modify the thickness of the edges.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="ex">2.3.10. <i>EX:</i> Exploding the Configuration</h4>
+
+    <p>This slider lets you explode the configuration, i.e., move all tetrahedra away from (or towards) the centroid of the bounding box. You can also use the keyboard commands <i>e</i> and <i>E</i> to reduce or increase the amount of the explosion smoothly.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="op">2.3.11. <i>OP:</i> Opacity</h4>
+
+    <p>This slider lets you change the extent to which the tetrahedra are opaque or transparent. You can use the keyboard commands <i>o</i> and <i>O</i> to vary the opacity smoothly.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="al-dl">2.3.12. <i>AL</i> and <i>DL:</i> Lighting Model</h4>
+
+    <p>The configuration is illuminated by ambient light and by three spotlights (direct light). The two sliders in these sections let you choose the amounts of each.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h4 id="cm-an-so">2.3.13. <i>CM</i>, <i>AN</i>, and <i>SO:</i> Animation and Video Recording</h4>
+
+    <p>You can animate the configuration, smoothly varying the camera position, explosion rate, and opacity, and you can create a video recording. There are several places on this page, in particular the Table of built-in configurations, that let you see examples. You can also add AI-generated music to your video. Specifically, the following controls are available:<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+    
+    <h5 id="cm">2.3.13.1. <i>CM:</i> Camera Movement</h5>
+    <p>You have two options: the camera moves along a periodic orbit, or it follows a Lissajous, essentially a random, path. The random path is the default; it is particularly suitable for a video. The Lissajous option may be more informative or entertaining for interactive use.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></p>
+
+    <h5 id="an">2.3.13.2. <i>AN:</i> Animation</h5>
+    <p>This block contains the following controls:</p>
+
+    <ul>
+        <li><i>Anim (A)</i>: this button toggles the animation on or off. You can also use the keyboard commands <i>a</i> or <i>A</i>.</li>
+        <li>The slider next to the animation button determines the length of one period. Thus moving the slider all the way to the left will increase the speed of the animation, moving it to the right will decrease it. At the default value, one cycle of the animation lasts 58 seconds, which is the length of the videos you can create.</li>
+        <li><i>Full (F)</i>: toggle between fullscreen and windowed modes. You can also use the keyboard commands <i>F</i> or <i>f</i>.</li>
+        <li><i>Record (R)</i>: Record a 58-second-long video of one cycle of the animation. The length of that cycle is independent of the way the slider is set in this block. The video starts at the current configuration and moves through one full cycle of the explosion amount and one full cycle of the opacity setting. You can also activate the creation of the video by typing <i>r</i>. Alternatively, you can type <i>R</i> to create a video where the amount of opacity remains constant. The video will be uploaded as a <i>.webm</i> file. If a periodic orbit is selected in the <i>CM</i>, then the video will end up with the same frame that it started with; otherwise, the opacity at the end will equal that at the beginning, but the camera angle will be different.</li>
+        <li><i>Shot (P)</i>: This will take a screenshot of the current graphics window and upload it as a <i>.png</i> file. Creating a video will also upload a screenshot of the original frame in the video.<a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+    <h5 id="so">2.3.13.3. <i>SO:</i> Sound</h5>
+
+    <p>The last block in the control column gives you the option of adding a sound track to your video. The menu in this row lets you choose one of the built-in (AI-generated) sounds, the import button lets you upload an <i>.mp3</i> file with your own sound track, and the <i>Play</i> button lets you listen to your selected sound without creating a video. The following table lists the available sound tracks, and there is a link for each sound that lets you play the track without going to the actual software.</p>
+
+    <ul>
+        <li><a href="Organ.mp3" target="_blank">Organ</a></li>
+        <li><a href="Strings_I.mp3" target="_blank">Strings_I</a></li>
+        <li><a href="Strings_II.mp3" target="_blank">Strings_II</a></li>
+        <li><a href="Guitar.mp3" target="_blank">Guitar</a></li>
+        <li><a href="Guitar_II.mp3" target="_blank">Guitar_II</a></li>
+        <li><a href="Trumpets_I.mp3" target="_blank">Trumpets_I</a></li>
+        <li><a href="Trumpets_II.mp3" target="_blank">Trumpets_II</a></li>
+        <li><a href="Abstract.mp3" target="_blank">Abstract</a></li>
+        <li><a href="Electronic.mp3" target="_blank">Electronic</a><a href="#toc" class="to-top" title="Back to Table of Contents">&#8679;</a></li>
+    </ul>
+
+</body>
+</html>
