@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    window.onerror = function(message, source, lineno, colno, error) {
+      const div = document.createElement('div');
+      div.style.position = 'fixed';
+      div.style.top = '0';
+      div.style.left = '0';
+      div.style.width = '100%';
+      div.style.background = '#fee2e2';
+      div.style.color = '#991b1b';
+      div.style.padding = '1rem';
+      div.style.zIndex = '99999';
+      div.style.fontFamily = 'monospace';
+      div.style.fontSize = '14px';
+      div.style.borderBottom = '2px solid #ef4444';
+      div.style.whiteSpace = 'pre-wrap';
+      div.innerHTML = '<strong>JavaScript Error Detected:</strong> ' + message + ' <br>File: ' + source + ' <br>Line: ' + lineno + ':' + colno + (error && error.stack ? '<br><br>Stack Trace:<br>' + error.stack : '');
+      document.body.appendChild(div);
+      return false;
+    };
+  </script>
+  <title>Premium Backgammon - Classic Board Game</title>
+  <meta name="description" content="Play a beautiful, responsive, and modern local 2-player Backgammon game directly in your browser. Experience fluid movement animations, standard rules enforcement, and elegant dark glassmorphism design.">
+  
+  <!-- Google Fonts for premium typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Game Configuration Start Menu Overlay -->
+  <div id="start-menu-overlay">
+    <div class="menu-box glass-card" style="width: 320px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+      <h2 style="margin-bottom: 0.5rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Configure Game</h2>
+      <div class="menu-row" style="display: flex; justify-content: space-between; align-items: center;">
+        <label for="p1-type" style="font-weight: 500; font-size: 0.9rem;">Player 1 (White):</label>
+        <select id="p1-type" style="background: rgba(255,255,255,0.08); color: #f3f4f6; border: 1px solid rgba(255,255,255,0.05); padding: 0.4rem 0.8rem; border-radius: 6px; font-family: inherit; font-size: 0.9rem; outline: none; cursor: pointer;">
+          <option value="human">Human</option>
+          <option value="ai">AI</option>
+        </select>
+      </div>
+      <div class="menu-row" style="display: flex; justify-content: space-between; align-items: center;">
+        <label for="p2-type" style="font-weight: 500; font-size: 0.9rem;">Player 2 (Red):</label>
+        <select id="p2-type" style="background: rgba(255,255,255,0.08); color: #f3f4f6; border: 1px solid rgba(255,255,255,0.05); padding: 0.4rem 0.8rem; border-radius: 6px; font-family: inherit; font-size: 0.9rem; outline: none; cursor: pointer;">
+          <option value="human">Human</option>
+          <option value="ai" selected>AI</option>
+        </select>
+      </div>
+      <button id="btn-start-game" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%;">Start Game</button>
+    </div>
+  </div>
+
+  <div id="app-container">
+
+    <main class="game-layout">
+      <!-- The main Backgammon board -->
+      <div class="board-area">
+        <section class="board-wrapper" aria-label="Backgammon Board">
+          <!-- Top Row Labels (Yellow, in brown margin) -->
+          <div class="board-labels-outer labels-top">
+            <div class="quadrant-labels">
+              <span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span>
+            </div>
+            <div class="bar-spacer"></div>
+            <div class="quadrant-labels">
+              <span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
+            </div>
+          </div>
+
+          <div class="board" id="backgammon-board">
+
+          <!-- TOP ROW OF POINTS (13 to 24 from left to right) -->
+          <!-- Left Top Quadrant: Points 13-18 -->
+          <div class="quadrant quadrant-top-left">
+            <div class="point point-top point-dark" id="point-13" data-point="13"></div>
+            <div class="point point-top point-light" id="point-14" data-point="14"></div>
+            <div class="point point-top point-dark" id="point-15" data-point="15"></div>
+            <div class="point point-top point-light" id="point-16" data-point="16"></div>
+            <div class="point point-top point-dark" id="point-17" data-point="17"></div>
+            <div class="point point-top point-light" id="point-18" data-point="18"></div>
+          </div>
+
+          <!-- The central Bar -->
+          <div class="bar-divider">
+            <div class="bar-groove"></div>
+            <div class="bar-container" id="bar-p1" data-player="1" title="Player 1 Bar (White)">
+              <!-- Player 1 hit checkers will go here -->
+            </div>
+            <div class="bar-container" id="bar-p2" data-player="2" title="Player 2 Bar (Red)">
+              <!-- Player 2 hit checkers will go here -->
+            </div>
+          </div>
+
+          <!-- Right Top Quadrant: Points 19-24 -->
+          <div class="quadrant quadrant-top-right">
+            <div class="point point-top point-dark" id="point-19" data-point="19"></div>
+            <div class="point point-top point-light" id="point-20" data-point="20"></div>
+            <div class="point point-top point-dark" id="point-21" data-point="21"></div>
+            <div class="point point-top point-light" id="point-22" data-point="22"></div>
+            <div class="point point-top point-dark" id="point-23" data-point="23"></div>
+            <div class="point point-top point-light" id="point-24" data-point="24"></div>
+          </div>
+
+          <!-- BOTTOM ROW OF POINTS (12 to 1 from left to right) -->
+          <!-- Left Bottom Quadrant: Points 12-7 -->
+          <div class="quadrant quadrant-bottom-left">
+            <div class="point point-bottom point-light" id="point-12" data-point="12"></div>
+            <div class="point point-bottom point-dark" id="point-11" data-point="11"></div>
+            <div class="point point-bottom point-light" id="point-10" data-point="10"></div>
+            <div class="point point-bottom point-dark" id="point-9" data-point="9"></div>
+            <div class="point point-bottom point-light" id="point-8" data-point="8"></div>
+            <div class="point point-bottom point-dark" id="point-7" data-point="7"></div>
+          </div>
+
+          <!-- Right Bottom Quadrant: Points 6-1 -->
+          <div class="quadrant quadrant-bottom-right">
+            <div class="point point-bottom point-light" id="point-6" data-point="6"></div>
+            <div class="point point-bottom point-dark" id="point-5" data-point="5"></div>
+            <div class="point point-bottom point-light" id="point-4" data-point="4"></div>
+            <div class="point point-bottom point-dark" id="point-3" data-point="3"></div>
+            <div class="point point-bottom point-light" id="point-2" data-point="2"></div>
+            <div class="point point-bottom point-dark" id="point-1" data-point="1"></div>
+          </div>
+          </div>
+
+          <!-- Bottom Row Labels (Yellow, in brown margin) -->
+          <div class="board-labels-outer labels-bottom">
+            <div class="quadrant-labels">
+              <span>12</span><span>11</span><span>10</span><span>9</span><span>8</span><span>7</span>
+            </div>
+            <div class="bar-spacer"></div>
+            <div class="quadrant-labels">
+              <span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Sidebar Controls and Game Panel -->
+      <aside class="sidebar-panel">
+        <!-- Scoreboard / Status Panel -->
+        <div class="glass-card status-card">
+          <div class="version-tag">Backgammon v. 2</div>
+          <div class="score-display">
+            <div class="player-score player1">
+              <span class="player-dot p1-dot"></span>
+              <span class="player-name">White</span>
+              <div class="score-box" id="score-p1">0 / 15</div>
+            </div>
+            <div class="player-score player2">
+              <span class="player-dot p2-dot"></span>
+              <span class="player-name">Red</span>
+              <div class="score-box" id="score-p2">0 / 15</div>
+            </div>
+          </div>
+          <div class="game-message" id="game-message">
+            Click the dice to start the game!
+          </div>
+        </div>
+
+        <!-- Game History Station -->
+        <div class="glass-card history-station">
+          <div class="history-list" id="history-list" style="min-height: 100px; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.6rem; color: #ffffff !important;">
+            <div class="history-empty" style="color: #9ca3af; font-style: italic; text-align: center; padding: 0.5rem 0; font-size: 0.8rem;">No turns played yet.</div>
+          </div>
+        </div>
+
+        <!-- Dice Rolling Station -->
+        <div class="glass-card dice-station">
+          <div class="dice-container" id="dice-container" title="Click to Roll Dice">
+            <div class="die" id="die-1">
+              <div class="die-face face-1">●</div>
+            </div>
+            <div class="die" id="die-2">
+              <div class="die-face face-1">●</div>
+            </div>
+          </div>
+          
+          <div class="dice-moves-list" id="dice-moves-list">
+            <!-- Remaining move values will be shown here -->
+          </div>
+
+          <div class="control-buttons" style="display: none;">
+            <button id="btn-undo" class="btn btn-secondary" style="width: 100%;" disabled>Undo Move</button>
+          </div>
+
+          <!-- Restart and Reset buttons side-by-side -->
+          <div style="display: flex; gap: 0.5rem; width: 100%; margin-top: 0.4rem;">
+            <button id="btn-restart" style="background: #facc15; color: #dc2626; font-weight: 800; font-size: 1rem; border: none; border-radius: 6px; padding: 0.5rem; cursor: pointer; flex: 1; text-transform: uppercase; box-shadow: 0 4px 10px rgba(250, 204, 21, 0.3);">Restart</button>
+            <button id="btn-reset" style="background: #facc15; color: #dc2626; font-weight: 800; font-size: 1rem; border: none; border-radius: 6px; padding: 0.5rem; cursor: pointer; flex: 1; text-transform: uppercase; box-shadow: 0 4px 10px rgba(250, 204, 21, 0.3);">Reset</button>
+          </div>
+        </div>
+
+        <!-- Doubling Cube Station -->
+        <div class="glass-card doubling-station">
+          <div class="doubling-container">
+            <div class="doubling-cube" id="doubling-cube" title="Double Stakes">
+              64
+            </div>
+            <div class="doubling-info">
+              <div class="stake-multiplier">Multiplier: <span id="cube-value">1x</span></div>
+              <div class="cube-owner">Owner: <span id="cube-owner">Either Player</span></div>
+            </div>
+          </div>
+          <button id="btn-double" class="btn btn-secondary">Double Stakes</button>
+        </div>
+
+        <!-- Bearing Off Zones -->
+        <div class="glass-card bear-off-station">
+          <div class="bear-off-tracks">
+            <div class="bear-off-zone" id="bear-off-p1" data-player="1" title="White Borne Off (Home: 1-6)">
+              <div class="bear-off-label">White</div>
+              <div class="bear-off-tray" id="tray-p1"></div>
+            </div>
+            <div class="bear-off-zone" id="bear-off-p2" data-player="2" title="Red Borne Off (Home: 19-24)">
+              <div class="bear-off-label">Red</div>
+              <div class="bear-off-tray" id="tray-p2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animation Control Station -->
+        <div class="glass-card animation-station" style="display: flex; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
+          <button id="btn-animation" class="btn" style="width: 100%; font-weight: 700; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">Animation: ON</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Diagnostic Console -->
+  <div id="debug-console" style="max-width: 1400px; margin: 1rem auto; padding: 1rem; background: rgba(14, 21, 18, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.8rem; color: #10b981; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+      <span style="font-weight: bold; color: #e5c158; text-transform: uppercase; letter-spacing: 0.5px;">Diagnostic Console</span>
+      <span style="font-size: 0.7rem; color: #9ca3af;">Interactive event logger</span>
+    </div>
+    <div id="debug-log-lines" style="max-height: 100px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; line-height: 1.5; color: #d1fae5;">[System] Backgammon engine loaded. Click dice to start.</div>
+  </div>
+
+  <script src="game.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>

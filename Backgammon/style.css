@@ -1,0 +1,1021 @@
+/* Custom CSS Custom Properties for Pointworks Malachite Theme */
+:root {
+  --bg-app: #060908;             /* Dark forest green-black canvas background */
+  --bg-board-frame: #7d492a;     /* Saddle brown leather case frame */
+  --bg-board-felt: #006c4b;      /* Deep rich forest green board field */
+  --point-light: #2a4d7c;        /* Premium dark slate blue points */
+  --point-dark: #003730;         /* Deep malachite-teal dark points */
+  --point-highlight: rgba(229, 193, 88, 0.35); /* Glowing gold move highlight */
+  
+  /* Pearlized Ivory Checker Gradient */
+  --checker-p1-bg: radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.95) 0%, rgba(248, 245, 238, 0.85) 30%, rgba(230, 224, 210, 0.8) 60%, rgba(185, 178, 160, 0.95) 100%),
+                   repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.1) 0px, rgba(255, 255, 255, 0.1) 2px, transparent 2px, transparent 8px),
+                   repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 3px, transparent 3px, transparent 12px);
+  --checker-p1-border: rgba(255, 255, 255, 0.8);
+  --checker-p1-shadow: 0 4px 8px rgba(0, 0, 0, 0.45), inset 0 -2px 5px rgba(0, 0, 0, 0.15), inset 0 3px 6px rgba(255, 255, 255, 0.8), 0 0 1px rgba(0, 0, 0, 0.5);
+  
+  /* Marbled Ruby Red Checker Gradient */
+  --checker-p2-bg: radial-gradient(circle at 25% 25%, #ff4d4d 0%, #b30000 35%, #590000 70%, #2a0000 100%),
+                   repeating-radial-gradient(circle at 70% 30%, rgba(255, 77, 77, 0.3) 0px, rgba(179, 0, 0, 0.4) 10px, rgba(89, 0, 0, 0.2) 20px, rgba(42, 0, 0, 0.8) 30px);
+  --checker-p2-border: rgba(255, 77, 77, 0.55);
+  --checker-p2-shadow: 0 4px 8px rgba(0, 0, 0, 0.5), inset 0 -2px 5px rgba(0, 0, 0, 0.3), inset 0 3px 6px rgba(255, 255, 255, 0.25), 0 0 1px rgba(0, 0, 0, 0.8);
+
+  --glass-bg: rgba(14, 21, 18, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.04);
+  --glass-glow: rgba(0, 0, 0, 0.4);
+  
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --accent-gold: #e5c158;
+  --accent-red: #ef4444;          /* Vibrant red for player 2 */
+  --accent-green: #10b981;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+
+#app-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+/* Header */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.logo-container h1 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 1.8rem;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #ffffff 0%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.badge {
+  font-size: 0.8rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  vertical-align: middle;
+  padding: 0.2rem 0.6rem;
+  border-radius: 50px;
+  background: rgba(229, 193, 88, 0.15);
+  color: var(--accent-gold);
+  border: 1px solid rgba(229, 193, 88, 0.3);
+  margin-left: 0.5rem;
+}
+
+.player-turn-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+.indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.player1-turn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.player2-turn {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* Layout */
+.game-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.board-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .game-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Board Wrapper and Board */
+.board-wrapper {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%), var(--bg-board-frame);
+  border-radius: 14px;
+  padding: 1.5vh;
+  border: 4px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 
+    0 20px 45px rgba(0, 0, 0, 0.85), 
+     inset 0 0 15px rgba(0, 0, 0, 0.65), 
+    inset 0 2px 4px rgba(255, 255, 255, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: auto;
+  box-sizing: border-box;
+}
+
+@media (min-aspect-ratio: 1) {
+  .board-wrapper {
+    width: auto;
+    height: 100%;
+  }
+}
+
+.board {
+  background-color: var(--bg-board-felt);
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 4px;
+  display: grid;
+  grid-template-columns: 6fr 1fr 6fr; /* Left quadrant, Bar, Right quadrant */
+  grid-template-rows: 1fr 1fr;       /* Top points row, Bottom points row */
+  position: relative;
+  box-shadow: 
+    inset 0 15px 40px rgba(0, 0, 0, 0.8),
+    inset 0 -15px 40px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+}
+
+/* Quadrants */
+.quadrant {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  height: 100%;
+}
+
+.quadrant-top-left {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.quadrant-top-right {
+  grid-column: 3 / 4;
+  grid-row: 1 / 2;
+}
+
+.quadrant-bottom-left {
+  grid-column: 1 / 2;
+  grid-row: 2 / 3;
+}
+
+.quadrant-bottom-right {
+  grid-column: 3 / 4;
+  grid-row: 2 / 3;
+}
+
+/* Points (Triangles) */
+.point {
+  position: relative;
+  height: 95%;
+  cursor: pointer;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+/* Background triangle drawing via pseudo-element to avoid clipping checkers */
+.point::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.point-top {
+  align-self: start;
+}
+
+.point-bottom {
+  align-self: end;
+}
+
+.point-top::before {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+.point-bottom::before {
+  clip-path: polygon(50% 0, 0 100%, 100% 100%);
+}
+
+.point-light.point-top::before {
+  background: linear-gradient(to bottom, var(--point-light) 0%, #172a45 100%);
+}
+
+.point-light.point-bottom::before {
+  background: linear-gradient(to top, var(--point-light) 0%, #172a45 100%);
+}
+
+.point-dark.point-top::before {
+  background: linear-gradient(to bottom, var(--point-dark) 0%, #00231e 100%);
+}
+
+.point-dark.point-bottom::before {
+  background: linear-gradient(to top, var(--point-dark) 0%, #00231e 100%);
+}
+
+/* Highlight for moves applied to triangle background */
+.point.highlight-source, .point.highlight-destination {
+  cursor: pointer;
+}
+
+@keyframes pulse-highlight {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+  100% { filter: brightness(1); }
+}
+
+.point.highlight-destination::before {
+  animation: pulse-highlight 1.5s infinite ease-in-out;
+}
+
+/* Source Point Highlight (White Glow) */
+.point-top.highlight-source::before {
+  background: linear-gradient(to bottom, #ffffff 0%, rgba(255, 255, 255, 0.35) 100%) !important;
+}
+.point-bottom.highlight-source::before {
+  background: linear-gradient(to top, #ffffff 0%, rgba(255, 255, 255, 0.35) 100%) !important;
+}
+
+/* Destination Point Highlight (Gold Glow) */
+.point-top.highlight-destination::before {
+  background: linear-gradient(to bottom, var(--accent-gold) 0%, rgba(229, 193, 88, 0.35) 100%) !important;
+}
+.point-bottom.highlight-destination::before {
+  background: linear-gradient(to top, var(--accent-gold) 0%, rgba(229, 193, 88, 0.35) 100%) !important;
+}
+
+/* Checkers Stacking Containers */
+/* We will place absolute overlays inside each point for positioning checkers */
+.checker-container {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: auto; /* Let parent point capture clicks/drags */
+  z-index: 2;
+}
+
+.point-top .checker-container {
+  flex-direction: column;
+  padding-top: 10px;
+}
+
+.point-bottom .checker-container {
+  flex-direction: column-reverse;
+  padding-bottom: 10px;
+}
+
+/* Central Bar */
+.bar-divider {
+  grid-column: 2 / 3;
+  grid-row: 1 / 3;
+  background: linear-gradient(to right, rgba(0, 0, 0, 0.25) 0%, transparent 15%, transparent 85%, rgba(0, 0, 0, 0.25) 100%), var(--bg-board-frame);
+  border-left: 1px solid rgba(0, 0, 0, 0.5);
+  border-right: 1px solid rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.85);
+}
+
+.bar-groove {
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 6px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 1px 0 2px rgba(255,255,255,0.05), inset -1px 0 2px rgba(0,0,0,0.5);
+}
+
+.bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-height: 140px;
+  width: 100%;
+  justify-content: center;
+}
+
+.bar-container.highlight-source {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3) inset;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Checkers Design */
+.checker {
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid;
+  position: relative;
+  cursor: grab;
+  pointer-events: auto; /* Enable interaction on checkers */
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+  user-select: none;
+}
+
+.checker::before {
+  content: '';
+  position: absolute;
+  top: 15%; left: 15%; width: 70%; height: 70%;
+  border-radius: 50%;
+  border: 1px rgba(255, 255, 255, 0.25) dashed;
+}
+
+.checker::after {
+  content: '';
+  position: absolute;
+  top: 35%; left: 35%; width: 30%; height: 30%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Player 1 Checkers (White) */
+.checker.player-1 {
+  background: var(--checker-p1-bg);
+  border-color: var(--checker-p1-border);
+  box-shadow: var(--checker-p1-shadow);
+}
+
+.checker.player-1:hover {
+  filter: brightness(1.1);
+  box-shadow: var(--checker-p1-shadow), 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+/* Player 2 Checkers (Red) */
+.checker.player-2 {
+  background: var(--checker-p2-bg);
+  border-color: var(--checker-p2-border);
+  box-shadow: var(--checker-p2-shadow);
+}
+
+.checker.player-2:hover {
+  filter: brightness(1.1);
+  box-shadow: var(--checker-p2-shadow), 0 0 10px var(--accent-red);
+}
+
+/* Checker Overlapping Stack Layout styling */
+/* JS will apply absolute offsets if stack is very high. Here is base layout: */
+.checker-stacked {
+  margin-top: -15px; /* Default overlap */
+  z-index: 5;
+}
+
+.checker.dragging {
+  cursor: grabbing;
+  opacity: 0.8;
+  transform: scale(1.15);
+  z-index: 1000 !important;
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.6) !important;
+  pointer-events: none; /* Ensure drops work on elements underneath */
+}
+
+/* Sidebar & Glassmorphism Panels */
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 6px;
+  min-height: 0;
+}
+
+.sidebar-panel > .glass-card {
+  flex-shrink: 0;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 0.8rem;
+  box-shadow: var(--glass-glow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-card h2, .glass-card h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 0.4rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+}
+
+/* Score Display */
+.score-display {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.player-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.player-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-bottom: 0.2rem;
+}
+
+.p1-dot { background-color: #ffffff; box-shadow: 0 0 6px #ffffff; }
+.p2-dot { background-color: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+
+.player-name {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.score-box {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-top: 0.2rem;
+}
+
+.game-message {
+  background: rgba(229, 193, 88, 0.05);
+  border-left: 3px solid var(--accent-gold);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  border-radius: 0 6px 6px 0;
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+}
+
+/* Dice Station */
+.dice-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dice-container {
+  display: flex;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  perspective: 600px;
+}
+
+.die {
+  width: 50px;
+  height: 50px;
+  background-color: #fcfbf7; /* Premium Ivory White */
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.45), 
+    inset 0 3px 5px rgba(255, 255, 255, 1),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  color: #2b303c; /* Charcoal pips */
+  font-weight: bold;
+  user-select: none;
+  transition: transform 0.6s ease;
+}
+
+/* Styling P2's deep malachite green dice */
+.player2-turn-active .die {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 60%, #450a0a 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #ffffff; /* White pips */
+  box-shadow: 
+    0 8px 16px rgba(239, 68, 68, 0.3), 
+    inset 0 3px 5px rgba(255, 255, 255, 0.35),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+}
+
+.die.rolling {
+  animation: roll 0.6s ease-out;
+}
+
+.die-face {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+}
+
+.die-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.die-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes roll {
+  0% { transform: rotate(0deg) scale(1) translateY(0); }
+  30% { transform: rotate(120deg) scale(1.15) translateY(-15px); }
+  60% { transform: rotate(240deg) scale(0.9) translateY(5px); }
+  100% { transform: rotate(360deg) scale(1) translateY(0); }
+}
+
+.dice-moves-list {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.move-token {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+}
+
+.move-token.used {
+  opacity: 0.35;
+  text-decoration: line-through;
+  background: rgba(0, 0, 0, 0.2);
+  border-color: transparent;
+}
+
+/* Doubling Cube Station */
+.doubling-container {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 0.8rem 0;
+}
+
+.doubling-cube {
+  width: 55px;
+  height: 55px;
+  background: radial-gradient(circle at 30% 30%, #00b48c 0%, #005f48 60%, #002b20 100%);
+  border: 1px solid rgba(0, 180, 140, 0.55);
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.6), 
+    inset 0 3px 6px rgba(255, 255, 255, 0.35), 
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  text-shadow: 
+    1px 1px 1px rgba(0,0,0,0.8),
+    0 0 3px rgba(229, 193, 88, 0.5);
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.doubling-cube:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.7), 
+    inset 0 3px 6px rgba(255, 255, 255, 0.5), 
+    inset 0 -3px 6px rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(0, 180, 140, 0.6);
+}
+
+.doubling-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.stake-multiplier {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stake-multiplier span {
+  color: var(--accent-gold);
+}
+
+.cube-owner {
+  color: var(--text-secondary);
+}
+
+.cube-owner span {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Bearing Off Stations */
+.bear-off-tracks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.bear-off-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.05);
+}
+
+.bear-off-zone.highlight-destination {
+  border-color: var(--accent-gold);
+  background: rgba(229, 193, 88, 0.05);
+  cursor: pointer;
+}
+
+.bear-off-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.bear-off-tray {
+  width: 100%;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column-reverse; /* Stack upward */
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+}
+
+/* Borne-off checkers are flattened slabs */
+.borne-checker {
+  width: 90%;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.borne-checker.player-1 {
+  background: linear-gradient(to right, #ffffff, #dcdcdc);
+  border-color: #c0c0c0;
+}
+
+.borne-checker.player-2 {
+  background: linear-gradient(to right, #ef4444, #7f1d1d);
+  border-color: #450a0a;
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-gold) 0%, #b89531 100%);
+  color: #111;
+  box-shadow: 0 4px 12px rgba(229, 193, 88, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(229, 193, 88, 0.4);
+}
+
+.btn-primary:disabled {
+  background: #2b3039;
+  color: var(--text-secondary);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  background: transparent;
+  color: rgba(239, 68, 68, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red);
+  border-color: var(--accent-red);
+}
+
+.game-footer {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Dragging active helper */
+.dragging-active .checker {
+  opacity: 0.7;
+}
+
+/* Interactive Dice Container */
+.dice-container.rollable {
+  cursor: pointer;
+}
+.dice-container.rollable:hover .die {
+  transform: scale(1.05);
+  box-shadow: 0 10px 20px rgba(229, 193, 88, 0.3);
+}
+
+/* Initial start of game roll-off dice styles (One white, one red) */
+.initial-roll-off #die-1 {
+  background-color: #fcfbf7 !important;
+  color: #2b303c !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+.initial-roll-off #die-2 {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 60%, #450a0a 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: 
+    0 8px 16px rgba(239, 68, 68, 0.3), 
+    inset 0 3px 5px rgba(255, 255, 255, 0.35),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Version Tag styling */
+.version-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.2rem;
+  opacity: 0.8;
+}
+
+/* Game History Station UI styling */
+.history-station {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.history-list {
+  min-height: 60px;
+  max-height: 120px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 4px;
+}
+.history-item {
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.history-item:hover {
+  background: rgba(229, 193, 88, 0.1);
+  border-color: rgba(229, 193, 88, 0.3);
+  color: var(--accent-gold);
+  transform: translateX(2px);
+}
+.history-empty {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+}
+
+/* Disable pointer events on other checkers during drag to make drop targets work cleanly */
+.dragging-active .checker:not(.dragging) {
+  pointer-events: none !important;
+}
+
+/* Sidebar Compact Overrides */
+.sidebar-panel {
+  gap: 0.3rem !important;
+}
+.sidebar-panel .glass-card {
+  padding: 0.3rem 0.5rem !important;
+}
+.sidebar-panel .score-display {
+  margin-bottom: 0.3rem !important;
+}
+.sidebar-panel .player-score {
+  padding: 0.3rem !important;
+}
+.sidebar-panel .score-box {
+  font-size: 1.2rem !important;
+}
+.sidebar-panel .game-message {
+  padding: 0.3rem 0.5rem !important;
+  min-height: auto !important;
+  font-size: 0.8rem !important;
+  margin-top: 0.2rem !important;
+}
+.sidebar-panel .dice-container {
+  margin: 0.3rem 0 !important;
+  gap: 1rem !important;
+}
+.sidebar-panel .die {
+  width: 42px !important;
+  height: 42px !important;
+}
+.sidebar-panel .dice-moves-list {
+  margin-bottom: 0.3rem !important;
+}
+.sidebar-panel .doubling-container {
+  margin: 0.2rem 0 !important;
+  gap: 1rem !important;
+}
+.sidebar-panel .doubling-cube {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 1.2rem !important;
+}
+.sidebar-panel .bear-off-tracks {
+  gap: 0.5rem !important;
+}
+.sidebar-panel .bear-off-zone {
+  padding: 0.3rem !important;
+}
+.sidebar-panel .bear-off-tray {
+  min-height: 80px !important;
+}
+.sidebar-panel .btn {
+  padding: 0.4rem 0.8rem !important;
+  font-size: 0.8rem !important;
+}
+
+#start-menu-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(4, 6, 5, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-primary);
+}
+
+/* Margin Labels (Yellow in Brown Frame Padding) */
+.board-labels-outer {
+  display: grid;
+  grid-template-columns: 6fr 1fr 6fr; /* Align with Left Q, Bar, Right Q */
+  width: 100%;
+  user-select: none;
+  pointer-events: none;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--accent-gold); /* Yellow (Gold) */
+  box-sizing: border-box;
+}
+
+.quadrant-labels {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  text-align: center;
+}
+
+.bar-spacer {
+  /* empty spacer */
+}
+
+.labels-top {
+  margin-bottom: 8px;
+}
+
+.labels-bottom {
+  margin-top: 8px;
+}
