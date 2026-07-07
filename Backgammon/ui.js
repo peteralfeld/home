@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const boardEl = document.getElementById('backgammon-board');
   const diceContainerEl = document.getElementById('dice-container');
   const btnUndo = document.getElementById('btn-undo');
-  const btnReset = document.getElementById('btn-reset');
   const die1El = document.getElementById('die-1');
   const die2El = document.getElementById('die-2');
   const diceMovesList = document.getElementById('dice-moves-list');
@@ -124,8 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     handleUndoClick();
   });
-  btnReset.addEventListener('click', handleResetClick);
-
   // Restart Button Listener (skips query overlay)
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
@@ -145,10 +142,16 @@ document.addEventListener('DOMContentLoaded', () => {
         legalDestinations = [];
         initialRollOff = true;
         isRolling = false;
-        gameStarted = true;
-        document.getElementById('start-menu-overlay').style.display = 'none';
-        renderDie(die1El, 1);
-        renderDie(die2El, 1);
+        gameStarted = false; 
+        
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) {
+          btnStart.disabled = false;
+          btnStart.style.opacity = '1';
+        }
+        
+          renderDie(die1El, 1);
+          renderDie(die2El, 1);
         updateUI();
       }
     });
@@ -298,7 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (game.winner) {
       gameMessageEl.textContent = `🎉 Game Over! Player ${game.winner === 1 ? '1 (White)' : '2 (Red)'} wins the game!`;
       btnUndo.disabled = true;
+    } else if (!gameStarted) {
+      gameMessageEl.textContent = "Select players and click START GAME!";
     } else if (initialRollOff) {
+      gameMessageEl.textContent = "Click the dice to decide who starts!";
       gameMessageEl.textContent = "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
       gameMessageEl.textContent = `Player ${game.currentPlayer === 1 ? '1 (White)' : '2 (Red)'}: Click the dice to roll.`;
@@ -515,53 +521,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * Handle rolling logic.
-   */
-  function handleRollClick() {
+  * Handle rolling logic.
+*/
+
+function handleRollClick() {
     if (isRolling) return;
     isRolling = true;
-    if (turnEndTimer) {
-      clearTimeout(turnEndTimer);
-      turnEndTimer = null;
-    }
-    sysLog(`[Roll] Starting dice roll animation. initialRollOff=${initialRollOff}`);
-    
-    // Dice Animation
-    die1El.classList.add('rolling');
-    die2El.classList.add('rolling');
-    diceContainerEl.classList.remove('rollable');
+    updateUI(); // Locks the dice visually
 
+    // Wait 600ms for the CSS rolling animation to finish
     setTimeout(() => {
-      die1El.classList.remove('rolling');
-      die2El.classList.remove('rolling');
-
       if (initialRollOff) {
         const result = game.rollForFirstTurn();
-        renderDie(die1El, result.dice[0]);
-        renderDie(die2El, result.dice[1]);
-        initialRollOff = false;
-        
-        const winnerColor = result.currentPlayer === 1 ? 'White' : 'Red';
-        sysLog(`[Roll] Roll-off decider finished: P1 rolled ${result.dice[0]}, P2 rolled ${result.dice[1]} (${winnerColor} starts)`);
-        gameMessageEl.textContent = `Player ${result.currentPlayer} (${winnerColor}) won start roll and moves first!`;
-        
-        setTimeout(() => {
-          isRolling = false;
-          updateUI();
-        }, 1500);
-      } else {
-        const result = game.rollDice();
-        if (result) {
-          renderDie(die1El, result.dice[0]);
-          renderDie(die2El, result.dice[1]);
-          sysLog(`[Roll] Standard roll: [${result.dice.join(', ')}]. remainingMoves=[${result.movesLeft.join(', ')}]`);
+        // If they didn't roll doubles, the game begins
+        if (result.dice[0] !== result.dice[1]) {
+          initialRollOff = false;
+        } else {
+          sysLog("[Roll] Tie! Rolling again...");
         }
-        isRolling = false;
-        updateUI();
+      } else {
+        game.rollDice();
       }
+      isRolling = false;
+      updateUI();
     }, 600);
   }
-
   /**
    * Handle doubling offer logic.
    */
@@ -906,14 +890,44 @@ document.addEventListener('DOMContentLoaded', () => {
     sysLog(`[History] HTML inside container: ${historyListEl.innerHTML}`);
   }
 
-  // Start game overlay trigger
-  document.getElementById('btn-start-game').addEventListener('click', () => {
-    game.playerTypes[1] = document.getElementById('p1-type').value;
-    game.playerTypes[2] = document.getElementById('p2-type').value;
+// Initialize player types but wait for manual start
+  game.playerTypes[1] = document.getElementById('p1-type').value;
+  game.playerTypes[2] = document.getElementById('p2-type').value;
+  gameStarted = false;
+  sysLog(`[System] Game ready, waiting for manual start.`);
+
+  document.getElementById('btn-start-game').addEventListener('click', (e) => {
+    if (gameStarted) return;
     gameStarted = true;
-    document.getElementById('start-menu-overlay').style.display = 'none';
-    sysLog(`[System] Game started! White=${game.playerTypes[1]}, Red=${game.playerTypes[2]}`);
+    e.target.disabled = true; // Disable button while game is active
+    e.target.style.opacity = '0.5';
+    sysLog(`[System] Game manually started! White=${game.playerTypes[1]}, Red=${game.playerTypes[2]}`);
     updateUI();
+  });
+    
+  // Listen for live dropdown changes so players can swap AI in/out mid-game
+document.getElementById('p1-type').addEventListener('change', (e) => {
+    game.playerTypes[1] = e.target.value;
+    sysLog(`[System] White player changed to ${e.target.value}`);
+    updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
+    checkAndTriggerAITurn();
+  });
+
+  document.getElementById('p2-type').addEventListener('change', (e) => {
+    game.playerTypes[2] = e.target.value;
+    sysLog(`[System] Red player changed to ${e.target.value}`);
+    updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
+    checkAndTriggerAITurn();
+  });
+
+    document.getElementById('board-view').addEventListener('change', (e) => {
+    const view = e.target.value;
+    const wrapper = document.querySelector('.board-wrapper');
+    wrapper.classList.remove('view-red', 'view-home', 'view-outer');
+    if (view !== 'white') {
+      wrapper.classList.add(`view-${view}`);
+    }
+    sysLog(`[System] Board view changed to ${view}`);
   });
 
   /**
@@ -1053,18 +1067,41 @@ document.addEventListener('DOMContentLoaded', () => {
         targetX = rect.left + rect.width / 2;
         targetY = rect.top + rect.height / 2;
         isDestTop = (game.currentPlayer === 2); // P2 bears off at top-right
-      } else {
+} else {
         const destPointEl = document.getElementById(`point-${to}`);
         if (destPointEl) {
           const rect = destPointEl.getBoundingClientRect();
-          targetX = rect.left + rect.width / 2;
           const count = game.points[to].count;
           isDestTop = to >= 13;
-          const checkerHeight = rect.width * 0.8;
-          if (isDestTop) {
-            targetY = rect.top + 15 + (count * checkerHeight * 0.7);
+          const view = document.getElementById('board-view').value;
+          
+          const margin = 15;
+          
+          if (view === 'white' || view === 'red') {
+            // Standard vertical stacking
+            const checkerSize = rect.width * 0.8;
+            const offset = count * checkerSize * 0.7;
+            targetX = rect.left + rect.width / 2;
+            
+            if (view === 'white') {
+              targetY = isDestTop ? (rect.top + margin + offset) : (rect.bottom - margin - offset);
+            } else { // view === 'red'
+              targetY = isDestTop ? (rect.bottom - margin - offset) : (rect.top + margin + offset);
+            }
           } else {
-            targetY = rect.bottom - 15 - (count * checkerHeight * 0.7);
+            // Horizontal stacking for rotated views (home/outer)
+            // Use rect.height for size because the triangle is laying flat
+            const checkerSize = rect.height * 0.8; 
+            const offset = count * checkerSize * 0.7;
+            targetY = rect.top + rect.height / 2;
+            
+            if (view === 'home') {
+              // 90deg: Top points are Right, Bottom points are Left
+              targetX = isDestTop ? (rect.right - margin - offset) : (rect.left + margin + offset);
+            } else { // view === 'outer'
+              // -90deg: Top points are Left, Bottom points are Right
+              targetX = isDestTop ? (rect.left + margin + offset) : (rect.right - margin - offset);
+            }
           }
         }
       }
@@ -1119,17 +1156,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const arcOffset = 4 * arcHeight * progress * (1 - progress);
 
         // Bend towards the horizontal center of the board
+// Bend curve based on the current camera view
         let bendY = currentY;
-        const isTopPoint = from === 'bar' ? (game.currentPlayer === 1) : (from >= 13);
-        if (isTopPoint) {
-          bendY += arcOffset; // Curve downwards
-        } else {
-          bendY -= arcOffset; // Curve upwards
-        }
+        let bendX = currentX;
+        const view = document.getElementById('board-view').value;
+        const isLogicalTop = from === 'bar' ? (game.currentPlayer === 1) : (from >= 13);
 
-        flyer.style.left = (currentX - srcRect.width / 2) + 'px';
+if (view === 'white') {
+          bendY += isLogicalTop ? arcOffset : -arcOffset;
+        } else if (view === 'red') {
+          bendY += isLogicalTop ? -arcOffset : arcOffset;
+        } else if (view === 'home') {
+          // Rotated 90deg: Logical Top points are on the Right, bend Left (-X)
+          bendX += isLogicalTop ? -arcOffset : arcOffset;
+        } else if (view === 'outer') {
+          // Rotated -90deg: Logical Top points are on the Left, bend Right (+X)
+          bendX += isLogicalTop ? arcOffset : -arcOffset;
+        }	  
+
+        flyer.style.left = (bendX - srcRect.width / 2) + 'px';
         flyer.style.top = (bendY - srcRect.height / 2) + 'px';
-
         if (progress < 1) {
           requestAnimationFrame(tick);
         } else {

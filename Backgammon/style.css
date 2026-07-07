@@ -973,21 +973,6 @@ body {
   font-size: 0.8rem !important;
 }
 
-#start-menu-overlay {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(4, 6, 5, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 100000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  color: var(--text-primary);
-}
-
 /* Margin Labels (Yellow in Brown Frame Padding) */
 .board-labels-outer {
   display: grid;
@@ -1019,3 +1004,31 @@ body {
 .labels-bottom {
   margin-top: 8px;
 }
+
+/* --- Board View Rotations --- */
+.board-wrapper {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.board-wrapper.view-red { transform: rotate(180deg); }
+.board-wrapper.view-home { transform: rotate(90deg); }
+.board-wrapper.view-outer { transform: rotate(-90deg); }
+
+/* Counter-rotate margin labels to stay upright */
+.board-labels-outer span {
+  display: inline-block;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.board-wrapper.view-red .board-labels-outer span { transform: rotate(-180deg); }
+.board-wrapper.view-home .board-labels-outer span { transform: rotate(-90deg); }
+.board-wrapper.view-outer .board-labels-outer span { transform: rotate(90deg); }
+
+/* Counter-rotate checkers to preserve highlight/shadow lighting */
+.board-wrapper.view-red .checker { transform: rotate(-180deg); }
+.board-wrapper.view-red .checker.dragging { transform: rotate(-180deg) scale(1.15); }
+
+.board-wrapper.view-home .checker { transform: rotate(-90deg); }
+.board-wrapper.view-home .checker.dragging { transform: rotate(-90deg) scale(1.15); }
+
+.board-wrapper.view-outer .checker { transform: rotate(90deg); }
+.board-wrapper.view-outer .checker.dragging { transform: rotate(90deg) scale(1.15); }
