@@ -934,6 +934,7 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
    * Triggers the AI routine if it is the AI player's turn.
    */
   function checkAndTriggerAITurn() {
+    if (!gameStarted) return;
     if (game.winner) return;
     if (isAIPlaying) return;
 
