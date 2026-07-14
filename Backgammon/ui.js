@@ -1283,7 +1283,7 @@ if (view === 'white') {
   // --- HOSTING ---
   btnHost.addEventListener('click', () => {
     initNetworkGame(1);
-    const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     connStatus.textContent = "Waiting for opponent...";
     roomCodeDisplay.style.display = 'block';
     roomCodeDisplay.textContent = roomCode;
