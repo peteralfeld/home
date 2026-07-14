@@ -1297,7 +1297,7 @@ if (view === 'white') {
     });
   }
 
-// --- HOSTING ---
+  // --- HOSTING ---
   btnHost.addEventListener('click', () => {
     initNetworkGame(1);
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -1307,8 +1307,13 @@ if (view === 'white') {
 
     sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
-    // Let PeerJS use its default fallbacks, but enable strict debugging
-    peer = new Peer('pointworks-bg-' + roomCode, { debug: 2 });
+    // Explicitly declaring Google's STUN servers to bypass NAT/Firewalls
+    peer = new Peer('pointworks-bg-' + roomCode, {
+      config: { 'iceServers': [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]}
+    });
     
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
@@ -1317,15 +1322,6 @@ if (view === 'white') {
       sysLog(`[Network] Incoming connection detected from a Guest!`);
       conn = connection;
       setupConnectionListeners(conn);
-      
-      // Track the deep WebRTC state to monitor firewall blocking
-      setTimeout(() => {
-        if (conn.peerConnection) {
-           conn.peerConnection.addEventListener('iceconnectionstatechange', () => {
-               sysLog(`[WebRTC] ICE State: ${conn.peerConnection.iceConnectionState}`);
-           });
-        }
-      }, 1000);
     });
   });
 
@@ -1341,26 +1337,64 @@ if (view === 'white') {
 
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
-    peer = new Peer({ debug: 2 });
+    // Explicitly declaring Google's STUN servers to bypass NAT/Firewalls
+    peer = new Peer({
+      config: { 'iceServers': [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ]}
+    });
     
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
       sysLog(`[Network] Guest registered on server! Reaching out to room ${code}...`);
       
-      // 500ms stabilization delay to prevent race conditions
-      setTimeout(() => {
-          conn = peer.connect('pointworks-bg-' + code);
-          conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
-          setupConnectionListeners(conn);
-          
-          setTimeout(() => {
-            if (conn.peerConnection) {
-               conn.peerConnection.addEventListener('iceconnectionstatechange', () => {
-                   sysLog(`[WebRTC] ICE State: ${conn.peerConnection.iceConnectionState}`);
-               });
-            }
-          }, 1000);
-      }, 500);
+      conn = peer.connect('pointworks-bg-' + code);
+      conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
+      setupConnectionListeners(conn);
     });
   });
-});
+
+  // --- BROADCAST HOOKS ---
+  const originalMakeMove = game.makeMove.bind(game);
+  game.makeMove = function(from, to) {
+    const success = originalMakeMove(from, to);
+    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
+       if (conn && conn.open) conn.send({ type: 'move', from, to });
+    }
+    return success;
+  };
+
+  const originalUndo = game.undo.bind(game);
+  game.undo = function() {
+    const success = originalUndo();
+    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
+      if (conn && conn.open) conn.send({ type: 'undo' });
+    }
+    return success;
+  };
+
+  const originalRollClick = handleRollClick;
+  handleRollClick = function() {
+    if (isNetworkGame && !initialRollOff && game.currentPlayer !== localPlayerRole) return;
+    if (isNetworkGame && initialRollOff && localPlayerRole !== 1) return; 
+    
+    if (isRolling) return;
+    isRolling = true;
+    updateUI(); 
+
+    setTimeout(() => {
+      if (initialRollOff) {
+        const result = game.rollForFirstTurn();
+        if (result.dice[0] !== result.dice[1]) initialRollOff = false;
+        if (isNetworkGame && conn && conn.open) conn.send({ type: 'roll_first', dice: result.dice });
+      } else {
+        const result = game.rollDice();
+        if (isNetworkGame && conn && conn.open) conn.send({ type: 'roll', dice: result.dice });
+      }
+      isRolling = false;
+      updateUI();
+    }, 600);
+  };
+
+}); // <-- This final closing bracket MUST be the absolute last line of the file!
