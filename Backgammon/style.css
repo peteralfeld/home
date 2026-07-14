@@ -750,8 +750,8 @@ body {
 }
 
 .borne-checker.player-2 {
-  background: linear-gradient(to right, #10b981, #0f766e);
-  border-color: #0c6c5b;
+  background: linear-gradient(to right, #ef4444, #b91c1c);
+  border-color: #991b1b;
 }
 
 /* Buttons */
