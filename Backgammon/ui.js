@@ -1297,7 +1297,7 @@ if (view === 'white') {
     });
   }
 
-  // --- HOSTING ---
+// --- HOSTING ---
   btnHost.addEventListener('click', () => {
     initNetworkGame(1);
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -1306,7 +1306,11 @@ if (view === 'white') {
     roomCodeDisplay.textContent = roomCode;
 
     sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
-    peer = new Peer('pointworks-bg-' + roomCode);
+    
+    // Added Google's public STUN servers to punch through local firewalls
+    peer = new Peer('pointworks-bg-' + roomCode, {
+      config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
+    });
     
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
@@ -1329,19 +1333,26 @@ if (view === 'white') {
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
     sysLog(`[Network] Connecting to signaling server as Guest...`);
-    peer = new Peer();
+    
+    // Added Google's public STUN servers
+    peer = new Peer({
+      config: { 'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }] }
+    });
     
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
       sysLog(`[Network] Guest registered on server! Reaching out to room ${code}...`);
-      conn = peer.connect('pointworks-bg-' + code, { reliable: true });
+      
+      // Removed the buggy { reliable: true } flag
+      conn = peer.connect('pointworks-bg-' + code);
       
       conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
       setupConnectionListeners(conn);
     });
-  });
+  }); // <-- Correctly closed listener!
 
   // --- BROADCAST HOOKS ---
+  // Restored the missing hooks that send game data across the connection!
   const originalMakeMove = game.makeMove.bind(game);
   game.makeMove = function(from, to) {
     const success = originalMakeMove(from, to);
@@ -1373,14 +1384,14 @@ if (view === 'white') {
       if (initialRollOff) {
         const result = game.rollForFirstTurn();
         if (result.dice[0] !== result.dice[1]) initialRollOff = false;
-        if (isNetworkGame) conn.send({ type: 'roll_first', dice: result.dice });
+        if (isNetworkGame && conn) conn.send({ type: 'roll_first', dice: result.dice });
       } else {
         const result = game.rollDice();
-        if (isNetworkGame) conn.send({ type: 'roll', dice: result.dice });
+        if (isNetworkGame && conn) conn.send({ type: 'roll', dice: result.dice });
       }
       isRolling = false;
       updateUI();
     }, 600);
   };
-});
 
+}); // <-- Closes the overarching DOMContentLoaded listener at the very top of the file
