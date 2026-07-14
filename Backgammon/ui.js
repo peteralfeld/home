@@ -1220,16 +1220,27 @@ if (view === 'white') {
     statusPanel.style.display = 'block';
   }
 
-  function setupConnectionListeners(connection) {
-    connection.on('open', () => {
+    function setupConnectionListeners(connection) {
+    // Helper function to fire when the connection is fully ready
+    const handleOpen = () => {
       connStatus.textContent = "Connected! Game Active.";
       connStatus.style.color = "#10b981";
       if (localPlayerRole === 1) {
-        // Host triggers game start
-        document.getElementById('btn-start-game').click();
+        // Unlock the start button and auto-click it
+        const startBtn = document.getElementById('btn-start-game');
+        startBtn.disabled = false;
+        startBtn.style.opacity = '1';
+        startBtn.click();
         connection.send({ type: 'start' });
       }
-    });
+    };
+
+    // Fix PeerJS Race Condition: Check if already open!
+    if (connection.open) {
+      handleOpen();
+    } else {
+      connection.on('open', handleOpen);
+    }
 
     connection.on('data', (data) => {
       sysLog(`[Network] Received: ${data.type}`);
@@ -1291,7 +1302,7 @@ if (view === 'white') {
     roomCodeDisplay.style.display = 'block';
     roomCodeDisplay.textContent = roomCode;
 
-    peer = new Peer('bg-' + roomCode);
+    peer = new Peer('pointworks-bg-' + roomCode);
 peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); 
     peer.on('connection', (connection) => {
       conn = connection;
@@ -1312,7 +1323,7 @@ peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`))
     peer = new Peer();
 peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); // ADD THIS
     peer.on('open', () => {
-      conn = peer.connect('bg-' + code);
+      conn = peer.connect('pointworks-bg-' + code);
       setupConnectionListeners(conn);
     });
   });
