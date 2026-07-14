@@ -902,14 +902,21 @@ function handleRollClick() {
   gameStarted = false;
   sysLog(`[System] Game ready, waiting for manual start.`);
 
-  document.getElementById('btn-start-game').addEventListener('click', (e) => {
+// Inside your DOMContentLoaded event
+document.getElementById('btn-start-game').addEventListener('click', (e) => {
     if (gameStarted) return;
+    
+    // Send start signal to the other player if in network mode
+    if (isNetworkGame && conn && conn.open) {
+        conn.send({ type: 'start' });
+    }
+
     gameStarted = true;
-    e.target.disabled = true; // Disable button while game is active
+    e.target.disabled = true;
     e.target.style.opacity = '0.5';
-    sysLog(`[System] Game manually started! White=${game.playerTypes[1]}, Red=${game.playerTypes[2]}`);
+    sysLog(`[System] Game manually started!`);
     updateUI();
-  });
+});
     
   // Listen for live dropdown changes so players can swap AI in/out mid-game
 document.getElementById('p1-type').addEventListener('change', (e) => {
@@ -1247,6 +1254,7 @@ function setupConnectionListeners(connection) {
 
     if (connection.open) handleOpen();
     else connection.on('open', handleOpen);
+
 
     connection.on('data', (data) => {
       sysLog(`[Network] Received: ${data.type}`);
