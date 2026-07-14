@@ -1197,6 +1197,7 @@ if (view === 'white') {
       requestAnimationFrame(tick);
     });
   }
+
 /* =========================================
      NETWORK LOGIC (PeerJS)
   ========================================= */
@@ -1218,10 +1219,12 @@ if (view === 'white') {
     document.getElementById('p2-type').disabled = true;
     setupPanel.style.display = 'none';
     statusPanel.style.display = 'block';
+    
+    document.getElementById('btn-start-game').disabled = true;
+    document.getElementById('btn-start-game').style.opacity = '0.5';
   }
 
-    function setupConnectionListeners(connection) {
-    // Helper function to fire when the connection is fully ready
+  function setupConnectionListeners(connection) {
     const handleOpen = () => {
       connStatus.textContent = "Connected! Game Active.";
       connStatus.style.color = "#10b981";
@@ -1303,7 +1306,7 @@ if (view === 'white') {
     roomCodeDisplay.textContent = roomCode;
 
     peer = new Peer('pointworks-bg-' + roomCode);
-peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); 
+    peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); 
     peer.on('connection', (connection) => {
       conn = connection;
       setupConnectionListeners(conn);
@@ -1317,11 +1320,11 @@ peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`))
     
     initNetworkGame(2);
     connStatus.textContent = "Connecting to Host...";
-    document.getElementById('board-view').value = 'red'; // Auto-flip board for guest
+    document.getElementById('board-view').value = 'red'; 
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
     peer = new Peer();
-peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); // ADD THIS
+    peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`));
     peer.on('open', () => {
       conn = peer.connect('pointworks-bg-' + code);
       setupConnectionListeners(conn);
@@ -1329,13 +1332,10 @@ peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`))
   });
 
   // --- BROADCAST HOOKS ---
-  // Hook into existing functions to send actions across the network
-  
   const originalMakeMove = game.makeMove.bind(game);
   game.makeMove = function(from, to) {
     const success = originalMakeMove(from, to);
     if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
-       // Opponent's board state is naturally syncing. We only broadcast OUR moves.
        conn.send({ type: 'move', from, to });
     }
     return success;
@@ -1350,12 +1350,10 @@ peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`))
     return success;
   };
 
-  // Override handleRollClick to broadcast dice
   const originalRollClick = handleRollClick;
   handleRollClick = function() {
-    // Only allow the correct player to roll
     if (isNetworkGame && !initialRollOff && game.currentPlayer !== localPlayerRole) return;
-    if (isNetworkGame && initialRollOff && localPlayerRole !== 1) return; // Only Host initiates the opening roll
+    if (isNetworkGame && initialRollOff && localPlayerRole !== 1) return; 
     
     if (isRolling) return;
     isRolling = true;
