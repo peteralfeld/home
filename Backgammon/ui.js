@@ -1321,7 +1321,7 @@ if (view === 'white') {
   const originalMakeMove = game.makeMove.bind(game);
   game.makeMove = function(from, to) {
     const success = originalMakeMove(from, to);
-    if (success && isNetworkGame && game.currentPlayer !== localPlayerRole) {
+    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
        // Opponent's board state is naturally syncing. We only broadcast OUR moves.
        conn.send({ type: 'move', from, to });
     }
