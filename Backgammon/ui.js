@@ -1225,11 +1225,14 @@ if (view === 'white') {
   }
 
   function setupConnectionListeners(connection) {
+    sysLog(`[Network] Setting up P2P data channel listeners...`);
+    
     const handleOpen = () => {
+      sysLog(`[Network] SUCCESS! Data channel is open and ready.`);
       connStatus.textContent = "Connected! Game Active.";
       connStatus.style.color = "#10b981";
       if (localPlayerRole === 1) {
-        // Unlock the start button and auto-click it
+        sysLog(`[Network] Host is sending the Start Game command...`);
         const startBtn = document.getElementById('btn-start-game');
         startBtn.disabled = false;
         startBtn.style.opacity = '1';
@@ -1238,20 +1241,19 @@ if (view === 'white') {
       }
     };
 
-    // Fix PeerJS Race Condition: Check if already open!
     if (connection.open) {
+      sysLog(`[Network] Connection was already open. Proceeding...`);
       handleOpen();
     } else {
       connection.on('open', handleOpen);
     }
 
     connection.on('data', (data) => {
-      sysLog(`[Network] Received: ${data.type}`);
+      sysLog(`[Network] Received action: ${data.type}`);
       
       if (data.type === 'start') {
         document.getElementById('btn-start-game').click();
       }
-      
       if (data.type === 'roll_first') {
         isRolling = true;
         updateUI();
@@ -1262,7 +1264,6 @@ if (view === 'white') {
           updateUI();
         }, 600);
       }
-      
       if (data.type === 'roll') {
         isRolling = true;
         updateUI();
@@ -1272,7 +1273,6 @@ if (view === 'white') {
           updateUI();
         }, 600);
       }
-
       if (data.type === 'move') {
         if (animationOn) {
           animateCheckerMove(data.from, data.to).then(() => {
@@ -1284,7 +1284,6 @@ if (view === 'white') {
           updateUI();
         }
       }
-
       if (data.type === 'undo') {
         game.undo();
         updateUI();
@@ -1292,6 +1291,7 @@ if (view === 'white') {
     });
 
     connection.on('close', () => {
+      sysLog(`[Network] Connection closed by opponent.`);
       connStatus.textContent = "Opponent Disconnected.";
       connStatus.style.color = "#ef4444";
     });
@@ -1305,9 +1305,14 @@ if (view === 'white') {
     roomCodeDisplay.style.display = 'block';
     roomCodeDisplay.textContent = roomCode;
 
+    sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     peer = new Peer('pointworks-bg-' + roomCode);
-    peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); 
+    
+    peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
+    peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
+    
     peer.on('connection', (connection) => {
+      sysLog(`[Network] Incoming connection detected from a Guest!`);
       conn = connection;
       setupConnectionListeners(conn);
     });
@@ -1323,10 +1328,15 @@ if (view === 'white') {
     document.getElementById('board-view').value = 'red'; 
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
+    sysLog(`[Network] Connecting to signaling server as Guest...`);
     peer = new Peer();
-    peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`));
-    peer.on('open', () => {
-      conn = peer.connect('pointworks-bg-' + code);
+    
+    peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
+    peer.on('open', (id) => {
+      sysLog(`[Network] Guest registered on server! Reaching out to room ${code}...`);
+      conn = peer.connect('pointworks-bg-' + code, { reliable: true });
+      
+      conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
       setupConnectionListeners(conn);
     });
   });
@@ -1373,3 +1383,4 @@ if (view === 'white') {
     }, 600);
   };
 });
+
