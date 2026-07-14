@@ -1292,6 +1292,7 @@ if (view === 'white') {
     roomCodeDisplay.textContent = roomCode;
 
     peer = new Peer('bg-' + roomCode);
+peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); 
     peer.on('connection', (connection) => {
       conn = connection;
       setupConnectionListeners(conn);
@@ -1309,6 +1310,7 @@ if (view === 'white') {
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
     peer = new Peer();
+peer.on('error', (err) => sysLog(`[Network Error] ${err.type}: ${err.message}`)); // ADD THIS
     peer.on('open', () => {
       conn = peer.connect('bg-' + code);
       setupConnectionListeners(conn);
