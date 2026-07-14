@@ -1224,36 +1224,43 @@ if (view === 'white') {
     document.getElementById('btn-start-game').style.opacity = '0.5';
   }
 
-  function setupConnectionListeners(connection) {
+function setupConnectionListeners(connection) {
     sysLog(`[Network] Setting up P2P data channel listeners...`);
     
     const handleOpen = () => {
-      sysLog(`[Network] SUCCESS! Data channel is open and ready.`);
+      sysLog(`[Network] SUCCESS! Data channel is open.`);
       connStatus.textContent = "Connected! Game Active.";
       connStatus.style.color = "#10b981";
+      
       if (localPlayerRole === 1) {
-        sysLog(`[Network] Host is sending the Start Game command...`);
-        const startBtn = document.getElementById('btn-start-game');
-        startBtn.disabled = false;
-        startBtn.style.opacity = '1';
-        startBtn.click();
-        connection.send({ type: 'start' });
+        // Host immediately syncs game state to Guest
+        connection.send({ 
+            type: 'sync', 
+            points: game.points, 
+            bar: game.bar, 
+            borneOff: game.borneOff 
+        });
+        document.getElementById('btn-start-game').disabled = false;
+        document.getElementById('btn-start-game').style.opacity = '1';
       }
     };
 
-    if (connection.open) {
-      sysLog(`[Network] Connection was already open. Proceeding...`);
-      handleOpen();
-    } else {
-      connection.on('open', handleOpen);
-    }
+    if (connection.open) handleOpen();
+    else connection.on('open', handleOpen);
 
     connection.on('data', (data) => {
-      sysLog(`[Network] Received action: ${data.type}`);
+      sysLog(`[Network] Received: ${data.type}`);
       
-      if (data.type === 'start') {
-        document.getElementById('btn-start-game').click();
+      // Force update state from Host
+      if (data.type === 'sync') {
+          game.points = data.points;
+          game.bar = data.bar;
+          game.borneOff = data.borneOff;
+          updateUI();
       }
+      
+      if (data.type === 'start') document.getElementById('btn-start-game').click();
+      
       if (data.type === 'roll_first') {
         isRolling = true;
         updateUI();
@@ -1264,6 +1271,7 @@ if (view === 'white') {
           updateUI();
         }, 600);
       }
+      
       if (data.type === 'roll') {
         isRolling = true;
         updateUI();
@@ -1273,6 +1281,7 @@ if (view === 'white') {
           updateUI();
         }, 600);
       }
+
       if (data.type === 'move') {
         if (animationOn) {
           animateCheckerMove(data.from, data.to).then(() => {
@@ -1284,6 +1293,7 @@ if (view === 'white') {
           updateUI();
         }
       }
+
       if (data.type === 'undo') {
         game.undo();
         updateUI();
@@ -1291,7 +1301,6 @@ if (view === 'white') {
     });
 
     connection.on('close', () => {
-      sysLog(`[Network] Connection closed by opponent.`);
       connStatus.textContent = "Opponent Disconnected.";
       connStatus.style.color = "#ef4444";
     });
