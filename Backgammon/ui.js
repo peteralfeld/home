@@ -944,7 +944,10 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
     if (game.winner) return;
     if (isAIPlaying) return;
 
-    if (initialRollOff) {
+      if (isNetworkGame) return; // Completely disable AI routines during network play
+      if (game.playerTypes[1] !== 'ai' && game.playerTypes[2] !== 'ai') return; 
+
+      if (initialRollOff) {
       if (!isRolling) {
         sysLog(`[AI] Game start. Automating initial roll decider...`);
         isRolling = true;
