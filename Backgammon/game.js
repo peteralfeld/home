@@ -72,12 +72,15 @@ class BackgammonGame {
    * Decide which player starts. Roll both dice; highest wins.
    * If equal, roll again. Returns the starting player and the rolled dice.
    */
-  rollForFirstTurn() {
-    let d1, d2;
-    do {
-      d1 = Math.floor(Math.random() * 6) + 1;
-      d2 = Math.floor(Math.random() * 6) + 1;
-    } while (d1 === d2);
+
+rollForFirstTurn(forceD1 = null, forceD2 = null) {
+    let d1 = forceD1, d2 = forceD2;
+    if (d1 === null || d2 === null) {
+      do {
+        d1 = Math.floor(Math.random() * 6) + 1;
+        d2 = Math.floor(Math.random() * 6) + 1;
+      } while (d1 === d2);
+    }
 
     this.dice = [d1, d2];
     this.currentPlayer = d1 > d2 ? 1 : 2;
@@ -87,12 +90,7 @@ class BackgammonGame {
     this.saveStateToHistory();
 
     this.turnCount = 1;
-    const winnerColor = this.currentPlayer === 1 ? "White" : "Red";
-
-    return {
-      currentPlayer: this.currentPlayer,
-      dice: this.dice
-    };
+    return { currentPlayer: this.currentPlayer, dice: this.dice };
   }
 
   /**

@@ -4,6 +4,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+
+ let isNetworkGame = false;
+  let localPlayerRole = null; // 1 = White, 2 = Red
+  let peer = null;
+  let conn = null;   
+
   const game = new BackgammonGame();
   
   // DOM Elements
@@ -377,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           // Drag Start Handler
-          if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft.length > 0 && !game.hasCheckersOnBar(game.currentPlayer) && game.playerTypes[game.currentPlayer] === 'human') {
+if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft.length > 0 && !game.hasCheckersOnBar(game.currentPlayer) && game.playerTypes[game.currentPlayer] === 'human' && (!isNetworkGame || game.currentPlayer === localPlayerRole)) {
             checker.setAttribute('draggable', 'true');
             setupDragEvents(checker, i);
           }
@@ -399,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let c = 0; c < game.bar[1]; c++) {
       const checker = document.createElement('div');
       checker.className = 'checker player-1';
-      if (game.currentPlayer === 1 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[1] === 'human') {
+	if (game.currentPlayer === 1 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[1] === 'human' && (!isNetworkGame || game.currentPlayer === localPlayerRole)) {
         checker.setAttribute('draggable', 'true');
         setupDragEvents(checker, "bar");
       }
@@ -410,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
     for (let c = 0; c < game.bar[2]; c++) {
       const checker = document.createElement('div');
       checker.className = 'checker player-2';
-      if (game.currentPlayer === 2 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[2] === 'human') {
+	if (game.currentPlayer === 2 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[2] === 'human' && (!isNetworkGame || game.currentPlayer === localPlayerRole)) {
         checker.setAttribute('draggable', 'true');
         setupDragEvents(checker, "bar");
       }
@@ -1188,4 +1194,168 @@ if (view === 'white') {
       requestAnimationFrame(tick);
     });
   }
+/* =========================================
+     NETWORK LOGIC (PeerJS)
+  ========================================= */
+  
+  const btnHost = document.getElementById('btn-host');
+  const btnJoin = document.getElementById('btn-join');
+  const joinCodeInput = document.getElementById('join-code');
+  const setupPanel = document.getElementById('network-setup');
+  const statusPanel = document.getElementById('network-status');
+  const connStatus = document.getElementById('conn-status');
+  const roomCodeDisplay = document.getElementById('room-code-display');
+
+  function initNetworkGame(role) {
+    isNetworkGame = true;
+    localPlayerRole = role;
+    game.playerTypes[1] = 'human';
+    game.playerTypes[2] = 'human';
+    document.getElementById('p1-type').disabled = true;
+    document.getElementById('p2-type').disabled = true;
+    setupPanel.style.display = 'none';
+    statusPanel.style.display = 'block';
+  }
+
+  function setupConnectionListeners(connection) {
+    connection.on('open', () => {
+      connStatus.textContent = "Connected! Game Active.";
+      connStatus.style.color = "#10b981";
+      if (localPlayerRole === 1) {
+        // Host triggers game start
+        document.getElementById('btn-start-game').click();
+        connection.send({ type: 'start' });
+      }
+    });
+
+    connection.on('data', (data) => {
+      sysLog(`[Network] Received: ${data.type}`);
+      
+      if (data.type === 'start') {
+        document.getElementById('btn-start-game').click();
+      }
+      
+      if (data.type === 'roll_first') {
+        isRolling = true;
+        updateUI();
+        setTimeout(() => {
+          game.rollForFirstTurn(data.dice[0], data.dice[1]);
+          initialRollOff = (data.dice[0] === data.dice[1]);
+          isRolling = false;
+          updateUI();
+        }, 600);
+      }
+      
+      if (data.type === 'roll') {
+        isRolling = true;
+        updateUI();
+        setTimeout(() => {
+          game.rollDice(data.dice[0], data.dice[1]);
+          isRolling = false;
+          updateUI();
+        }, 600);
+      }
+
+      if (data.type === 'move') {
+        if (animationOn) {
+          animateCheckerMove(data.from, data.to).then(() => {
+            game.makeMove(data.from, data.to);
+            updateUI();
+          });
+        } else {
+          game.makeMove(data.from, data.to);
+          updateUI();
+        }
+      }
+
+      if (data.type === 'undo') {
+        game.undo();
+        updateUI();
+      }
+    });
+
+    connection.on('close', () => {
+      connStatus.textContent = "Opponent Disconnected.";
+      connStatus.style.color = "#ef4444";
+    });
+  }
+
+  // --- HOSTING ---
+  btnHost.addEventListener('click', () => {
+    initNetworkGame(1);
+    const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+    connStatus.textContent = "Waiting for opponent...";
+    roomCodeDisplay.style.display = 'block';
+    roomCodeDisplay.textContent = roomCode;
+
+    peer = new Peer('bg-' + roomCode);
+    peer.on('connection', (connection) => {
+      conn = connection;
+      setupConnectionListeners(conn);
+    });
+  });
+
+  // --- JOINING ---
+  btnJoin.addEventListener('click', () => {
+    const code = joinCodeInput.value.trim().toUpperCase();
+    if (!code) return;
+    
+    initNetworkGame(2);
+    connStatus.textContent = "Connecting to Host...";
+    document.getElementById('board-view').value = 'red'; // Auto-flip board for guest
+    document.getElementById('board-view').dispatchEvent(new Event('change'));
+
+    peer = new Peer();
+    peer.on('open', () => {
+      conn = peer.connect('bg-' + code);
+      setupConnectionListeners(conn);
+    });
+  });
+
+  // --- BROADCAST HOOKS ---
+  // Hook into existing functions to send actions across the network
+  
+  const originalMakeMove = game.makeMove.bind(game);
+  game.makeMove = function(from, to) {
+    const success = originalMakeMove(from, to);
+    if (success && isNetworkGame && game.currentPlayer !== localPlayerRole) {
+       // Opponent's board state is naturally syncing. We only broadcast OUR moves.
+       conn.send({ type: 'move', from, to });
+    }
+    return success;
+  };
+
+  const originalUndo = game.undo.bind(game);
+  game.undo = function() {
+    const success = originalUndo();
+    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
+      conn.send({ type: 'undo' });
+    }
+    return success;
+  };
+
+  // Override handleRollClick to broadcast dice
+  const originalRollClick = handleRollClick;
+  handleRollClick = function() {
+    // Only allow the correct player to roll
+    if (isNetworkGame && !initialRollOff && game.currentPlayer !== localPlayerRole) return;
+    if (isNetworkGame && initialRollOff && localPlayerRole !== 1) return; // Only Host initiates the opening roll
+    
+    if (isRolling) return;
+    isRolling = true;
+    updateUI(); 
+
+    setTimeout(() => {
+      if (initialRollOff) {
+        const result = game.rollForFirstTurn();
+        if (result.dice[0] !== result.dice[1]) initialRollOff = false;
+        if (isNetworkGame) conn.send({ type: 'roll_first', dice: result.dice });
+      } else {
+        const result = game.rollDice();
+        if (isNetworkGame) conn.send({ type: 'roll', dice: result.dice });
+      }
+      isRolling = false;
+      updateUI();
+    }, 600);
+  };
 });
