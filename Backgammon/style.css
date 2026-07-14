@@ -115,9 +115,9 @@ body {
 }
 
 .player2-turn {
-  background: rgba(239, 68, 68, 0.08);
-  color: var(--accent-red);
-  border: 1px solid rgba(239, 68, 68, 0.15);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.15);
 }
 
 /* Layout */
@@ -416,7 +416,7 @@ body {
 
 .checker.player-2:hover {
   filter: brightness(1.1);
-  box-shadow: var(--checker-p2-shadow), 0 0 10px var(--accent-red);
+  box-shadow: var(--checker-p2-shadow), 0 0 10px var(--accent-green);
 }
 
 /* Checker Overlapping Stack Layout styling */
@@ -498,7 +498,7 @@ body {
 }
 
 .p1-dot { background-color: #ffffff; box-shadow: 0 0 6px #ffffff; }
-.p2-dot { background-color: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+.p2-dot { background-color: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
 
 .player-name {
   font-size: 0.8rem;
@@ -558,7 +558,7 @@ body {
   transition: transform 0.6s ease;
 }
 
-/* Styling P2's deep malachite green dice */
+/* Styling P2's red dice */
 .player2-turn-active .die {
   background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 60%, #450a0a 100%);
   border: 1px solid rgba(239, 68, 68, 0.4);
@@ -750,8 +750,8 @@ body {
 }
 
 .borne-checker.player-2 {
-  background: linear-gradient(to right, #ef4444, #7f1d1d);
-  border-color: #450a0a;
+  background: linear-gradient(to right, #10b981, #0f766e);
+  border-color: #0c6c5b;
 }
 
 /* Buttons */

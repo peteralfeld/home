@@ -38,7 +38,7 @@
     <main class="game-layout">
       <!-- The main Backgammon board -->
       <div class="board-area">
-        <section class="board-wrapper" aria-label="Backgammon Board">
+        <section class="board-wrapper view-red" aria-label="Backgammon Board">
           <!-- Top Row Labels (Yellow, in brown margin) -->
           <div class="board-labels-outer labels-top">
             <div class="quadrant-labels">
@@ -123,13 +123,13 @@
 <aside class="sidebar-panel">
 
         <div class="glass-card config-station">
-          <h3>Backgammon v. 3</h3>
+          <h2>Backgammon v. 4</h2>
           
           <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
             <label for="board-view" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
             <select id="board-view" style="flex: 1; background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.3rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-              <option value="white" selected>White</option>
-              <option value="red">Red</option>
+              <option value="white">White</option>
+              <option value="red" selected>Red</option>
               <option value="home">Home</option>
               <option value="outer">Outer</option>
             </select>
@@ -140,14 +140,14 @@
               <label for="p1-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
               <select id="p1-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
                 <option value="human">Human</option>
-                <option value="ai">AI</option>
+                <option value="ai" selected>AI</option>
               </select>
             </div>
             <div style="display: flex; align-items: center; gap: 0.4rem;">
               <label for="p2-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
               <select id="p2-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-                <option value="human">Human</option>
-                <option value="ai" selected>AI</option>
+                <option value="human" selected>Human</option>
+                <option value="ai">AI</option>
               </select>
             </div>
           </div>
