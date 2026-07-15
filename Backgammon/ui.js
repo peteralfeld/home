@@ -1405,24 +1405,21 @@ handleRollClick = function() {
 function startGame(isRemote = false) {
     if (gameStarted) return;
     
-    // Only send the signal if this was initiated locally by the host
     if (!isRemote && isNetworkGame && conn && conn.open) {
         conn.send({ type: 'start' });
     }
 
     gameStarted = true;
-    initialRollOff = true; // Set to true to trigger "Click the dice" state
+    initialRollOff = true;
+    game.currentPlayer = 1; // <--- ADD THIS LINE
+    game.hasRolled = false; // <--- ENSURE THIS IS FALSE
     
-    // Explicitly update the UI so the message changes
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
     btnStart.style.opacity = '0.5';
     
     sysLog(`[System] Game started!`);
-    
-    // Refresh the UI to make sure the message "Click the dice..." appears
     updateUI(); 
 }
-
 
 }); // <-- This final closing bracket MUST be the absolute last line of the file!
