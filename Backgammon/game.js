@@ -93,44 +93,39 @@ rollForFirstTurn(forceD1 = null, forceD2 = null) {
     return { currentPlayer: this.currentPlayer, dice: this.dice };
   }
 
-  /**
-   * Roll dice for standard turn.
-   */
+/**
+ * Roll dice for standard turn.
+ */
 rollDice(d1 = null, d2 = null) {
-  if (this.hasRolled && d1 === null) return null; // Prevent re-rolling unless receiving remote data
+  // 1. If we have already rolled and no manual dice are provided, exit.
+  if (this.hasRolled && d1 === null) return null;
 
+  // 2. Determine dice values (either provided or random)
   const roll1 = d1 !== null ? d1 : Math.floor(Math.random() * 6) + 1;
   const roll2 = d2 !== null ? d2 : Math.floor(Math.random() * 6) + 1;
   
+  // 3. Update game state
   this.dice = [roll1, roll2];
   this.hasRolled = true;
-    if (this.hasRolled) return null;
-
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    
-    this.dice = [d1, d2];
-    this.hasRolled = true;
-    
-    if (d1 === d2) {
-      // Doubles get 4 moves of that value
-      this.movesLeft = [d1, d1, d1, d1];
-    } else {
-      this.movesLeft = [d1, d2];
-    }
-
-    this.turnHistory = [];
-    this.saveStateToHistory(); // Save the initial state of the turn for undos
-
-    this.turnCount++;
-    const playerColor = this.currentPlayer === 1 ? "White" : "Red";
-
-    return {
-      dice: this.dice,
-      movesLeft: [...this.movesLeft]
-    };
+  
+  if (roll1 === roll2) {
+    // Doubles get 4 moves of that value
+    this.movesLeft = [roll1, roll1, roll1, roll1];
+  } else {
+    this.movesLeft = [roll1, roll2];
   }
 
+  this.turnHistory = [];
+  this.saveStateToHistory(); // Save the initial state of the turn for undos
+
+  this.turnCount++;
+
+  return {
+    dice: this.dice,
+    movesLeft: [...this.movesLeft]
+  };
+}
+    
   /**
    * Deep copy of important state properties for undo.
    */
