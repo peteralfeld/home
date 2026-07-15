@@ -902,20 +902,8 @@ function handleRollClick() {
   gameStarted = false;
   sysLog(`[System] Game ready, waiting for manual start.`);
 
-// Inside your DOMContentLoaded event
-document.getElementById('btn-start-game').addEventListener('click', (e) => {
-    if (gameStarted) return;
-    
-    // Send start signal to the other player if in network mode
-    if (isNetworkGame && conn && conn.open) {
-        conn.send({ type: 'start' });
-    }
-
-    gameStarted = true;
-    e.target.disabled = true;
-    e.target.style.opacity = '0.5';
-    sysLog(`[System] Game manually started!`);
-    updateUI();
+document.getElementById('btn-start-game').addEventListener('click', () => {
+    startGame(false);
 });
     
   // Listen for live dropdown changes so players can swap AI in/out mid-game
@@ -1240,7 +1228,6 @@ function setupConnectionListeners(connection) {
       connStatus.style.color = "#10b981";
       
       if (localPlayerRole === 1) {
-        // Host immediately syncs game state to Guest
         connection.send({ 
             type: 'sync', 
             points: game.points, 
@@ -1255,11 +1242,10 @@ function setupConnectionListeners(connection) {
     if (connection.open) handleOpen();
     else connection.on('open', handleOpen);
 
-
+    // This is the single, correct data listener
     connection.on('data', (data) => {
       sysLog(`[Network] Received: ${data.type}`);
       
-      // Force update state from Host
       if (data.type === 'sync') {
           game.points = data.points;
           game.bar = data.bar;
@@ -1267,7 +1253,10 @@ function setupConnectionListeners(connection) {
           updateUI();
       }
       
-      if (data.type === 'start') document.getElementById('btn-start-game').click();
+      if (data.type === 'start') {
+          sysLog(`[Network] Start signal received from opponent.`);
+          startGame(true); 
+      }     
       
       if (data.type === 'roll_first') {
         isRolling = true;
@@ -1312,8 +1301,8 @@ function setupConnectionListeners(connection) {
       connStatus.textContent = "Opponent Disconnected.";
       connStatus.style.color = "#ef4444";
     });
-  }
-
+}
+    
   // --- HOSTING ---
   btnHost.addEventListener('click', () => {
     initNetworkGame(1);
@@ -1413,5 +1402,22 @@ function setupConnectionListeners(connection) {
       updateUI();
     }, 600);
   };
+
+function startGame(isRemote = false) {
+    if (gameStarted) return;
+    
+    // Only send the signal if this was initiated locally by the host
+    if (!isRemote && isNetworkGame && conn && conn.open) {
+        conn.send({ type: 'start' });
+    }
+
+    gameStarted = true;
+    const btnStart = document.getElementById('btn-start-game');
+    btnStart.disabled = true;
+    btnStart.style.opacity = '0.5';
+    
+    sysLog(`[System] Game started!`);
+    updateUI();
+}
 
 }); // <-- This final closing bracket MUST be the absolute last line of the file!
