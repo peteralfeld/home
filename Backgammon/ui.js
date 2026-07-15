@@ -82,8 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Initialize Board Visuals
-  renderDie(die1El, 1);
-  renderDie(die2El, 1);
+  renderDie(die1El, 0);
+  renderDie(die2El, 0);
   sysLog("[System] Event listeners binding...");
   updateUI();
 
@@ -156,8 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
           btnStart.style.opacity = '1';
         }
         
-          renderDie(die1El, 1);
-          renderDie(die2El, 1);
+          renderDie(die1El, 0);
+          renderDie(die2El, 0);
         updateUI();
       }
     });
@@ -292,6 +292,12 @@ document.addEventListener('DOMContentLoaded', () => {
       diceContainerEl.classList.add('rollable');
     } else {
       diceContainerEl.classList.remove('rollable');
+    }
+
+      if (initialRollOff) {
+      diceContainerEl.classList.add('initial-roll-off');
+    } else {
+      diceContainerEl.classList.remove('initial-roll-off');
     }
 
 // Inside handleRollClick in ui.js
