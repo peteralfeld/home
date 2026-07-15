@@ -96,7 +96,14 @@ rollForFirstTurn(forceD1 = null, forceD2 = null) {
   /**
    * Roll dice for standard turn.
    */
-  rollDice() {
+rollDice(d1 = null, d2 = null) {
+  if (this.hasRolled && d1 === null) return null; // Prevent re-rolling unless receiving remote data
+
+  const roll1 = d1 !== null ? d1 : Math.floor(Math.random() * 6) + 1;
+  const roll2 = d2 !== null ? d2 : Math.floor(Math.random() * 6) + 1;
+  
+  this.dice = [roll1, roll2];
+  this.hasRolled = true;
     if (this.hasRolled) return null;
 
     const d1 = Math.floor(Math.random() * 6) + 1;

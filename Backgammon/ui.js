@@ -1381,29 +1381,28 @@ function setupConnectionListeners(connection) {
   };
 
   const originalRollClick = handleRollClick;
-  handleRollClick = function() {
-    if (isNetworkGame && !initialRollOff && game.currentPlayer !== localPlayerRole) return;
-    if (isNetworkGame && initialRollOff && localPlayerRole !== 1) return; 
+
+// In ui.js
+handleRollClick = function() {
+    // Only the active player should trigger a roll
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
     
     if (isRolling) return;
     isRolling = true;
     updateUI(); 
 
     setTimeout(() => {
-      if (initialRollOff) {
-        const result = game.rollForFirstTurn();
-        if (result.dice[0] !== result.dice[1]) initialRollOff = false;
-        if (isNetworkGame && conn && conn.open) conn.send({ type: 'roll_first', dice: result.dice });
-      } else {
-        const result = game.rollDice();
-        if (isNetworkGame && conn && conn.open) conn.send({ type: 'roll', dice: result.dice });
+      // Host/Guest logic: Roll and send to other
+      const result = game.rollDice(); // Generates locally
+      if (isNetworkGame && conn && conn.open) {
+          conn.send({ type: 'roll', dice: result.dice });
       }
       isRolling = false;
       updateUI();
     }, 600);
-  };
+};
 
-function startGame(isRemote = false) {
+    function startGame(isRemote = false) {
     if (gameStarted) return;
     
     // Only send the signal if this was initiated locally by the host
