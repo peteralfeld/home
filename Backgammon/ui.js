@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
     scoreP1.textContent = `${game.borneOff[1]} / 15`;
     scoreP2.textContent = `${game.borneOff[2]} / 15`;
 
-    // 5. Update header turn indicator
+// 5. Update header turn indicator
     if (turnDisplay && turnText) {
       if (game.currentPlayer) {
         turnDisplay.style.display = 'flex';
@@ -267,13 +267,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else {
       // Still toggle turn classes on body even if top panel is removed
-      if (game.currentPlayer === 2) {
+      // UPDATE: Force red dice for the guest while waiting for the game to start
+      if (game.currentPlayer === 2 || (!gameStarted && isNetworkGame && localPlayerRole === 2)) {
         document.body.classList.add('player2-turn-active');
       } else {
         document.body.classList.remove('player2-turn-active');
       }
     }
-
+      
     // 6. Update Dice values list
     renderRemainingMovesTokens();
 
@@ -285,8 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cubeOwnerSpan.textContent = game.doublingCubeOwner === null ? "Either Player" : (game.doublingCubeOwner === 1 ? "Player 1 (White)" : "Player 2 (Red)");
     doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
     btnDouble.disabled = !game.canDouble(game.currentPlayer);
-
-    // 7c. Update dice container styling classes (rollable/initial-roll-off)
+// 7c. Update dice container styling classes (rollable/initial-roll-off)
     const canRoll = !game.hasRolled || initialRollOff;
     if (canRoll && !game.winner && !isRolling) {
       diceContainerEl.classList.add('rollable');
@@ -294,11 +294,15 @@ document.addEventListener('DOMContentLoaded', () => {
       diceContainerEl.classList.remove('rollable');
     }
 
-      if (initialRollOff) {
+    // ADD THIS BLOCK: Toggle the red/white colors
+    if (initialRollOff && !(isNetworkGame && localPlayerRole === 2 && !gameStarted)) {
       diceContainerEl.classList.add('initial-roll-off');
     } else {
       diceContainerEl.classList.remove('initial-roll-off');
     }
+
+    // 7d. Render history list logs
+
 
 // Inside handleRollClick in ui.js
 if (initialRollOff) {
@@ -321,17 +325,21 @@ if (initialRollOff) {
     // 7d. Render history list logs
     renderHistoryList();
 
-    // 8. Handle messages and turn advancement
+// 8. Handle messages and turn advancement
     if (game.winner) {
       gameMessageEl.textContent = `🎉 Game Over! Player ${game.winner === 1 ? '1 (White)' : '2 (Red)'} wins the game!`;
       btnUndo.disabled = true;
     } else if (!gameStarted) {
-      gameMessageEl.textContent = "Select players and click START GAME!";
+      // UPDATE: Show waiting message for guest, standard message for host
+      if (isNetworkGame && localPlayerRole === 2) {
+        gameMessageEl.textContent = "Waiting for the host to start the game...";
+      } else {
+        gameMessageEl.textContent = "Select players and click START GAME!";
+      }
     } else if (initialRollOff) {
       gameMessageEl.textContent = "Click the dice to decide who starts!";
-      gameMessageEl.textContent = "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
-      gameMessageEl.textContent = `Player ${game.currentPlayer === 1 ? '1 (White)' : '2 (Red)'}: Click the dice to roll.`;
+	gameMessageEl.textContent = `Player ${game.currentPlayer === 1 ? '1 (White)' : '2 (Red)'}: Click the dice to roll.`;
     } else {
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
