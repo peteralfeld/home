@@ -1228,6 +1228,8 @@ if (view === 'white') {
     localPlayerRole = role;
     game.playerTypes[1] = 'human';
     game.playerTypes[2] = 'human';
+    document.getElementById('p1-type').value = 'human';
+    document.getElementById('p2-type').value = 'human';
     document.getElementById('p1-type').disabled = true;
     document.getElementById('p2-type').disabled = true;
     setupPanel.style.display = 'none';
