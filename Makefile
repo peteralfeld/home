@@ -2,5 +2,5 @@
 deploy:
 	echo 'updating github'
 	git add .
-	-git commit 
+	-git commit -m "github update"
 	git push
