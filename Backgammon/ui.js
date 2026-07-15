@@ -1402,7 +1402,7 @@ handleRollClick = function() {
     }, 600);
 };
 
-    function startGame(isRemote = false) {
+function startGame(isRemote = false) {
     if (gameStarted) return;
     
     // Only send the signal if this was initiated locally by the host
@@ -1411,13 +1411,17 @@ handleRollClick = function() {
     }
 
     gameStarted = true;
-    initialRollOff = true; // Ensure this is set to true for the start
+    initialRollOff = true; // Set to true to trigger "Click the dice" state
+    
+    // Explicitly update the UI so the message changes
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
     btnStart.style.opacity = '0.5';
     
     sysLog(`[System] Game started!`);
-    updateUI(); // This forces the UI to show the "Click the dice" message
+    
+    // Refresh the UI to make sure the message "Click the dice..." appears
+    updateUI(); 
 }
 
 
