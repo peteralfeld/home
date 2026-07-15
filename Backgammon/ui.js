@@ -1302,17 +1302,21 @@ function setupConnectionListeners(connection) {
         }, 600);
       }
 
-      if (data.type === 'move') {
-        if (animationOn) {
-          animateCheckerMove(data.from, data.to).then(() => {
-            game.makeMove(data.from, data.to);
-            updateUI();
-          });
-        } else {
-          game.makeMove(data.from, data.to);
-          updateUI();
-        }
-      }
+if (data.type === 'move') {
+    if (animationOn) {
+      animateCheckerMove(data.from, data.to).then(() => {
+        game.makeMove(data.from, data.to);
+        // If the move completed the turn, switch player
+        if (game.movesLeft.length === 0) game.endTurn(); 
+        updateUI();
+      });
+    } else {
+      game.makeMove(data.from, data.to);
+      // If the move completed the turn, switch player
+      if (game.movesLeft.length === 0) game.endTurn(); 
+      updateUI();
+    }
+}
 
       if (data.type === 'undo') {
         game.undo();
