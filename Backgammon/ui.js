@@ -294,11 +294,23 @@ document.addEventListener('DOMContentLoaded', () => {
       diceContainerEl.classList.remove('rollable');
     }
 
-    if (initialRollOff) {
-      diceContainerEl.classList.add('initial-roll-off');
+// Inside handleRollClick in ui.js
+if (initialRollOff) {
+    const result = game.rollForFirstTurn();
+    if (result.dice[0] !== result.dice[1]) {
+        initialRollOff = false;
+        // If playing network game, tell guest the game has started
+        if (isNetworkGame && conn && conn.open) {
+            conn.send({ type: 'roll_first', dice: result.dice });
+        }
     } else {
-      diceContainerEl.classList.remove('initial-roll-off');
+        sysLog("[Roll] Tie! Rolling again...");
+        // Ensure the UI updates immediately so the user knows they must roll again
+        updateUI(); 
+        isRolling = false; // Reset lock to allow re-roll
+        return; // Stop here so we don't proceed to game.rollDice()
     }
+}
 
     // 7d. Render history list logs
     renderHistoryList();
@@ -1244,7 +1256,18 @@ function setupConnectionListeners(connection) {
 
     // This is the single, correct data listener
     connection.on('data', (data) => {
-      sysLog(`[Network] Received: ${data.type}`);
+	sysLog(`[Network] Received: ${data.type}`);
+
+	if (data.type === 'roll_first') {
+    isRolling = true;
+    updateUI();
+    setTimeout(() => {
+      game.rollForFirstTurn(data.dice[0], data.dice[1]);
+      initialRollOff = (data.dice[0] === data.dice[1]);
+      isRolling = false;
+      updateUI();
+    }, 600);
+  }
       
       if (data.type === 'sync') {
           game.points = data.points;
