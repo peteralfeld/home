@@ -1411,12 +1411,14 @@ handleRollClick = function() {
     }
 
     gameStarted = true;
+    initialRollOff = true; // Ensure this is set to true for the start
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
     btnStart.style.opacity = '0.5';
     
     sysLog(`[System] Game started!`);
-    updateUI();
+    updateUI(); // This forces the UI to show the "Click the dice" message
 }
+
 
 }); // <-- This final closing bracket MUST be the absolute last line of the file!
