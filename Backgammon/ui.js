@@ -1330,9 +1330,14 @@ if (data.type === 'move') {
     });
 }
     
-  // --- HOSTING ---
+// --- HOSTING ---
   btnHost.addEventListener('click', () => {
     initNetworkGame(1);
+    
+    // Explicitly set the host view to 'white'
+    document.getElementById('board-view').value = 'white';
+    document.getElementById('board-view').dispatchEvent(new Event('change'));
+
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     connStatus.textContent = "Waiting for opponent...";
     roomCodeDisplay.style.display = 'block';
@@ -1365,6 +1370,8 @@ if (data.type === 'move') {
     
     initNetworkGame(2);
     connStatus.textContent = "Connecting to Host...";
+    
+    // Explicitly set the guest view to 'red'
     document.getElementById('board-view').value = 'red'; 
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
