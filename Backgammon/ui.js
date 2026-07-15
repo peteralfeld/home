@@ -739,8 +739,7 @@ function handleRollClick() {
       updateUI();
     }
   }
-
-  /**
+/**
    * Handle reset click.
    */
   function handleResetClick() {
@@ -761,8 +760,11 @@ function handleRollClick() {
       legalDestinations = [];
       initialRollOff = true;
       isRolling = false;
-      renderDie(die1El, 1);
-      renderDie(die2El, 1);
+      
+      // Changed from 1 to 0
+      renderDie(die1El, 0);
+      renderDie(die2El, 0);
+      
       updateUI();
     }
   }
@@ -1231,9 +1233,19 @@ if (view === 'white') {
   const connStatus = document.getElementById('conn-status');
   const roomCodeDisplay = document.getElementById('room-code-display');
 
-  function initNetworkGame(role) {
+function initNetworkGame(role) {
     isNetworkGame = true;
     localPlayerRole = role;
+
+    // --- WIPE ANY PREVIOUS LOCAL STATE ---
+    game.reset();
+    initialRollOff = true;
+    isRolling = false;
+    gameStarted = false;
+    renderDie(die1El, 0);
+    renderDie(die2El, 0);
+    // -------------------------------------
+
     game.playerTypes[1] = 'human';
     game.playerTypes[2] = 'human';
     document.getElementById('p1-type').value = 'human';
@@ -1245,6 +1257,9 @@ if (view === 'white') {
     
     document.getElementById('btn-start-game').disabled = true;
     document.getElementById('btn-start-game').style.opacity = '0.5';
+
+    // Refresh the UI to apply the blank dice immediately
+    updateUI(); 
   }
 
 function setupConnectionListeners(connection) {
