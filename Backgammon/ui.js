@@ -5,10 +5,48 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
- let isNetworkGame = false;
+  let isNetworkGame = false;
   let localPlayerRole = null; // 1 = White, 2 = Red
   let peer = null;
   let conn = null;   
+
+  // --- NEW NETWORK QUEUE SYSTEM ---
+  let networkQueue = [];
+  let isProcessingQueue = false;
+
+  function processNetworkQueue() {
+    if (isProcessingQueue || networkQueue.length === 0) return;
+    isProcessingQueue = true;
+    
+    const action = networkQueue.shift();
+    
+    if (action.type === 'move') {
+        if (animationOn) {
+          animateCheckerMove(action.data.from, action.data.to).then(() => {
+            game.makeMove(action.data.from, action.data.to);
+            updateUI();
+            isProcessingQueue = false;
+            processNetworkQueue(); // Process next in queue
+          });
+        } else {
+          game.makeMove(action.data.from, action.data.to);
+          updateUI();
+          isProcessingQueue = false;
+          processNetworkQueue();
+        }
+    } else if (action.type === 'undo') {
+        game.undo();
+        updateUI();
+        isProcessingQueue = false;
+        processNetworkQueue();
+    } else if (action.type === 'end_turn') {
+        game.endTurn();
+        updateUI();
+        isProcessingQueue = false;
+        processNetworkQueue();
+    }
+  }
+  // --------------------------------
 
   const game = new BackgammonGame();
   
@@ -319,9 +357,13 @@ document.addEventListener('DOMContentLoaded', () => {
       gameMessageEl.textContent = "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
 	gameMessageEl.textContent = `Player ${game.currentPlayer === 1 ? '1 (White)' : '2 (Red)'}: Click the dice to roll.`;
-    } else {
+} else {
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
+        
+        // ADD THIS: Only the active player is allowed to auto-end the turn!
+        if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
+
         if (turnEndTimer) clearTimeout(turnEndTimer);
         turnEndTimer = setTimeout(() => {
           turnEndTimer = null;
@@ -330,6 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
       } else if (!game.hasLegalMoves()) {
         gameMessageEl.textContent = "No legal moves possible! Switching players...";
+        
+        // ADD THIS: Only the active player is allowed to auto-end the turn!
+        if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
+
         if (turnEndTimer) clearTimeout(turnEndTimer);
         turnEndTimer = setTimeout(() => {
           turnEndTimer = null;
@@ -337,7 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
           updateUI();
         }, 100);
       } else {
-        if (turnEndTimer) {
+          if (turnEndTimer) {
           clearTimeout(turnEndTimer);
           turnEndTimer = null;
         }
@@ -1313,23 +1359,10 @@ connection.on('data', (data) => {
           }, 600);
       }
 
-      else if (data.type === 'move') {
-          if (animationOn) {
-            animateCheckerMove(data.from, data.to).then(() => {
-              game.makeMove(data.from, data.to);
-              // Removed explicit endTurn() call. Let updateUI handle it natively!
-              updateUI();
-            });
-          } else {
-            game.makeMove(data.from, data.to);
-            // Removed explicit endTurn() call. Let updateUI handle it natively!
-            updateUI();
-          }
-      }
-
-      else if (data.type === 'undo') {
-        game.undo();
-        updateUI();
+      // --- PUSH ALL BOARD MUTATIONS TO THE QUEUE ---
+      else if (data.type === 'move' || data.type === 'undo' || data.type === 'end_turn') {
+          networkQueue.push({ type: data.type, data: data });
+          processNetworkQueue();
       }
     });
 
@@ -1448,6 +1481,20 @@ connection.on('data', (data) => {
 
     const originalRollClick = handleRollClick;
     
+const originalEndTurn = BackgammonGame.prototype.endTurn;
+  
+  game.endTurn = function() {
+    // Record who the active player was before the engine switches it
+    const activeBefore = this.currentPlayer;
+    const result = originalEndTurn.apply(this);
+    
+    // Broadcast the explicit end-turn signal if we were the active player
+    if (isNetworkGame && activeBefore === localPlayerRole) {
+      if (conn && conn.open) conn.send({ type: 'end_turn' });
+    }
+    return result;
+  };
+
 function startGame(isRemote = false) {
     if (gameStarted) return;
     
