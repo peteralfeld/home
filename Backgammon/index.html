@@ -124,53 +124,57 @@
  
 <aside class="sidebar-panel">
 
-<div class="glass-card network-station" style="margin-bottom: 0.5rem;">
-  <h2>Online Multiplayer</h2>
-  <div id="network-setup" style="display: flex; flex-direction: column; gap: 0.5rem;">
-    <button id="btn-host" class="btn btn-primary">Host Game (Play White)</button>
-    <div style="display: flex; gap: 0.5rem;">
-      <input type="text" id="join-code" placeholder="Room Code" style="flex: 1; padding: 0.5rem; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border); text-transform: uppercase;">
-      <button id="btn-join" class="btn btn-secondary" style="width: auto;">Join (Play Red)</button>
+  <!-- Combined Config & Network Station -->
+  <div class="glass-card config-station">
+    <h2>Backgammon v. 46</h2>
+    
+<!-- Streamlined Network Row -->
+    <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
+      <button id="btn-host" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
+      
+      <input type="text" id="join-code" placeholder="CODE" style="flex: 1.2; min-width: 0; padding: 0.4rem; border-radius: 4px; background: #ffffff; color: #ffffff; border: 1px solid var(--glass-border); text-transform: uppercase; font-weight: bold; text-align: center;">
+      
+      <button id="btn-join" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #add8e6; color: var(--accent-red); font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">JOIN</button>
     </div>
+
+
+    <!-- Network Status Message (Hidden until connecting) -->
+    <div id="network-status" style="display: none; font-size: 0.85rem; text-align: center; margin-bottom: 0.8rem;">
+      <span id="conn-status" style="color: var(--accent-gold); font-weight: bold;">Connecting...</span>
+      <div id="room-code-display" style="margin-top: 0.5rem; font-family: monospace; font-size: 1.4rem; letter-spacing: 2px; color: #fff; background: rgba(0,0,0,0.5); padding: 0.5rem; border-radius: 4px; border: 1px dashed var(--accent-gold);"></div>
+    </div>
+
+    <!-- Board View Select -->
+    <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+      <label for="board-view" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
+      <select id="board-view" style="flex: 1; background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.3rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
+        <option value="white">White</option>
+        <option value="red" selected>Red</option>
+        <option value="home">Home</option>
+        <option value="outer">Outer</option>
+      </select>
+    </div>
+
+    <!-- Player Type Selects -->
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+      <div style="display: flex; align-items: center; gap: 0.4rem;">
+        <label for="p1-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
+        <select id="p1-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
+          <option value="human">Human</option>
+          <option value="ai" selected>AI</option>
+        </select>
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.4rem;">
+        <label for="p2-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
+        <select id="p2-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
+          <option value="human" selected>Human</option>
+          <option value="ai">AI</option>
+        </select>
+      </div>
+    </div>
+
+    <button id="btn-start-game" class="btn btn-primary" style="margin-top: 0.8rem; padding: 0.6rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; width: 100%;">Start Game</button>
   </div>
-  <div id="network-status" style="display: none; font-size: 0.85rem; text-align: center;">
-    <span id="conn-status" style="color: var(--accent-gold); font-weight: bold;">Connecting...</span>
-    <div id="room-code-display" style="margin-top: 0.5rem; font-family: monospace; font-size: 1.4rem; letter-spacing: 2px; color: #fff; background: rgba(0,0,0,0.5); padding: 0.5rem; border-radius: 4px; border: 1px dashed var(--accent-gold);"></div>
-  </div>
-</div>
-
-        <div class="glass-card config-station">
-          <h2>Backgammon v. 35</h2>
-          
-          <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-            <label for="board-view" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
-            <select id="board-view" style="flex: 1; background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.3rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-              <option value="white">White</option>
-              <option value="red" selected>Red</option>
-              <option value="home">Home</option>
-              <option value="outer">Outer</option>
-            </select>
-          </div>
-
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-              <label for="p1-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
-              <select id="p1-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-                <option value="human">Human</option>
-                <option value="ai" selected>AI</option>
-              </select>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.4rem;">
-              <label for="p2-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
-              <select id="p2-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-                <option value="human" selected>Human</option>
-                <option value="ai">AI</option>
-              </select>
-            </div>
-          </div>
-
-          <button id="btn-start-game" class="btn btn-primary" style="margin-top: 0.8rem; padding: 0.6rem; font-size: 0.9rem; letter-spacing: 1px; text-transform: uppercase; width: 100%;">Start Game</button>
-        </div>
 
         <div class="glass-card status-card">
 
