@@ -1348,13 +1348,16 @@ connection.on('data', (data) => {
     document.getElementById('board-view').dispatchEvent(new Event('change'));
     
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    
+    // Update text AND color
     connStatus.textContent = "Waiting for opponent...";
+    connStatus.style.color = "var(--accent-gold)"; 
     
     // Inject the code into the text field and lock it so it can't be typed over
     joinCodeInput.value = roomCode;
     joinCodeInput.readOnly = true; 
-
-    sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
+    
+      sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
     peer = new Peer('pointworks-bg-' + roomCode, {
       config: { 'iceServers': [
@@ -1379,12 +1382,15 @@ connection.on('data', (data) => {
     if (!code) return;
     
     initNetworkGame(2);
+    
+    // Update text AND color
     connStatus.textContent = "Connecting to Host...";
+    connStatus.style.color = "var(--accent-gold)";
     
     // Explicitly set the guest view to 'red'
     document.getElementById('board-view').value = 'red'; 
     document.getElementById('board-view').dispatchEvent(new Event('change'));
-
+    
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
     peer = new Peer({
