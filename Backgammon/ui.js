@@ -1264,20 +1264,8 @@ function setupConnectionListeners(connection) {
     if (connection.open) handleOpen();
     else connection.on('open', handleOpen);
 
-    // This is the single, correct data listener
-    connection.on('data', (data) => {
-	sysLog(`[Network] Received: ${data.type}`);
-
-	if (data.type === 'roll_first') {
-    isRolling = true;
-    updateUI();
-    setTimeout(() => {
-      game.rollForFirstTurn(data.dice[0], data.dice[1]);
-      initialRollOff = (data.dice[0] === data.dice[1]);
-      isRolling = false;
-      updateUI();
-    }, 600);
-  }
+connection.on('data', (data) => {
+      sysLog(`[Network] Received: ${data.type}`);
       
       if (data.type === 'sync') {
           game.points = data.points;
@@ -1286,49 +1274,53 @@ function setupConnectionListeners(connection) {
           updateUI();
       }
       
-      if (data.type === 'start') {
+      else if (data.type === 'start') {
           sysLog(`[Network] Start signal received from opponent.`);
           startGame(true); 
       }     
       
-      if (data.type === 'roll_first') {
-        isRolling = true;
-        updateUI();
-        setTimeout(() => {
+      else if (data.type === 'roll_first') {
+          // 1. Apply engine state instantly
           game.rollForFirstTurn(data.dice[0], data.dice[1]);
-          initialRollOff = (data.dice[0] === data.dice[1]);
-          isRolling = false;
+          initialRollOff = false;
+          
+          // 2. Lock UI and visually animate
+          isRolling = true;
           updateUI();
-        }, 600);
+          setTimeout(() => {
+            isRolling = false;
+            updateUI();
+          }, 600);
       }
       
-      if (data.type === 'roll') {
-        isRolling = true;
-        updateUI();
-        setTimeout(() => {
+      else if (data.type === 'roll') {
+          // 1. Apply engine state instantly
           game.rollDice(data.dice[0], data.dice[1]);
-          isRolling = false;
+          
+          // 2. Lock UI and visually animate
+          isRolling = true;
           updateUI();
-        }, 600);
+          setTimeout(() => {
+            isRolling = false;
+            updateUI();
+          }, 600);
       }
 
-if (data.type === 'move') {
-    if (animationOn) {
-      animateCheckerMove(data.from, data.to).then(() => {
-        game.makeMove(data.from, data.to);
-        // If the move completed the turn, switch player
-        if (game.movesLeft.length === 0) game.endTurn(); 
-        updateUI();
-      });
-    } else {
-      game.makeMove(data.from, data.to);
-      // If the move completed the turn, switch player
-      if (game.movesLeft.length === 0) game.endTurn(); 
-      updateUI();
-    }
-}
+      else if (data.type === 'move') {
+          if (animationOn) {
+            animateCheckerMove(data.from, data.to).then(() => {
+              game.makeMove(data.from, data.to);
+              // Removed explicit endTurn() call. Let updateUI handle it natively!
+              updateUI();
+            });
+          } else {
+            game.makeMove(data.from, data.to);
+            // Removed explicit endTurn() call. Let updateUI handle it natively!
+            updateUI();
+          }
+      }
 
-      if (data.type === 'undo') {
+      else if (data.type === 'undo') {
         game.undo();
         updateUI();
       }
@@ -1452,37 +1444,44 @@ function startGame(isRemote = false) {
     updateUI(); 
 }
 
-// In ui.js
 handleRollClick = function() {
     // Only the active player should trigger a roll
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
     
     if (isRolling) return;
+
+    let d1, d2;
+
+    // 1. Instantly generate dice and update game state BEFORE animating
+    if (initialRollOff) {
+        // Auto-reroll ties silently to prevent network desyncs
+        do {
+            d1 = Math.floor(Math.random() * 6) + 1;
+            d2 = Math.floor(Math.random() * 6) + 1;
+        } while (d1 === d2);
+        
+        game.rollForFirstTurn(d1, d2);
+        initialRollOff = false;
+        
+        if (isNetworkGame && conn && conn.open) {
+            conn.send({ type: 'roll_first', dice: [d1, d2] });
+        }
+    } else {
+        d1 = Math.floor(Math.random() * 6) + 1;
+        d2 = Math.floor(Math.random() * 6) + 1;
+        
+        const result = game.rollDice(d1, d2); 
+        // SAFETY CHECK: Only broadcast if the roll was actually valid
+        if (result && isNetworkGame && conn && conn.open) {
+            conn.send({ type: 'roll', dice: [d1, d2] });
+        }
+    }
+
+    // 2. Lock UI and perform visual animation
     isRolling = true;
     updateUI(); 
 
     setTimeout(() => {
-      if (initialRollOff) {
-        // Handle the very first start-of-game roll
-        const result = game.rollForFirstTurn();
-        if (result.dice[0] !== result.dice[1]) {
-            initialRollOff = false;
-            // If playing network game, tell guest the game has started
-            if (isNetworkGame && conn && conn.open) {
-                conn.send({ type: 'roll_first', dice: result.dice });
-            }
-        } else {
-            sysLog("[Roll] Tie! Rolling again...");
-        }
-      } else {
-        // Handle standard game rolls
-        const result = game.rollDice(); // Generates locally
-        
-        // SAFETY CHECK: Only broadcast if the roll was actually valid (not null)
-        if (result && isNetworkGame && conn && conn.open) {
-            conn.send({ type: 'roll', dice: result.dice });
-        }
-      }
       isRolling = false;
       updateUI();
     }, 600);
