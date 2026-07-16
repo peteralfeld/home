@@ -1231,17 +1231,24 @@ function initNetworkGame(role) {
     document.getElementById('p2-type').value = 'human';
     document.getElementById('p1-type').disabled = true;
     document.getElementById('p2-type').disabled = true;
-    setupPanel.style.display = 'none';
-    statusPanel.style.display = 'block';
+    
+    // We removed the lines that hid the setup panel here.
+    // Instead, we just reveal the connection status text.
+    document.getElementById('network-status').style.display = 'block';
+    
+    // Hide the old big room code display box since we are using the text field now
+    if (document.getElementById('room-code-display')) {
+        document.getElementById('room-code-display').style.display = 'none';
+    }
     
     document.getElementById('btn-start-game').disabled = true;
     document.getElementById('btn-start-game').style.opacity = '0.5';
 
     // Refresh the UI to apply the blank dice immediately
     updateUI(); 
-  }
+}
 
-function setupConnectionListeners(connection) {
+    function setupConnectionListeners(connection) {
     sysLog(`[Network] Setting up P2P data channel listeners...`);
     
     const handleOpen = () => {
@@ -1339,15 +1346,16 @@ connection.on('data', (data) => {
     // Explicitly set the host view to 'white'
     document.getElementById('board-view').value = 'white';
     document.getElementById('board-view').dispatchEvent(new Event('change'));
-
+    
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     connStatus.textContent = "Waiting for opponent...";
-    roomCodeDisplay.style.display = 'block';
-    roomCodeDisplay.textContent = roomCode;
+    
+    // Inject the code into the text field and lock it so it can't be typed over
+    joinCodeInput.value = roomCode;
+    joinCodeInput.readOnly = true; 
 
     sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
-    // Explicitly declaring Google's STUN servers to bypass NAT/Firewalls
     peer = new Peer('pointworks-bg-' + roomCode, {
       config: { 'iceServers': [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -1364,8 +1372,8 @@ connection.on('data', (data) => {
       setupConnectionListeners(conn);
     });
   });
-
-  // --- JOINING ---
+    
+// --- JOINING ---
   btnJoin.addEventListener('click', () => {
     const code = joinCodeInput.value.trim().toUpperCase();
     if (!code) return;
@@ -1379,7 +1387,6 @@ connection.on('data', (data) => {
 
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
-    // Explicitly declaring Google's STUN servers to bypass NAT/Firewalls
     peer = new Peer({
       config: { 'iceServers': [
         { urls: 'stun:stun.l.google.com:19302' },
