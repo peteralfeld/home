@@ -60,13 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const gameMessageEl = document.getElementById('game-message');
   const turnDisplay = document.getElementById('turn-display');
   const turnText = document.getElementById('turn-text');
-  const scoreP1 = document.getElementById('score-p1');
-  const scoreP2 = document.getElementById('score-p2');
-  const trayP1 = document.getElementById('tray-p1');
-  const trayP2 = document.getElementById('tray-p2');
   const barP1El = document.getElementById('bar-p1');
   const barP2El = document.getElementById('bar-p2');
   const historyListEl = document.getElementById('history-list');
+  const bearOffP1 = document.getElementById('bear-off-p1');
+  const bearOffP2 = document.getElementById('bear-off-p2');
   
   // Doubling Cube DOM Elements
   const btnDouble = document.getElementById('btn-double');
@@ -141,8 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
   barP2El.addEventListener('click', () => handleBarClick(2));
   
   // Setup click and drop listeners for bear off zones
-  const bearOffP1 = document.getElementById('bear-off-p1');
-  const bearOffP2 = document.getElementById('bear-off-p2');
   bearOffP1.addEventListener('click', () => handleBearOffClick(1));
   bearOffP2.addEventListener('click', () => handleBearOffClick(2));
 
@@ -201,6 +197,45 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+// Debug PNG Capture Listener
+  const btnDebugPng = document.getElementById('btn-debug-png');
+  if (btnDebugPng) {
+    btnDebugPng.addEventListener('click', () => {
+      const boardToCapture = document.querySelector('.board-wrapper');
+      
+      // Temporarily change button text to indicate processing
+      const originalText = btnDebugPng.textContent;
+      btnDebugPng.textContent = "Capturing...";
+      btnDebugPng.disabled = true;
+
+      // Use html2canvas to render the DOM element to a canvas
+      html2canvas(boardToCapture, {
+        backgroundColor: '#060908', // Matches your --bg-app CSS variable
+        scale: 2, // 2x scale for a higher resolution output
+        logging: true // Helpful if it fails during debugging
+      }).then(canvas => {
+        // Convert canvas to a data URL and trigger download
+        const link = document.createElement('a');
+        link.download = `bg-debug-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        // Restore button state
+        btnDebugPng.textContent = originalText;
+        btnDebugPng.disabled = false;
+        sysLog(`[System] Debug PNG captured and downloaded.`);
+      }).catch(err => {
+        console.error("Failed to capture board image:", err);
+        sysLog(`[Error] Failed to capture PNG: ${err.message}`);
+        btnDebugPng.textContent = "Capture Failed";
+        setTimeout(() => {
+          btnDebugPng.textContent = originalText;
+          btnDebugPng.disabled = false;
+        }, 2000);
+      });
+    });
+  }
+    
   // Animation Toggle Listener
   const btnAnim = document.getElementById('btn-animation');
   if (btnAnim) {
@@ -279,14 +314,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Render bar checkers
     renderBar();
 
-    // 3. Render borne off checkers
-    renderBorneOff();
+// 3. Render borne off checkers (Now handled by the text numbers in the margin)
+    // 4. Update status scoreboard 
+    bearOffP1.textContent = game.borneOff[1];
+      bearOffP2.textContent = game.borneOff[2];
 
-    // 4. Update status scoreboard
-    scoreP1.textContent = `${game.borneOff[1]} / 15`;
-    scoreP2.textContent = `${game.borneOff[2]} / 15`;
-
-// 5. Update header turn indicator
+      // 5. Update header turn indicator
     if (turnDisplay && turnText) {
       if (game.currentPlayer) {
         turnDisplay.style.display = 'flex';
@@ -1454,6 +1487,30 @@ connection.on('data', (data) => {
     });
   }
 
+// --- DEFAULTS & EXIT ---
+  const btnDefaults = document.getElementById('btn-defaults');
+  if (btnDefaults) {
+    btnDefaults.addEventListener('click', () => {
+      if (confirm("Restore default settings? This will clear all data and reload the page.")) {
+        window.location.reload();
+      }
+    });
+  }
+
+  const btnExit = document.getElementById('btn-exit');
+  if (btnExit) {
+    btnExit.addEventListener('click', () => {
+      if (confirm("Are you sure you want to exit the game?")) {
+        // Attempt to close the browser tab natively
+        window.close();
+        
+        // Fallback: Modern browsers sometimes block window.close() if the script didn't explicitly open the tab. 
+        // This clears the screen and gives a safe-to-close message just in case.
+        document.body.innerHTML = "<div style='display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column;'><h1 style='color:white; font-family:sans-serif;'>Game Closed.</h1><p style='color:#9ca3af; font-family:sans-serif;'>You can safely close this browser tab.</p></div>";
+      }
+    });
+  }
+
 // --- BROADCAST HOOKS ---
   // Store the original prototype methods safely
   const originalMakeMove = BackgammonGame.prototype.makeMove;
@@ -1495,7 +1552,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     return result;
   };
 
-function startGame(isRemote = false) {
+  function startGame(isRemote = false) {
     if (gameStarted) return;
     
     if (!isRemote && isNetworkGame && conn && conn.open) {
@@ -1504,8 +1561,8 @@ function startGame(isRemote = false) {
 
     gameStarted = true;
     initialRollOff = true;
-    game.currentPlayer = 1; // <--- ADD THIS LINE
-    game.hasRolled = false; // <--- ENSURE THIS IS FALSE
+    game.currentPlayer = 1;
+    game.hasRolled = false;
     
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
@@ -1513,19 +1570,17 @@ function startGame(isRemote = false) {
     
     sysLog(`[System] Game started!`);
     updateUI(); 
-}
+  }
 
-handleRollClick = function() {
-    // Only the active player should trigger a roll
+  // Define handleRollClick inside the DOMContentLoaded block
+  handleRollClick = function() {
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
     
     if (isRolling) return;
 
     let d1, d2;
 
-    // 1. Instantly generate dice and update game state BEFORE animating
     if (initialRollOff) {
-        // Auto-reroll ties silently to prevent network desyncs
         do {
             d1 = Math.floor(Math.random() * 6) + 1;
             d2 = Math.floor(Math.random() * 6) + 1;
@@ -1542,13 +1597,11 @@ handleRollClick = function() {
         d2 = Math.floor(Math.random() * 6) + 1;
         
         const result = game.rollDice(d1, d2); 
-        // SAFETY CHECK: Only broadcast if the roll was actually valid
         if (result && isNetworkGame && conn && conn.open) {
             conn.send({ type: 'roll', dice: [d1, d2] });
         }
     }
 
-    // 2. Lock UI and perform visual animation
     isRolling = true;
     updateUI(); 
 
@@ -1556,6 +1609,6 @@ handleRollClick = function() {
       isRolling = false;
       updateUI();
     }, 600);
-};
+  };
 
-}); // <-- This final closing bracket MUST be the absolute last line of the file!
+}); // This closing brace now correctly wraps all your event-dependent logic.
