@@ -1410,6 +1410,17 @@ connection.on('data', (data) => {
     });
   });
 
+// --- QUIT GAME ---
+  const btnQuit = document.getElementById('btn-quit');
+  if (btnQuit) {
+    btnQuit.addEventListener('click', () => {
+      if (confirm("Are you sure you want to quit? This will disconnect the game and reset the board.")) {
+        // A hard reload is the safest way to completely sever WebRTC connections and restore the initial UI state
+        window.location.reload();
+      }
+    });
+  }
+
 // --- BROADCAST HOOKS ---
   // Store the original prototype methods safely
   const originalMakeMove = BackgammonGame.prototype.makeMove;
