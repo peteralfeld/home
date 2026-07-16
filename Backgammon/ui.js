@@ -1405,47 +1405,33 @@ if (data.type === 'move') {
     });
   });
 
-  // --- BROADCAST HOOKS ---
-  const originalMakeMove = game.makeMove.bind(game);
+// --- BROADCAST HOOKS ---
+  // Store the original prototype methods safely
+  const originalMakeMove = BackgammonGame.prototype.makeMove;
+  
   game.makeMove = function(from, to) {
-    const success = originalMakeMove(from, to);
-    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
+    // Execute the original move logic cleanly with the current instance
+    const success = originalMakeMove.apply(this, [from, to]);
+    
+    if (success && isNetworkGame && this.currentPlayer === localPlayerRole) {
        if (conn && conn.open) conn.send({ type: 'move', from, to });
     }
     return success;
   };
 
-  const originalUndo = game.undo.bind(game);
+  const originalUndo = BackgammonGame.prototype.undo;
+  
   game.undo = function() {
-    const success = originalUndo();
-    if (success && isNetworkGame && game.currentPlayer === localPlayerRole) {
+    const success = originalUndo.apply(this);
+    
+    if (success && isNetworkGame && this.currentPlayer === localPlayerRole) {
       if (conn && conn.open) conn.send({ type: 'undo' });
     }
     return success;
   };
 
-  const originalRollClick = handleRollClick;
-
-// In ui.js
-handleRollClick = function() {
-    // Only the active player should trigger a roll
-    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
+    const originalRollClick = handleRollClick;
     
-    if (isRolling) return;
-    isRolling = true;
-    updateUI(); 
-
-    setTimeout(() => {
-      // Host/Guest logic: Roll and send to other
-      const result = game.rollDice(); // Generates locally
-      if (isNetworkGame && conn && conn.open) {
-          conn.send({ type: 'roll', dice: result.dice });
-      }
-      isRolling = false;
-      updateUI();
-    }, 600);
-};
-
 function startGame(isRemote = false) {
     if (gameStarted) return;
     
@@ -1465,5 +1451,41 @@ function startGame(isRemote = false) {
     sysLog(`[System] Game started!`);
     updateUI(); 
 }
+
+// In ui.js
+handleRollClick = function() {
+    // Only the active player should trigger a roll
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
+    
+    if (isRolling) return;
+    isRolling = true;
+    updateUI(); 
+
+    setTimeout(() => {
+      if (initialRollOff) {
+        // Handle the very first start-of-game roll
+        const result = game.rollForFirstTurn();
+        if (result.dice[0] !== result.dice[1]) {
+            initialRollOff = false;
+            // If playing network game, tell guest the game has started
+            if (isNetworkGame && conn && conn.open) {
+                conn.send({ type: 'roll_first', dice: result.dice });
+            }
+        } else {
+            sysLog("[Roll] Tie! Rolling again...");
+        }
+      } else {
+        // Handle standard game rolls
+        const result = game.rollDice(); // Generates locally
+        
+        // SAFETY CHECK: Only broadcast if the roll was actually valid (not null)
+        if (result && isNetworkGame && conn && conn.open) {
+            conn.send({ type: 'roll', dice: result.dice });
+        }
+      }
+      isRolling = false;
+      updateUI();
+    }, 600);
+};
 
 }); // <-- This final closing bracket MUST be the absolute last line of the file!
