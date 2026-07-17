@@ -311,6 +311,7 @@ body {
   justify-content: flex-start;
   pointer-events: auto; /* Let parent point capture clicks/drags */
   z-index: 2;
+  touch-action: none;
 }
 
 .point-top .checker-container {

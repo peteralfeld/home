@@ -677,19 +677,15 @@ function handleRollClick() {
     const pointState = game.points[pointIdx];
     sysLog(`[Click] Point ${pointIdx} clicked. player=${pointState.player}, count=${pointState.count}, selectedSource=${selectedSource}, activePlayer=${game.currentPlayer}, hasRolled=${game.hasRolled}, movesLeft=${game.movesLeft.length}`);
     
-    // 1. If a point is highlighted as a valid destination, execute the move
-    const targetMove = legalDestinations.find(d => d.to === pointIdx);
-    if (targetMove && selectedSource !== null) {
-      sysLog(`[Move] Attempting click-to-move: from=${selectedSource} to=${pointIdx}`);
+// 1. If we already have a selected source, treat this click as a "drop"
+    if (selectedSource !== null) {
+      sysLog(`[Click] Target selected: ${pointIdx}. Attempting move.`);
       if (game.makeMove(selectedSource, pointIdx)) {
-        sysLog(`[Move] Click-to-move succeeded! remainingMoves=[${game.movesLeft.join(', ')}]`);
         selectedSource = null;
         clearHighlights();
         updateUI();
-      } else {
-        sysLog(`[Move] Click-to-move validation rejected!`);
+        return; // Move succeeded, exit
       }
-      return;
     }
 
     // 2. Select source checker
@@ -752,38 +748,10 @@ function handleRollClick() {
   }
 
   /**
-   * original Highlight legal destinations.
-
-  function highlightLegalMoves(source) {
-    legalDestinations = game.getLegalDestinations(source);
-    
-    legalDestinations.forEach(dest => {
-      if (dest.to === "off") {
-        const trayEl = game.currentPlayer === 1 ? bearOffP1 : bearOffP2;
-        trayEl.classList.add('highlight-destination');
-      } else {
-        const pointEl = document.getElementById(`point-${dest.to}`);
-        if (pointEl) {
-          pointEl.classList.add('highlight-destination');
-        }
-      }
-    });
-  }
+   *  Highlight legal destinations.
 */
-
-    /* temporary debugging replacement: */
-    /**
-   * Highlight legal destinations.
-   */
   function highlightLegalMoves(source) {
     legalDestinations = game.getLegalDestinations(source);
-    
-    // DIAGNOSTIC CHECK
-    if (legalDestinations.length === 0 && game.hasRolled && game.movesLeft.length > 0) {
-        const msg = `DEBUG: Blocked at ${source}. State: ${JSON.stringify(game.points)}`;
-        document.getElementById('game-message').textContent = msg;
-        sysLog(msg); // This prints to your console on the bottom of the screen
-    }
     
     legalDestinations.forEach(dest => {
       if (dest.to === "off") {
