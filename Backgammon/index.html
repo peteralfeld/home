@@ -40,101 +40,107 @@
     <main class="game-layout">
       <!-- The main Backgammon board -->
       <div class="board-area">
- <section class="board-wrapper view-red" aria-label="Backgammon Board">
-          
-          <style>
-            /* Dynamic highlight for the new margin drop zones */
-            #bear-off-p1.highlight-destination, #bear-off-p2.highlight-destination {
-              background: rgba(229, 193, 88, 0.2) !important;
-              box-shadow: inset 0 0 15px rgba(229, 193, 88, 0.5);
-              cursor: pointer;
-            }
-          </style>
 
-          <div style="display: flex; flex-direction: row; width: 100%; height: 100%; gap: 10px;">
-            
-            <!-- NEW: Left Margin for Bearing Off -->
-            <div style="width: 8%; min-width: 50px; display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);">
-              <div id="bear-off-p2" style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 800; color: #ef4444; transition: all 0.2s;" title="Red Borne Off">0</div>
-              
-              <div style="height: 2px; background: rgba(0,0,0,0.8); box-shadow: 0 1px 0 rgba(255,255,255,0.1);"></div>
-              
-              <div id="bear-off-p1" style="flex: 1; display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-size: 2.2rem; font-weight: 800; color: #ffffff; transition: all 0.2s;" title="White Borne Off">0</div>
-            </div>
+<section class="board-wrapper view-red" aria-label="Backgammon Board">
+  
+  <style>
+    /* Dynamic highlight for the new margin drop zones */
+    #bear-off-p1.highlight-destination, #bear-off-p2.highlight-destination {
+      background: rgba(229, 193, 88, 0.2) !important;
+      box-shadow: inset 0 0 15px rgba(229, 193, 88, 0.5);
+      cursor: pointer;
+    }
+  </style>
 
-            <!-- Main Board Container -->
-            <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-              <!-- Top Row Labels -->
-              <div class="board-labels-outer labels-top">
-                <div class="quadrant-labels">
-                  <span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span>
-                </div>
-                <div class="bar-spacer"></div>
-                <div class="quadrant-labels">
-                  <span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
-                </div>
-              </div>
+  <div style="display: flex; flex-direction: row; width: 100%; height: 100%; gap: 10px;">
+    
+    <!-- Main Board Container -->
+    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+      <!-- Top Row Labels -->
+      <div class="board-labels-outer labels-top">
+        <div class="quadrant-labels">
+          <span>13</span><span>14</span><span>15</span><span>16</span><span>17</span><span>18</span>
+        </div>
+        <div class="bar-spacer"></div>
+        <div class="quadrant-labels">
+          <span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
+        </div>
+      </div>
 
-              <!-- The Board -->
-              <div class="board" id="backgammon-board">
-                <!-- TOP ROW OF POINTS -->
-                <div class="quadrant quadrant-top-left">
-                  <div class="point point-top point-dark" id="point-13" data-point="13"></div>
-                  <div class="point point-top point-light" id="point-14" data-point="14"></div>
-                  <div class="point point-top point-dark" id="point-15" data-point="15"></div>
-                  <div class="point point-top point-light" id="point-16" data-point="16"></div>
-                  <div class="point point-top point-dark" id="point-17" data-point="17"></div>
-                  <div class="point point-top point-light" id="point-18" data-point="18"></div>
-                </div>
+      <!-- The Board -->
+      <div class="board" id="backgammon-board">
+        <!-- TOP ROW OF POINTS -->
+        <div class="quadrant quadrant-top-left">
+          <div class="point point-top point-dark" id="point-13" data-point="13"></div>
+          <div class="point point-top point-light" id="point-14" data-point="14"></div>
+          <div class="point point-top point-dark" id="point-15" data-point="15"></div>
+          <div class="point point-top point-light" id="point-16" data-point="16"></div>
+          <div class="point point-top point-dark" id="point-17" data-point="17"></div>
+          <div class="point point-top point-light" id="point-18" data-point="18"></div>
+        </div>
 
-                <div class="bar-divider">
-                  <div class="bar-groove"></div>
-                  <div class="bar-container" id="bar-p1" data-player="1" title="Player 1 Bar (White)"></div>
-                  <div class="bar-container" id="bar-p2" data-player="2" title="Player 2 Bar (Red)"></div>
-                </div>
+        <div class="bar-divider">
+          <div class="bar-groove"></div>
+          <div class="bar-container" id="bar-p1" data-player="1" title="Player 1 Bar (White)"></div>
+          <div class="bar-container" id="bar-p2" data-player="2" title="Player 2 Bar (Red)"></div>
+        </div>
 
-                <div class="quadrant quadrant-top-right">
-                  <div class="point point-top point-dark" id="point-19" data-point="19"></div>
-                  <div class="point point-top point-light" id="point-20" data-point="20"></div>
-                  <div class="point point-top point-dark" id="point-21" data-point="21"></div>
-                  <div class="point point-top point-light" id="point-22" data-point="22"></div>
-                  <div class="point point-top point-dark" id="point-23" data-point="23"></div>
-                  <div class="point point-top point-light" id="point-24" data-point="24"></div>
-                </div>
+        <div class="quadrant quadrant-top-right">
+          <div class="point point-top point-dark" id="point-19" data-point="19"></div>
+          <div class="point point-top point-light" id="point-20" data-point="20"></div>
+          <div class="point point-top point-dark" id="point-21" data-point="21"></div>
+          <div class="point point-top point-light" id="point-22" data-point="22"></div>
+          <div class="point point-top point-dark" id="point-23" data-point="23"></div>
+          <div class="point point-top point-light" id="point-24" data-point="24"></div>
+        </div>
 
-                <!-- BOTTOM ROW OF POINTS -->
-                <div class="quadrant quadrant-bottom-left">
-                  <div class="point point-bottom point-light" id="point-12" data-point="12"></div>
-                  <div class="point point-bottom point-dark" id="point-11" data-point="11"></div>
-                  <div class="point point-bottom point-light" id="point-10" data-point="10"></div>
-                  <div class="point point-bottom point-dark" id="point-9" data-point="9"></div>
-                  <div class="point point-bottom point-light" id="point-8" data-point="8"></div>
-                  <div class="point point-bottom point-dark" id="point-7" data-point="7"></div>
-                </div>
+        <!-- BOTTOM ROW OF POINTS -->
+        <div class="quadrant quadrant-bottom-left">
+          <div class="point point-bottom point-light" id="point-12" data-point="12"></div>
+          <div class="point point-bottom point-dark" id="point-11" data-point="11"></div>
+          <div class="point point-bottom point-light" id="point-10" data-point="10"></div>
+          <div class="point point-bottom point-dark" id="point-9" data-point="9"></div>
+          <div class="point point-bottom point-light" id="point-8" data-point="8"></div>
+          <div class="point point-bottom point-dark" id="point-7" data-point="7"></div>
+        </div>
 
-                <div class="quadrant quadrant-bottom-right">
-                  <div class="point point-bottom point-light" id="point-6" data-point="6"></div>
-                  <div class="point point-bottom point-dark" id="point-5" data-point="5"></div>
-                  <div class="point point-bottom point-light" id="point-4" data-point="4"></div>
-                  <div class="point point-bottom point-dark" id="point-3" data-point="3"></div>
-                  <div class="point point-bottom point-light" id="point-2" data-point="2"></div>
-                  <div class="point point-bottom point-dark" id="point-1" data-point="1"></div>
-                </div>
-              </div>
+        <div class="quadrant quadrant-bottom-right">
+          <div class="point point-bottom point-light" id="point-6" data-point="6"></div>
+          <div class="point point-bottom point-dark" id="point-5" data-point="5"></div>
+          <div class="point point-bottom point-light" id="point-4" data-point="4"></div>
+          <div class="point point-bottom point-dark" id="point-3" data-point="3"></div>
+          <div class="point point-bottom point-light" id="point-2" data-point="2"></div>
+          <div class="point point-bottom point-dark" id="point-1" data-point="1"></div>
+        </div>
+      </div>
 
-              <!-- Bottom Row Labels -->
-              <div class="board-labels-outer labels-bottom">
-                <div class="quadrant-labels">
-                  <span>12</span><span>11</span><span>10</span><span>9</span><span>8</span><span>7</span>
-                </div>
-                <div class="bar-spacer"></div>
-                <div class="quadrant-labels">
-                  <span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
-                </div>
-              </div>
-            </div>
-          </div>
- </section>
+      <!-- Bottom Row Labels -->
+      <div class="board-labels-outer labels-bottom">
+        <div class="quadrant-labels">
+          <span>12</span><span>11</span><span>10</span><span>9</span><span>8</span><span>7</span>
+        </div>
+        <div class="bar-spacer"></div>
+        <div class="quadrant-labels">
+          <span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT Margin for Bearing Off (Moves to left in Red View) -->
+    <div style="width: 8%; min-width: 50px; display: flex; flex-direction: column; background: rgba(0,0,0,0.4); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 0 10px rgba(0,0,0,0.8);">
+      
+      <!-- Top half (Red home) - Adds from top down, which becomes bottom-up in Red View -->
+      <div id="bear-off-p2" style="flex: 1; display: flex; flex-direction: column; padding: 2px;" title="Red Borne Off"></div>
+      
+      <div style="height: 2px; background: rgba(0,0,0,0.8); box-shadow: 0 1px 0 rgba(255,255,255,0.1);"></div>
+      
+      <!-- Bottom half (White home) - Adds from bottom up -->
+      <div id="bear-off-p1" style="flex: 1; display: flex; flex-direction: column-reverse; padding: 2px;" title="White Borne Off"></div>
+    </div>
+
+  </div>
+</section>
+
       </div>
 
  
@@ -142,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 53</h2>
+    <h2>Backgammon v. 57</h2>
     
 <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
@@ -162,10 +168,10 @@
     </div>
 
     <button id="btn-debug-png" class="btn btn-secondary" style="margin-bottom: 0.8rem; width: 100%; border-color: rgba(16, 185, 129, 0.4); color: #10b981;">Download Board PNG</button>
+<!-- Game Controls Row (Start, Reset, Defaults, Exit) -->
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
 
-<!-- NEW: Game Controls Row (Start, Reset, Defaults, Exit) -->
-    <div style="display: flex; flex-direction: row; gap: 0.4rem; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
-      <button id="btn-start-game" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #14532d; color: #facc15; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">START</button>
+<button id="btn-start-game" class="btn" style="flex: 1.4; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
       
       <button id="btn-restart" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESET</button>
       
@@ -173,7 +179,7 @@
       
       <button id="btn-exit" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">EXIT</button>
     </div>
-
+    
     <!-- Board View Select -->
     <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
       <label for="board-view" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
@@ -220,9 +226,10 @@
           </div>
         </div>
 
-        <!-- Dice Rolling Station -->
-        <div class="glass-card dice-station">
-          <div class="dice-container" id="dice-container" title="Click to Roll Dice">
+<!-- Dice Rolling & Action Station -->
+        <div class="glass-card dice-station" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.8rem;">
+          
+          <div class="dice-container" id="dice-container" title="Click to Roll Dice" style="margin: 0; gap: 0.8rem;">
             <div class="die" id="die-1">
               <div class="die-face face-1">●</div>
             </div>
@@ -230,31 +237,16 @@
               <div class="die-face face-1">●</div>
             </div>
           </div>
+
+<button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
           
-          <div class="dice-moves-list" id="dice-moves-list">
-            <!-- Remaining move values will be shown here -->
+          <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 50px; height: 50px; font-size: 1.4rem;">
+            64
           </div>
-
-          <div class="control-buttons" style="display: none;">
-            <button id="btn-undo" class="btn btn-secondary" style="width: 100%;" disabled>Undo Move</button>
-          </div>
-          </div>
+          
         </div>
-
-        <!-- Doubling Cube Station -->
-        <div class="glass-card doubling-station">
-          <div class="doubling-container">
-            <div class="doubling-cube" id="doubling-cube" title="Double Stakes">
-              64
-            </div>
-            <div class="doubling-info">
-              <div class="stake-multiplier">Multiplier: <span id="cube-value">1x</span></div>
-              <div class="cube-owner">Owner: <span id="cube-owner">Either Player</span></div>
-            </div>
-          </div>
-          <button id="btn-double" class="btn btn-secondary">Double Stakes</button>
         </div>
-
+	
         <!-- Animation Control Station -->
         <div class="glass-card animation-station" style="display: flex; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
           <button id="btn-animation" class="btn" style="width: 100%; font-weight: 700; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">Animation: ON</button>

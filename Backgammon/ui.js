@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnUndo = document.getElementById('btn-undo');
   const die1El = document.getElementById('die-1');
   const die2El = document.getElementById('die-2');
-  const diceMovesList = document.getElementById('dice-moves-list');
   const gameMessageEl = document.getElementById('game-message');
   const turnDisplay = document.getElementById('turn-display');
   const turnText = document.getElementById('turn-text');
@@ -67,9 +66,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const bearOffP2 = document.getElementById('bear-off-p2');
   
   // Doubling Cube DOM Elements
-  const btnDouble = document.getElementById('btn-double');
-  const cubeValueSpan = document.getElementById('cube-value');
-  const cubeOwnerSpan = document.getElementById('cube-owner');
   const doublingCubeEl = document.getElementById('doubling-cube');
 
   // Selected source point for click-to-move interaction
@@ -247,10 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAnimationButton();
   }
 
-  btnDouble.addEventListener('click', () => {
-    if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
-    handleDoubleOffer();
-  });
   doublingCubeEl.addEventListener('click', () => {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     handleDoubleOffer();
@@ -297,11 +289,39 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateUI() {
     sysLog("[Update] Board state logical: " + game.points.map((p, idx) => p.count > 0 ? `${idx}:${p.player}(${p.count})` : '').filter(Boolean).join(', '));
     
-    // Render dice faces dynamically (blank/0 dots if not rolled yet, actual values if rolled)
+// Render dice faces dynamically based on unused moves
     if (!isRolling) {
       if (game.hasRolled) {
-        renderDie(die1El, game.dice[0]);
-        renderDie(die2El, game.dice[1]);
+        let moves = [...game.movesLeft];
+        let d1Val = 0, d2Val = 0;
+
+        if (game.dice[0] === game.dice[1]) {
+          // Doubles: Show both dice if 2 or more moves remain. Show one if 1 move remains.
+          if (moves.length >= 2) {
+            d1Val = game.dice[0];
+            d2Val = game.dice[1];
+          } else if (moves.length === 1) {
+            d1Val = 0;
+            d2Val = game.dice[1]; // Keep the second die visible for the final move
+          }
+        } else {
+          // Normal roll: Check if the specific die value is still in the unused moves list
+          const idx1 = moves.indexOf(game.dice[0]);
+          if (idx1 !== -1) {
+            d1Val = game.dice[0];
+            moves.splice(idx1, 1); // Remove from tracking array to prevent double counting
+          }
+          
+          const idx2 = moves.indexOf(game.dice[1]);
+          if (idx2 !== -1) {
+            d2Val = game.dice[1];
+            moves.splice(idx2, 1);
+          }
+        }
+        
+        // renderDie automatically draws a blank face with no pips if passed 0
+        renderDie(die1El, d1Val);
+        renderDie(die2El, d2Val);
       } else {
         renderDie(die1El, 0);
         renderDie(die2El, 0);
@@ -314,10 +334,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Render bar checkers
     renderBar();
 
-// 3. Render borne off checkers (Now handled by the text numbers in the margin)
-    // 4. Update status scoreboard 
-    bearOffP1.textContent = game.borneOff[1];
-      bearOffP2.textContent = game.borneOff[2];
+// 3. Render borne off checkers 
+renderBorneOff();
 
       // 5. Update header turn indicator
     if (turnDisplay && turnText) {
@@ -346,18 +364,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
       
-    // 6. Update Dice values list
-    renderRemainingMovesTokens();
-
     // 7. Enable/disable undo button
     btnUndo.disabled = game.turnHistory.length <= 1;
 
-    // 7b. Update Doubling Cube DOM elements
-    cubeValueSpan.textContent = `${game.doublingCubeValue}x`;
-    cubeOwnerSpan.textContent = game.doublingCubeOwner === null ? "Either Player" : (game.doublingCubeOwner === 1 ? "Player 1 (White)" : "Player 2 (Red)");
-    doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
-    btnDouble.disabled = !game.canDouble(game.currentPlayer);
-// 7c. Update dice container styling classes (rollable/initial-roll-off)
+// 7b. Update Doubling Cube DOM elements
+    if (doublingCubeEl) {
+      doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
+      
+      // Reset classes
+      doublingCubeEl.classList.remove('owned-p1', 'owned-p2');
+      
+      // Apply owner colors
+      if (game.doublingCubeOwner === 1) {
+        doublingCubeEl.classList.add('owned-p1');
+      } else if (game.doublingCubeOwner === 2) {
+        doublingCubeEl.classList.add('owned-p2');
+      }
+    }
+
+      // 7c. Update dice container styling classes (rollable/initial-roll-off)
     const canRoll = !game.hasRolled || initialRollOff;
     if (canRoll && !game.winner && !isRolling) {
       diceContainerEl.classList.add('rollable');
@@ -508,41 +533,24 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
     }
   }
 
-  /**
+/**
    * Render borne-off trays.
    */
   function renderBorneOff() {
-    trayP1.innerHTML = '';
-    trayP2.innerHTML = '';
+    bearOffP1.innerHTML = '';
+    bearOffP2.innerHTML = '';
 
     for (let c = 0; c < game.borneOff[1]; c++) {
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-1';
-      trayP1.appendChild(slab);
+      bearOffP1.appendChild(slab);
     }
 
     for (let c = 0; c < game.borneOff[2]; c++) {
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-2';
-      trayP2.appendChild(slab);
+      bearOffP2.appendChild(slab);
     }
-  }
-
-  /**
-   * Render remaining moves list as visual badge tokens.
-   */
-  function renderRemainingMovesTokens() {
-    diceMovesList.innerHTML = '';
-    if (!game.hasRolled || game.movesLeft.length === 0) return;
-    
-    // Sort moves descending for neatness
-    const sortedMoves = [...game.movesLeft].sort((a,b) => b - a);
-    sortedMoves.forEach(val => {
-      const token = document.createElement('span');
-      token.className = 'move-token';
-      token.textContent = val;
-      diceMovesList.appendChild(token);
-    });
   }
 
   /**
@@ -1572,18 +1580,31 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     updateUI(); 
   }
 
-  // Define handleRollClick inside the DOMContentLoaded block
+// Define handleRollClick inside the DOMContentLoaded block
   handleRollClick = function() {
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
     
     if (isRolling) return;
 
+    // --- CRYPTOGRAPHIC RNG ---
+    function secureRoll() {
+        const array = new Uint8Array(1);
+        window.crypto.getRandomValues(array);
+        // 255 is not perfectly divisible by 6. The maximum multiple of 6 is 252.
+        // Reject 252, 253, 254, and 255 to maintain a perfectly uniform distribution.
+        while (array[0] >= 252) {
+            window.crypto.getRandomValues(array);
+        }
+        return (array[0] % 6) + 1;
+    }
+    // -------------------------
+
     let d1, d2;
 
     if (initialRollOff) {
         do {
-            d1 = Math.floor(Math.random() * 6) + 1;
-            d2 = Math.floor(Math.random() * 6) + 1;
+            d1 = secureRoll();
+            d2 = secureRoll();
         } while (d1 === d2);
         
         game.rollForFirstTurn(d1, d2);
@@ -1593,8 +1614,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
             conn.send({ type: 'roll_first', dice: [d1, d2] });
         }
     } else {
-        d1 = Math.floor(Math.random() * 6) + 1;
-        d2 = Math.floor(Math.random() * 6) + 1;
+        d1 = secureRoll();
+        d2 = secureRoll();
         
         const result = game.rollDice(d1, d2); 
         if (result && isNetworkGame && conn && conn.open) {

@@ -618,11 +618,26 @@ body {
   margin: 0.8rem 0;
 }
 
+/* Custom Red-on-White Undo Button */
+#btn-undo {
+  background: #ffffff !important;
+  color: #ef4444 !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+}
+
+#btn-undo:disabled {
+  background: rgba(255, 255, 255, 0.4) !important;
+  color: rgba(239, 68, 68, 0.4) !important;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* Base Doubling Cube (Gray / Unowned) */
 .doubling-cube {
   width: 55px;
   height: 55px;
-  background: radial-gradient(circle at 30% 30%, #00b48c 0%, #005f48 60%, #002b20 100%);
-  border: 1px solid rgba(0, 180, 140, 0.55);
+  background: radial-gradient(circle at 30% 30%, #9ca3af 0%, #4b5563 60%, #1f2937 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 8px;
   box-shadow: 
     0 8px 16px rgba(0, 0, 0, 0.6), 
@@ -634,13 +649,33 @@ body {
   font-family: 'Outfit', sans-serif;
   font-size: 1.6rem;
   font-weight: 800;
-  color: var(--accent-gold);
+  color: var(--accent-gold); /* Keeps the yellow text */
   text-shadow: 
     1px 1px 1px rgba(0,0,0,0.8),
     0 0 3px rgba(229, 193, 88, 0.5);
   user-select: none;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+}
+
+/* White Owns Cube */
+.doubling-cube.owned-p1 {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #d1d5db 60%, #9ca3af 100%);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Red Owns Cube */
+.doubling-cube.owned-p2 {
+  background: radial-gradient(circle at 30% 30%, #ef4444 0%, #b91c1c 60%, #7f1d1d 100%);
+  border-color: rgba(239, 68, 68, 0.8);
+}
+
+.doubling-cube:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 10px 20px rgba(0, 0, 0, 0.7), 
+    inset 0 3px 6px rgba(255, 255, 255, 0.5), 
+    inset 0 -3px 6px rgba(0, 0, 0, 0.4);
 }
 
 .doubling-cube:hover {
@@ -720,10 +755,13 @@ body {
 /* Borne-off checkers are flattened slabs */
 .borne-checker {
   width: 90%;
-  height: 8px;
+  height: 6.666%; /* Exactly 1/15th of the container */
   border-radius: 2px;
-  border: 1px solid;
+  border: 2px solid; /* Thicker standard border */
+  border-bottom: 3px solid rgba(0, 0, 0, 0.7); /* Thicker dark line to show separation */
   box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  margin: 0 auto; /* Keep them centered */
+  pointer-events: none; /* Prevents the slabs from interfering with drag-and-drop */
 }
 
 .borne-checker.player-1 {
@@ -1014,3 +1052,18 @@ body {
 
 .board-wrapper.view-outer .checker { transform: rotate(90deg); }
 .board-wrapper.view-outer .checker.dragging { transform: rotate(90deg) scale(1.15); }
+
+/* iPad/Mobile Touch Device Fix */
+@media screen and (max-width: 1024px) and (max-height: 1366px) {
+  .board-wrapper {
+    /* Shrink the board to 90% of the available space to leave room for margins */
+    max-width: 90vw !important;
+    max-height: 85vh !important;
+    padding: 1vh !important;
+  }
+
+  /* Reduce label font size slightly so they don't get clipped */
+  .board-labels-outer {
+    font-size: 0.7rem !important;
+  }
+}
