@@ -752,8 +752,8 @@ function handleRollClick() {
   }
 
   /**
-   * Highlight legal destinations.
-   */
+   * original Highlight legal destinations.
+
   function highlightLegalMoves(source) {
     legalDestinations = game.getLegalDestinations(source);
     
@@ -769,6 +769,36 @@ function handleRollClick() {
       }
     });
   }
+*/
+
+    /* temporary debugging replacement: */
+    /**
+   * Highlight legal destinations.
+   */
+  function highlightLegalMoves(source) {
+    legalDestinations = game.getLegalDestinations(source);
+    
+    // DIAGNOSTIC CHECK
+    if (legalDestinations.length === 0 && game.hasRolled && game.movesLeft.length > 0) {
+        const msg = `DEBUG: Blocked at ${source}. State: ${JSON.stringify(game.points)}`;
+        document.getElementById('game-message').textContent = msg;
+        sysLog(msg); // This prints to your console on the bottom of the screen
+    }
+    
+    legalDestinations.forEach(dest => {
+      if (dest.to === "off") {
+        const trayEl = game.currentPlayer === 1 ? bearOffP1 : bearOffP2;
+        trayEl.classList.add('highlight-destination');
+      } else {
+        const pointEl = document.getElementById(`point-${dest.to}`);
+        if (pointEl) {
+          pointEl.classList.add('highlight-destination');
+        }
+      }
+    });
+  }
+       
+
 
   /**
    * Clear all board highlights.
