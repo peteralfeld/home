@@ -193,46 +193,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-// Debug PNG Capture Listener
+// Debug PNG Capture Listener (True Pixel Screenshot)
   const btnDebugPng = document.getElementById('btn-debug-png');
   if (btnDebugPng) {
-    btnDebugPng.addEventListener('click', () => {
-      const boardToCapture = document.querySelector('.board-wrapper');
-      
-      // Temporarily change button text to indicate processing
+    btnDebugPng.addEventListener('click', async () => {
       const originalText = btnDebugPng.textContent;
-      btnDebugPng.textContent = "Capturing...";
+      btnDebugPng.textContent = "Selecting Tab...";
       btnDebugPng.disabled = true;
 
-      // Use html2canvas to render the DOM element to a canvas
-      html2canvas(boardToCapture, {
-        backgroundColor: '#060908', // Matches your --bg-app CSS variable
-        scale: 2, // 2x scale for a higher resolution output
-        logging: true // Helpful if it fails during debugging
-      }).then(canvas => {
-        // Convert canvas to a data URL and trigger download
+      try {
+        // Prompt user to capture the screen (pre-selects current tab in modern browsers)
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+          preferCurrentTab: true, 
+          video: { displaySurface: "browser" } 
+        });
+        
+        btnDebugPng.textContent = "Capturing...";
+
+        // Feed the stream into a hidden video element
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        
+        // Wait for the video to load its metadata so we know the dimensions
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+
+        // Create a canvas matching the exact resolution of the screen capture
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Draw the exact video frame onto the canvas
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Immediately stop sharing the screen so the browser indicator goes away
+        stream.getTracks().forEach(track => track.stop());
+
+        // Convert and trigger download
         const link = document.createElement('a');
-        link.download = `bg-debug-${Date.now()}.png`;
+        link.download = `bg-screenshot-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
         
-        // Restore button state
+        sysLog(`[System] True pixel screenshot captured and downloaded.`);
+        
+        // Restore button
         btnDebugPng.textContent = originalText;
         btnDebugPng.disabled = false;
-        sysLog(`[System] Debug PNG captured and downloaded.`);
-      }).catch(err => {
-        console.error("Failed to capture board image:", err);
-        sysLog(`[Error] Failed to capture PNG: ${err.message}`);
-        btnDebugPng.textContent = "Capture Failed";
+
+      } catch (err) {
+        console.error("Screenshot failed or was cancelled by user:", err);
+        sysLog(`[Error] Screenshot failed: ${err.message}`);
+        
+        btnDebugPng.textContent = "Capture Cancelled";
         setTimeout(() => {
           btnDebugPng.textContent = originalText;
           btnDebugPng.disabled = false;
         }, 2000);
-      });
+      }
     });
   }
-    
-  // Animation Toggle Listener
+    // Animation Toggle Listener
   const btnAnim = document.getElementById('btn-animation');
   if (btnAnim) {
     btnAnim.addEventListener('click', () => {
@@ -428,18 +454,25 @@ renderBorneOff();
           game.endTurn();
           updateUI();
         }, 100);
-      } else if (!game.hasLegalMoves()) {
-        gameMessageEl.textContent = "No legal moves possible! Switching players...";
-        
-        // ADD THIS: Only the active player is allowed to auto-end the turn!
-        if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
+// Inside updateUI() in ui.js
+} else if (!game.hasLegalMoves()) {
+  gameMessageEl.textContent = "No legal moves possible! Switching players...";
+  
+  // 1. Explicitly render blank dice
+  renderDie(die1El, 0);
+  renderDie(die2El, 0);
+  
+  // 2. Only the active player is allowed to auto-end the turn!
+  if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
 
-        if (turnEndTimer) clearTimeout(turnEndTimer);
-        turnEndTimer = setTimeout(() => {
-          turnEndTimer = null;
-          game.endTurn();
-          updateUI();
-        }, 100);
+  if (turnEndTimer) clearTimeout(turnEndTimer);
+  
+  // 3. Wait one second before ending the turn to show the blank dice
+  turnEndTimer = setTimeout(() => {
+    turnEndTimer = null;
+    game.endTurn();
+    updateUI();
+  }, 1000); // Changed from 100 to 1000ms
       } else {
           if (turnEndTimer) {
           clearTimeout(turnEndTimer);
@@ -1431,13 +1464,19 @@ connection.on('data', (data) => {
     
       sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
-    peer = new Peer('pointworks-bg-' + roomCode, {
-      config: { 'iceServers': [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
-      ]}
-    });
-    
+ peer = new Peer('pointworks-bg-' + roomCode, {
+  config: { 'iceServers': [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    // A TURN server catches the connection when STUN and local P2P fail
+    { 
+      urls: 'turn:your-turn-server-url.com:3478', 
+      username: 'your-username', 
+      credential: 'your-password' 
+    }
+  ]}
+ });
+      
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
     
