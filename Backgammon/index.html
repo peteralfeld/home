@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 61</h2>
+    <h2>Backgammon v. 62</h2>
     
 <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
@@ -180,33 +180,38 @@
       <button id="btn-exit" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">EXIT</button>
     </div>
     
-    <!-- Board View Select -->
-    <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
-      <label for="board-view" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
-      <select id="board-view" style="flex: 1; background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.3rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
-        <option value="white">White</option>
-        <option value="red" selected>Red</option>
-        <option value="home">Home</option>
-        <option value="outer">Outer</option>
-      </select>
-    </div>
+<!-- Unified View and Player Setup Row -->
+    <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+      
+      <!-- Board View -->
+      <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
+        <label for="board-view" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
+        <select id="board-view" style="width: 100%; background: #1d4ed8; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+          <option value="white">White</option>
+          <option value="red" selected>Red</option>
+          <option value="home">Home</option>
+          <option value="outer">Outer</option>
+        </select>
+      </div>
 
-    <!-- Player Type Selects -->
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-      <div style="display: flex; align-items: center; gap: 0.4rem;">
-        <label for="p1-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
-        <select id="p1-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
+      <!-- Player 1 (White) -->
+      <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
+        <label for="p1-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
+        <select id="p1-type" style="width: 100%; background: #ffffff; color: #ef4444; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
       </div>
-      <div style="display: flex; align-items: center; gap: 0.4rem;">
-        <label for="p2-type" style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
-        <select id="p2-type" style="background: rgba(0,0,0,0.3); color: #f3f4f6; border: 1px solid var(--glass-border); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem; outline: none; cursor: pointer;">
+
+      <!-- Player 2 (Red) -->
+      <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
+        <label for="p2-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
+        <select id="p2-type" style="width: 100%; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
       </div>
+
     </div>
   </div>
 

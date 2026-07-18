@@ -992,25 +992,39 @@ function handleRollClick() {
       tdDice.style.padding = '4px';
       tdDice.textContent = snapshot.dice && snapshot.dice[0] > 0 ? `${snapshot.dice[0]}-${snapshot.dice[1]}` : '-';
       row.appendChild(tdDice);
-
-      // 4. Moves (e.g. 24-18 24-23)
+// 4. Moves (e.g. 24-18 24-23)
       const tdMoves = document.createElement('td');
       tdMoves.style.padding = '4px';
       tdMoves.style.fontFamily = 'monospace';
       
       let movesText = '-';
       if (snapshot.playedMoves && snapshot.playedMoves.length > 0) {
-        movesText = snapshot.playedMoves.map(m => {
+        const moveCounts = {};
+        const moveOrder = [];
+        
+        snapshot.playedMoves.forEach(m => {
           const fromStr = m.from === 'bar' ? 'bar' : m.from;
           const toStr = m.to === 'off' ? 'off' : m.to;
-          const suffix = m.isHit ? 'bar' : '';
-          return `${fromStr}-${toStr}${suffix}`;
+          const suffix = m.isHit ? '*' : ''; // Use Magriel's asterisk for hits
+          const moveStr = `${fromStr}-${toStr}${suffix}`;
+          
+          // Track unique moves and their frequencies to support grouping
+          if (!moveCounts[moveStr]) {
+            moveCounts[moveStr] = 0;
+            moveOrder.push(moveStr);
+          }
+          moveCounts[moveStr]++;
+        });
+
+        // Format the final text output with parenthetical groupings for doubles
+        movesText = moveOrder.map(moveStr => {
+          const count = moveCounts[moveStr];
+          return count > 1 ? `${moveStr}(${count})` : moveStr;
         }).join(' ');
       }
       tdMoves.textContent = movesText;
-      row.appendChild(tdMoves);
-
-      tbody.appendChild(row);
+	row.appendChild(tdMoves);
+	tbody.appendChild(row);
     });
 
     table.appendChild(tbody);
