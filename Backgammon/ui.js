@@ -85,13 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let animationOn = true;
   let isAIPlaying = false;
 
-  const logLinesEl = document.getElementById('debug-log-lines');
-  function sysLog(msg) {
-    if (logLinesEl) {
-      const time = new Date().toTimeString().split(' ')[0];
-      logLinesEl.innerHTML += `\n[${time}] ${msg}`;
-      logLinesEl.scrollTop = logLinesEl.scrollHeight;
-    }
+function sysLog(msg) {
     console.log(msg);
   }
 
@@ -454,25 +448,22 @@ renderBorneOff();
           game.endTurn();
           updateUI();
         }, 100);
-// Inside updateUI() in ui.js
 } else if (!game.hasLegalMoves()) {
   gameMessageEl.textContent = "No legal moves possible! Switching players...";
   
-  // 1. Explicitly render blank dice
-  renderDie(die1El, 0);
-  renderDie(die2El, 0);
+  // Let the rolled dice stay visible on the screen!
   
   // 2. Only the active player is allowed to auto-end the turn!
   if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
 
   if (turnEndTimer) clearTimeout(turnEndTimer);
   
-  // 3. Wait one second before ending the turn to show the blank dice
+  // 3. Wait two seconds before ending the turn so players can read the dice
   turnEndTimer = setTimeout(() => {
     turnEndTimer = null;
     game.endTurn();
     updateUI();
-  }, 1000); // Changed from 100 to 1000ms
+  }, 2000); 
       } else {
           if (turnEndTimer) {
           clearTimeout(turnEndTimer);
@@ -1032,7 +1023,6 @@ function handleRollClick() {
 
     // Auto scroll list
     historyListEl.scrollTop = historyListEl.scrollHeight;
-    sysLog(`[History] HTML inside container: ${historyListEl.innerHTML}`);
   }
 
 // Initialize player types but wait for manual start
@@ -1478,15 +1468,19 @@ connection.on('data', (data) => {
     
       sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
- peer = new Peer('pointworks-bg-' + roomCode, {
+peer = new Peer('pointworks-bg-' + roomCode, {
   config: { 'iceServers': [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    // A TURN server catches the connection when STUN and local P2P fail
     { 
-      urls: 'turn:your-turn-server-url.com:3478', 
-      username: 'your-username', 
-      credential: 'your-password' 
+      urls: 'turn:openrelay.metered.ca:80', 
+      username: 'openrelayproject', 
+      credential: 'openrelayproject' 
+    },
+    { 
+      urls: 'turn:openrelay.metered.ca:443', 
+      username: 'openrelayproject', 
+      credential: 'openrelayproject' 
     }
   ]}
  });
@@ -1518,13 +1512,23 @@ connection.on('data', (data) => {
     
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
-    peer = new Peer({
+peer = new Peer({
       config: { 'iceServers': [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { 
+          urls: 'turn:openrelay.metered.ca:80', 
+          username: 'openrelayproject', 
+          credential: 'openrelayproject' 
+        },
+        { 
+          urls: 'turn:openrelay.metered.ca:443', 
+          username: 'openrelayproject', 
+          credential: 'openrelayproject' 
+        }
       ]}
-    });
-    
+});
+      
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
       sysLog(`[Network] Guest registered on server! Reaching out to room ${code}...`);
