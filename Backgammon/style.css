@@ -140,6 +140,7 @@ body {
   /* Removed buggy container-type rule */
 }
 
+/* Board Wrapper and Board */
 .board-wrapper {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%), var(--bg-board-frame);
   border-radius: 14px;
@@ -156,13 +157,13 @@ body {
   
   /* PERFECT SQUARE MATH (Side-by-side mode) */
   aspect-ratio: 1;
-  width: auto;         /* Automatically matches the height to maintain the square */
-  height: 100%;        /* Maximizes the vertical space */
-  max-width: 100%;     /* Prevents horizontal overflow if the window gets squeezed */
-  max-height: 100%;    /* Prevents vertical overflow */
+  width: 100vh; /* Requests the absolute maximum possible size */
+  height: 100vh;
+  max-width: 100%; /* Flexbox automatically stops it from overlapping the sidebar */
+  max-height: 100%; /* Flexbox automatically stops it from pushing off the bottom */
   
   box-sizing: border-box;
-  flex-shrink: 1;
+  flex-shrink: 1; /* Critical: allows the max- constraints to shrink the board */
 }
 
 .sidebar-panel {
