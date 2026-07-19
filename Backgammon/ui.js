@@ -857,174 +857,88 @@ function handleRollClick() {
     }
   }
 
-  /**
-   * Render history list for time travel replaying.
+/**
+   * Render history list for time travel replaying with a fixed header
+   * and a constant-height scrollable body.
    */
   function renderHistoryList() {
     sysLog(`[History] Rendering list. count=${game.gameHistory.length}`);
     historyListEl.innerHTML = '';
     
-    if (game.gameHistory.length === 0) {
-      const emptyEl = document.createElement('div');
-      emptyEl.className = 'history-empty';
-      emptyEl.style.color = '#9ca3af';
-      emptyEl.style.fontStyle = 'italic';
-      emptyEl.style.textAlignment = 'center';
-      emptyEl.style.padding = '0.5rem 0';
-      emptyEl.style.fontSize = '0.8rem';
-      emptyEl.textContent = 'No turns played yet.';
-      historyListEl.appendChild(emptyEl);
-      return;
-    }
+    // 1. Create the fixed Header
+    const tableHeader = document.createElement('table');
+    tableHeader.style.width = '100%';
+    tableHeader.style.borderCollapse = 'collapse';
+    tableHeader.style.marginBottom = '4px';
+    tableHeader.innerHTML = `
+      <thead>
+        <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.15); color: #e5c158; text-transform: uppercase; font-size: 0.65rem;">
+          <th style="padding: 4px; width: 10%; text-align: left;">#</th>
+          <th style="padding: 4px; width: 10%; text-align: left;">P</th>
+          <th style="padding: 4px; width: 25%; text-align: left;">Dice</th>
+          <th style="padding: 4px; width: 55%; text-align: left;">Moves</th>
+        </tr>
+      </thead>`;
+    historyListEl.appendChild(tableHeader);
 
-    // Create compact table
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.fontSize = '0.75rem';
-    table.style.color = '#ffffff';
-    table.style.textAlign = 'left';
-
-    // Header (sticky)
-    const thead = document.createElement('thead');
-    thead.style.position = 'sticky';
-    thead.style.top = '0';
-    thead.style.background = '#111827';
-    thead.style.zIndex = '1';
+    // 2. Create the Scrollable Body Wrapper
+    const scrollWrapper = document.createElement('div');
+    // Reduced from 75px to 60px to fix partial row visibility
+    scrollWrapper.style.height = '60px'; 
+    scrollWrapper.style.overflowY = 'auto';
+    scrollWrapper.style.width = '100%';
     
-    const headerRow = document.createElement('tr');
-    headerRow.style.borderBottom = '1px solid rgba(255, 255, 255, 0.15)';
-    headerRow.style.color = '#e5c158';
-    headerRow.style.textTransform = 'uppercase';
-    headerRow.style.fontSize = '0.65rem';
-    headerRow.style.letterSpacing = '0.5px';
-
-    const thNum = document.createElement('th');
-    thNum.style.padding = '4px';
-    thNum.textContent = '#';
-    headerRow.appendChild(thNum);
-
-    const thPlayer = document.createElement('th');
-    thPlayer.style.padding = '4px';
-    thPlayer.textContent = 'P';
-    headerRow.appendChild(thPlayer);
-
-    const thDice = document.createElement('th');
-    thDice.style.padding = '4px';
-    thDice.textContent = 'Dice';
-    headerRow.appendChild(thDice);
-
-    const thMoves = document.createElement('th');
-    thMoves.style.padding = '4px';
-    thMoves.textContent = 'Moves';
-    headerRow.appendChild(thMoves);
-
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
+    const tableBody = document.createElement('table');
+    tableBody.style.width = '100%';
+    tableBody.style.borderCollapse = 'collapse';
+    tableBody.style.fontSize = '0.75rem';
+    tableBody.style.color = '#ffffff';
 
     const tbody = document.createElement('tbody');
 
-    game.gameHistory.forEach((snapshot, idx) => {
-      const row = document.createElement('tr');
-      row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
-      row.style.cursor = 'pointer';
-      row.style.transition = 'background 0.2s';
-      row.title = 'Click to replay from this stage';
+    if (game.gameHistory.length === 0) {
+      const emptyEl = document.createElement('tr');
+      emptyEl.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 10px;">No turns played yet.</td>`;
+      tbody.appendChild(emptyEl);
+    } else {
+      game.gameHistory.forEach((snapshot, idx) => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
+        row.style.cursor = 'pointer';
+        row.title = 'Click to replay from this stage';
 
-      row.addEventListener('mouseenter', () => {
-        row.style.background = 'rgba(229, 193, 88, 0.15)';
-      });
-      row.addEventListener('mouseleave', () => {
-        row.style.background = 'transparent';
-      });
-
-      row.addEventListener('click', () => {
-        if (confirm(`Restore the game to this state? (This deletes all turns after this point).`)) {
-          if (turnEndTimer) {
-            clearTimeout(turnEndTimer);
-            turnEndTimer = null;
+        row.addEventListener('click', () => {
+          if (confirm(`Restore the game to this state?`)) {
+            if (game.restoreGameSnapshot(idx)) updateUI();
           }
-          if (game.restoreGameSnapshot(idx)) {
-            selectedSource = null;
-            clearHighlights();
-            initialRollOff = false;
-            
-            renderDie(die1El, game.dice[0] || 1);
-            renderDie(die2El, game.dice[1] || 1);
-            
-            updateUI();
-          }
-        }
-      });
-
-      // 1. Move/Turn number
-      const tdNum = document.createElement('td');
-      tdNum.style.padding = '4px';
-      tdNum.style.fontWeight = 'bold';
-      tdNum.textContent = idx + 1;
-      row.appendChild(tdNum);
-
-      // 2. Player (W or R)
-      const tdPlayer = document.createElement('td');
-      tdPlayer.style.padding = '4px';
-      const pCode = snapshot.currentPlayer === 1 ? 'W' : (snapshot.currentPlayer === 2 ? 'R' : '-');
-      tdPlayer.textContent = pCode;
-      if (pCode === 'W') {
-        tdPlayer.style.color = '#ffffff';
-        tdPlayer.style.fontWeight = 'bold';
-      } else {
-        tdPlayer.style.color = '#f87171';
-        tdPlayer.style.fontWeight = 'bold';
-      }
-      row.appendChild(tdPlayer);
-
-      // 3. Dice
-      const tdDice = document.createElement('td');
-      tdDice.style.padding = '4px';
-      tdDice.textContent = snapshot.dice && snapshot.dice[0] > 0 ? `${snapshot.dice[0]}-${snapshot.dice[1]}` : '-';
-      row.appendChild(tdDice);
-// 4. Moves (e.g. 24-18 24-23)
-      const tdMoves = document.createElement('td');
-      tdMoves.style.padding = '4px';
-      tdMoves.style.fontFamily = 'monospace';
-      
-      let movesText = '-';
-      if (snapshot.playedMoves && snapshot.playedMoves.length > 0) {
-        const moveCounts = {};
-        const moveOrder = [];
-        
-        snapshot.playedMoves.forEach(m => {
-          const fromStr = m.from === 'bar' ? 'bar' : m.from;
-          const toStr = m.to === 'off' ? 'off' : m.to;
-          const suffix = m.isHit ? '*' : ''; // Use Magriel's asterisk for hits
-          const moveStr = `${fromStr}-${toStr}${suffix}`;
-          
-          // Track unique moves and their frequencies to support grouping
-          if (!moveCounts[moveStr]) {
-            moveCounts[moveStr] = 0;
-            moveOrder.push(moveStr);
-          }
-          moveCounts[moveStr]++;
         });
 
-        // Format the final text output with parenthetical groupings for doubles
-        movesText = moveOrder.map(moveStr => {
-          const count = moveCounts[moveStr];
-          return count > 1 ? `${moveStr}(${count})` : moveStr;
-        }).join(' ');
-      }
-      tdMoves.textContent = movesText;
-	row.appendChild(tdMoves);
-	tbody.appendChild(row);
-    });
+        const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
+        const pColor = snapshot.currentPlayer === 1 ? '#ffffff' : '#f87171';
+        
+        let movesText = '-';
+        if (snapshot.playedMoves?.length > 0) {
+          movesText = snapshot.playedMoves.map(m => `${m.from}-${m.to}${m.isHit ? '*' : ''}`).join(' ');
+        }
 
-    table.appendChild(tbody);
-    historyListEl.appendChild(table);
+        row.innerHTML = `
+          <td style="padding: 2px 4px; font-weight: bold;">${idx + 1}</td>
+          <td style="padding: 2px 4px; color: ${pColor}; font-weight: bold;">${pCode}</td>
+          <td style="padding: 2px 4px;">${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}</td>
+          <td style="padding: 2px 4px; font-family: monospace;">${movesText}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
 
-    // Auto scroll list
-    historyListEl.scrollTop = historyListEl.scrollHeight;
+    tableBody.appendChild(tbody);
+    scrollWrapper.appendChild(tableBody);
+    historyListEl.appendChild(scrollWrapper);
+
+    // Auto scroll to the most recent move
+    scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
   }
-
+    
 // Initialize player types but wait for manual start
   game.playerTypes[1] = document.getElementById('p1-type').value;
   game.playerTypes[2] = document.getElementById('p2-type').value;
@@ -1162,11 +1076,11 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
         clearHighlights();
         updateUI();
 
-        // Very small pause when animation is OFF (e.g. 100ms)
+        // Very small pause when animation is OFF (e.g. 10ms)
         setTimeout(() => {
           executeAIMovesSequentially(moves, index + 1);
-        }, 100);
-      }, 50);
+        }, 10);
+      }, 10);
     }
   }
 

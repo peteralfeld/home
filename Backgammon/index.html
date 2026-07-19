@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 67</h2>
+    <h2>Backgammon v. 68</h2>
     
 <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
@@ -222,14 +222,14 @@
           </div>
         </div>
 
-        <!-- Game History Station -->
+<!-- Game History Station -->
         <div class="glass-card history-station">
-          <div class="history-list" id="history-list" style="min-height: 100px; max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.6rem; color: #ffffff !important;">
-            <div class="history-empty" style="color: #9ca3af; font-style: italic; text-align: center; padding: 0.5rem 0; font-size: 0.8rem;">No turns played yet.</div>
+          <div class="history-list" id="history-list" style="height: 120px; display: flex; flex-direction: column; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.5rem; color: #ffffff !important;">
+            <!-- JS will inject Header table + Scrollable Body table here -->
           </div>
         </div>
 
-<!-- Dice Rolling & Action Station -->
+        <!-- Dice Rolling & Action Station -->
         <div class="glass-card dice-station" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.8rem;">
           
           <div class="dice-container" id="dice-container" title="Click to Roll Dice" style="margin: 0; gap: 0.8rem;">
@@ -241,9 +241,9 @@
             </div>
           </div>
 
-<button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
+          <button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
           
-          <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 50px; height: 50px; font-size: 1.4rem;">
+          <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 60px; height: 60px; font-size: 1.68rem;">
             64
           </div>
         </div>
@@ -252,7 +252,7 @@
         <div class="glass-card animation-station" style="display: flex; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
           <button id="btn-animation" class="btn" style="width: 100%; font-weight: 700; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">Animation: ON</button>
         </div>
-      </aside>
+</aside>
     </main>
   </div>
 

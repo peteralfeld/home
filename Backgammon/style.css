@@ -513,26 +513,6 @@ body {
   perspective: 600px;
 }
 
-.die {
-  width: 50px;
-  height: 50px;
-  background-color: #fcfbf7; /* Premium Ivory White */
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  box-shadow: 
-    0 8px 16px rgba(0, 0, 0, 0.45), 
-    inset 0 3px 5px rgba(255, 255, 255, 1),
-    inset 0 -2px 3px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2rem;
-  color: #2b303c; /* Charcoal pips */
-  font-weight: bold;
-  user-select: none;
-  transition: transform 0.6s ease;
-}
-
 /* Styling P2's red dice */
 .player2-turn-active .die {
   background: radial-gradient(circle at 30% 30%, #ef4444 0%, #991b1b 60%, #450a0a 100%);
@@ -623,32 +603,6 @@ body {
   color: rgba(239, 68, 68, 0.4) !important;
   box-shadow: none;
   cursor: not-allowed;
-}
-
-/* Base Doubling Cube (Gray / Unowned) */
-.doubling-cube {
-  width: 55px;
-  height: 55px;
-  background: radial-gradient(circle at 30% 30%, #9ca3af 0%, #4b5563 60%, #1f2937 100%);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  box-shadow: 
-    0 8px 16px rgba(0, 0, 0, 0.6), 
-    inset 0 3px 6px rgba(255, 255, 255, 0.35), 
-    inset 0 -3px 6px rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--accent-gold); /* Keeps the yellow text */
-  text-shadow: 
-    1px 1px 1px rgba(0,0,0,0.8),
-    0 0 3px rgba(229, 193, 88, 0.5);
-  user-select: none;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
 }
 
 /* White Owns Cube */
@@ -921,6 +875,65 @@ body {
 .dragging-active .checker:not(.dragging) {
   pointer-events: none !important;
 }
+/* Dice Station */
+.die {
+  width: 60px; /* Increased from 50px */
+  height: 60px; /* Increased from 50px */
+  background-color: #fcfbf7; 
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.45), 
+    inset 0 3px 5px rgba(255, 255, 255, 1),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2.4rem; /* Scaled up from 2rem */
+  color: #2b303c; 
+  font-weight: bold;
+  user-select: none;
+  transition: transform 0.6s ease;
+}
+
+/* Base Doubling Cube */
+.doubling-cube {
+  width: 66px; /* Increased from 55px */
+  height: 66px; /* Increased from 55px */
+  background: radial-gradient(circle at 30% 30%, #9ca3af 0%, #4b5563 60%, #1f2937 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.6), 
+    inset 0 3px 6px rgba(255, 255, 255, 0.35), 
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.9rem; /* Increased from 1.6rem */
+  font-weight: 800;
+  color: var(--accent-gold); 
+  text-shadow: 
+    1px 1px 1px rgba(0,0,0,0.8),
+    0 0 3px rgba(229, 193, 88, 0.5);
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, background 0.3s;
+}
+
+/* Sidebar Compact Overrides */
+.sidebar-panel .die {
+  width: 50px !important; /* Increased from 42px */
+  height: 50px !important; /* Increased from 42px */
+}
+
+.sidebar-panel .doubling-cube {
+  width: 50px !important; /* Increased from 42px */
+  height: 50px !important; /* Increased from 42px */
+  font-size: 1.44rem !important; /* Increased from 1.2rem */
+}
+
 
 /* Sidebar Compact Overrides */
 .sidebar-panel {
@@ -948,10 +961,7 @@ body {
   margin: 0.3rem 0 !important;
   gap: 1rem !important;
 }
-.sidebar-panel .die {
-  width: 42px !important;
-  height: 42px !important;
-}
+
 .sidebar-panel .dice-moves-list {
   margin-bottom: 0.3rem !important;
 }
@@ -959,11 +969,7 @@ body {
   margin: 0.2rem 0 !important;
   gap: 1rem !important;
 }
-.sidebar-panel .doubling-cube {
-  width: 42px !important;
-  height: 42px !important;
-  font-size: 1.2rem !important;
-}
+
 .sidebar-panel .bear-off-tracks {
   gap: 0.5rem !important;
 }
