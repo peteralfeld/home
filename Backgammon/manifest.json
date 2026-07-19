@@ -1,0 +1,8 @@
+{
+  "name": "Backgammon",
+  "short_name": "Backgammon",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#00008b"
+}
