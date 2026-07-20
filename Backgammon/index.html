@@ -144,14 +144,13 @@
 
       </div>
 
- 
-<aside class="sidebar-panel">
+ <aside class="sidebar-panel">
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 68</h2>
+    <h2>Backgammon v. 72</h2>
     
-<!-- Streamlined Network Row -->
+    <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
       <button id="btn-host" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
       
@@ -162,26 +161,24 @@
       <button id="btn-quit" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #facc15; color: #dc2626; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">QUIT</button>
     </div>
 
-<!-- Network Status Message (Permanently Visible) -->
+    <!-- Network Status Message (Permanently Visible) -->
     <div id="network-status" style="display: block; font-size: 0.85rem; text-align: center; margin-bottom: 0.8rem;">
       <span id="conn-status" style="color: var(--text-secondary); font-weight: bold;">No network connection</span>
       <div id="room-code-display" style="display: none;"></div>
     </div>
 
-    <button id="btn-debug-png" class="btn btn-secondary" style="margin-bottom: 0.8rem; width: 100%; border-color: rgba(16, 185, 129, 0.4); color: #10b981;">Download Board PNG</button>
-<!-- Game Controls Row (Start, Reset, Defaults, Exit) -->
+    <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
     <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
-
-<button id="btn-start-game" class="btn" style="flex: 1.4; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
+      <button id="btn-start-game" class="btn" style="flex: 1.4; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
       
-      <button id="btn-restart" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESET</button>
+      <button id="btn-restart" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
       
-      <button id="btn-defaults" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">DEFAULTS</button>
+      <button id="btn-defaults" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">RELOAD</button>
       
       <button id="btn-exit" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">EXIT</button>
     </div>
     
-<!-- Unified View and Player Setup Row -->
+    <!-- Unified View and Player Setup Row -->
     <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
       
       <!-- Board View -->
@@ -197,7 +194,7 @@
 
       <!-- Player 1 (White) -->
       <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
-        <label for="p1-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">White:</label>
+        <label for="p1-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">WP:</label>
         <select id="p1-type" style="width: 100%; background: #ffffff; color: #ef4444; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
@@ -206,7 +203,7 @@
 
       <!-- Player 2 (Red) -->
       <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
-        <label for="p2-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Red:</label>
+        <label for="p2-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">RP:</label>
         <select id="p2-type" style="width: 100%; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
@@ -216,44 +213,55 @@
     </div>
   </div>
 
-<!-- Scoreboard / Status Panel -->
-        <div class="glass-card status-card">
-          <div class="game-message" id="game-message">
-            Click the dice to start the game!
-          </div>
-        </div>
+  <!-- Scoreboard / Status Panel -->
+  <div class="glass-card status-card">
+    <div class="game-message" id="game-message">
+      Click the dice to start the game!
+    </div>
+  </div>
 
-<!-- Game History Station -->
-        <div class="glass-card history-station">
-          <div class="history-list" id="history-list" style="height: 120px; display: flex; flex-direction: column; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.5rem; color: #ffffff !important;">
-            <!-- JS will inject Header table + Scrollable Body table here -->
-          </div>
-        </div>
+  <!-- Dice Rolling & Action Station (MOVED ABOVE HISTORY) -->
+  <div class="glass-card dice-station" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.8rem;">
+    
+    <div class="dice-container" id="dice-container" title="Click to Roll Dice" style="margin: 0; gap: 0.8rem;">
+      <div class="die" id="die-1">
+        <div class="die-face face-1">●</div>
+      </div>
+      <div class="die" id="die-2">
+        <div class="die-face face-1">●</div>
+      </div>
+    </div>
 
-        <!-- Dice Rolling & Action Station -->
-        <div class="glass-card dice-station" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.8rem;">
-          
-          <div class="dice-container" id="dice-container" title="Click to Roll Dice" style="margin: 0; gap: 0.8rem;">
-            <div class="die" id="die-1">
-              <div class="die-face face-1">●</div>
-            </div>
-            <div class="die" id="die-2">
-              <div class="die-face face-1">●</div>
-            </div>
-          </div>
+    <button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
+    
+    <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 60px; height: 60px; font-size: 1.68rem;">
+      64
+    </div>
+  </div>
 
-          <button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
-          
-          <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 60px; height: 60px; font-size: 1.68rem;">
-            64
-          </div>
-        </div>
-	
-        <!-- Animation Control Station -->
-        <div class="glass-card animation-station" style="display: flex; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
-          <button id="btn-animation" class="btn" style="width: 100%; font-weight: 700; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px;">Animation: ON</button>
-        </div>
+  <!-- Game History Station (MOVED BELOW DICE) -->
+  <div class="glass-card history-station">
+    <div class="history-list" id="history-list" style="height: 120px; display: flex; flex-direction: column; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.5rem; color: #ffffff !important;">
+      <!-- JS will inject Header table + Scrollable Body table here -->
+    </div>
+  </div>
+
+<!-- Animation & Highlight Control Station -->
+  <div class="glass-card animation-station" style="display: flex; flex-direction: row; gap: 0.5rem; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
+    <button id="btn-animation" class="btn" style="flex: 1; background: #fed7aa !important; color: #86198f !important; border: 1px solid #fdba74 !important; font-weight: 800; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">Animation: ON</button>
+    <button id="btn-highlight" class="btn" style="flex: 1; background: #fed7aa !important; color: #86198f !important; border: 1px solid #fdba74 !important; font-weight: 800; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">Highlight: ON</button>
+  </div>
+
+<!-- Export Station (Screen Image & Move List) -->
+  <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; width: 100%;">
+    <button id="btn-debug-png" class="btn" style="flex: 1; background: #e0f2fe !important; color: #1e3a8a !important; border: 1px solid #bae6fd !important; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">Screen Image</button>
+    
+    <button id="btn-download-moves" class="btn" style="flex: 1; background: #e0f2fe !important; color: #1e3a8a !important; border: 1px solid #bae6fd !important; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">Move List</button>
+
+  </div>
+
 </aside>
+
     </main>
   </div>
 

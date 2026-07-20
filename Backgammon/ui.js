@@ -84,27 +84,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let aiActionTimeout = null;
   let animationOn = true;
   let isAIPlaying = false;
+  let highlightOn = true;
 
 function sysLog(msg) {
     console.log(msg);
   }
 
-  function updateAnimationButton() {
+function updateAnimationButton() {
     const btnAnim = document.getElementById('btn-animation');
     if (!btnAnim) return;
-    if (animationOn) {
-      btnAnim.style.background = '#10b981';
-      btnAnim.style.color = '#ffffff';
-      btnAnim.textContent = 'Animation: ON';
-      btnAnim.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.4)';
-      btnAnim.style.border = 'none';
-    } else {
-      btnAnim.style.background = 'rgba(255, 255, 255, 0.08)';
-      btnAnim.style.color = 'var(--text-secondary)';
-      btnAnim.textContent = 'Animation: OFF';
-      btnAnim.style.boxShadow = 'none';
-      btnAnim.style.border = '1px solid rgba(255,255,255,0.06)';
-    }
+    btnAnim.textContent = `Animation: ${animationOn ? 'ON' : 'OFF'}`;
   }
 
   // Initialize Board Visuals
@@ -167,7 +156,7 @@ function sysLog(msg) {
           aiActionTimeout = null;
         }
         isAIPlaying = false;
-        game.reset();
+        game.restart();
         selectedSource = null;
         legalDestinations = [];
         initialRollOff = true;
@@ -252,6 +241,90 @@ function sysLog(msg) {
       }
     });
   }
+
+// Download Move List Listener (Text File)
+  const btnDownloadMoves = document.getElementById('btn-download-moves');
+  if (btnDownloadMoves) {
+    btnDownloadMoves.addEventListener('click', () => {
+      if (game.gameHistory.length === 0) {
+        alert("No moves have been played yet!");
+        return;
+      }
+
+      const now = new Date();
+      const p1Type = game.playerTypes[1].charAt(0).toUpperCase() + game.playerTypes[1].slice(1);
+      const p2Type = game.playerTypes[2].charAt(0).toUpperCase() + game.playerTypes[2].slice(1);
+
+      let txtContent = "Backgammon Game - Move History\n";
+      txtContent += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+      txtContent += `White: ${p1Type}, Red: ${p2Type}\n\n`;
+      
+      txtContent += "Turn  Player  Dice   Moves\n\n";
+
+      game.gameHistory.forEach((snapshot, idx) => {
+        const turnNum = String(idx + 1).padStart(4, ' ');
+        // Pad 'Red' to 5 characters so it aligns perfectly with 'White'
+        const pCode = snapshot.currentPlayer === 1 ? 'White' : 'Red  ';
+        const diceStr = `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`.padEnd(5, ' ');
+        
+        let movesText = '-';
+        if (snapshot.playedMoves && snapshot.playedMoves.length > 0) {
+          movesText = snapshot.playedMoves.map(m => `${m.from}-${m.to}${m.isHit ? '*' : ''}`).join(' ');
+        }
+
+        txtContent += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
+      });
+
+      // Append Game Status
+      txtContent += "\n";
+      if (!game.winner) {
+        txtContent += "Game in progress\n";
+      } else {
+        const winnerStr = game.winner === 1 ? "White" : "Red";
+        const loserStr = game.winner === 1 ? "Red" : "White";
+        const loserIdx = game.winner === 1 ? 2 : 1;
+
+        let winType = "defeated";
+
+        // If the loser has borne off 0 checkers, it's at least a gammon
+        if (game.borneOff[loserIdx] === 0) {
+          winType = "gammoned";
+          
+          // Check for backgammon: loser has a checker on the bar OR in the winner's home board
+          let isBackgammon = false;
+          if (game.bar[loserIdx] > 0) {
+            isBackgammon = true;
+          } else {
+            // White's home board is 1-6. Red's home board is 19-24.
+            const homeStart = game.winner === 1 ? 1 : 19;
+            const homeEnd = game.winner === 1 ? 6 : 24;
+            
+            for (let i = homeStart; i <= homeEnd; i++) {
+              if (game.points[i].player === loserIdx) {
+                isBackgammon = true;
+                break;
+              }
+            }
+          }
+          
+          if (isBackgammon) {
+            winType = "backgammoned";
+          }
+        }
+
+        txtContent += ` ${winnerStr} ${winType} ${loserStr}\n`;
+      }
+
+      // Create a Blob from the text content and trigger download
+      const blob = new Blob([txtContent], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.download = `backgammon-moves-${Date.now()}.txt`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      
+      sysLog(`[System] Move list text file downloaded.`);
+    });
+  }
     // Animation Toggle Listener
   const btnAnim = document.getElementById('btn-animation');
   if (btnAnim) {
@@ -261,6 +334,23 @@ function sysLog(msg) {
       sysLog(`[System] Animation toggled to ${animationOn ? 'ON' : 'OFF'}`);
     });
     updateAnimationButton();
+  }
+
+    // Highlight Toggle Listener
+  const btnHighlight = document.getElementById('btn-highlight');
+  if (btnHighlight) {
+    btnHighlight.addEventListener('click', () => {
+      highlightOn = !highlightOn;
+      btnHighlight.textContent = `Highlight: ${highlightOn ? 'ON' : 'OFF'}`;
+      sysLog(`[System] Highlight toggled to ${highlightOn ? 'ON' : 'OFF'}`);
+      
+      // Clear highlights immediately if turned off while a piece is selected
+      if (!highlightOn) {
+        clearHighlights();
+      } else if (selectedSource !== null) {
+        highlightLegalMoves(selectedSource);
+      }
+    });
   }
 
   doublingCubeEl.addEventListener('click', () => {
@@ -391,7 +481,7 @@ renderBorneOff();
     if (doublingCubeEl) {
       doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
       
-      // Reset classes
+      // Restart classes
       doublingCubeEl.classList.remove('owned-p1', 'owned-p2');
       
       // Apply owner colors
@@ -692,8 +782,7 @@ function handleRollClick() {
       updateUI();
     }, 50);
   }
-
-  /**
+/**
    * Click interaction for points.
    */
   function handlePointClick(pointIdx) {
@@ -701,7 +790,7 @@ function handleRollClick() {
     const pointState = game.points[pointIdx];
     sysLog(`[Click] Point ${pointIdx} clicked. player=${pointState.player}, count=${pointState.count}, selectedSource=${selectedSource}, activePlayer=${game.currentPlayer}, hasRolled=${game.hasRolled}, movesLeft=${game.movesLeft.length}`);
     
-// 1. If we already have a selected source, treat this click as a "drop"
+    // 1. If we already have a selected source, treat this click as a "drop"
     if (selectedSource !== null) {
       sysLog(`[Click] Target selected: ${pointIdx}. Attempting move.`);
       if (game.makeMove(selectedSource, pointIdx)) {
@@ -725,8 +814,11 @@ function handleRollClick() {
       highlightLegalMoves(pointIdx);
       sysLog(`[Click] Selection set. legalDestinations=[${legalDestinations.map(d => d.to).join(', ')}]`);
       
-      const pointEl = document.getElementById(`point-${pointIdx}`);
-      pointEl.classList.add('highlight-source');
+      // ONLY apply the visual highlight if the toggle is on
+      if (highlightOn) {
+        const pointEl = document.getElementById(`point-${pointIdx}`);
+        pointEl.classList.add('highlight-source');
+      }
     } else {
       sysLog(`[Click] Selection cleared.`);
       selectedSource = null;
@@ -771,11 +863,14 @@ function handleRollClick() {
     }
   }
 
-  /**
+/**
    *  Highlight legal destinations.
-*/
+   */
   function highlightLegalMoves(source) {
     legalDestinations = game.getLegalDestinations(source);
+    
+    // Stop here if the user turned off visual highlights
+    if (!highlightOn) return; 
     
     legalDestinations.forEach(dest => {
       if (dest.to === "off") {
@@ -828,10 +923,10 @@ function handleRollClick() {
     }
   }
 /**
-   * Handle reset click.
+   * Handle restart click.
    */
-  function handleResetClick() {
-    if (confirm("Are you sure you want to reset the game?")) {
+  function handleRestartClick() {
+    if (confirm("Are you sure you want to restart the game?")) {
       if (turnEndTimer) {
         clearTimeout(turnEndTimer);
         turnEndTimer = null;
@@ -843,7 +938,7 @@ function handleRollClick() {
       gameStarted = false;
       isAIPlaying = false;
       document.getElementById('start-menu-overlay').style.display = 'flex';
-      game.reset();
+      game.restart();
       selectedSource = null;
       legalDestinations = [];
       initialRollOff = true;
@@ -1026,6 +1121,8 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
   }
 
   /**
+
+/**
    * Animates and executes the AI moves step by step.
    */
   function executeAIMovesSequentially(moves, index) {
@@ -1040,20 +1137,24 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
 
     // Highlight source and target
     clearHighlights();
-    if (move.from === 'bar') {
-      const barEl = game.currentPlayer === 1 ? barP1El : barP2El;
-      barEl.classList.add('highlight-source');
-    } else {
-      const pt = document.getElementById(`point-${move.from}`);
-      if (pt) pt.classList.add('highlight-source');
-    }
+    
+    // Wrap the visual highlighting in the toggle check
+    if (highlightOn) {
+      if (move.from === 'bar') {
+        const barEl = game.currentPlayer === 1 ? barP1El : barP2El;
+        if (barEl) barEl.classList.add('highlight-source');
+      } else {
+        const pt = document.getElementById(`point-${move.from}`);
+        if (pt) pt.classList.add('highlight-source');
+      }
 
-    if (move.to === 'off') {
-      const bearEl = game.currentPlayer === 1 ? bearOffP1 : bearOffP2;
-      bearEl.classList.add('highlight-destination');
-    } else {
-      const pt = document.getElementById(`point-${move.to}`);
-      if (pt) pt.classList.add('highlight-destination');
+      if (move.to === 'off') {
+        const bearEl = game.currentPlayer === 1 ? bearOffP1 : bearOffP2;
+        if (bearEl) bearEl.classList.add('highlight-destination');
+      } else {
+        const pt = document.getElementById(`point-${move.to}`);
+        if (pt) pt.classList.add('highlight-destination');
+      }
     }
 
     if (animationOn) {
@@ -1253,7 +1354,7 @@ function initNetworkGame(role) {
     localPlayerRole = role;
 
     // --- WIPE ANY PREVIOUS LOCAL STATE ---
-    game.reset();
+    game.restart();
     initialRollOff = true;
     isRolling = false;
     gameStarted = false;
