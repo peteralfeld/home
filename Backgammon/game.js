@@ -5,10 +5,10 @@
 
 class BackgammonGame {
   constructor() {
-    this.reset();
+    this.restart();
   }
 
-  reset() {
+  restart() {
     // Board representation: points 1 to 24.
     // Index 0 is unused (or represents Player 1's borne off home zone).
     // Each point: { player: 1 | 2 | null, count: number }
