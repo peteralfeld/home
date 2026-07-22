@@ -1059,19 +1059,27 @@ body {
 
 /* =========================================================
    RESPONSIVE LAYOUT LOGIC
+   
+   Tier 1 (default / wide): Board + sidebar side-by-side.
+          Board = largest possible square. Sidebar scrolls internally.
+   
+   Tier 2 (max-aspect-ratio: 4/3, i.e. height < 150% of width):
+          Sidebar goes below board. Whole page scrolls.
+   
+   Tier 3 (max-aspect-ratio: 2/3, i.e. height >= 150% of width):
+          Sidebar goes below board. Page is locked; only sidebar scrolls.
+          Board is always fully visible.
 ========================================================= */
 
 /* 
-  CASE 1: Window width cannot fit Board + Sidebar comfortably 
-  (Aspect ratio is less than 4/3, meaning square or slightly wide)
-  Rule: Control column underneath, ENTIRE window scrolls.
-  Board width = Height of window (unless window is too narrow, then 100% width).
+   TIER 2: Window is square-ish or narrow — sidebar below board,
+   whole window scrollable.
 */
 @media (max-aspect-ratio: 4/3) {
   body {
     height: auto;
     max-height: none;
-    overflow: auto; /* Unlocks window to allow full-page scrolling */
+    overflow: auto; /* Full-page scrolling */
   }
 
   #app-container {
@@ -1093,30 +1101,37 @@ body {
 
   .board-wrapper {
     aspect-ratio: 1;
-    width: 100vh; /* Requests to be exactly the height of the window */
-    height: auto; /* Lets aspect-ratio dictate the height */
-    max-width: 100%; /* Prevents horizontal scrolling on narrower screens */
-    max-height: none; /* Removes vertical limit so the window can scroll */
+    width: min(100vw - 1rem, 100vh - 1rem); /* Square = smaller of width/height */
+    height: auto;
+    max-width: 100%;
+    max-height: none;
+    margin: 0 auto; /* Center horizontally */
   }
 
   .sidebar-panel {
     width: 100%;
     height: auto;
-    overflow-y: visible; /* Relies on window scroll */
+    overflow-y: visible; /* Relies on full-page scroll */
     padding-right: 0;
   }
 }
 
 /* 
-  CASE 2: Window height is 150% of the width or more.
-  (Aspect ratio is 2/3 or narrower)
-  Rule: Control column underneath, window locked, ONLY control column scrolls.
+   TIER 3: Tall / portrait — sidebar below board,
+   page locked, ONLY sidebar scrolls. Board always fully visible.
+   (This overrides Tier 2 since it's more specific.)
 */
 @media (max-aspect-ratio: 2/3) {
   body {
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
     max-height: 100vh;
-    overflow: hidden; /* Locks the window */
+    max-height: 100dvh;
+    overflow: hidden; /* Lock page */
+  }
+
+  #app-container {
+    height: 100%;
   }
 
   .game-layout {
@@ -1126,25 +1141,27 @@ body {
   }
 
   .board-area {
-    flex: 0 0 auto; 
+    flex: 0 0 auto;
     height: auto;
     overflow: hidden;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
   }
 
   .board-wrapper {
     aspect-ratio: 1;
-    width: 100%; /* Fill the narrow width completely */
+    width: min(100vw - 1rem, 65vh); /* Leave room for the sidebar below */
     height: auto;
-    max-width: 100%; 
+    max-width: 100%;
     max-height: none;
+    margin: 0 auto;
   }
 
   .sidebar-panel {
-    flex: 1; /* Takes up remaining vertical space */
+    flex: 1;        /* Fill remaining vertical space */
+    min-height: 0;  /* Allow flex shrink */
     width: 100%;
     height: auto;
-    overflow-y: auto; /* Enables internal scroll for the control column */
+    overflow-y: auto; /* Internal scroll only */
     padding-right: 6px;
   }
 }
