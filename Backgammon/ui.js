@@ -837,6 +837,7 @@ function handleRollClick() {
    */
   function handlePointClick(pointIdx) {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     const pointState = game.points[pointIdx];
     sysLog(`[Click] Point ${pointIdx} clicked. player=${pointState.player}, count=${pointState.count}, selectedSource=${selectedSource}, activePlayer=${game.currentPlayer}, hasRolled=${game.hasRolled}, movesLeft=${game.movesLeft.length}`);
     
@@ -887,6 +888,7 @@ function handleRollClick() {
    */
   function handleBarClick(player) {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     if (game.currentPlayer !== player || !game.hasRolled || !game.hasCheckersOnBar(player)) {
       selectedSource = null;
       clearHighlights();
@@ -933,6 +935,7 @@ function handleRollClick() {
    */
   function handleBearOffClick(player) {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     if (game.currentPlayer !== player || selectedSource === null) return;
 
     // Check if "off" is in legal destinations
