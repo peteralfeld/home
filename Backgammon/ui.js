@@ -89,7 +89,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let autoRollTimeout = null;
   let autoMoveOn  = false;
 
+  // In-memory log buffer — written by sysLog, downloadable via Export > Console Log
+  const consoleLog = [];
+
 function sysLog(msg) {
+    const time = new Date().toTimeString().slice(0, 8);
+    consoleLog.push(`[${time}] ${msg}`);
     console.log(msg);
   }
 
@@ -157,153 +162,136 @@ function sysLog(msg) {
   }
 
 
-// Debug PNG Capture Listener (True Pixel Screenshot)
-  const btnDebugPng = document.getElementById('btn-debug-png');
-  if (btnDebugPng) {
-    btnDebugPng.addEventListener('click', async () => {
-      const originalText = btnDebugPng.textContent;
-      btnDebugPng.textContent = "Selecting Tab...";
-      btnDebugPng.disabled = true;
+// ── Export Menu ────────────────────────────────────────────
+  const exportHeader  = document.getElementById('export-header');
+  const exportPanel   = document.getElementById('export-panel');
+  const exportChevron = document.getElementById('export-chevron');
+
+  if (exportHeader) {
+    exportHeader.addEventListener('click', () => {
+      const isOpen = exportPanel.classList.toggle('open');
+      exportChevron.classList.toggle('open', isOpen);
+    });
+  }
+
+  // Screen Image
+  const exportScreenEl = document.getElementById('export-screen');
+  if (exportScreenEl) {
+    exportScreenEl.addEventListener('click', async () => {
+      const label = exportScreenEl.querySelector('.settings-item-label');
+      const original = label.textContent;
+      label.textContent = 'Selecting Tab…';
 
       try {
-        // Prompt user to capture the screen (pre-selects current tab in modern browsers)
         const stream = await navigator.mediaDevices.getDisplayMedia({
-          preferCurrentTab: true, 
-          video: { displaySurface: "browser" } 
+          preferCurrentTab: true,
+          video: { displaySurface: 'browser' }
         });
-        
-        btnDebugPng.textContent = "Capturing...";
+        label.textContent = 'Capturing…';
 
-        // Feed the stream into a hidden video element
         const video = document.createElement('video');
         video.srcObject = stream;
-        
-        // Wait for the video to load its metadata so we know the dimensions
-        await new Promise((resolve) => {
-          video.onloadedmetadata = () => {
-            video.play();
-            resolve();
-          };
+        await new Promise(resolve => {
+          video.onloadedmetadata = () => { video.play(); resolve(); };
         });
 
-        // Create a canvas matching the exact resolution of the screen capture
         const canvas = document.createElement('canvas');
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
-        // Draw the exact video frame onto the canvas
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        // Immediately stop sharing the screen so the browser indicator goes away
-        stream.getTracks().forEach(track => track.stop());
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        stream.getTracks().forEach(t => t.stop());
 
-        // Convert and trigger download
         const link = document.createElement('a');
         link.download = `bg-screenshot-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        
-        sysLog(`[System] True pixel screenshot captured and downloaded.`);
-        
-        // Restore button
-        btnDebugPng.textContent = originalText;
-        btnDebugPng.disabled = false;
+
+        sysLog('[System] Screenshot captured and downloaded.');
+        label.textContent = original;
 
       } catch (err) {
-        console.error("Screenshot failed or was cancelled by user:", err);
         sysLog(`[Error] Screenshot failed: ${err.message}`);
-        
-        btnDebugPng.textContent = "Capture Cancelled";
-        setTimeout(() => {
-          btnDebugPng.textContent = originalText;
-          btnDebugPng.disabled = false;
-        }, 2000);
+        label.textContent = 'Cancelled';
+        setTimeout(() => { label.textContent = original; }, 2000);
       }
     });
   }
 
-// Download Move List Listener (Text File)
-  const btnDownloadMoves = document.getElementById('btn-download-moves');
-  if (btnDownloadMoves) {
-    btnDownloadMoves.addEventListener('click', () => {
-      if (game.gameHistory.length === 0) {
-        alert("No moves have been played yet!");
-        return;
-      }
+  // Move List
+  const exportMovesEl = document.getElementById('export-moves');
+  if (exportMovesEl) {
+    exportMovesEl.addEventListener('click', () => {
+      if (game.gameHistory.length === 0) { alert('No moves have been played yet!'); return; }
 
-      const now = new Date();
+      const now   = new Date();
       const p1Type = game.playerTypes[1].charAt(0).toUpperCase() + game.playerTypes[1].slice(1);
       const p2Type = game.playerTypes[2].charAt(0).toUpperCase() + game.playerTypes[2].slice(1);
 
-      let txtContent = "Backgammon Game - Move History\n";
-      txtContent += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
-      txtContent += `White: ${p1Type}, Red: ${p2Type}\n\n`;
-      
-      txtContent += "Turn  Player  Dice   Moves\n\n";
+      let txt = 'Backgammon Game - Move History\n';
+      txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+      txt += `White: ${p1Type}, Red: ${p2Type}\n\n`;
+      txt += 'Turn  Player  Dice   Moves\n\n';
 
-      game.gameHistory.forEach((snapshot, idx) => {
+      game.gameHistory.forEach((snap, idx) => {
         const turnNum = String(idx + 1).padStart(4, ' ');
-        // Pad 'Red' to 5 characters so it aligns perfectly with 'White'
-        const pCode = snapshot.currentPlayer === 1 ? 'White' : 'Red  ';
-        const diceStr = `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`.padEnd(5, ' ');
-        
-        let movesText = '-';
-        if (snapshot.playedMoves && snapshot.playedMoves.length > 0) {
-          movesText = snapshot.playedMoves.map(m => `${m.from}-${m.to}${m.isHit ? '*' : ''}`).join(' ');
-        }
+        const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
+        const diceStr = `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
 
-        txtContent += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
+        let movesText = '-';
+        if (snap.playedMoves?.length > 0) {
+          // Magriel notation with grouping
+          const groups = [];
+          for (const m of snap.playedMoves) {
+            const key  = `${m.from}/${m.to}${m.isHit ? '*' : ''}`;
+            const last = groups[groups.length - 1];
+            if (last && last.key === key) { last.count++; }
+            else { groups.push({ key, count: 1 }); }
+          }
+          movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
+        }
+        txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
       });
 
-      // Append Game Status
-      txtContent += "\n";
+      txt += '\n';
       if (!game.winner) {
-        txtContent += "Game in progress\n";
+        txt += 'Game in progress\n';
       } else {
-        const winnerStr = game.winner === 1 ? "White" : "Red";
-        const loserStr = game.winner === 1 ? "Red" : "White";
-        const loserIdx = game.winner === 1 ? 2 : 1;
-
-        let winType = "defeated";
-
-        // If the loser has borne off 0 checkers, it's at least a gammon
+        const winnerStr = game.winner === 1 ? 'White' : 'Red';
+        const loserStr  = game.winner === 1 ? 'Red'   : 'White';
+        const loserIdx  = game.winner === 1 ? 2 : 1;
+        let winType = 'defeated';
         if (game.borneOff[loserIdx] === 0) {
-          winType = "gammoned";
-          
-          // Check for backgammon: loser has a checker on the bar OR in the winner's home board
-          let isBackgammon = false;
-          if (game.bar[loserIdx] > 0) {
-            isBackgammon = true;
-          } else {
-            // White's home board is 1-6. Red's home board is 19-24.
-            const homeStart = game.winner === 1 ? 1 : 19;
-            const homeEnd = game.winner === 1 ? 6 : 24;
-            
-            for (let i = homeStart; i <= homeEnd; i++) {
-              if (game.points[i].player === loserIdx) {
-                isBackgammon = true;
-                break;
-              }
+          winType = 'gammoned';
+          let isBackgammon = game.bar[loserIdx] > 0;
+          if (!isBackgammon) {
+            const s = game.winner === 1 ? 1 : 19, e = game.winner === 1 ? 6 : 24;
+            for (let i = s; i <= e; i++) {
+              if (game.points[i].player === loserIdx) { isBackgammon = true; break; }
             }
           }
-          
-          if (isBackgammon) {
-            winType = "backgammoned";
-          }
+          if (isBackgammon) winType = 'backgammoned';
         }
-
-        txtContent += ` ${winnerStr} ${winType} ${loserStr}\n`;
+        txt += ` ${winnerStr} ${winType} ${loserStr}\n`;
       }
 
-      // Create a Blob from the text content and trigger download
-      const blob = new Blob([txtContent], { type: 'text/plain' });
       const link = document.createElement('a');
       link.download = `backgammon-moves-${Date.now()}.txt`;
-      link.href = URL.createObjectURL(blob);
+      link.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
       link.click();
-      
-      sysLog(`[System] Move list text file downloaded.`);
+      sysLog('[System] Move list downloaded.');
+    });
+  }
+
+  // Console Log
+  const exportConsoleEl = document.getElementById('export-console');
+  if (exportConsoleEl) {
+    exportConsoleEl.addEventListener('click', () => {
+      if (consoleLog.length === 0) { alert('Console log is empty.'); return; }
+      const link = document.createElement('a');
+      link.download = `backgammon-console-${Date.now()}.txt`;
+      link.href = URL.createObjectURL(new Blob([consoleLog.join('\n')], { type: 'text/plain' }));
+      link.click();
+      sysLog('[System] Console log downloaded.');
     });
   }
     // ── Settings Menu ────────────────────────────────────────────

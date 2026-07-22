@@ -274,13 +274,29 @@
   </div>
 
 
-<!-- Export Station (Screen Image & Move List) -->
-  <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; width: 100%;">
-    <button id="btn-debug-png" class="btn" style="flex: 1; background: #e0f2fe !important; color: #1e3a8a !important; border: 1px solid #bae6fd !important; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">Screen Image</button>
-    
-    <button id="btn-download-moves" class="btn" style="flex: 1; background: #e0f2fe !important; color: #1e3a8a !important; border: 1px solid #bae6fd !important; font-weight: 800; text-transform: uppercase; font-size: 0.75rem;">Move List</button>
-
+<!-- Export Menu -->
+  <div class="glass-card settings-station">
+    <div id="export-header" class="settings-header">
+      <span class="settings-icon">⬇</span>
+      <span class="settings-label">Export</span>
+      <span class="settings-chevron" id="export-chevron">▼</span>
+    </div>
+    <div id="export-panel" class="settings-panel">
+      <div class="settings-item" id="export-screen">
+        <span class="settings-item-label">Screen Image</span>
+        <span class="export-icon">📷</span>
+      </div>
+      <div class="settings-item" id="export-moves">
+        <span class="settings-item-label">Move List</span>
+        <span class="export-icon">📄</span>
+      </div>
+      <div class="settings-item" id="export-console">
+        <span class="settings-item-label">Console Log</span>
+        <span class="export-icon">💾</span>
+      </div>
+    </div>
   </div>
+
 
 </aside>
 
