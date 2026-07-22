@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 76</h2>
+    <h2>Backgammon v. 79</h2>
     
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
@@ -169,13 +169,13 @@
 
     <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
     <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
-      <button id="btn-start-game" class="btn" style="flex: 1.4; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
-      
+      <button id="btn-start-game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
+
+      <button id="btn-stop" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
+
       <button id="btn-restart" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
       
       <button id="btn-defaults" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">RELOAD</button>
-      
-      <button id="btn-exit" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">EXIT</button>
     </div>
     
     <!-- Unified View and Player Setup Row -->
@@ -244,59 +244,70 @@
     <div class="history-list" id="history-list" style="height: 120px; display: flex; flex-direction: column; background: rgba(229, 193, 88, 0.06); border: 2px solid rgba(229, 193, 88, 0.35); border-radius: 8px; padding: 0.5rem; color: #ffffff !important;">
       <!-- JS will inject Header table + Scrollable Body table here -->
     </div>
-  </div>
-
-<!-- Settings Menu -->
-  <div class="glass-card settings-station">
-    <div id="settings-header" class="settings-header">
-      <span class="settings-icon">⚙</span>
-      <span class="settings-label">Settings</span>
-      <span class="settings-chevron" id="settings-chevron">▼</span>
-    </div>
-    <div id="settings-panel" class="settings-panel">
-      <div class="settings-item" id="setting-animation" data-setting="animation">
-        <span class="settings-item-label">Animation</span>
-        <span class="settings-item-badge" id="badge-animation">ON</span>
-      </div>
-      <div class="settings-item" id="setting-highlight" data-setting="highlight">
-        <span class="settings-item-label">Highlight</span>
-        <span class="settings-item-badge" id="badge-highlight">ON</span>
-      </div>
-      <div class="settings-item" id="setting-autoroll" data-setting="autoroll">
-        <span class="settings-item-label">Auto Roll</span>
-        <span class="settings-item-badge" id="badge-autoroll">OFF</span>
-      </div>
-      <div class="settings-item" id="setting-automove" data-setting="automove">
-        <span class="settings-item-label">Auto Move</span>
-        <span class="settings-item-badge" id="badge-automove">OFF</span>
-      </div>
+    <!-- History Navigation Buttons -->
+    <div class="history-nav-bar">
+      <button id="nav-first" class="history-nav-btn" title="Go to first recorded turn">&lt;&lt;</button>
+      <button id="nav-back"  class="history-nav-btn" title="Previous turn">&lt;</button>
+      <button id="nav-fwd"   class="history-nav-btn" title="Next turn">&gt;</button>
+      <button id="nav-last"  class="history-nav-btn" title="Return to current state">&gt;&gt;</button>
+      <button id="nav-rs"    class="history-nav-btn history-nav-rs" title="Reset to start, replay same dice">RS</button>
     </div>
   </div>
 
+<!-- Settings + Export Menus (side by side) -->
+  <div style="display: flex; flex-direction: row; gap: 0.5rem;">
 
-<!-- Export Menu -->
-  <div class="glass-card settings-station">
-    <div id="export-header" class="settings-header">
-      <span class="settings-icon">⬇</span>
-      <span class="settings-label">Export</span>
-      <span class="settings-chevron" id="export-chevron">▼</span>
+    <!-- Settings Menu -->
+    <div class="glass-card settings-station" style="flex: 1; min-width: 0;">
+      <div id="settings-header" class="settings-header">
+        <span class="settings-icon">⚙</span>
+        <span class="settings-label">Settings</span>
+        <span class="settings-chevron" id="settings-chevron">▼</span>
+      </div>
+      <div id="settings-panel" class="settings-panel">
+        <div class="settings-item" id="setting-animation" data-setting="animation">
+          <span class="settings-item-label">Animation</span>
+          <span class="settings-item-badge" id="badge-animation">ON</span>
+        </div>
+        <div class="settings-item" id="setting-highlight" data-setting="highlight">
+          <span class="settings-item-label">Highlight</span>
+          <span class="settings-item-badge" id="badge-highlight">ON</span>
+        </div>
+        <div class="settings-item" id="setting-autoroll" data-setting="autoroll">
+          <span class="settings-item-label">Auto Roll</span>
+          <span class="settings-item-badge" id="badge-autoroll">OFF</span>
+        </div>
+        <div class="settings-item" id="setting-automove" data-setting="automove">
+          <span class="settings-item-label">Auto Move</span>
+          <span class="settings-item-badge" id="badge-automove">OFF</span>
+        </div>
+      </div>
     </div>
-    <div id="export-panel" class="settings-panel">
-      <div class="settings-item" id="export-screen">
-        <span class="settings-item-label">Screen Image</span>
-        <span class="export-icon">📷</span>
+
+    <!-- Export Menu -->
+    <div class="glass-card settings-station" style="flex: 1; min-width: 0;">
+      <div id="export-header" class="settings-header">
+        <span class="settings-icon">⬇</span>
+        <span class="settings-label">Export</span>
+        <span class="settings-chevron" id="export-chevron">▼</span>
       </div>
-      <div class="settings-item" id="export-moves">
-        <span class="settings-item-label">Move List</span>
-        <span class="export-icon">📄</span>
-      </div>
-      <div class="settings-item" id="export-console">
-        <span class="settings-item-label">Console Log</span>
-        <span class="export-icon">💾</span>
+      <div id="export-panel" class="settings-panel">
+        <div class="settings-item" id="export-screen">
+          <span class="settings-item-label">Screen Image</span>
+          <span class="export-icon">📷</span>
+        </div>
+        <div class="settings-item" id="export-moves">
+          <span class="settings-item-label">Move List</span>
+          <span class="export-icon">📄</span>
+        </div>
+        <div class="settings-item" id="export-console">
+          <span class="settings-item-label">Console Log</span>
+          <span class="export-icon">💾</span>
+        </div>
       </div>
     </div>
+
   </div>
-
 
 </aside>
 

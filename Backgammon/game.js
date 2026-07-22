@@ -66,6 +66,11 @@ class BackgammonGame {
     this.gameHistory = [];
     this.playedMovesThisTurn = [];
     this.turnCount = 0;
+
+    // Replay state: pre-recorded dice for deterministic replay after time travel.
+    // Populated by restoreGameSnapshot(); consumed one entry per rollDice() call.
+    this.futureRolls = [];
+    this.futureRollIndex = 0;
   }
 
   /**
@@ -73,7 +78,7 @@ class BackgammonGame {
    * If equal, roll again. Returns the starting player and the rolled dice.
    */
 
-rollForFirstTurn(forceD1 = null, forceD2 = null) {
+  rollForFirstTurn(forceD1 = null, forceD2 = null) {
     let d1 = forceD1, d2 = forceD2;
     if (d1 === null || d2 === null) {
       do {
@@ -90,6 +95,25 @@ rollForFirstTurn(forceD1 = null, forceD2 = null) {
     this.saveStateToHistory();
 
     this.turnCount = 1;
+
+    // Save initial state snapshot for Time Travel (RS button)
+    this.gameHistory.push({
+      isInitial: true,
+      points: JSON.parse(JSON.stringify(this.points)),
+      bar: { ...this.bar },
+      borneOff: { ...this.borneOff },
+      currentPlayer: this.currentPlayer,
+      dice: [...this.dice],
+      movesLeft: [...this.movesLeft],
+      hasRolled: true,
+      winner: null,
+      doublingCubeValue: this.doublingCubeValue,
+      doublingCubeOwner: this.doublingCubeOwner,
+      turnCount: 1,
+      description: `Start of Game`,
+      playedMoves: []
+    });
+
     return { currentPlayer: this.currentPlayer, dice: this.dice };
   }
 
@@ -172,19 +196,34 @@ rollDice(d1 = null, d2 = null) {
     this.bar = { ...snapshot.bar };
     this.borneOff = { ...snapshot.borneOff };
     
-    // We want the board to be in the state AFTER snapshot.currentPlayer's moves.
-    // So the next active player is the opponent of snapshot.currentPlayer!
-    this.currentPlayer = snapshot.currentPlayer === 1 ? 2 : 1;
-    this.dice = [0, 0];
-    this.movesLeft = [];
-    this.hasRolled = false;
+    if (snapshot.isInitial) {
+      // The initial snapshot represents the state *before* the first move.
+      // We restore the exact player and dice.
+      this.currentPlayer = snapshot.currentPlayer;
+      this.dice = [...snapshot.dice];
+      this.movesLeft = [...snapshot.movesLeft];
+      this.hasRolled = snapshot.hasRolled;
+      this.turnCount = snapshot.turnCount;
+    } else {
+      // Standard snapshots represent the state AFTER a player's moves.
+      // So the next active player is the opponent.
+      this.currentPlayer = snapshot.currentPlayer === 1 ? 2 : 1;
+      this.dice = [0, 0];
+      this.movesLeft = [];
+      this.hasRolled = false;
+      this.turnCount = snapshot.turnCount + 1;
+    }
     
     this.winner = snapshot.winner;
     this.doublingCubeValue = snapshot.doublingCubeValue;
     this.doublingCubeOwner = snapshot.doublingCubeOwner;
-    this.turnCount = snapshot.turnCount;
 
-    // Truncate game history
+    // Capture the dice sequence of all future turns so they can be replayed
+    // deterministically. Moves remain the player's free choice.
+    this.futureRolls = this.gameHistory.slice(index + 1).map(s => [...s.dice]);
+    this.futureRollIndex = 0;
+
+    // Truncate game history to this point (future turns will be re-written)
     this.gameHistory = this.gameHistory.slice(0, index + 1);
     
     // Reset turn-based history stack for undo support in the restored turn

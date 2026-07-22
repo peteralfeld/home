@@ -84,10 +84,20 @@ document.addEventListener('DOMContentLoaded', () => {
   let aiActionTimeout = null;
   let animationOn = true;
   let isAIPlaying = false;
+  let aiStopped   = false;  // true while AI is manually paused via STOP button
   let highlightOn = true;
   let autoRollOn  = false;
   let autoRollTimeout = null;
   let autoMoveOn  = false;
+
+  // ── History Navigation state ────────────────────────────────────────
+  // historyNavBuffer: deep-copy of the full game history captured when
+  //   navigation starts, so forward navigation (> and >>) always works
+  //   even after game.gameHistory has been truncated by restoreGameSnapshot.
+  // historyNavIndex: null = showing live game state, 0..N-1 = viewing that slot.
+  let historyNavBuffer = [];
+  let historyNavIndex  = null;
+  // ────────────────────────────────────────────────────────────────────
 
   // In-memory log buffer — written by sysLog, downloadable via Export > Console Log
   const consoleLog = [];
@@ -233,7 +243,8 @@ function sysLog(msg) {
       txt += 'Turn  Player  Dice   Moves\n\n';
 
       game.gameHistory.forEach((snap, idx) => {
-        const turnNum = String(idx + 1).padStart(4, ' ');
+        if (snap.isInitial) return;
+        const turnNum = String(idx).padStart(4, ' '); // idx 0 is initial, so idx 1 becomes Turn 1
         const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
         const diceStr = `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
 
@@ -575,6 +586,9 @@ renderBorneOff();
       checkAndTriggerAITurn();
       checkAndAutoRoll();
     }
+
+    // Keep nav buttons in sync with current state
+    updateNavButtons();
   }
 
   /**
@@ -759,6 +773,7 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
 
     sysLog(`[Drop] Attempting drag-to-drop from ${sourceVal} to ${targetVal}`);
     if (game.makeMove(sourceVal, targetVal)) {
+      exitNavMode(); // player took a game action — exit history view
       sysLog(`[Drop] Drag-to-drop succeeded! remainingMoves=[${game.movesLeft.join(', ')}]`);
       selectedSource = null;
       updateUI();
@@ -793,6 +808,7 @@ function handleRollClick() {
       updateUI();
     }, 600);
   }
+
   /**
    * Handle doubling offer logic.
    */
@@ -1093,6 +1109,12 @@ function handleRollClick() {
           }
         });
 
+        if (snapshot.isInitial) {
+          row.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 4px;">Game Start (Initial Roll: ${snapshot.dice[0]}-${snapshot.dice[1]})</td>`;
+          tbody.appendChild(row);
+          return;
+        }
+
         const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
         const pColor = snapshot.currentPlayer === 1 ? '#ffffff' : '#f87171';
         
@@ -1129,7 +1151,156 @@ function handleRollClick() {
     // Auto scroll to the most recent move
     scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
   }
-    
+
+  // ── History Navigation Logic ─────────────────────────────────────────
+
+  /**
+   * Ensure historyNavBuffer is populated from the current game history.
+   * Returns false if there is no history to navigate.
+   */
+  function ensureNavBuffer() {
+    if (game.gameHistory.length === 0) return false;
+    if (historyNavBuffer.length === 0) {
+      historyNavBuffer = JSON.parse(JSON.stringify(game.gameHistory));
+    }
+    return true;
+  }
+
+  /**
+   * Restore board state from historyNavBuffer[idx] for viewing / resuming.
+   * Does NOT destroy historyNavBuffer so forward navigation stays possible.
+   */
+  function navigateTo(idx) {
+    stopAI();               // navigating pauses AI so the board is readable
+    if (!ensureNavBuffer()) return;
+    idx = Math.max(0, Math.min(idx, historyNavBuffer.length - 1));
+    historyNavIndex = idx;
+
+    const snap = historyNavBuffer[idx];
+
+    // Restore board visuals and engine state from snapshot
+    game.points           = JSON.parse(JSON.stringify(snap.points));
+    game.bar              = { ...snap.bar };
+    game.borneOff         = { ...snap.borneOff };
+    game.currentPlayer    = snap.currentPlayer === 1 ? 2 : 1; // opponent plays next
+    game.dice             = [0, 0];
+    game.movesLeft        = [];
+    game.hasRolled        = false;
+    game.winner           = snap.winner || null;
+    game.doublingCubeValue = snap.doublingCubeValue;
+    game.doublingCubeOwner = snap.doublingCubeOwner;
+    game.turnCount        = snap.turnCount;
+
+    // Set history up to this point; future rolls come from the buffer
+    game.gameHistory         = JSON.parse(JSON.stringify(historyNavBuffer.slice(0, idx + 1)));
+    game.futureRolls         = historyNavBuffer.slice(idx + 1).map(s => [...s.dice]);
+    game.futureRollIndex     = 0;
+
+    // Reset per-turn undo stack
+    game.turnHistory         = [];
+    game.playedMovesThisTurn = [];
+    game.saveStateToHistory();
+
+    updateNavButtons();
+    updateUI();
+  }
+
+  /**
+   * Clear navigation mode. Called when the player takes a game action
+   * (roll, move) so the nav buttons reflect the new live state.
+   */
+  function exitNavMode() {
+    if (historyNavIndex === null) return;
+    historyNavIndex  = null;
+    historyNavBuffer = [];
+    updateNavButtons();
+  }
+
+  /**
+   * Pause AI play. Cancels any in-progress AI timer and re-enables
+   * the START button so the player can resume.
+   */
+  function stopAI() {
+    if (!gameStarted) return;
+    if (aiStopped) return; // already stopped
+    aiStopped = true;
+    if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
+    isAIPlaying = false;
+    // Re-enable START so the player has a way to resume AI
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+    sysLog('[System] AI paused. Click START to resume.');
+  }
+
+  /**
+   * Nav buttons are always visually enabled (green).
+   * Click handlers contain their own guards for no-op cases.
+   */
+  function updateNavButtons() {
+    // intentionally empty — no disabled toggling
+  }
+
+  // ── Button event listeners ────────────────────────────────────────────
+  (function bindNavButtons() {
+    const btnFirst = document.getElementById('nav-first');
+    const btnBack  = document.getElementById('nav-back');
+    const btnFwd   = document.getElementById('nav-fwd');
+    const btnLast  = document.getElementById('nav-last');
+    const btnRS    = document.getElementById('nav-rs');
+
+    if (btnFirst) btnFirst.addEventListener('click', (e) => {
+      ensureNavBuffer();
+      navigateTo(0);
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'first' });
+    });
+
+    if (btnBack) btnBack.addEventListener('click', (e) => {
+      ensureNavBuffer();
+      if (historyNavIndex === null) {
+        // From live state, step back to the last recorded snapshot
+        navigateTo(historyNavBuffer.length - 1);
+      } else if (historyNavIndex > 0) {
+        navigateTo(historyNavIndex - 1);
+      }
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'back' });
+    });
+
+    if (btnFwd) btnFwd.addEventListener('click', (e) => {
+      if (historyNavIndex === null) return;
+      if (historyNavIndex < historyNavBuffer.length - 1) {
+        navigateTo(historyNavIndex + 1);
+      } else {
+        // Already at last snapshot — exit nav mode (return to live state)
+        historyNavIndex  = null;
+        historyNavBuffer = [];
+        updateNavButtons();
+        updateUI();
+      }
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'fwd' });
+    });
+
+    if (btnLast) btnLast.addEventListener('click', (e) => {
+      if (historyNavIndex === null) return;
+      // Navigate to the final buffered snapshot, then exit nav mode
+      navigateTo(historyNavBuffer.length - 1);
+      historyNavIndex  = null;
+      historyNavBuffer = [];
+      updateNavButtons();
+      // updateUI already called by navigateTo
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'last' });
+    });
+
+    if (btnRS) btnRS.addEventListener('click', (e) => {
+      // RS: restore to the first recorded state, preserving the full dice
+      // sequence via futureRolls so the game replays deterministically.
+      ensureNavBuffer();
+      navigateTo(0);
+      // historyNavIndex stays at 0 so forward buttons are active
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'rs' });
+    });
+  })();
+  // ─────────────────────────────────────────────────────────────────────
+
 // Initialize player types but wait for manual start
   game.playerTypes[1] = document.getElementById('p1-type').value;
   game.playerTypes[2] = document.getElementById('p2-type').value;
@@ -1139,6 +1310,17 @@ function handleRollClick() {
 document.getElementById('btn-start-game').addEventListener('click', () => {
     startGame(false);
 });
+
+  // STOP button — pause AI; START re-enables it
+  const btnStop = document.getElementById('btn-stop');
+  if (btnStop) {
+    btnStop.addEventListener('click', (e) => {
+      stopAI();
+      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
+        conn.send({ type: 'stop_ai' });
+      }
+    });
+  }
     
   // Listen for live dropdown changes so players can swap AI in/out mid-game
 document.getElementById('p1-type').addEventListener('change', (e) => {
@@ -1172,6 +1354,7 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
     if (!gameStarted) return;
     if (game.winner) return;
     if (isAIPlaying) return;
+    if (aiStopped)   return;  // AI paused by STOP button or nav action
 
       if (isNetworkGame) return; // Completely disable AI routines during network play
       if (game.playerTypes[1] !== 'ai' && game.playerTypes[2] !== 'ai') return; 
@@ -1557,6 +1740,20 @@ connection.on('data', (data) => {
           sysLog('[Network] Restart signal received from host. Resetting board...');
           performRestart();
       }
+      
+      // Host stopped AI or used time travel controls
+      else if (data.type === 'stop_ai') {
+          sysLog('[Network] Stop signal received from host.');
+          stopAI();
+      }
+      else if (data.type === 'nav') {
+          sysLog(`[Network] Nav action received from host: ${data.action}`);
+          if (data.action === 'first') document.getElementById('nav-first')?.click();
+          else if (data.action === 'back') document.getElementById('nav-back')?.click();
+          else if (data.action === 'fwd') document.getElementById('nav-fwd')?.click();
+          else if (data.action === 'last') document.getElementById('nav-last')?.click();
+          else if (data.action === 'rs') document.getElementById('nav-rs')?.click();
+      }
     });
 
     connection.on('close', () => {
@@ -1738,7 +1935,17 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
   };
 
   function startGame(isRemote = false) {
-    if (gameStarted) return;
+    if (gameStarted) {
+      // If AI was stopped, START re-enables it and triggers the AI turn
+      if (aiStopped) {
+        aiStopped = false;
+        const btnStart = document.getElementById('btn-start-game');
+        if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
+        sysLog('[System] AI resumed by START.');
+        updateUI(); // triggers checkAndTriggerAITurn
+      }
+      return;
+    }
     
     if (!isRemote && isNetworkGame && conn && conn.open) {
         conn.send({ type: 'start' });
@@ -1762,6 +1969,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
     
     if (isRolling) return;
+
+    // Any roll commits to the current (possibly navigated-to) game state
+    exitNavMode();
 
     // --- CRYPTOGRAPHIC RNG ---
     function secureRoll() {
@@ -1791,9 +2001,15 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
             conn.send({ type: 'roll_first', dice: [d1, d2] });
         }
     } else {
-        d1 = secureRoll();
-        d2 = secureRoll();
-        
+        // Replay mode: reuse the pre-recorded dice for deterministic replay after
+        // a time-travel restore. Falls back to secureRoll() once exhausted.
+        if (game.futureRollIndex < game.futureRolls.length) {
+            [d1, d2] = game.futureRolls[game.futureRollIndex++];
+        } else {
+            d1 = secureRoll();
+            d2 = secureRoll();
+        }
+
         const result = game.rollDice(d1, d2); 
         if (result && isNetworkGame && conn && conn.open) {
             conn.send({ type: 'roll', dice: [d1, d2] });

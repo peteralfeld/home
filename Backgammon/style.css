@@ -1262,3 +1262,44 @@ body {
   box-shadow: 0 0 8px rgba(185, 28, 28, 0.45);
 }
 
+/* ─── History Navigation Buttons ─────────────────────────── */
+.history-nav-bar {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+.history-nav-btn {
+  flex: 1;
+  background: rgb(0, 200, 0);
+  color: #ffffff;
+  font-family: 'Outfit', monospace;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  padding: 0.32rem 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+  letter-spacing: 0.03em;
+}
+
+.history-nav-btn:hover:not(:disabled) {
+  background: rgb(0, 170, 0);
+  box-shadow: 0 0 10px rgba(0, 200, 0, 0.6);
+}
+
+
+
+/* RS button gets a slightly deeper green to hint it's a reset action */
+.history-nav-rs {
+  background: rgb(0, 170, 0);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 800;
+}
+.history-nav-rs:hover:not(:disabled) {
+  background: rgb(0, 140, 0);
+  box-shadow: 0 0 10px rgba(0, 200, 0, 0.7);
+}
