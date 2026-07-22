@@ -150,39 +150,12 @@ function sysLog(msg) {
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     handleUndoClick();
   });
-  // Restart Button Listener (skips query overlay)
+  // Restart Button Listener — delegates to handleRestartClick() for correct network sync
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
-    btnRestart.addEventListener('click', () => {
-      if (confirm("Are you sure you want to restart the game?")) {
-        if (turnEndTimer) {
-          clearTimeout(turnEndTimer);
-          turnEndTimer = null;
-        }
-        if (aiActionTimeout) {
-          clearTimeout(aiActionTimeout);
-          aiActionTimeout = null;
-        }
-        isAIPlaying = false;
-        game.restart();
-        selectedSource = null;
-        legalDestinations = [];
-        initialRollOff = true;
-        isRolling = false;
-        gameStarted = false; 
-        
-        const btnStart = document.getElementById('btn-start-game');
-        if (btnStart) {
-          btnStart.disabled = false;
-          btnStart.style.opacity = '1';
-        }
-        
-          renderDie(die1El, 0);
-          renderDie(die2El, 0);
-        updateUI();
-      }
-    });
+    btnRestart.addEventListener('click', () => handleRestartClick());
   }
+
 
 // Debug PNG Capture Listener (True Pixel Screenshot)
   const btnDebugPng = document.getElementById('btn-debug-png');
@@ -1693,6 +1666,11 @@ peer = new Peer({
       conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
       setupConnectionListeners(conn);
     });
+  });
+
+  // Allow pressing Enter in the code field to join (same as clicking JOIN)
+  joinCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnJoin.click();
   });
 
 // --- QUIT GAME ---
