@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 72</h2>
+    <h2>Backgammon v. 75</h2>
     
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
@@ -246,11 +246,33 @@
     </div>
   </div>
 
-<!-- Animation & Highlight Control Station -->
-  <div class="glass-card animation-station" style="display: flex; flex-direction: row; gap: 0.5rem; justify-content: center; align-items: center; padding: 0.5rem; margin-top: 0.2rem;">
-    <button id="btn-animation" class="btn" style="flex: 1; background: #fed7aa !important; color: #86198f !important; border: 1px solid #fdba74 !important; font-weight: 800; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">Animation: ON</button>
-    <button id="btn-highlight" class="btn" style="flex: 1; background: #fed7aa !important; color: #86198f !important; border: 1px solid #fdba74 !important; font-weight: 800; transition: all 0.3s ease; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px;">Highlight: ON</button>
+<!-- Settings Menu -->
+  <div class="glass-card settings-station">
+    <div id="settings-header" class="settings-header">
+      <span class="settings-icon">⚙</span>
+      <span class="settings-label">Settings</span>
+      <span class="settings-chevron" id="settings-chevron">▼</span>
+    </div>
+    <div id="settings-panel" class="settings-panel">
+      <div class="settings-item" id="setting-animation" data-setting="animation">
+        <span class="settings-item-label">Animation</span>
+        <span class="settings-item-badge" id="badge-animation">ON</span>
+      </div>
+      <div class="settings-item" id="setting-highlight" data-setting="highlight">
+        <span class="settings-item-label">Highlight</span>
+        <span class="settings-item-badge" id="badge-highlight">ON</span>
+      </div>
+      <div class="settings-item" id="setting-autoroll" data-setting="autoroll">
+        <span class="settings-item-label">Auto Roll</span>
+        <span class="settings-item-badge" id="badge-autoroll">OFF</span>
+      </div>
+      <div class="settings-item" id="setting-automove" data-setting="automove">
+        <span class="settings-item-label">Auto Move</span>
+        <span class="settings-item-badge" id="badge-automove">OFF</span>
+      </div>
+    </div>
   </div>
+
 
 <!-- Export Station (Screen Image & Move List) -->
   <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; width: 100%;">

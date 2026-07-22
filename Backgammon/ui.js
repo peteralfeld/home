@@ -85,15 +85,23 @@ document.addEventListener('DOMContentLoaded', () => {
   let animationOn = true;
   let isAIPlaying = false;
   let highlightOn = true;
+  let autoRollOn  = false;
+  let autoRollTimeout = null;
+  let autoMoveOn  = false;
 
 function sysLog(msg) {
     console.log(msg);
   }
 
-function updateAnimationButton() {
-    const btnAnim = document.getElementById('btn-animation');
-    if (!btnAnim) return;
-    btnAnim.textContent = `Animation: ${animationOn ? 'ON' : 'OFF'}`;
+/**
+   * Update a settings badge to reflect current on/off state.
+   */
+  function updateSettingBadge(badgeId, isOn) {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    badge.textContent = isOn ? 'ON' : 'OFF';
+    badge.classList.toggle('on', isOn);
+    badge.classList.toggle('off', !isOn);
   }
 
   // Initialize Board Visuals
@@ -325,31 +333,69 @@ function updateAnimationButton() {
       sysLog(`[System] Move list text file downloaded.`);
     });
   }
-    // Animation Toggle Listener
-  const btnAnim = document.getElementById('btn-animation');
-  if (btnAnim) {
-    btnAnim.addEventListener('click', () => {
-      animationOn = !animationOn;
-      updateAnimationButton();
-      sysLog(`[System] Animation toggled to ${animationOn ? 'ON' : 'OFF'}`);
+    // ── Settings Menu ────────────────────────────────────────────
+  const settingsHeader  = document.getElementById('settings-header');
+  const settingsPanel   = document.getElementById('settings-panel');
+  const settingsChevron = document.getElementById('settings-chevron');
+
+  // Initialise badges to their defaults
+  updateSettingBadge('badge-animation', animationOn);
+  updateSettingBadge('badge-highlight',  highlightOn);
+  updateSettingBadge('badge-autoroll',   autoRollOn);
+  updateSettingBadge('badge-automove',   autoMoveOn);
+
+  // Header click → open / close panel
+  if (settingsHeader) {
+    settingsHeader.addEventListener('click', () => {
+      const isOpen = settingsPanel.classList.toggle('open');
+      settingsChevron.classList.toggle('open', isOpen);
     });
-    updateAnimationButton();
   }
 
-    // Highlight Toggle Listener
-  const btnHighlight = document.getElementById('btn-highlight');
-  if (btnHighlight) {
-    btnHighlight.addEventListener('click', () => {
+  // Animation row
+  const settingAnimEl = document.getElementById('setting-animation');
+  if (settingAnimEl) {
+    settingAnimEl.addEventListener('click', () => {
+      animationOn = !animationOn;
+      updateSettingBadge('badge-animation', animationOn);
+      sysLog(`[System] Animation toggled to ${animationOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Highlight row
+  const settingHighlightEl = document.getElementById('setting-highlight');
+  if (settingHighlightEl) {
+    settingHighlightEl.addEventListener('click', () => {
       highlightOn = !highlightOn;
-      btnHighlight.textContent = `Highlight: ${highlightOn ? 'ON' : 'OFF'}`;
+      updateSettingBadge('badge-highlight', highlightOn);
       sysLog(`[System] Highlight toggled to ${highlightOn ? 'ON' : 'OFF'}`);
-      
-      // Clear highlights immediately if turned off while a piece is selected
       if (!highlightOn) {
         clearHighlights();
       } else if (selectedSource !== null) {
         highlightLegalMoves(selectedSource);
       }
+    });
+  }
+
+  // Auto Roll row
+  const settingAutorollEl = document.getElementById('setting-autoroll');
+  if (settingAutorollEl) {
+    settingAutorollEl.addEventListener('click', () => {
+      autoRollOn = !autoRollOn;
+      updateSettingBadge('badge-autoroll', autoRollOn);
+      sysLog(`[System] Auto Roll toggled to ${autoRollOn ? 'ON' : 'OFF'}`);
+      // If just enabled and dice are waiting, trigger immediately
+      if (autoRollOn) checkAndAutoRoll();
+    });
+  }
+
+  // Auto Move row
+  const settingAutomoveEl = document.getElementById('setting-automove');
+  if (settingAutomoveEl) {
+    settingAutomoveEl.addEventListener('click', () => {
+      autoMoveOn = !autoMoveOn;
+      updateSettingBadge('badge-automove', autoMoveOn);
+      sysLog(`[System] Auto Move toggled to ${autoMoveOn ? 'ON' : 'OFF'}`);
     });
   }
 
@@ -566,7 +612,35 @@ renderBorneOff();
 
     if (gameStarted) {
       checkAndTriggerAITurn();
+      checkAndAutoRoll();
     }
+  }
+
+  /**
+   * Auto-roll dice for a human player when autoRollOn is enabled.
+   * Fires after a short delay so the board finishes rendering first.
+   */
+  function checkAndAutoRoll() {
+    if (!autoRollOn) return;
+    if (!gameStarted) return;
+    if (game.winner) return;
+    if (game.hasRolled && !initialRollOff) return;  // already rolled
+    if (isRolling) return;                           // animation in progress
+    if (game.playerTypes[game.currentPlayer] === 'ai') return; // AI handles its own roll
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
+
+    // Cancel any pending auto-roll before scheduling a new one
+    if (autoRollTimeout) clearTimeout(autoRollTimeout);
+
+    autoRollTimeout = setTimeout(() => {
+      autoRollTimeout = null;
+      // Re-check guards inside the timeout (state may have changed)
+      if (!autoRollOn) return;
+      if (game.hasRolled && !initialRollOff) return;
+      if (isRolling) return;
+      if (game.playerTypes[game.currentPlayer] === 'ai') return;
+      handleRollClick();
+    }, 400);
   }
 
   /**
@@ -813,7 +887,13 @@ function handleRollClick() {
       selectedSource = pointIdx;
       highlightLegalMoves(pointIdx);
       sysLog(`[Click] Selection set. legalDestinations=[${legalDestinations.map(d => d.to).join(', ')}]`);
-      
+
+      // Auto Move: if exactly one destination exists, execute it immediately
+      if (autoMoveOn && legalDestinations.length === 1) {
+        executeAutoMove(pointIdx, legalDestinations[0].to);
+        return;
+      }
+
       // ONLY apply the visual highlight if the toggle is on
       if (highlightOn) {
         const pointEl = document.getElementById(`point-${pointIdx}`);
@@ -841,8 +921,35 @@ function handleRollClick() {
     selectedSource = "bar";
     highlightLegalMoves("bar");
 
+    // Auto Move: if exactly one entry point from bar, execute it immediately
+    if (autoMoveOn && legalDestinations.length === 1) {
+      executeAutoMove("bar", legalDestinations[0].to);
+      return;
+    }
+
     const barEl = player === 1 ? barP1El : barP2El;
     barEl.classList.add('highlight-source');
+  }
+
+  /**
+   * Execute a single move automatically, with or without animation.
+   * Called by Auto Move when only one legal destination exists.
+   */
+  function executeAutoMove(from, to) {
+    sysLog(`[AutoMove] ${from} -> ${to}`);
+    if (animationOn) {
+      animateCheckerMove(from, to).then(() => {
+        game.makeMove(from, to);
+        selectedSource = null;
+        clearHighlights();
+        updateUI();
+      });
+    } else {
+      game.makeMove(from, to);
+      selectedSource = null;
+      clearHighlights();
+      updateUI();
+    }
   }
 
   /**
@@ -923,32 +1030,49 @@ function handleRollClick() {
     }
   }
 /**
+   * Shared restart logic — used by both the host's button and the
+   * guest receiving a remote 'restart' signal.
+   */
+  function performRestart() {
+    if (turnEndTimer)     { clearTimeout(turnEndTimer);     turnEndTimer     = null; }
+    if (aiActionTimeout)  { clearTimeout(aiActionTimeout);  aiActionTimeout  = null; }
+    if (autoRollTimeout)  { clearTimeout(autoRollTimeout);  autoRollTimeout  = null; }
+
+    gameStarted       = false;
+    isAIPlaying       = false;
+    selectedSource    = null;
+    legalDestinations = [];
+    initialRollOff    = true;
+    isRolling         = false;
+    networkQueue      = [];
+    isProcessingQueue = false;
+
+    game.restart();
+
+    // Start-menu overlay is optional (may have been removed from HTML)
+    const overlay = document.getElementById('start-menu-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    // Re-enable the Start button so the host can kick off a new game
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+
+    renderDie(die1El, 0);
+    renderDie(die2El, 0);
+    updateUI();
+  }
+
+/**
    * Handle restart click.
    */
   function handleRestartClick() {
     if (confirm("Are you sure you want to restart the game?")) {
-      if (turnEndTimer) {
-        clearTimeout(turnEndTimer);
-        turnEndTimer = null;
+      // Notify the guest BEFORE resetting (connection is still live at this point)
+      if (isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
+        conn.send({ type: 'restart' });
+        sysLog('[Network] Sent restart signal to guest.');
       }
-      if (aiActionTimeout) {
-        clearTimeout(aiActionTimeout);
-        aiActionTimeout = null;
-      }
-      gameStarted = false;
-      isAIPlaying = false;
-      document.getElementById('start-menu-overlay').style.display = 'flex';
-      game.restart();
-      selectedSource = null;
-      legalDestinations = [];
-      initialRollOff = true;
-      isRolling = false;
-      
-      // Changed from 1 to 0
-      renderDie(die1El, 0);
-      renderDie(die2El, 0);
-      
-      updateUI();
+      performRestart();
     }
   }
 
@@ -1013,7 +1137,18 @@ function handleRollClick() {
         
         let movesText = '-';
         if (snapshot.playedMoves?.length > 0) {
-          movesText = snapshot.playedMoves.map(m => `${m.from}-${m.to}${m.isHit ? '*' : ''}`).join(' ');
+          // Build Magriel-style notation: x/y, bar/x, x/off, x/y*, x/y(n)
+          const groups = [];
+          for (const m of snapshot.playedMoves) {
+            const moveKey = `${m.from}/${m.to}${m.isHit ? '*' : ''}`;
+            const last = groups[groups.length - 1];
+            if (last && last.key === moveKey) {
+              last.count++;
+            } else {
+              groups.push({ key: moveKey, count: 1 });
+            }
+          }
+          movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
         }
 
         row.innerHTML = `
@@ -1454,6 +1589,12 @@ connection.on('data', (data) => {
       else if (data.type === 'move' || data.type === 'undo' || data.type === 'end_turn') {
           networkQueue.push({ type: data.type, data: data });
           processNetworkQueue();
+      }
+
+      // Host restarted the game — mirror the reset on the guest's side
+      else if (data.type === 'restart') {
+          sysLog('[Network] Restart signal received from host. Resetting board...');
+          performRestart();
       }
     });
 

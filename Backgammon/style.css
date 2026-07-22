@@ -1148,3 +1148,117 @@ body {
     padding-right: 6px;
   }
 }
+
+/* ─── Settings Menu ──────────────────────────────────────────── */
+.settings-station {
+  padding: 0 !important;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.settings-header:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.settings-icon {
+  font-size: 1rem;
+  color: var(--accent-gold);
+  line-height: 1;
+}
+
+.settings-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-gold);
+  flex: 1;
+}
+
+.settings-chevron {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  transition: transform 0.25s ease;
+}
+
+.settings-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Collapsed by default — JS toggles .open */
+.settings-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  padding: 0 0.5rem;
+}
+
+.settings-panel.open {
+  max-height: 200px;
+  padding: 0.35rem 0.5rem 0.5rem;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.38rem 0.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: background 0.15s ease;
+}
+
+.settings-item:last-child {
+  margin-bottom: 0;
+}
+
+.settings-item:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.settings-item-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.settings-item-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  min-width: 34px;
+  text-align: center;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.settings-item-badge.on {
+  background: #15803d;   /* green-700 */
+  color: #dcfce7;
+  box-shadow: 0 0 8px rgba(21, 128, 61, 0.45);
+}
+
+.settings-item-badge.off {
+  background: #b91c1c;   /* red-700 */
+  color: #fee2e2;
+  box-shadow: 0 0 8px rgba(185, 28, 28, 0.45);
+}
+
