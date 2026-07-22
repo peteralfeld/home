@@ -243,10 +243,9 @@ function sysLog(msg) {
       txt += 'Turn  Player  Dice   Moves\n\n';
 
       game.gameHistory.forEach((snap, idx) => {
-        if (snap.isInitial) return;
         const turnNum = String(idx).padStart(4, ' '); // idx 0 is initial, so idx 1 becomes Turn 1
         const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
-        const diceStr = `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
+        const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
 
         let movesText = '-';
         if (snap.playedMoves?.length > 0) {
@@ -1094,7 +1093,16 @@ function handleRollClick() {
 
     if (game.gameHistory.length === 0) {
       const emptyEl = document.createElement('tr');
-      emptyEl.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 10px;">No turns played yet.</td>`;
+      if (gameStarted) {
+          emptyEl.innerHTML = `
+            <td style="padding: 2px 4px; font-weight: bold;">0</td>
+            <td style="padding: 2px 4px; color: #9ca3af; font-weight: bold;">-</td>
+            <td style="padding: 2px 4px;">-</td>
+            <td style="padding: 2px 4px; font-family: monospace;">-</td>
+          `;
+      } else {
+          emptyEl.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 10px;">No turns played yet.</td>`;
+      }
       tbody.appendChild(emptyEl);
     } else {
       game.gameHistory.forEach((snapshot, idx) => {
@@ -1104,16 +1112,9 @@ function handleRollClick() {
         row.title = 'Click to replay from this stage';
 
         row.addEventListener('click', () => {
-          if (confirm(`Restore the game to this state?`)) {
-            if (game.restoreGameSnapshot(idx)) updateUI();
-          }
+          ensureNavBuffer();
+          navigateTo(idx);
         });
-
-        if (snapshot.isInitial) {
-          row.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 4px;">Game Start (Initial Roll: ${snapshot.dice[0]}-${snapshot.dice[1]})</td>`;
-          tbody.appendChild(row);
-          return;
-        }
 
         const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
         const pColor = snapshot.currentPlayer === 1 ? '#ffffff' : '#f87171';
@@ -1134,10 +1135,13 @@ function handleRollClick() {
           movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
         }
 
+        let displayDice = snapshot.isInitial ? '-' : `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`;
+        let displayPCode = snapshot.isInitial ? '-' : pCode;
+
         row.innerHTML = `
-          <td style="padding: 2px 4px; font-weight: bold;">${idx + 1}</td>
-          <td style="padding: 2px 4px; color: ${pColor}; font-weight: bold;">${pCode}</td>
-          <td style="padding: 2px 4px;">${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}</td>
+          <td style="padding: 2px 4px; font-weight: bold;">${idx}</td>
+          <td style="padding: 2px 4px; color: ${pColor}; font-weight: bold;">${displayPCode}</td>
+          <td style="padding: 2px 4px;">${displayDice}</td>
           <td style="padding: 2px 4px; font-family: monospace;">${movesText}</td>
         `;
         tbody.appendChild(row);
@@ -1182,14 +1186,24 @@ function handleRollClick() {
     game.points           = JSON.parse(JSON.stringify(snap.points));
     game.bar              = { ...snap.bar };
     game.borneOff         = { ...snap.borneOff };
-    game.currentPlayer    = snap.currentPlayer === 1 ? 2 : 1; // opponent plays next
-    game.dice             = [0, 0];
-    game.movesLeft        = [];
-    game.hasRolled        = false;
+    
+    if (snap.isInitial) {
+      game.currentPlayer    = snap.currentPlayer;
+      game.dice             = [...snap.dice];
+      game.movesLeft        = [...snap.movesLeft];
+      game.hasRolled        = snap.hasRolled;
+      game.turnCount        = snap.turnCount;
+    } else {
+      game.currentPlayer    = snap.currentPlayer === 1 ? 2 : 1; // opponent plays next
+      game.dice             = [0, 0];
+      game.movesLeft        = [];
+      game.hasRolled        = false;
+      game.turnCount        = snap.turnCount + 1;
+    }
+    
     game.winner           = snap.winner || null;
     game.doublingCubeValue = snap.doublingCubeValue;
     game.doublingCubeOwner = snap.doublingCubeOwner;
-    game.turnCount        = snap.turnCount;
 
     // Set history up to this point; future rolls come from the buffer
     game.gameHistory         = JSON.parse(JSON.stringify(historyNavBuffer.slice(0, idx + 1)));
@@ -1246,7 +1260,6 @@ function handleRollClick() {
     const btnBack  = document.getElementById('nav-back');
     const btnFwd   = document.getElementById('nav-fwd');
     const btnLast  = document.getElementById('nav-last');
-    const btnRS    = document.getElementById('nav-rs');
 
     if (btnFirst) btnFirst.addEventListener('click', (e) => {
       ensureNavBuffer();
@@ -1257,8 +1270,12 @@ function handleRollClick() {
     if (btnBack) btnBack.addEventListener('click', (e) => {
       ensureNavBuffer();
       if (historyNavIndex === null) {
-        // From live state, step back to the last recorded snapshot
-        navigateTo(historyNavBuffer.length - 1);
+        if (historyNavBuffer.length >= 2) {
+            // Live state. Step back to the state BEFORE the most recent fully completed turn.
+            navigateTo(historyNavBuffer.length - 2);
+        } else if (historyNavBuffer.length === 1) {
+            navigateTo(0);
+        }
       } else if (historyNavIndex > 0) {
         navigateTo(historyNavIndex - 1);
       }
@@ -1288,15 +1305,6 @@ function handleRollClick() {
       updateNavButtons();
       // updateUI already called by navigateTo
       if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'last' });
-    });
-
-    if (btnRS) btnRS.addEventListener('click', (e) => {
-      // RS: restore to the first recorded state, preserving the full dice
-      // sequence via futureRolls so the game replays deterministically.
-      ensureNavBuffer();
-      navigateTo(0);
-      // historyNavIndex stays at 0 so forward buttons are active
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'rs' });
     });
   })();
   // ─────────────────────────────────────────────────────────────────────
@@ -1752,7 +1760,6 @@ connection.on('data', (data) => {
           else if (data.action === 'back') document.getElementById('nav-back')?.click();
           else if (data.action === 'fwd') document.getElementById('nav-fwd')?.click();
           else if (data.action === 'last') document.getElementById('nav-last')?.click();
-          else if (data.action === 'rs') document.getElementById('nav-rs')?.click();
       }
     });
 
