@@ -3,6 +3,29 @@
  * Manages game state, turn flow, and rule validation.
  */
 
+/**
+ * Default AI "personality" — the baseline weight vector.
+ * White's-view static score = sum of w_i * (feature(White) - feature(Red)),
+ * except the collapsed blot terms which are already computed from White's view.
+ * Weights are integers normalized so max|w| = 1000.
+ *
+ *   PC  normalized pip count            (term w*pip/167)      -667
+ *   EC1 rolls allowing exactly one move (term w*EC1/36)       -133
+ *   EC0 rolls allowing no move          (term w*EC0/36)       -400
+ *   PH  longest prime * checkers trapped (steep, pure mult)   +667
+ *   HB  home-board points made (standing)                     +133
+ *   AN  anchors, gated on being behind in the race            +200
+ *   DO/IO/DP/IP  collapsed blot threat-vs-exposure features   +1000/600/500/300
+ *   DE  disengagement bonus (move-selection only, not static) +667
+ */
+const DEFAULT_WEIGHTS = {
+  PC: -667, EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 200,
+  DO: 1000, IO: 600, DP: 500, IP: 300, DE: 667
+};
+
+// Steep length factor for a prime of a given length (0 for < 2, 1.0 for full 6-prime).
+const PRIME_FACTOR = { 2: 0.05, 3: 0.15, 4: 0.35, 5: 0.65, 6: 1.0 };
+
 class BackgammonGame {
   constructor() {
     this.restart();
@@ -56,6 +79,15 @@ class BackgammonGame {
     this.playerTypes = {
       1: 'human',
       2: 'human'
+    };
+
+    // AI weight personalities — one vector per player (like human players, each
+    // AI evaluates with its own weights). Both default to the baseline AI.
+    this.aiWeights = { 1: { ...DEFAULT_WEIGHTS }, 2: { ...DEFAULT_WEIGHTS } };
+    // M = sum of |static weights|, recomputed per weight vector. Used by score/M.
+    this.maxScore = {
+      1: this.computeMaxScore(this.aiWeights[1]),
+      2: this.computeMaxScore(this.aiWeights[2])
     };
 
     // History stack for supporting Undo functionality
@@ -561,153 +593,254 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
-   * Evaluates the board state from the perspective of the specified player.
-   * Returns a numerical score. Symmetric evaluation: Score(Player) - Score(Opponent).
+   * M = sum of the absolute static weights (the maximum favorable score, since
+   * every term tops out at +|w| for White). Recomputed per weight vector.
+   * DE is excluded — it is a move-selection bonus, not part of the static score.
    */
-  evaluateBoardState(points, bar, borneOff, player) {
-    const opp = player === 1 ? 2 : 1;
+  computeMaxScore(weights) {
+    return Math.abs(weights.PC) + Math.abs(weights.EC1) + Math.abs(weights.EC0)
+      + Math.abs(weights.PH) + Math.abs(weights.HB) + Math.abs(weights.AN)
+      + Math.abs(weights.DO) + Math.abs(weights.IO) + Math.abs(weights.DP) + Math.abs(weights.IP);
+  }
 
-    // Helper to calculate pip count
-    const getPipCount = (pNum) => {
-      let pips = bar[pNum] * 25;
-      for (let i = 1; i <= 24; i++) {
-        if (points[i].player === pNum) {
-          pips += points[i].count * (pNum === 1 ? i : (25 - i));
+  /** Pip count for a player on a given (points, bar) state. */
+  pipCountP(points, bar, p) {
+    let pips = bar[p] * 25;
+    for (let i = 1; i <= 24; i++) {
+      if (points[i].player === p) pips += points[i].count * (p === 1 ? i : (25 - i));
+    }
+    return pips;
+  }
+
+  /** Can player p bear off in this state (all checkers home, none on bar)? */
+  canBearOffState(points, bar, p) {
+    if (bar[p] > 0) return false;
+    if (p === 1) { for (let i = 7; i <= 24; i++) if (points[i].player === 1) return false; }
+    else { for (let i = 1; i <= 18; i++) if (points[i].player === 2) return false; }
+    return true;
+  }
+
+  /** All legal single-die moves for player p using one die value. */
+  legalSingleMoves(points, bar, p, die) {
+    const opp = p === 1 ? 2 : 1;
+    const moves = [];
+    const blocked = (pt) => points[pt].player === opp && points[pt].count >= 2;
+    if (bar[p] > 0) {
+      const entry = p === 1 ? 25 - die : die;
+      if (entry >= 1 && entry <= 24 && !blocked(entry)) moves.push({ from: 'bar', to: entry });
+      return moves;
+    }
+    const canOff = this.canBearOffState(points, bar, p);
+    for (let i = 1; i <= 24; i++) {
+      if (points[i].player !== p) continue;
+      const target = p === 1 ? i - die : i + die;
+      if (target >= 1 && target <= 24) {
+        if (!blocked(target)) moves.push({ from: i, to: target });
+      } else if (canOff) {
+        if (p === 1 && target <= 0) {
+          if (i === die) moves.push({ from: i, to: 'off' });
+          else if (die > i) { let hi = false; for (let k = i + 1; k <= 6; k++) if (points[k].player === 1) { hi = true; break; } if (!hi) moves.push({ from: i, to: 'off' }); }
+        } else if (p === 2 && target >= 25) {
+          const dist = 25 - i;
+          if (dist === die) moves.push({ from: i, to: 'off' });
+          else if (die > dist) { let fu = false; for (let k = 19; k < i; k++) if (points[k].player === 2) { fu = true; break; } if (!fu) moves.push({ from: i, to: 'off' }); }
         }
       }
-      return pips;
-    };
+    }
+    return moves;
+  }
 
-    // Helper to extract features for a player
-    const getFeatures = (pNum, oppNum) => {
-      const features = {
-        blots: 0,
-        blocks: 0,
-        prime_2: 0,
-        prime_3: 0,
-        prime_4: 0,
-        prime_5: 0,
-        prime_6: 0,
-        trapped_2: 0,
-        trapped_3: 0,
-        trapped_4: 0,
-        trapped_5: 0,
-        trapped_6: 0,
-        anchors: 0,
-        borneOff: borneOff[pNum]
-      };
+  /** Maximum number of dice player p can legally consume from a roll. */
+  maxDiceUsable(points, bar, p, dice) {
+    if (dice.length === 0) return 0;
+    let best = 0;
+    const opp = p === 1 ? 2 : 1;
+    const uniq = [...new Set(dice)];
+    for (const die of uniq) {
+      const moves = this.legalSingleMoves(points, bar, p, die);
+      for (const m of moves) {
+        const np = points.map(pt => ({ player: pt.player, count: pt.count }));
+        const nb = { 1: bar[1], 2: bar[2] };
+        if (m.from === 'bar') nb[p]--;
+        else { np[m.from].count--; if (np[m.from].count === 0) np[m.from].player = null; }
+        if (m.to !== 'off') {
+          const d = np[m.to];
+          if (d.player === opp && d.count === 1) { nb[opp]++; d.player = p; d.count = 1; }
+          else { d.player = p; d.count++; }
+        }
+        const nd = dice.slice(); nd.splice(nd.indexOf(die), 1);
+        const used = 1 + this.maxDiceUsable(np, nb, p, nd);
+        if (used > best) best = used;
+        if (best === dice.length) return best;
+      }
+    }
+    return best;
+  }
 
-      // 1. Blots and Blocks
-      for (let i = 1; i <= 24; i++) {
-        if (points[i].player === pNum) {
-          if (points[i].count === 1) {
-            features.blots++;
-          } else if (points[i].count >= 2) {
-            features.blocks++;
-            
-            // Check for opponent home board anchors
-            if (pNum === 1 && i >= 19 && i <= 24) {
-              features.anchors++;
-            } else if (pNum === 2 && i >= 1 && i <= 6) {
-              features.anchors++;
-            }
-          }
+  /** Encumbrance: over the 36 rolls, how many give p exactly 0 / exactly 1 usable die. */
+  computeEC(points, bar, p) {
+    let ec0 = 0, ec1 = 0;
+    for (let d1 = 1; d1 <= 6; d1++) {
+      for (let d2 = d1; d2 <= 6; d2++) {
+        const mult = (d1 === d2) ? 1 : 2;
+        const dice = (d1 === d2) ? [d1, d1, d1, d1] : [d1, d2];
+        const usable = this.maxDiceUsable(points, bar, p, dice);
+        if (usable === 0) ec0 += mult;
+        else if (usable === 1) ec1 += mult;
+      }
+    }
+    return { ec0, ec1 };
+  }
+
+  /** Longest prime in p's home+outer board and how many opponent checkers it traps. */
+  longestPrimeTrapped(points, bar, p) {
+    const lo = p === 1 ? 1 : 13, hi = p === 1 ? 12 : 24;
+    let bestLen = 0, bestStart = -1, bestEnd = -1, curStart = -1;
+    for (let i = lo; i <= hi; i++) {
+      const made = points[i].player === p && points[i].count >= 2;
+      if (made) { if (curStart === -1) curStart = i; }
+      else { if (curStart !== -1) { const len = i - curStart; if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = i - 1; } curStart = -1; } }
+    }
+    if (curStart !== -1) { const len = hi + 1 - curStart; if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = hi; } }
+    if (bestLen < 2) return { len: 0, trapped: 0 };
+    const opp = p === 1 ? 2 : 1;
+    let trapped = bar[opp];
+    if (p === 1) { for (let i = 1; i < bestStart; i++) if (points[i].player === 2) trapped += points[i].count; }
+    else { for (let i = bestEnd + 1; i <= 24; i++) if (points[i].player === 1) trapped += points[i].count; }
+    return { len: bestLen, trapped };
+  }
+
+  /** Points made (2+) in p's own home board. */
+  homeBoardPoints(points, p) {
+    const lo = p === 1 ? 1 : 19, hi = p === 1 ? 6 : 24;
+    let c = 0; for (let i = lo; i <= hi; i++) if (points[i].player === p && points[i].count >= 2) c++;
+    return c;
+  }
+
+  /** Anchors: points made (2+) in the opponent's home board. */
+  anchorsP(points, p) {
+    const lo = p === 1 ? 19 : 1, hi = p === 1 ? 24 : 6;
+    let c = 0; for (let i = lo; i <= hi; i++) if (points[i].player === p && points[i].count >= 2) c++;
+    return c;
+  }
+
+  /**
+   * Can `hitter` hit the blot at point b, directly (single die) and/or indirectly
+   * (combined two+ dice with a legal intermediate landing)? Returns {direct, indirect}.
+   * Simplification: when the hitter has a checker on the bar, only bar-entry hits and
+   * single-checker enter-then-move hits are counted (a conservative under-count).
+   */
+  hitThreat(points, bar, hitter, b) {
+    const owner = hitter === 1 ? 2 : 1;
+    const blocked = (pt) => pt >= 1 && pt <= 24 && points[pt].player === owner && points[pt].count >= 2;
+    const src = (dist) => hitter === 1 ? b + dist : b - dist;
+    const occ = (pt) => pt >= 1 && pt <= 24 && points[pt].player === hitter;
+    let direct = false, indirect = false;
+
+    if (bar[hitter] > 0) {
+      for (let d = 1; d <= 6; d++) { const e = hitter === 1 ? 25 - d : d; if (e === b) direct = true; }
+      for (let d1 = 1; d1 <= 6 && !indirect; d1++) {
+        const e = hitter === 1 ? 25 - d1 : d1;
+        if (e >= 1 && e <= 24 && !blocked(e)) {
+          for (let d2 = 1; d2 <= 6; d2++) { const cont = hitter === 1 ? e - d2 : e + d2; if (cont === b) { indirect = true; break; } }
         }
       }
-
-      // 2. Primes and trapped checkers
-      let currentPrimeStart = null;
-      const primesList = [];
-
-      for (let i = 1; i <= 24; i++) {
-        const isBlocked = points[i].player === pNum && points[i].count >= 2;
-        if (isBlocked) {
-          if (currentPrimeStart === null) {
-            currentPrimeStart = i;
-          }
-        } else {
-          if (currentPrimeStart !== null) {
-            const len = i - currentPrimeStart;
-            if (len >= 2) {
-              primesList.push({ start: currentPrimeStart, end: i - 1, length: Math.min(len, 6) });
-            }
-            currentPrimeStart = null;
-          }
-        }
-      }
-      if (currentPrimeStart !== null) {
-        const len = 25 - currentPrimeStart;
-        if (len >= 2) {
-          primesList.push({ start: currentPrimeStart, end: 24, length: Math.min(len, 6) });
-        }
-      }
-
-      // Process each prime
-      for (const prime of primesList) {
-        const len = prime.length;
-        features[`prime_${len}`]++;
-
-        let trapped = 0;
-        if (pNum === 1) {
-          for (let i = 1; i < prime.start; i++) {
-            if (points[i].player === oppNum) {
-              trapped += points[i].count;
-            }
-          }
-          trapped += bar[oppNum];
-        } else {
-          for (let i = prime.end + 1; i <= 24; i++) {
-            if (points[i].player === oppNum) {
-              trapped += points[i].count;
-            }
-          }
-          trapped += bar[oppNum];
-        }
-        features[`trapped_${len}`] += trapped;
-      }
-
-      return features;
-    };
-
-    const pPips = getPipCount(player);
-    const oPips = getPipCount(opp);
-
-    const fP = getFeatures(player, opp);
-    const fO = getFeatures(opp, player);
-
-    // Normalized Weights configuration (Max = 1000)
-    const weights = {
-      pip_diff: 11,
-      blots: -167,
-      blocks: 89,
-      prime_2: 56,
-      prime_3: 111,
-      prime_4: 222,
-      prime_5: 500,
-      prime_6: 1000,
-      trapped_2: 17,
-      trapped_3: 33,
-      trapped_4: 89,
-      trapped_5: 222,
-      trapped_6: 556,
-      anchors: 133,
-      borneOff: 333
-    };
-
-    let score = 0;
-    score += weights.pip_diff * (oPips - pPips);
-    score += weights.blots * (fP.blots - fO.blots);
-    score += weights.blocks * (fP.blocks - fO.blocks);
-
-    for (let L = 2; L <= 6; L++) {
-      score += weights[`prime_${L}`] * (fP[`prime_${L}`] - fO[`prime_${L}`]);
-      score += weights[`trapped_${L}`] * (fP[`trapped_${L}`] - fO[`trapped_${L}`]);
+      return { direct, indirect };
     }
 
-    score += weights.anchors * (fP.anchors - fO.anchors);
-    score += weights.borneOff * (fP.borneOff - fO.borneOff);
+    for (let d = 1; d <= 6; d++) if (occ(src(d))) { direct = true; break; }
 
-    return score;
+    for (let a = 1; a <= 6 && !indirect; a++) {
+      for (let c = a + 1; c <= 6; c++) {
+        if (occ(src(a + c))) {
+          const i1 = src(a), i2 = src(c);
+          const open1 = i1 >= 1 && i1 <= 24 && !blocked(i1);
+          const open2 = i2 >= 1 && i2 <= 24 && !blocked(i2);
+          if (open1 || open2) { indirect = true; break; }
+        }
+      }
+    }
+    for (let d = 1; d <= 6 && !indirect; d++) {
+      if (occ(src(2 * d)) && !blocked(src(d))) { indirect = true; break; }
+      if (occ(src(3 * d)) && !blocked(src(d)) && !blocked(src(2 * d))) { indirect = true; break; }
+      if (occ(src(4 * d)) && !blocked(src(d)) && !blocked(src(2 * d)) && !blocked(src(3 * d))) { indirect = true; break; }
+    }
+    return { direct, indirect };
+  }
+
+  /**
+   * Collapsed blot term (White's view). Each blot is exposure for its owner and a
+   * threat for the other side — the same event — so the 8 original X/T features
+   * reduce to 4. A blot in its owner's own half is "near" (DP/IP); in the opponent's
+   * half it is "far" (DO/IO). White hitting a Red blot is +; a White blot exposed is -.
+   */
+  blotContribution(points, bar, weights) {
+    let s = 0;
+    for (let i = 1; i <= 24; i++) {
+      if (points[i].player === null || points[i].count !== 1) continue;
+      const owner = points[i].player;
+      const hitter = owner === 1 ? 2 : 1;
+      const nearLo = owner === 1 ? 1 : 13, nearHi = owner === 1 ? 12 : 24;
+      const near = i >= nearLo && i <= nearHi;
+      const { direct, indirect } = this.hitThreat(points, bar, hitter, i);
+      const sign = hitter === 1 ? 1 : -1;
+      if (near) {
+        if (direct) s += sign * weights.DP;
+        if (indirect) s += sign * weights.IP;
+      } else {
+        if (direct) s += sign * weights.DO;
+        if (indirect) s += sign * weights.IO;
+      }
+    }
+    return s;
+  }
+
+  /** True while the two sides can still hit each other (contact); false in a pure race. */
+  hasContact(points, bar) {
+    let wmax = bar[1] > 0 ? 25 : -1;
+    if (wmax < 0) for (let i = 24; i >= 1; i--) if (points[i].player === 1) { wmax = i; break; }
+    let rmin = bar[2] > 0 ? 0 : 26;
+    if (rmin > 25) for (let i = 1; i <= 24; i++) if (points[i].player === 2) { rmin = i; break; }
+    if (wmax < 0 || rmin > 25) return false;
+    return wmax > rmin;
+  }
+
+  /**
+   * Static board evaluation from White's view (positive = good for White),
+   * as an integer. White maximizes, Red minimizes. `weights` is the evaluating
+   * agent's own personality vector.
+   */
+  evaluate(points, bar, borneOff, weights) {
+    let score = 0;
+
+    // PC — normalized pip count (w negative: fewer White pips is better)
+    const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
+    score += weights.PC * (pipW - pipR) / 167;
+
+    // EC — encumbrance / mobility
+    const ecW = this.computeEC(points, bar, 1), ecR = this.computeEC(points, bar, 2);
+    score += weights.EC1 * (ecW.ec1 - ecR.ec1) / 36;
+    score += weights.EC0 * (ecW.ec0 - ecR.ec0) / 36;
+
+    // PH — longest prime * checkers trapped (steep length factor, pure multiply)
+    const phW = this.longestPrimeTrapped(points, bar, 1);
+    const phR = this.longestPrimeTrapped(points, bar, 2);
+    const phValW = (PRIME_FACTOR[phW.len] || (phW.len >= 6 ? 1.0 : 0)) * phW.trapped;
+    const phValR = (PRIME_FACTOR[phR.len] || (phR.len >= 6 ? 1.0 : 0)) * phR.trapped;
+    score += weights.PH * (phValW - phValR);
+
+    // HB — home-board points made (standing)
+    score += weights.HB * (this.homeBoardPoints(points, 1) - this.homeBoardPoints(points, 2));
+
+    // AN — anchors, only for the side that is behind in the race
+    const anW = pipW > pipR ? this.anchorsP(points, 1) : 0;
+    const anR = pipR > pipW ? this.anchorsP(points, 2) : 0;
+    score += weights.AN * (anW - anR);
+
+    // Blots — collapsed threat/exposure, already from White's view
+    score += this.blotContribution(points, bar, weights);
+
+    return Math.round(score);
   }
 
   /**
@@ -891,25 +1024,59 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
-   * Evaluates all possible full-turn move choices and returns the move sequence that achieves
-   * the highest static evaluation score. Returns null if no moves are possible.
+   * Returns the best full-turn move sequence for the current player. White maximizes
+   * the White-view score, Red minimizes it, each using its own weight vector. A
+   * disengagement bonus (DE) is added at selection time to any move that breaks contact
+   * when the mover is ahead in the race (+DE for White, -DE for Red). Returns null if
+   * no moves are possible.
    */
   getBestAIMove() {
-    const possibleStates = this.generateAllCompleteTurnMoves(this.currentPlayer, this.movesLeft);
+    const player = this.currentPlayer;
+    const weights = this.aiWeights[player];
+    const possibleStates = this.generateAllCompleteTurnMoves(player, this.movesLeft);
     if (possibleStates.length === 0) return null;
-    
+
+    const parentContact = this.hasContact(this.points, this.bar);
     let bestState = null;
-    let bestScore = -Infinity;
-    
+    let bestVal = player === 1 ? -Infinity : Infinity;
+
     for (const state of possibleStates) {
-      const score = this.evaluateBoardState(state.points, state.bar, state.borneOff, this.currentPlayer);
-      if (score > bestScore) {
-        bestScore = score;
-        bestState = state;
+      let val = this.evaluate(state.points, state.bar, state.borneOff, weights);
+
+      // Disengagement bonus: one-time, on the move that turns contact into a pure race.
+      if (parentContact && !this.hasContact(state.points, state.bar)) {
+        const pipW = this.pipCountP(state.points, state.bar, 1);
+        const pipR = this.pipCountP(state.points, state.bar, 2);
+        if (player === 1 && pipW < pipR) val += weights.DE;
+        else if (player === 2 && pipR < pipW) val -= weights.DE;
       }
+
+      if (player === 1) { if (val > bestVal) { bestVal = val; bestState = state; } }
+      else { if (val < bestVal) { bestVal = val; bestState = state; } }
     }
-    
+
     return bestState ? bestState.moves : null;
+  }
+
+  /**
+   * Normalized equity in ~[-1, 1] from the given player's own perspective
+   * (+ good for that player), i.e. (White-view score / M), flipped for Red.
+   */
+  aiEquity(player) {
+    const score = this.evaluate(this.points, this.bar, this.borneOff, this.aiWeights[player]);
+    const M = this.maxScore[player] || 1;
+    return player === 1 ? score / M : -score / M;
+  }
+
+  /** AI decision: should `player` offer a double now? (equity/M > 0.20) */
+  aiShouldDouble(player) {
+    if (!this.canDouble(player)) return false;
+    return this.aiEquity(player) > 0.20;
+  }
+
+  /** AI decision: should `player` accept an offered double? (take unless equity/M <= -0.70) */
+  aiShouldAcceptDouble(player) {
+    return this.aiEquity(player) > -0.70;
   }
 }
 
