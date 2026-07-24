@@ -148,10 +148,10 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 87</h2>
+    <h2>Backgammon v. 89</h2>
     
     <!-- Streamlined Network Row -->
-    <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.8rem;">
+    <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
       <button id="btn-host" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
       
       <input type="text" id="join-code" placeholder="CODE" style="flex: 1.2; min-width: 0; padding: 0.4rem; border-radius: 4px; background: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000; border: 1px solid var(--glass-border); text-transform: uppercase; font-weight: bold; text-align: center; opacity: 1;">
@@ -162,13 +162,13 @@
     </div>
 
     <!-- Network Status Message (Permanently Visible) -->
-    <div id="network-status" style="display: block; font-size: 0.85rem; text-align: center; margin-bottom: 0.8rem;">
+    <div id="network-status" style="display: block; font-size: 0.85rem; text-align: center; margin-bottom: 0.4rem;">
       <span id="conn-status" style="color: var(--text-secondary); font-weight: bold;">No network connection</span>
       <div id="room-code-display" style="display: none;"></div>
     </div>
 
     <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
-    <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
       <button id="btn-start-game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
 
       <button id="btn-stop" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
@@ -181,17 +181,6 @@
     <!-- Unified View and Player Setup Row -->
     <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
       
-      <!-- Board View -->
-      <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
-        <label for="board-view" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
-        <select id="board-view" style="width: 100%; background: #1d4ed8; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
-          <option value="white">White</option>
-          <option value="red" selected>Red</option>
-          <option value="home">Home</option>
-          <option value="outer">Outer</option>
-        </select>
-      </div>
-
       <!-- Player 1 (White) -->
       <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
         <label for="p1-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">WP:</label>
@@ -207,6 +196,17 @@
         <select id="p2-type" style="width: 100%; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
+        </select>
+      </div>
+
+      <!-- Board View -->
+      <div style="display: flex; align-items: center; gap: 0.2rem; flex: 1; min-width: 0;">
+        <label for="board-view" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
+        <select id="board-view" style="width: 100%; background: #1d4ed8; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+          <option value="white">White</option>
+          <option value="red" selected>Red</option>
+          <option value="home">Home</option>
+          <option value="outer">Outer</option>
         </select>
       </div>
 
@@ -253,7 +253,33 @@
     </div>
   </div>
 
-<!-- Settings + Export Menus (side by side) -->
+  <!-- AI parameter editor -->
+  <div class="glass-card brain-station">
+    <div class="brain-row">
+      <select id="edit-brain" class="brain-select" title="AI personality to edit"></select>
+      <input type="text" id="brain-filename" class="brain-file" placeholder="file name" title="Export file name">
+      <button id="brain-export" class="tourney-mini" title="Download the selected personality as a JS file">Export</button>
+      <button id="brain-import" class="tourney-mini" title="Import a personality from a JS/JSON file">Import</button>
+      <button id="brain-def" class="tourney-mini" title="Reset all personalities to built-in values">Def</button>
+    </div>
+    <div class="brain-params" id="brain-params"></div>
+  </div>
+
+  <!-- Tournament -->
+  <div class="glass-card tournament-station">
+    <div class="tourney-row">
+      <span class="tourney-toggles" id="tourney-toggles"></span>
+      <button class="tourney-mini" id="tourney-all">all</button>
+      <button class="tourney-mini" id="tourney-none">none</button>
+    </div>
+    <div class="tourney-row">
+      <button id="btn-run-tournament" class="tourney-run">Run Tournament</button>
+      <input type="number" id="tourney-games" value="10" min="1">
+      <span class="tourney-label">games/pair</span>
+    </div>
+  </div>
+
+  <!-- Settings + Export Menus (kept at the bottom so their panels expand upward) -->
   <div style="display: flex; flex-direction: row; gap: 0.5rem;">
 
     <!-- Settings Menu -->
@@ -314,20 +340,6 @@
       </div>
     </div>
 
-  </div>
-
-  <!-- Tournament -->
-  <div class="glass-card tournament-station">
-    <div class="tourney-row">
-      <span class="tourney-toggles" id="tourney-toggles"></span>
-      <button class="tourney-mini" id="tourney-all">all</button>
-      <button class="tourney-mini" id="tourney-none">none</button>
-    </div>
-    <div class="tourney-row">
-      <button id="btn-run-tournament" class="tourney-run">Run Tournament</button>
-      <input type="number" id="tourney-games" value="10" min="1" max="999">
-      <span class="tourney-label">games/pair</span>
-    </div>
   </div>
 
 </aside>

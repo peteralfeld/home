@@ -155,7 +155,7 @@ body {
   
   /* PERFECT SQUARE — set width only, let aspect-ratio derive height */
   aspect-ratio: 1;
-  width: min(calc(100vh - 1rem), calc(100vw - 340px)); /* Largest square that fits */
+  width: min(calc(100vh - 1rem), calc(100vw - 404px)); /* Largest square that fits */
   max-width: 100%;
   max-height: calc(100vh - 1rem); /* Explicit viewport calc — percentage is unreliable in flex */
   
@@ -167,7 +167,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  width: 320px;
+  width: 384px;
   flex-shrink: 0;
   height: 100%;
   overflow-y: auto;
@@ -454,9 +454,9 @@ body {
   font-family: 'Outfit', sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
-  margin-bottom: 0.8rem;
+  margin: 0 0 0.35rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.25rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--accent-gold);
@@ -934,10 +934,10 @@ body {
 
 /* Sidebar Compact Overrides */
 .sidebar-panel {
-  gap: 0.3rem !important;
+  gap: 0.2rem !important;
 }
 .sidebar-panel .glass-card {
-  padding: 0.3rem 0.5rem !important;
+  padding: 0.2rem 0.5rem !important;
 }
 .sidebar-panel .score-display {
   margin-bottom: 0.3rem !important;
@@ -1218,11 +1218,26 @@ body {
 }
 
 /* Collapsed by default — JS toggles .open */
+/* The station is the positioning anchor so its panel can float over the column.
+   overflow must be visible here (an earlier rule set it hidden) or the absolutely
+   positioned panel gets clipped away. */
+.settings-station { position: relative; overflow: visible !important; }
+
 .settings-panel {
+  position: absolute;          /* float over the controls instead of pushing them */
+  bottom: 100%;                /* open upward — the Settings/Export row sits low in the column */
+  left: 0;
+  right: 0;
+  z-index: 500;
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease, padding 0.3s ease;
   padding: 0 0.5rem;
+  background: rgba(10, 15, 13, 0.98);   /* near-opaque so it covers what's underneath */
+  border: 1px solid var(--glass-border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -12px 26px rgba(0, 0, 0, 0.55);
 }
 
 .settings-panel.open {
@@ -1294,6 +1309,61 @@ body {
   margin-top: 0.2rem;
   max-height: 130px;
   overflow-y: auto;
+}
+
+/* ── AI parameter editor ─────────────────────────────── */
+.brain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
+}
+.brain-select {
+  min-width: 92px;
+  background: #1d4ed8; color: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 0.25rem 0.3rem;
+  font-size: 0.75rem; font-weight: 700;
+  cursor: pointer;
+}
+.brain-file {
+  flex: 1 1 64px;
+  min-width: 56px;
+  background: #fff; color: #000;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.72rem; font-weight: 700;
+}
+.brain-params { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+.brain-param { display: flex; flex-direction: column; align-items: center; }
+.brain-param label {
+  font-size: 0.56rem; font-weight: 800;
+  color: var(--text-secondary);
+  line-height: 1.1;
+}
+.brain-param input {
+  width: 50px;
+  background: #fff; color: #000;
+  border: 1px solid var(--glass-border);
+  border-radius: 3px;
+  padding: 0.1rem;
+  text-align: center;
+  font-size: 0.7rem; font-weight: 700;
+}
+
+/* Remove the up/down spinner buttons from every number field so the digits
+   get the full width of the box. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .settings-item {

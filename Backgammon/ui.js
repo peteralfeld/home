@@ -1503,6 +1503,130 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     checkAndTriggerAITurn();
   });
 
+  // ── AI parameter editor ───────────────────────────────────
+  const editBrainSel  = document.getElementById('edit-brain');
+  const brainParamsEl = document.getElementById('brain-params');
+  const BRAIN_KEYS = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+
+  function refreshBrainSelect() {
+    if (!editBrainSel) return;
+    const prev = editBrainSel.value;
+    editBrainSel.innerHTML = '';
+    game.aiPersonalityNames().forEach((n) => {
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n;
+      editBrainSel.appendChild(o);
+    });
+    editBrainSel.value = [...editBrainSel.options].some((o) => o.value === prev)
+      ? prev : (editBrainSel.options[0] ? editBrainSel.options[0].value : '');
+  }
+
+  function buildBrainParams() {
+    if (!brainParamsEl) return;
+    brainParamsEl.innerHTML = '';
+    BRAIN_KEYS.forEach((k) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'brain-param';
+      const lab = document.createElement('label');
+      lab.textContent = k; lab.htmlFor = 'bp-' + k;
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.id = 'bp-' + k;
+      inp.addEventListener('change', () => {
+        const name = editBrainSel.value;
+        game.setPersonalityWeight(name, k, parseInt(inp.value, 10) || 0);
+        // If a seated player is this AI, refresh its live weights and M.
+        [1, 2].forEach((p) => {
+          if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name);
+        });
+      });
+      wrap.appendChild(lab); wrap.appendChild(inp);
+      brainParamsEl.appendChild(wrap);
+    });
+  }
+
+  function loadBrainParams() {
+    if (!editBrainSel) return;
+    const w = game.personalityWeights(editBrainSel.value);
+    BRAIN_KEYS.forEach((k) => {
+      const inp = document.getElementById('bp-' + k);
+      if (inp) inp.value = w[k];
+    });
+    // Default the export file name to the selected personality.
+    const fnEl = document.getElementById('brain-filename');
+    if (fnEl) fnEl.value = editBrainSel.value;
+  }
+
+  // Rebuild every UI list that depends on the roster (after import / reset).
+  function refreshAllBrainUI() {
+    refreshBrainSelect();
+    loadBrainParams();
+    buildTournamentToggles();
+    populatePlayerMenus();
+    syncPlayersFromMenus();
+  }
+
+  if (editBrainSel) {
+    refreshBrainSelect();
+    buildBrainParams();
+    loadBrainParams();
+    editBrainSel.addEventListener('change', loadBrainParams);
+  }
+
+  document.getElementById('brain-export')?.addEventListener('click', () => {
+    const src = editBrainSel.value;               // weights come from the selected AI
+    if (!src) return;
+    const weights = game.personalityWeights(src);
+    let fn = (document.getElementById('brain-filename').value || src).trim();
+    const exportName = fn.replace(/\.js$/i, '').trim() || src;   // the personality is named after the file
+    const clean = exportName.replace(/[^A-Za-z0-9]/g, '') || 'Brain';
+    if (!/\.js$/i.test(fn)) fn += '.js';
+    // A JS file that defines a personality named after the file.
+    const content =
+      `// Backgammon AI personality: ${exportName}\n` +
+      `// ${new Date().toLocaleString()}\n\n` +
+      `const ${clean} = ${JSON.stringify({ name: exportName, weights })};\n`;
+    downloadCSV(fn, content);
+  });
+
+  let brainFileInput = document.createElement('input');
+  brainFileInput.type = 'file';
+  brainFileInput.accept = '.js,.json';
+  brainFileInput.style.display = 'none';
+  document.body.appendChild(brainFileInput);
+  brainFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = String(evt.target.result);
+        let brains;
+        const arrM = text.match(/\[[\s\S]*\]/);          // array of personalities
+        if (arrM) {
+          brains = JSON.parse(arrM[0]);
+        } else {
+          const objM = text.match(/\{[\s\S]*\}/);        // or a single personality
+          brains = objM ? [JSON.parse(objM[0])] : [];
+        }
+        if (!brains.length) throw new Error('no brains');
+        game.importPersonalities(brains);
+        refreshAllBrainUI();
+        gameMessageEl.textContent = `Imported ${brains.length} AI personalit${brains.length === 1 ? 'y' : 'ies'}.`;
+      } catch (err) {
+        gameMessageEl.textContent = 'Could not read that personalities file.';
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+  document.getElementById('brain-import')?.addEventListener('click', () => brainFileInput.click());
+
+  document.getElementById('brain-def')?.addEventListener('click', () => {
+    game.resetPersonalities();
+    refreshAllBrainUI();
+    gameMessageEl.textContent = 'AI personalities reset to built-in values.';
+  });
+
   // ── Tournament ────────────────────────────────────────────
   const tourneySelected  = new Set();
   const tourneyTogglesEl = document.getElementById('tourney-toggles');
@@ -1588,7 +1712,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
-    const gamesPer = Math.max(1, Math.min(999, parseInt(document.getElementById('tourney-games').value, 10) || 10));
+    const gamesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
 
     const pts = {}, wins = {}, losses = {}, h2h = {};
     names.forEach((n) => {

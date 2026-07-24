@@ -33,6 +33,9 @@ const AI_PERSONALITIES = {
 // The baseline AI. Each personality is normalized so max|w| = 1000.
 const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 
+// Immutable snapshot of the built-in roster, for the "Def" (reset) action.
+const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
+
 // Steep length factor for a prime of a given length (0 for < 2, 1.0 for full 6-prime).
 const PRIME_FACTOR = { 2: 0.05, 3: 0.15, 4: 0.35, 5: 0.65, 6: 1.0 };
 
@@ -93,7 +96,7 @@ class BackgammonGame {
 
     // AI weight personalities — one vector per player (like human players, each
     // AI evaluates with its own weights). Both default to the baseline AI.
-    this.aiWeights = { 1: { ...DEFAULT_WEIGHTS }, 2: { ...DEFAULT_WEIGHTS } };
+    this.aiWeights = { 1: { ...AI_PERSONALITIES.Origin }, 2: { ...AI_PERSONALITIES.Origin } };
     // M = sum of |static weights|, recomputed per weight vector. Used by score/M.
     this.maxScore = {
       1: this.computeMaxScore(this.aiWeights[1]),
@@ -623,6 +626,29 @@ rollDice(d1 = null, d2 = null) {
   /** The weight vector for a named personality (falls back to Origin). */
   personalityWeights(name) {
     return AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
+  }
+
+  /** Set one weight of a personality (used by the parameter editor). */
+  setPersonalityWeight(name, key, value) {
+    if (AI_PERSONALITIES[name]) AI_PERSONALITIES[name][key] = value;
+  }
+
+  /** Add or update personalities from an imported array of { name, weights }.
+   *  Existing personalities not in the file are kept (merge, not replace). */
+  importPersonalities(arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach((p) => {
+      if (p && p.name && p.weights) {
+        // Merge over Origin so any missing keys still get sensible values.
+        AI_PERSONALITIES[p.name] = { ...BUILTIN_PERSONALITIES.Origin, ...p.weights };
+      }
+    });
+  }
+
+  /** Restore the built-in roster ("Def"). */
+  resetPersonalities() {
+    Object.keys(AI_PERSONALITIES).forEach((k) => delete AI_PERSONALITIES[k]);
+    Object.keys(BUILTIN_PERSONALITIES).forEach((k) => { AI_PERSONALITIES[k] = { ...BUILTIN_PERSONALITIES[k] }; });
   }
 
   /** Assign an AI personality (by name) to a player, recomputing its M. */
