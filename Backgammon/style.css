@@ -1345,13 +1345,13 @@ body {
   line-height: 1.1;
 }
 .brain-param input {
-  width: 50px;
+  width: 44px;
   background: #fff; color: #000;
   border: 1px solid var(--glass-border);
   border-radius: 3px;
   padding: 0.1rem;
   text-align: center;
-  font-size: 0.7rem; font-weight: 700;
+  font-size: 0.68rem; font-weight: 700;
 }
 
 /* Remove the up/down spinner buttons from every number field so the digits

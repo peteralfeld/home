@@ -90,6 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // or the cube to decline.
   let pendingDouble = null;
   const opponentOf = (p) => (p === 1 ? 2 : 1);
+  // Show Score (default ON): score column in the move list and the exported list.
+  // Declared early because renderHistoryList() reads it during the first render.
+  let showScoreOn = true;
   let aiStopped   = false;  // true while AI is manually paused via STOP button
   let highlightOn = true;
   let autoRollOn  = false;
@@ -259,10 +262,13 @@ function sysLog(msg) {
       const p1Type = game.playerTypes[1].charAt(0).toUpperCase() + game.playerTypes[1].slice(1);
       const p2Type = game.playerTypes[2].charAt(0).toUpperCase() + game.playerTypes[2].slice(1);
 
+      const withScore = showScoreOn;
       let txt = 'Backgammon Game - Move History\n';
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
       txt += `White: ${p1Type}, Red: ${p2Type}\n\n`;
-      txt += 'Turn  Player  Dice   Moves\n\n';
+      txt += withScore
+        ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score\n\n'
+        : 'Turn  Player  Dice   Moves\n\n';
 
       game.gameHistory.forEach((snap, idx) => {
         const turnNum = String(idx).padStart(4, ' '); // idx 0 is initial, so idx 1 becomes Turn 1
@@ -281,7 +287,12 @@ function sysLog(msg) {
           }
           movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
         }
-        txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
+        if (withScore) {
+          const scoreStr = String(Math.round(snapshotScore(snap))).padStart(6, ' ');
+          txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText.padEnd(20, ' ')} ${scoreStr}\n`;
+        } else {
+          txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
+        }
       });
 
       txt += '\n';
@@ -339,6 +350,7 @@ function sysLog(msg) {
   // Initialise badges to their defaults
   updateSettingBadge('badge-doubling', doublingOn);
   updateSettingBadge('badge-autostart', autoStartOn);
+  updateSettingBadge('badge-showscore', showScoreOn);
   updateSettingBadge('badge-animation', animationOn);
   updateSettingBadge('badge-highlight',  highlightOn);
   updateSettingBadge('badge-autoroll',   autoRollOn);
@@ -416,6 +428,17 @@ function sysLog(msg) {
       autoStartOn = !autoStartOn;
       updateSettingBadge('badge-autostart', autoStartOn);
       sysLog(`[System] Auto Start toggled to ${autoStartOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Show Score row
+  const settingShowscoreEl = document.getElementById('setting-showscore');
+  if (settingShowscoreEl) {
+    settingShowscoreEl.addEventListener('click', () => {
+      showScoreOn = !showScoreOn;
+      updateSettingBadge('badge-showscore', showScoreOn);
+      sysLog(`[System] Show Score toggled to ${showScoreOn ? 'ON' : 'OFF'}`);
+      renderHistoryList();
     });
   }
 
@@ -1175,8 +1198,39 @@ function handleRollClick() {
    * Render history list for time travel replaying with a fixed header
    * and a constant-height scrollable body.
    */
+  // Which weights to score a given (on-roll) player's perspective with:
+  //  - an AI seat uses its own weights;
+  //  - a human facing an AI uses the AI opponent's weights;
+  //  - human vs human uses the AI picked in the editor menu (default Origin).
+  function scoringWeights(player) {
+    if (game.playerTypes[player] === 'ai') return game.aiWeights[player];
+    const opp = player === 1 ? 2 : 1;
+    if (game.playerTypes[opp] === 'ai') return game.aiWeights[opp];
+    const selEl = document.getElementById('edit-brain');
+    return game.personalityWeights((selEl && selEl.value) || 'Origin');
+  }
+
+  // Score of a snapshot's (post-move) position from the perspective of the player
+  // on roll there — the player whose move it is when you navigate to that row.
+  // Cached on the snapshot (evaluated once) until the scoring context changes.
+  function snapshotScore(snapshot) {
+    if (snapshot._score !== undefined) return snapshot._score;
+    const onRoll = snapshot.isInitial
+      ? snapshot.currentPlayer
+      : (snapshot.currentPlayer === 1 ? 2 : 1);
+    const s = game.evaluate(snapshot.points, snapshot.bar, snapshot.borneOff, scoringWeights(onRoll));
+    snapshot._score = onRoll === 1 ? s : -s;
+    return snapshot._score;
+  }
+
+  // Drop cached history scores so they recompute (after a player or scoring-AI change).
+  function clearHistoryScoreCache() {
+    game.gameHistory.forEach((s) => { delete s._score; });
+  }
+
   function renderHistoryList() {
     sysLog(`[History] Rendering list. count=${game.gameHistory.length}`);
+    const showScore = showScoreOn;
     historyListEl.innerHTML = '';
     
     // 1. Create the fixed Header
@@ -1187,10 +1241,11 @@ function handleRollClick() {
     tableHeader.innerHTML = `
       <thead>
         <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.15); color: #e5c158; text-transform: uppercase; font-size: 0.65rem;">
-          <th style="padding: 4px; width: 10%; text-align: left;">#</th>
-          <th style="padding: 4px; width: 10%; text-align: left;">P</th>
-          <th style="padding: 4px; width: 25%; text-align: left;">Dice</th>
-          <th style="padding: 4px; width: 55%; text-align: left;">Moves</th>
+          <th style="padding: 4px; width: 8%; text-align: left;">#</th>
+          <th style="padding: 4px; width: 8%; text-align: left;">P</th>
+          <th style="padding: 4px; width: 18%; text-align: left;">Dice</th>
+          <th style="padding: 4px; width: ${showScore ? '46%' : '64%'}; text-align: left;">Moves</th>
+          ${showScore ? '<th style="padding: 4px; width: 20%; text-align: left;">Score</th>' : ''}
         </tr>
       </thead>`;
     historyListEl.appendChild(tableHeader);
@@ -1218,9 +1273,10 @@ function handleRollClick() {
             <td style="padding: 2px 4px; color: #9ca3af; font-weight: bold;">-</td>
             <td style="padding: 2px 4px;">-</td>
             <td style="padding: 2px 4px; font-family: monospace;">-</td>
+            ${showScore ? '<td style="padding: 2px 4px;">-</td>' : ''}
           `;
       } else {
-          emptyEl.innerHTML = `<td colspan="4" style="text-align: center; color: #9ca3af; font-style: italic; padding: 10px;">No turns played yet.</td>`;
+          emptyEl.innerHTML = `<td colspan="${showScore ? 5 : 4}" style="text-align: center; color: #9ca3af; font-style: italic; padding: 10px;">No turns played yet.</td>`;
       }
       tbody.appendChild(emptyEl);
     } else {
@@ -1257,11 +1313,18 @@ function handleRollClick() {
         let displayDice = snapshot.isInitial ? '-' : `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`;
         let displayPCode = snapshot.isInitial ? '-' : pCode;
 
+        let scoreCell = '';
+        if (showScore) {
+          const scoreVal = Math.round(snapshotScore(snapshot));
+          const scoreColor = scoreVal > 0 ? '#86efac' : (scoreVal < 0 ? '#f87171' : '#9ca3af');
+          scoreCell = `<td style="padding: 2px 4px; font-family: monospace; color: ${scoreColor};">${scoreVal}</td>`;
+        }
         row.innerHTML = `
           <td style="padding: 2px 4px; font-weight: bold;">${idx}</td>
           <td style="padding: 2px 4px; color: ${pColor}; font-weight: bold;">${displayPCode}</td>
           <td style="padding: 2px 4px;">${displayDice}</td>
           <td style="padding: 2px 4px; font-family: monospace;">${movesText}</td>
+          ${scoreCell}
         `;
         tbody.appendChild(row);
       });
@@ -1491,6 +1554,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Listen for live dropdown changes so players can swap Human/AI in/out mid-game
   document.getElementById('p1-type').addEventListener('change', (e) => {
     applyPlayerMenu(1);
+    clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] White player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
     checkAndTriggerAITurn();
@@ -1498,6 +1562,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   document.getElementById('p2-type').addEventListener('change', (e) => {
     applyPlayerMenu(2);
+    clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] Red player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
     checkAndTriggerAITurn();
@@ -1506,7 +1571,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // ── AI parameter editor ───────────────────────────────────
   const editBrainSel  = document.getElementById('edit-brain');
   const brainParamsEl = document.getElementById('brain-params');
-  const BRAIN_KEYS = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const BRAIN_KEYS = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'DT', 'AT'];
 
   function refreshBrainSelect() {
     if (!editBrainSel) return;
@@ -1551,9 +1616,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const inp = document.getElementById('bp-' + k);
       if (inp) inp.value = w[k];
     });
-    // Default the export file name to the selected personality.
-    const fnEl = document.getElementById('brain-filename');
-    if (fnEl) fnEl.value = editBrainSel.value;
   }
 
   // Rebuild every UI list that depends on the roster (after import / reset).
@@ -1569,7 +1631,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     refreshBrainSelect();
     buildBrainParams();
     loadBrainParams();
-    editBrainSel.addEventListener('change', loadBrainParams);
+    editBrainSel.addEventListener('change', () => {
+      loadBrainParams();
+      clearHistoryScoreCache();   // human-vs-human games score with this menu's AI
+      renderHistoryList();
+    });
   }
 
   document.getElementById('brain-export')?.addEventListener('click', () => {
@@ -1801,6 +1867,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (aiActionTimeout) clearTimeout(aiActionTimeout);
 
     if (!game.hasRolled) {
+      // Before rolling, decide whether to offer a double.
+      if (doublingOn && game.aiShouldDouble(game.currentPlayer)) {
+        sysLog(`[AI] Player ${game.currentPlayer} (AI) offers a double.`);
+        aiActionTimeout = setTimeout(() => {
+          aiActionTimeout = null;
+          offerDoubleByAI(game.currentPlayer);
+        }, 400);
+        return;
+      }
       sysLog(`[AI] Player ${game.currentPlayer} (AI) is rolling the dice...`);
       aiActionTimeout = setTimeout(() => {
         aiActionTimeout = null;
@@ -1820,6 +1895,22 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         }
       }, 300);
     }
+  }
+
+  // An AI offers a double on its turn; the opponent (human or AI) then responds.
+  function offerDoubleByAI(player) {
+    if (pendingDouble || !game.canDouble(player)) return;
+    pendingDouble = { by: player };
+    updateUI();                       // show the pending prompt and lock the dice
+    const responder = opponentOf(player);
+    if (game.playerTypes[responder] === 'ai') {
+      setTimeout(() => {
+        if (!pendingDouble) return;
+        if (game.aiShouldAcceptDouble(responder)) applyAcceptDouble();
+        else applyDeclineDouble();
+      }, 700);
+    }
+    // If the responder is human, the dice/cube click handlers take the response.
   }
 
   /**

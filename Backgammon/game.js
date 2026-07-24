@@ -33,6 +33,11 @@ const AI_PERSONALITIES = {
 // The baseline AI. Each personality is normalized so max|w| = 1000.
 const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 
+// Doubling thresholds (absolute score, in the mover's own perspective; positive
+// numbers, the sign is handled internally per side): offer/redouble when own
+// score > DT; accept an offered double unless own score < -AT.
+Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 100; });
+
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
 
@@ -97,11 +102,6 @@ class BackgammonGame {
     // AI weight personalities — one vector per player (like human players, each
     // AI evaluates with its own weights). Both default to the baseline AI.
     this.aiWeights = { 1: { ...AI_PERSONALITIES.Origin }, 2: { ...AI_PERSONALITIES.Origin } };
-    // M = sum of |static weights|, recomputed per weight vector. Used by score/M.
-    this.maxScore = {
-      1: this.computeMaxScore(this.aiWeights[1]),
-      2: this.computeMaxScore(this.aiWeights[2])
-    };
     // Which AI personality each player is using (when playerTypes[p] === 'ai').
     this.aiNames = { 1: 'Origin', 2: 'Origin' };
 
@@ -607,17 +607,6 @@ rollDice(d1 = null, d2 = null) {
     this.winner = this.currentPlayer;
   }
 
-  /**
-   * M = sum of the absolute static weights (the maximum favorable score, since
-   * every term tops out at +|w| for White). Recomputed per weight vector.
-   * DE is excluded — it is a move-selection bonus, not part of the static score.
-   */
-  computeMaxScore(weights) {
-    return Math.abs(weights.PC) + Math.abs(weights.EC1) + Math.abs(weights.EC0)
-      + Math.abs(weights.PH) + Math.abs(weights.HB) + Math.abs(weights.AN)
-      + Math.abs(weights.DO) + Math.abs(weights.IO) + Math.abs(weights.DP) + Math.abs(weights.IP);
-  }
-
   /** Names of all available AI personalities (used to populate the player menus). */
   aiPersonalityNames() {
     return Object.keys(AI_PERSONALITIES);
@@ -651,11 +640,10 @@ rollDice(d1 = null, d2 = null) {
     Object.keys(BUILTIN_PERSONALITIES).forEach((k) => { AI_PERSONALITIES[k] = { ...BUILTIN_PERSONALITIES[k] }; });
   }
 
-  /** Assign an AI personality (by name) to a player, recomputing its M. */
+  /** Assign an AI personality (by name) to a player. */
   setPlayerAI(player, name) {
     const w = AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
     this.aiWeights[player] = { ...w };
-    this.maxScore[player] = this.computeMaxScore(this.aiWeights[player]);
     this.aiNames[player] = AI_PERSONALITIES[name] ? name : 'Origin';
     this.playerTypes[player] = 'ai';
   }
@@ -1116,24 +1104,23 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
-   * Normalized equity in ~[-1, 1] from the given player's own perspective
-   * (+ good for that player), i.e. (White-view score / M), flipped for Red.
+   * The static score from `player`'s own perspective, using that player's own
+   * weights. White uses the White-view score directly; Red uses its negation.
    */
-  aiEquity(player) {
+  ownScore(player) {
     const score = this.evaluate(this.points, this.bar, this.borneOff, this.aiWeights[player]);
-    const M = this.maxScore[player] || 1;
-    return player === 1 ? score / M : -score / M;
+    return player === 1 ? score : -score;
   }
 
-  /** AI decision: should `player` offer a double now? (equity/M > 0.20) */
+  /** AI decision: offer/redouble when the player's own score exceeds its DT threshold. */
   aiShouldDouble(player) {
     if (!this.canDouble(player)) return false;
-    return this.aiEquity(player) > 0.20;
+    return this.ownScore(player) > (this.aiWeights[player].DT || 0);
   }
 
-  /** AI decision: should `player` accept an offered double? (take unless equity/M <= -0.70) */
+  /** AI decision: accept an offered double unless the player's own score is below -AT. */
   aiShouldAcceptDouble(player) {
-    return this.aiEquity(player) > -0.70;
+    return this.ownScore(player) > -(this.aiWeights[player].AT || 0);
   }
 }
 
@@ -1148,8 +1135,6 @@ function simulateBGGame(wWhite, wRed) {
   g.playerTypes[2] = 'ai';
   g.aiWeights[1] = wWhite;
   g.aiWeights[2] = wRed;
-  g.maxScore[1] = g.computeMaxScore(wWhite);
-  g.maxScore[2] = g.computeMaxScore(wRed);
   g.rollForFirstTurn();
 
   let guard = 0;

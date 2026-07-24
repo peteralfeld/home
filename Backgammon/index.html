@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 89</h2>
+    <h2>Backgammon v. 90</h2>
     
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
@@ -257,7 +257,7 @@
   <div class="glass-card brain-station">
     <div class="brain-row">
       <select id="edit-brain" class="brain-select" title="AI personality to edit"></select>
-      <input type="text" id="brain-filename" class="brain-file" placeholder="file name" title="Export file name">
+      <input type="text" id="brain-filename" class="brain-file" value="newAI" placeholder="file name" title="Export file name">
       <button id="brain-export" class="tourney-mini" title="Download the selected personality as a JS file">Export</button>
       <button id="brain-import" class="tourney-mini" title="Import a personality from a JS/JSON file">Import</button>
       <button id="brain-def" class="tourney-mini" title="Reset all personalities to built-in values">Def</button>
@@ -297,6 +297,10 @@
         <div class="settings-item" id="setting-highlight" data-setting="highlight">
           <span class="settings-item-label">Highlight</span>
           <span class="settings-item-badge" id="badge-highlight">ON</span>
+        </div>
+        <div class="settings-item" id="setting-showscore" data-setting="showscore">
+          <span class="settings-item-label">Show Score</span>
+          <span class="settings-item-badge" id="badge-showscore">ON</span>
         </div>
         <div class="settings-item" id="setting-autoroll" data-setting="autoroll">
           <span class="settings-item-label">Auto Roll</span>
