@@ -950,9 +950,15 @@ body {
 }
 .sidebar-panel .game-message {
   padding: 0.3rem 0.5rem !important;
-  min-height: auto !important;
   font-size: 0.8rem !important;
   margin-top: 0.2rem !important;
+  /* Fixed at exactly two lines (line-height 1.4 => 2.8em) plus vertical padding,
+     so the box never resizes as the message changes. */
+  box-sizing: border-box;
+  height: calc(2.8em + 0.6rem) !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  align-items: center;
 }
 .sidebar-panel .dice-container {
   margin: 0.3rem 0 !important;
@@ -1220,7 +1226,7 @@ body {
 }
 
 .settings-panel.open {
-  max-height: 200px;
+  max-height: 320px;
   padding: 0.35rem 0.5rem 0.5rem;
 }
 

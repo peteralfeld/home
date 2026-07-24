@@ -18,10 +18,20 @@
  *   DO/IO/DP/IP  collapsed blot threat-vs-exposure features   +1000/600/500/300
  *   DE  disengagement bonus (move-selection only, not static) +667
  */
-const DEFAULT_WEIGHTS = {
-  PC: -667, EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 200,
-  DO: 1000, IO: 600, DP: 500, IP: 300, DE: 667
+const AI_PERSONALITIES = {
+  Origin:    { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
+  Arwen:     { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
+  Bilbo:     { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
+  Celebrian: { PC: -445,  EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 1000 },
+  Dwalin:    { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
+  Eowyn:     { PC: -667,  EC1: -500, EC0: -1000, PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
+  Frodo:     { PC: -556,  EC1: -111, EC0: -333,  PH: 556,  HB: 111, AN: 1000, DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
+  Galadriel: { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 1000, IP: 500, DE: 667  },
+  Hamfast:   { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 500, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
 };
+
+// The baseline AI. Each personality is normalized so max|w| = 1000.
+const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 
 // Steep length factor for a prime of a given length (0 for < 2, 1.0 for full 6-prime).
 const PRIME_FACTOR = { 2: 0.05, 3: 0.15, 4: 0.35, 5: 0.65, 6: 1.0 };
@@ -89,6 +99,8 @@ class BackgammonGame {
       1: this.computeMaxScore(this.aiWeights[1]),
       2: this.computeMaxScore(this.aiWeights[2])
     };
+    // Which AI personality each player is using (when playerTypes[p] === 'ai').
+    this.aiNames = { 1: 'Origin', 2: 'Origin' };
 
     // History stack for supporting Undo functionality
     // Stores deep copies of game state at each sub-move during the turn.
@@ -601,6 +613,20 @@ rollDice(d1 = null, d2 = null) {
     return Math.abs(weights.PC) + Math.abs(weights.EC1) + Math.abs(weights.EC0)
       + Math.abs(weights.PH) + Math.abs(weights.HB) + Math.abs(weights.AN)
       + Math.abs(weights.DO) + Math.abs(weights.IO) + Math.abs(weights.DP) + Math.abs(weights.IP);
+  }
+
+  /** Names of all available AI personalities (used to populate the player menus). */
+  aiPersonalityNames() {
+    return Object.keys(AI_PERSONALITIES);
+  }
+
+  /** Assign an AI personality (by name) to a player, recomputing its M. */
+  setPlayerAI(player, name) {
+    const w = AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
+    this.aiWeights[player] = { ...w };
+    this.maxScore[player] = this.computeMaxScore(this.aiWeights[player]);
+    this.aiNames[player] = AI_PERSONALITIES[name] ? name : 'Origin';
+    this.playerTypes[player] = 'ai';
   }
 
   /** Pip count for a player on a given (points, bar) state. */

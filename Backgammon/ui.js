@@ -84,6 +84,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let aiActionTimeout = null;
   let animationOn = true;
   let isAIPlaying = false;
+
+  // Doubling: when a double is pending, { by: <player who offered> }.
+  // While set, the dice are locked; the doubled player clicks the dice to accept
+  // or the cube to decline.
+  let pendingDouble = null;
+  const opponentOf = (p) => (p === 1 ? 2 : 1);
   let aiStopped   = false;  // true while AI is manually paused via STOP button
   let highlightOn = true;
   let autoRollOn  = false;
@@ -154,7 +160,23 @@ function sysLog(msg) {
 
   // Event Listeners
   diceContainerEl.addEventListener('click', () => {
-    if (!gameStarted) return;
+    if (!gameStarted) {
+      // Auto Start: a dice click starts a local game (no need to click Start first);
+      // for a human it also performs the opening roll so one click gets you going.
+      if (autoStartOn && !isNetworkGame) {
+        startGame(false);
+        if (game.playerTypes[game.currentPlayer] !== 'ai' && !isRolling) handleRollClick();
+      }
+      return;
+    }
+    // A pending double: the doubled player clicks the dice to ACCEPT.
+    if (pendingDouble) {
+      const responder = opponentOf(pendingDouble.by);
+      if (isNetworkGame && localPlayerRole !== responder) return; // only the doubled player responds
+      if (isNetworkGame && conn && conn.open) conn.send({ type: 'accept' });
+      applyAcceptDouble();
+      return;
+    }
     if (game.playerTypes[game.currentPlayer] === 'ai') return;
     const canRoll = !game.hasRolled || initialRollOff;
     if (canRoll && !game.winner && !isRolling) {
@@ -309,7 +331,14 @@ function sysLog(msg) {
   const settingsPanel   = document.getElementById('settings-panel');
   const settingsChevron = document.getElementById('settings-chevron');
 
+  // Doubling on/off (default ON). When off, clicking the cube offers nothing.
+  let doublingOn = true;
+  // Auto Start (default OFF). When on, clicking the dice with no game running starts it.
+  let autoStartOn = false;
+
   // Initialise badges to their defaults
+  updateSettingBadge('badge-doubling', doublingOn);
+  updateSettingBadge('badge-autostart', autoStartOn);
   updateSettingBadge('badge-animation', animationOn);
   updateSettingBadge('badge-highlight',  highlightOn);
   updateSettingBadge('badge-autoroll',   autoRollOn);
@@ -370,8 +399,36 @@ function sysLog(msg) {
     });
   }
 
+  // Doubling row
+  const settingDoublingEl = document.getElementById('setting-doubling');
+  if (settingDoublingEl) {
+    settingDoublingEl.addEventListener('click', () => {
+      doublingOn = !doublingOn;
+      updateSettingBadge('badge-doubling', doublingOn);
+      sysLog(`[System] Doubling toggled to ${doublingOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Auto Start row
+  const settingAutostartEl = document.getElementById('setting-autostart');
+  if (settingAutostartEl) {
+    settingAutostartEl.addEventListener('click', () => {
+      autoStartOn = !autoStartOn;
+      updateSettingBadge('badge-autostart', autoStartOn);
+      sysLog(`[System] Auto Start toggled to ${autoStartOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
   doublingCubeEl.addEventListener('click', () => {
-    if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
+    if (!gameStarted) return;
+    // A pending double: the doubled player clicks the cube to DECLINE (forfeit).
+    if (pendingDouble) {
+      const responder = opponentOf(pendingDouble.by);
+      if (isNetworkGame && localPlayerRole !== responder) return; // only the doubled player responds
+      if (isNetworkGame && conn && conn.open) conn.send({ type: 'decline' });
+      applyDeclineDouble();
+      return;
+    }
     handleDoubleOffer();
   });
 
@@ -470,11 +527,11 @@ renderBorneOff();
         turnDisplay.style.display = 'flex';
         if (game.currentPlayer === 1) {
           turnDisplay.className = 'player-turn-indicator player1-turn';
-          turnText.textContent = `Player 1's Turn (White)`;
+          turnText.textContent = `White's Turn`;
           document.body.classList.remove('player2-turn-active');
         } else {
           turnDisplay.className = 'player-turn-indicator player2-turn';
-          turnText.textContent = `Player 2's Turn (Red)`;
+          turnText.textContent = `Red's Turn`;
           document.body.classList.add('player2-turn-active');
         }
       } else {
@@ -496,21 +553,23 @@ renderBorneOff();
 
 // 7b. Update Doubling Cube DOM elements
     if (doublingCubeEl) {
-      doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
-      
-      // Restart classes
-      doublingCubeEl.classList.remove('owned-p1', 'owned-p2');
-      
-      // Apply owner colors
-      if (game.doublingCubeOwner === 1) {
-        doublingCubeEl.classList.add('owned-p1');
-      } else if (game.doublingCubeOwner === 2) {
-        doublingCubeEl.classList.add('owned-p2');
+      doublingCubeEl.classList.remove('owned-p1', 'owned-p2', 'double-pending');
+
+      if (pendingDouble) {
+        // Show the offered (doubled) stake in the taker's colour while awaiting a decision.
+        const offered = game.doublingCubeValue === 1 ? 2 : game.doublingCubeValue * 2;
+        doublingCubeEl.textContent = offered;
+        const responder = opponentOf(pendingDouble.by);
+        doublingCubeEl.classList.add(responder === 1 ? 'owned-p1' : 'owned-p2', 'double-pending');
+      } else {
+        doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
+        if (game.doublingCubeOwner === 1) doublingCubeEl.classList.add('owned-p1');
+        else if (game.doublingCubeOwner === 2) doublingCubeEl.classList.add('owned-p2');
       }
     }
 
       // 7c. Update dice container styling classes (rollable/initial-roll-off)
-    const canRoll = !game.hasRolled || initialRollOff;
+    const canRoll = (!game.hasRolled || initialRollOff) && !pendingDouble;
     if (canRoll && !game.winner && !isRolling) {
       diceContainerEl.classList.add('rollable');
     } else {
@@ -528,20 +587,50 @@ renderBorneOff();
     renderHistoryList();
 
 // 8. Handle messages and turn advancement
-    if (game.winner) {
-      gameMessageEl.textContent = `🎉 Game Over! Player ${game.winner === 1 ? '1 (White)' : '2 (Red)'} wins the game!`;
+    if (pendingDouble) {
+      const offered = game.doublingCubeValue === 1 ? 2 : game.doublingCubeValue * 2;
+      const responder = opponentOf(pendingDouble.by);
+      const byName = pendingDouble.by === 1 ? 'White' : 'Red';
+      const respName = responder === 1 ? 'White' : 'Red';
+      if (isNetworkGame && localPlayerRole === pendingDouble.by) {
+        gameMessageEl.textContent = `You doubled to ${offered}. Waiting for ${respName}…`;
+      } else {
+        gameMessageEl.textContent = `${respName}: DOUBLE. Click the dice to continue, the cube to stop play.`;
+      }
+      btnUndo.disabled = true;
+    } else if (game.winner) {
+      const winner = game.winner;
+      const loser = winner === 1 ? 2 : 1;
+      const winnerName = winner === 1 ? 'White' : 'Red';
+      const loserName  = winner === 1 ? 'Red' : 'White';
+      // Result multiplier: 1 = single, 2 = gammon, 3 = backgammon.
+      let mult = 1, verb = 'defeats';
+      if (game.borneOff[loser] === 0) {
+        // Loser bore off nothing → at least a gammon; a backgammon if the loser
+        // still has a checker on the bar or in the winner's home board.
+        const homeLo = winner === 1 ? 1 : 19;
+        const homeHi = winner === 1 ? 6 : 24;
+        let inWinnerHome = game.bar[loser] > 0;
+        for (let i = homeLo; i <= homeHi && !inWinnerHome; i++) {
+          if (game.points[i].player === loser) inWinnerHome = true;
+        }
+        if (inWinnerHome) { mult = 3; verb = 'backgammons'; }
+        else { mult = 2; verb = 'gammons'; }
+      }
+      const pts = game.doublingCubeValue * mult;
+      gameMessageEl.textContent = `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
       btnUndo.disabled = true;
     } else if (!gameStarted) {
       // UPDATE: Show waiting message for guest, standard message for host
       if (isNetworkGame && localPlayerRole === 2) {
         gameMessageEl.textContent = "Waiting for the host to start the game...";
       } else {
-        gameMessageEl.textContent = "Select players and click START GAME!";
+        gameMessageEl.textContent = "Ready to go! To play, select players and click on Start";
       }
     } else if (initialRollOff) {
       gameMessageEl.textContent = "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
-	gameMessageEl.textContent = `Player ${game.currentPlayer === 1 ? '1 (White)' : '2 (Red)'}: Click the dice to roll.`;
+	gameMessageEl.textContent = `${game.currentPlayer === 1 ? 'White' : 'Red'}: Click the dice to roll.`;
 } else {
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
@@ -576,8 +665,7 @@ renderBorneOff();
           clearTimeout(turnEndTimer);
           turnEndTimer = null;
         }
-        const movesStr = game.movesLeft.join(', ');
-        gameMessageEl.textContent = `Drag your pieces. Moves left: [${movesStr}]`;
+        gameMessageEl.textContent = `${game.currentPlayer === 1 ? 'White' : 'Red'} to move`;
       }
     }
 
@@ -598,6 +686,7 @@ renderBorneOff();
     if (!autoRollOn) return;
     if (!gameStarted) return;
     if (game.winner) return;
+    if (pendingDouble) return;   // don't auto-roll while a double is pending
     if (game.hasRolled && !initialRollOff) return;  // already rolled
     if (isRolling) return;                           // animation in progress
     if (game.playerTypes[game.currentPlayer] === 'ai') return; // AI handles its own roll
@@ -787,6 +876,7 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
 
 function handleRollClick() {
     if (isRolling) return;
+    if (pendingDouble) return;   // dice are locked until the double is resolved
     isRolling = true;
     updateUI(); // Locks the dice visually
 
@@ -809,28 +899,53 @@ function handleRollClick() {
   }
 
   /**
-   * Handle doubling offer logic.
+   * A player (on roll, owning or sharing the cube) offers a double by clicking the cube.
+   * This locks the dice and hands the decision to the opponent. Nothing is committed to
+   * the cube until the opponent accepts.
    */
   function handleDoubleOffer() {
-    const player = game.currentPlayer;
-    if (!game.canDouble(player)) {
-      alert("You cannot double right now. You can only double on your turn, before rolling the dice, and if you own the cube.");
+    if (pendingDouble) return;
+    if (!doublingOn) {                                          // doubling disabled in Settings
+      gameMessageEl.textContent = "Enable doubling in the settings!";
       return;
     }
-    
-    const opponentName = player === 1 ? "Player 2 (Red)" : "Player 1 (White)";
-    const proposerName = player === 1 ? "Player 1 (White)" : "Player 2 (Red)";
-    
-    // Brief timeout to let the UI update if needed
-    setTimeout(() => {
-      const accept = confirm(`${opponentName}: ${proposerName} is offering to double the stakes. Do you accept? (Declining forfeits the game immediately).`);
-      if (accept) {
-        game.acceptDouble();
-      } else {
-        game.declineDouble();
-      }
-      updateUI();
-    }, 50);
+    if (!gameStarted || initialRollOff) return;
+    const player = game.currentPlayer;
+    if (game.playerTypes[player] === 'ai') return;             // humans double, not the AI (yet)
+    if (isNetworkGame && localPlayerRole !== player) return;    // only the player on roll may offer
+    // Doubling is only legal on your turn before rolling (and if you hold/share the cube).
+    // At any other time the cube click is simply ignored — no popup.
+    if (!game.canDouble(player)) return;
+
+    pendingDouble = { by: player };
+    if (isNetworkGame && conn && conn.open) conn.send({ type: 'double' });
+    updateUI();
+
+    // Local game vs an AI opponent: the AI answers immediately.
+    const responder = opponentOf(player);
+    if (!isNetworkGame && game.playerTypes[responder] === 'ai') {
+      setTimeout(() => {
+        if (!pendingDouble) return;
+        if (game.aiShouldAcceptDouble(responder)) applyAcceptDouble();
+        else applyDeclineDouble();
+      }, 700);
+    }
+  }
+
+  /** Commit an accepted double (cube value doubles, ownership passes to the taker). */
+  function applyAcceptDouble() {
+    if (!pendingDouble) return;
+    game.acceptDouble();
+    pendingDouble = null;
+    updateUI();
+  }
+
+  /** Commit a declined double: the doubler wins the current stake, game over. */
+  function applyDeclineDouble() {
+    if (!pendingDouble) return;
+    game.declineDouble();
+    pendingDouble = null;
+    updateUI();
   }
 /**
    * Click interaction for points.
@@ -1027,6 +1142,7 @@ function handleRollClick() {
     isProcessingQueue = false;
 
     game.restart();
+    syncPlayersFromMenus();   // re-apply the White/Red menu picks after the reset
 
     // Start-menu overlay is optional (may have been removed from HTML)
     const overlay = document.getElementById('start-menu-overlay');
@@ -1333,17 +1449,56 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     });
   }
     
-  // Listen for live dropdown changes so players can swap AI in/out mid-game
-document.getElementById('p1-type').addEventListener('change', (e) => {
-    game.playerTypes[1] = e.target.value;
-    sysLog(`[System] White player changed to ${e.target.value}`);
+  // Build both player menus: "Human" at the top (default), then every AI personality.
+  function populatePlayerMenus() {
+    const names = game.aiPersonalityNames();
+    ['p1-type', 'p2-type'].forEach((id) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '';
+      const human = document.createElement('option');
+      human.value = 'human';
+      human.textContent = 'Human';
+      sel.appendChild(human);
+      names.forEach((n) => {
+        const o = document.createElement('option');
+        o.value = n;
+        o.textContent = n;
+        sel.appendChild(o);
+      });
+      // Keep a still-valid previous choice; otherwise default to Human.
+      sel.value = [...sel.options].some((o) => o.value === prev) ? prev : 'human';
+    });
+  }
+
+  // Apply a menu's current value (Human or a named AI) to the game state.
+  function applyPlayerMenu(player) {
+    const sel = document.getElementById(player === 1 ? 'p1-type' : 'p2-type');
+    if (!sel) return;
+    if (sel.value === 'human') game.playerTypes[player] = 'human';
+    else game.setPlayerAI(player, sel.value);
+  }
+
+  function syncPlayersFromMenus() {
+    applyPlayerMenu(1);
+    applyPlayerMenu(2);
+  }
+
+  populatePlayerMenus();
+  syncPlayersFromMenus();
+
+  // Listen for live dropdown changes so players can swap Human/AI in/out mid-game
+  document.getElementById('p1-type').addEventListener('change', (e) => {
+    applyPlayerMenu(1);
+    sysLog(`[System] White player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
     checkAndTriggerAITurn();
   });
 
   document.getElementById('p2-type').addEventListener('change', (e) => {
-    game.playerTypes[2] = e.target.value;
-    sysLog(`[System] Red player changed to ${e.target.value}`);
+    applyPlayerMenu(2);
+    sysLog(`[System] Red player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
     checkAndTriggerAITurn();
   });
@@ -1365,6 +1520,7 @@ document.getElementById('p1-type').addEventListener('change', (e) => {
     if (!gameStarted) return;
     if (game.winner) return;
     if (isAIPlaying) return;
+    if (pendingDouble) return; // wait for the pending double to resolve first
     if (aiStopped)   return;  // AI paused by STOP button or nav action
 
       if (isNetworkGame) return; // Completely disable AI routines during network play
@@ -1740,6 +1896,21 @@ connection.on('data', (data) => {
           }, 600);
       }
 
+      // --- DOUBLING CUBE ---
+      else if (data.type === 'double') {
+          sysLog('[Network] Opponent offered a double.');
+          pendingDouble = { by: game.currentPlayer };
+          updateUI();
+      }
+      else if (data.type === 'accept') {
+          sysLog('[Network] Opponent accepted the double.');
+          applyAcceptDouble();
+      }
+      else if (data.type === 'decline') {
+          sysLog('[Network] Opponent declined the double.');
+          applyDeclineDouble();
+      }
+
       // --- PUSH ALL BOARD MUTATIONS TO THE QUEUE ---
       else if (data.type === 'move' || data.type === 'undo' || data.type === 'end_turn') {
           networkQueue.push({ type: data.type, data: data });
@@ -1976,9 +2147,10 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
 // Define handleRollClick inside the DOMContentLoaded block
   handleRollClick = function() {
-    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return; 
-    
+    if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
+
     if (isRolling) return;
+    if (pendingDouble) return;   // dice are locked while a double is pending
 
     // Any roll commits to the current (possibly navigated-to) game state
     exitNavMode();
