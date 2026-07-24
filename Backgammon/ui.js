@@ -1503,6 +1503,138 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     checkAndTriggerAITurn();
   });
 
+  // ── Tournament ────────────────────────────────────────────
+  const tourneySelected  = new Set();
+  const tourneyTogglesEl = document.getElementById('tourney-toggles');
+  let tournamentRunning  = false;
+
+  // One letter toggle per personality (first initial). Default: everyone except Origin.
+  function buildTournamentToggles() {
+    if (!tourneyTogglesEl) return;
+    tourneyTogglesEl.innerHTML = '';
+    game.aiPersonalityNames().forEach((n) => {
+      const b = document.createElement('button');
+      b.className = 'tourney-toggle';
+      b.textContent = n.charAt(0).toUpperCase();
+      b.title = n;
+      if (n !== 'Origin') { tourneySelected.add(n); b.classList.add('sel'); }
+      b.addEventListener('click', () => {
+        if (tourneySelected.has(n)) { tourneySelected.delete(n); b.classList.remove('sel'); }
+        else { tourneySelected.add(n); b.classList.add('sel'); }
+      });
+      tourneyTogglesEl.appendChild(b);
+    });
+  }
+  buildTournamentToggles();
+
+  document.getElementById('tourney-all')?.addEventListener('click', () => {
+    game.aiPersonalityNames().forEach((n) => tourneySelected.add(n));
+    [...tourneyTogglesEl.children].forEach((b) => b.classList.add('sel'));
+  });
+  document.getElementById('tourney-none')?.addEventListener('click', () => {
+    tourneySelected.clear();
+    [...tourneyTogglesEl.children].forEach((b) => b.classList.remove('sel'));
+  });
+  document.getElementById('btn-run-tournament')?.addEventListener('click', () => {
+    if (!tournamentRunning) runTournament();
+  });
+
+  const PARAM_ORDER = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const numCommas = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  function downloadCSV(filename, text) {
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
+  // Detailed CSV in the style of the Reversi tournament output.
+  function buildTournamentCSV(names, pts, wins, losses, h2h, gamesPer, tStart, tEnd) {
+    const ranked = names.slice().sort((a, b) => (pts[b] - pts[a]) || (wins[b] - wins[a]));
+    let csv = 'Backgammon Tournament Results\n';
+    csv += 'Starting Date:,' + tStart.toLocaleString() + '\n';
+    csv += 'Ending Date:,' + tEnd.toLocaleString() + '\n';
+    csv += 'Duration:,"' + numCommas(tEnd - tStart) + ' ms"\n';
+    csv += 'Players:,' + names.length + '\n';
+    csv += 'Games per Pair,' + gamesPer + '\n\n';
+
+    csv += 'Standings\nRank,Name,Points,Wins,Losses\n';
+    ranked.forEach((n, i) => { csv += `${i + 1},${n},${pts[n]},${wins[n]},${losses[n]}\n`; });
+    csv += '\n';
+
+    csv += 'Head-to-Head (net points, row minus column)\n';
+    csv += 'Row vs Col,' + ranked.join(',') + '\n';
+    ranked.forEach((r) => {
+      const row = ranked.map((c) => (r === c ? '' : (h2h[r][c] || 0) - (h2h[c][r] || 0)));
+      csv += `${r},${row.join(',')}\n`;
+    });
+    csv += '\n';
+
+    csv += 'Player Parameters:\nName,' + PARAM_ORDER.join(',') + '\n';
+    ranked.forEach((n) => {
+      const w = game.personalityWeights(n);
+      csv += n + ',' + PARAM_ORDER.map((k) => w[k]).join(',') + '\n';
+    });
+    return csv;
+  }
+
+  // Round-robin: each selected pair plays `games/pair` games (colours alternate).
+  // Progress shows in the instruction window; a detailed CSV downloads at the end.
+  async function runTournament() {
+    const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
+    if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
+    const gamesPer = Math.max(1, Math.min(999, parseInt(document.getElementById('tourney-games').value, 10) || 10));
+
+    const pts = {}, wins = {}, losses = {}, h2h = {};
+    names.forEach((n) => {
+      pts[n] = 0; wins[n] = 0; losses[n] = 0; h2h[n] = {};
+      names.forEach((m) => { if (m !== n) h2h[n][m] = 0; });
+    });
+
+    const pairs = [];
+    for (let i = 0; i < names.length; i++)
+      for (let j = i + 1; j < names.length; j++) pairs.push([names[i], names[j]]);
+    const total = pairs.length * gamesPer;
+
+    tournamentRunning = true;
+    const runBtn = document.getElementById('btn-run-tournament');
+    if (runBtn) runBtn.disabled = true;
+    const tStart = new Date();
+    let done = 0;
+
+    for (const [A, B] of pairs) {
+      const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
+      for (let k = 0; k < gamesPer; k++) {
+        const aWhite = (k % 2 === 0);                        // alternate colours for fairness
+        const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA);
+        let winner = null, loser = null;
+        if (res.winner === 1) { winner = aWhite ? A : B; loser = aWhite ? B : A; }
+        else if (res.winner === 2) { winner = aWhite ? B : A; loser = aWhite ? A : B; }
+        if (winner) { pts[winner] += res.points; wins[winner]++; losses[loser]++; h2h[winner][loser] += res.points; }
+        done++;
+        if (done % 2 === 0 || done === total) {
+          gameMessageEl.textContent = `Tournament running… ${done}/${total} games (${A} vs ${B})`;
+          await new Promise((r) => setTimeout(r, 0));        // yield so the UI stays responsive
+        }
+      }
+    }
+
+    const tEnd = new Date();
+    const ranked = names.slice().sort((a, b) => (pts[b] - pts[a]) || (wins[b] - wins[a]));
+    const secs = ((tEnd - tStart) / 1000).toFixed(1);
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, pts, wins, losses, h2h, gamesPer, tStart, tEnd));
+    gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${pts[ranked[0]]} pts). ${total} games in ${secs}s. Results saved.`;
+    sysLog(`[Tournament] ${total} games in ${secs}s. Winner: ${ranked[0]} (${pts[ranked[0]]} pts).`);
+
+    if (runBtn) runBtn.disabled = false;
+    tournamentRunning = false;
+  }
+
     document.getElementById('board-view').addEventListener('change', (e) => {
     const view = e.target.value;
     const wrapper = document.querySelector('.board-wrapper');

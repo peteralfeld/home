@@ -620,6 +620,11 @@ rollDice(d1 = null, d2 = null) {
     return Object.keys(AI_PERSONALITIES);
   }
 
+  /** The weight vector for a named personality (falls back to Origin). */
+  personalityWeights(name) {
+    return AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
+  }
+
   /** Assign an AI personality (by name) to a player, recomputing its M. */
   setPlayerAI(player, name) {
     const w = AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
@@ -1106,7 +1111,49 @@ rollDice(d1 = null, d2 = null) {
   }
 }
 
+/**
+ * Play one full AI-vs-AI game head-to-head (no UI, no doubling cube), returning
+ * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
+ * Used by the tournament runner.
+ */
+function simulateBGGame(wWhite, wRed) {
+  const g = new BackgammonGame();
+  g.playerTypes[1] = 'ai';
+  g.playerTypes[2] = 'ai';
+  g.aiWeights[1] = wWhite;
+  g.aiWeights[2] = wRed;
+  g.maxScore[1] = g.computeMaxScore(wWhite);
+  g.maxScore[2] = g.computeMaxScore(wRed);
+  g.rollForFirstTurn();
+
+  let guard = 0;
+  while (!g.winner && guard++ < 100000) {
+    const moves = g.getBestAIMove();
+    if (moves && moves.length) {
+      for (const m of moves) g.makeMove(m.from, m.to);
+    }
+    if (g.winner) break;
+    g.endTurn();
+    g.rollDice();
+  }
+
+  let points = 0;
+  const winner = g.winner;
+  if (winner) {
+    const loser = winner === 1 ? 2 : 1;
+    points = 1;
+    if (g.borneOff[loser] === 0) {
+      const lo = winner === 1 ? 1 : 19, hi = winner === 1 ? 6 : 24;
+      let backg = g.bar[loser] > 0;
+      for (let i = lo; i <= hi && !backg; i++) if (g.points[i].player === loser) backg = true;
+      points = backg ? 3 : 2;
+    }
+  }
+  return { winner, points };
+}
+
 // Export class if running in Node environment for testing, otherwise leave global
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = BackgammonGame;
+  module.exports.simulateBGGame = simulateBGGame;
 }
