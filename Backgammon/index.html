@@ -34,7 +34,7 @@
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="style.css">
-<link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="data:,">
 </head>
 <body>
   <div id="app-container">
@@ -148,7 +148,7 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 90</h2>
+    <h2>Backgammon v. 97</h2>
     
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
@@ -262,6 +262,12 @@
       <button id="brain-import" class="tourney-mini" title="Import a personality from a JS/JSON file">Import</button>
       <button id="brain-def" class="tourney-mini" title="Reset all personalities to built-in values">Def</button>
     </div>
+    <div class="brain-row">
+      <button id="btn-evolve" class="tourney-run" title="Evolve the selected AI">Evolve</button>
+      <input type="number" id="evo-gens" class="evo-field" value="1000" min="1" title="Maximum generations">
+      <input type="number" id="evo-games" class="evo-field" value="50" min="1" title="Matches per sample (each played to the shared match length)">
+      <input type="number" id="evo-rate" class="evo-field" value="50" min="0" max="100" title="Max % random change per weight">
+    </div>
     <div class="brain-params" id="brain-params"></div>
   </div>
 
@@ -274,8 +280,20 @@
     </div>
     <div class="tourney-row">
       <button id="btn-run-tournament" class="tourney-run">Run Tournament</button>
-      <input type="number" id="tourney-games" value="10" min="1">
-      <span class="tourney-label">games/pair</span>
+      <input type="number" id="tourney-games" value="10" min="1" title="Number of matches per pair">
+      <span class="tourney-label">matches to</span>
+      <select id="match-length" class="match-len" title="Match length: play each match to this many points (shared by tournament and evolution). 1 = single games, no doubling.">
+        <option value="1">1</option>
+        <option value="3">3</option>
+        <option value="5">5</option>
+        <option value="7">7</option>
+        <option value="9">9</option>
+        <option value="11" selected>11</option>
+        <option value="13">13</option>
+        <option value="15">15</option>
+        <option value="17">17</option>
+        <option value="19">19</option>
+      </select>
     </div>
   </div>
 
@@ -301,6 +319,10 @@
         <div class="settings-item" id="setting-showscore" data-setting="showscore">
           <span class="settings-item-label">Show Score</span>
           <span class="settings-item-badge" id="badge-showscore">ON</span>
+        </div>
+        <div class="settings-item" id="setting-speak" data-setting="speak">
+          <span class="settings-item-label">Speak</span>
+          <span class="settings-item-badge" id="badge-speak">ON</span>
         </div>
         <div class="settings-item" id="setting-autoroll" data-setting="autoroll">
           <span class="settings-item-label">Auto Roll</span>
@@ -340,6 +362,10 @@
         <div class="settings-item" id="export-console">
           <span class="settings-item-label">Console Log</span>
           <span class="export-icon">💾</span>
+        </div>
+        <div class="settings-item" id="export-boardvalue">
+          <span class="settings-item-label">Board Value</span>
+          <span class="export-icon">📊</span>
         </div>
       </div>
     </div>

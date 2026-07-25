@@ -93,6 +93,39 @@ document.addEventListener('DOMContentLoaded', () => {
   // Show Score (default ON): score column in the move list and the exported list.
   // Declared early because renderHistoryList() reads it during the first render.
   let showScoreOn = true;
+
+  // Speak (default ON): read important instruction lines aloud (doubling offer, game over).
+  let speakOn = true;
+  let lastSpoken = '';
+  let preferredVoice = null;
+  // Pick a female English voice if one is available (voices may load asynchronously).
+  function pickSpeechVoice() {
+    if (!('speechSynthesis' in window)) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return;
+    const female = /female|zira|hazel|samantha|susan|victoria|karen|moira|tessa|fiona|serena|catherine|google uk english female|google us english/i;
+    preferredVoice =
+      voices.find((v) => /^en/i.test(v.lang) && female.test(v.name)) ||
+      voices.find((v) => female.test(v.name)) ||
+      voices.find((v) => /^en/i.test(v.lang)) ||
+      voices[0];
+  }
+  if ('speechSynthesis' in window) {
+    pickSpeechVoice();
+    window.speechSynthesis.onvoiceschanged = pickSpeechVoice;
+  }
+  function speakImportant(text) {
+    if (!text) { lastSpoken = ''; return; }         // nothing important on screen now
+    if (!speakOn || text === lastSpoken) return;    // off, or already said this line
+    lastSpoken = text;
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (preferredVoice) u.voice = preferredVoice;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* ignore speech errors */ }
+  }
   let aiStopped   = false;  // true while AI is manually paused via STOP button
   let highlightOn = true;
   let autoRollOn  = false;
@@ -337,6 +370,50 @@ function sysLog(msg) {
       sysLog('[System] Console log downloaded.');
     });
   }
+
+  // Board Value — per-feature evaluation breakdown of the current position.
+  const exportBoardEl = document.getElementById('export-boardvalue');
+  if (exportBoardEl) {
+    exportBoardEl.addEventListener('click', () => {
+      const onRoll = game.currentPlayer || 1;
+      const weights = scoringWeights(onRoll);
+      const bd = game.evaluateBreakdown(game.points, game.bar, game.borneOff, weights);
+      const onRollColor = onRoll === 1 ? 'White' : 'Red';
+      const ownScore = onRoll === 1 ? bd.score : -bd.score;
+      const now = new Date();
+
+      let csv = 'Backgammon Board Value\n';
+      csv += `Date:,${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+      csv += `AI player (weights used):,${scoringAIName(onRoll)}\n`;
+      csv += `On roll:,${onRollColor}\n`;
+      csv += `Phase:,${bd.contact ? 'Contact' : 'Race (no contact)'}\n`;
+      csv += `Position:,"${describeBoard()}"\n\n`;
+
+      csv += 'Terms are contributions to the White-view score (+ = good for White).\n';
+      csv += 'Code,Meaning,White,Red,Value v,Weight w,Term (w x v)\n';
+      bd.rows.forEach((r) => {
+        csv += `${r.code},"${r.meaning}",${r.white},${r.red},${r.v.toFixed(3)},${r.weight},${Math.round(r.term)}\n`;
+      });
+      csv += `DE,"Disengagement bonus (move-only, not in static score)",,,0,${weights.DE},0\n`;
+      csv += '\n';
+      csv += `,,,,,Score (White view):,${bd.score}\n`;
+      if (onRoll === 2) csv += `,,,,,Score (Red view):,${ownScore}\n`;
+
+      const canDbl = game.canDouble(onRoll);
+      const wouldTake = ownScore > -(weights.AT || 0);
+      let dbl;
+      if (canDbl && ownScore > (weights.DT || 0)) dbl = `Double now (score ${ownScore} > DT ${weights.DT}).`;
+      else if (canDbl) dbl = `Do not double (score ${ownScore} <= DT ${weights.DT}).`;
+      else dbl = `Cannot double now (only on your turn, before rolling, if you hold/share the cube).`;
+      dbl += ` If offered a double: ${wouldTake ? 'take' : 'drop'} (score ${ownScore} vs -AT ${-(weights.AT || 0)}).`;
+      csv += `,,,,,Doubling:,"${dbl}"\n`;
+      csv += `,,,,,DE note:,"Disengagement bonus +/-${weights.DE} applies only to a move that breaks contact while ahead in pips; it is not part of a static position's value."\n`;
+
+      downloadCSV('BoardValue.csv', csv);
+      gameMessageEl.textContent = `Board value exported — ${onRollColor} view: ${ownScore}.`;
+      sysLog('[System] Board value exported.');
+    });
+  }
     // ── Settings Menu ────────────────────────────────────────────
   const settingsHeader  = document.getElementById('settings-header');
   const settingsPanel   = document.getElementById('settings-panel');
@@ -351,6 +428,7 @@ function sysLog(msg) {
   updateSettingBadge('badge-doubling', doublingOn);
   updateSettingBadge('badge-autostart', autoStartOn);
   updateSettingBadge('badge-showscore', showScoreOn);
+  updateSettingBadge('badge-speak', speakOn);
   updateSettingBadge('badge-animation', animationOn);
   updateSettingBadge('badge-highlight',  highlightOn);
   updateSettingBadge('badge-autoroll',   autoRollOn);
@@ -439,6 +517,17 @@ function sysLog(msg) {
       updateSettingBadge('badge-showscore', showScoreOn);
       sysLog(`[System] Show Score toggled to ${showScoreOn ? 'ON' : 'OFF'}`);
       renderHistoryList();
+    });
+  }
+
+  // Speak row
+  const settingSpeakEl = document.getElementById('setting-speak');
+  if (settingSpeakEl) {
+    settingSpeakEl.addEventListener('click', () => {
+      speakOn = !speakOn;
+      updateSettingBadge('badge-speak', speakOn);
+      sysLog(`[System] Speak toggled to ${speakOn ? 'ON' : 'OFF'}`);
+      if (!speakOn && 'speechSynthesis' in window) window.speechSynthesis.cancel();
     });
   }
 
@@ -692,6 +781,18 @@ renderBorneOff();
       }
     }
 
+    // Speak important lines aloud (doubling offer, game over). Never speak a doubling
+    // prompt aimed at an AI responder — the AI answers on its own.
+    if (game.winner) {
+      speakImportant(gameMessageEl.textContent);
+    } else if (pendingDouble
+               && game.playerTypes[opponentOf(pendingDouble.by)] === 'human'
+               && !(isNetworkGame && localPlayerRole === pendingDouble.by)) {
+      speakImportant(gameMessageEl.textContent);
+    } else {
+      speakImportant(null);
+    }
+
     if (gameStarted) {
       checkAndTriggerAITurn();
       checkAndAutoRoll();
@@ -927,25 +1028,18 @@ function handleRollClick() {
    * the cube until the opponent accepts.
    */
   function handleDoubleOffer() {
-    // --- TEMP DIAGNOSTIC: why can/can't this side offer a double? ---
-    sysLog(`[DoubleDbg] click: net=${isNetworkGame} role=${localPlayerRole} cur=${game.currentPlayer} `
-      + `rolled=${game.hasRolled} doublingOn=${doublingOn} pType=${game.playerTypes[game.currentPlayer]} `
-      + `cubeOwner=${game.doublingCubeOwner} pending=${!!pendingDouble} started=${gameStarted} rollOff=${initialRollOff} `
-      + `canDouble=${game.canDouble(game.currentPlayer)}`);
-
-    if (pendingDouble) { sysLog('[DoubleDbg] blocked: pendingDouble'); return; }
+    if (pendingDouble) return;
     if (!doublingOn) {                                          // doubling disabled in Settings
       gameMessageEl.textContent = "Enable doubling in the settings!";
-      sysLog('[DoubleDbg] blocked: doublingOn is OFF on this side');
       return;
     }
-    if (!gameStarted || initialRollOff) { sysLog('[DoubleDbg] blocked: not started / roll-off'); return; }
+    if (!gameStarted || initialRollOff) return;
     const player = game.currentPlayer;
-    if (game.playerTypes[player] === 'ai') { sysLog('[DoubleDbg] blocked: playerTypes is ai'); return; }
-    if (isNetworkGame && localPlayerRole !== player) { sysLog(`[DoubleDbg] blocked: not your turn (role ${localPlayerRole} != cur ${player})`); return; }
+    if (game.playerTypes[player] === 'ai') return;             // humans double, not the AI (yet)
+    if (isNetworkGame && localPlayerRole !== player) return;    // only the player on roll may offer
     // Doubling is only legal on your turn before rolling (and if you hold/share the cube).
     // At any other time the cube click is simply ignored — no popup.
-    if (!game.canDouble(player)) { sysLog('[DoubleDbg] blocked: canDouble() false'); return; }
+    if (!game.canDouble(player)) return;
 
     pendingDouble = { by: player };
     if (isNetworkGame && conn && conn.open) conn.send({ type: 'double' });
@@ -1233,6 +1327,25 @@ function handleRollClick() {
   // Drop cached history scores so they recompute (after a player or scoring-AI change).
   function clearHistoryScoreCache() {
     game.gameHistory.forEach((s) => { delete s._score; });
+  }
+
+  // Name of the AI whose weights score a given player (mirrors scoringWeights).
+  function scoringAIName(player) {
+    if (game.playerTypes[player] === 'ai') return game.aiNames[player];
+    const opp = player === 1 ? 2 : 1;
+    if (game.playerTypes[opp] === 'ai') return game.aiNames[opp];
+    const selEl = document.getElementById('edit-brain');
+    return (selEl && selEl.value) || 'Origin';
+  }
+
+  // Compact text description of the current board.
+  function describeBoard() {
+    const pts = (pl) => {
+      const arr = [];
+      for (let i = 1; i <= 24; i++) if (game.points[i].player === pl) arr.push(`${i}(${game.points[i].count})`);
+      return arr.join(' ') || '-';
+    };
+    return `White: ${pts(1)} | Red: ${pts(2)} | Bar W:${game.bar[1]} R:${game.bar[2]} | Off W:${game.borneOff[1]} R:${game.borneOff[2]}`;
   }
 
   function renderHistoryList() {
@@ -1625,6 +1738,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     });
   }
 
+  // Display an arbitrary weight set in the editor fields (used by evolution to show
+  // the most recently crowned champion). Does not alter any stored personality.
+  function showBrainInFields(brain) {
+    BRAIN_KEYS.forEach((k) => {
+      const inp = document.getElementById('bp-' + k);
+      if (inp && brain[k] != null) inp.value = brain[k];
+    });
+  }
+
   // Rebuild every UI list that depends on the roster (after import / reset).
   function refreshAllBrainUI() {
     refreshBrainSelect();
@@ -1709,12 +1831,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function buildTournamentToggles() {
     if (!tourneyTogglesEl) return;
     tourneyTogglesEl.innerHTML = '';
-    game.aiPersonalityNames().forEach((n) => {
+    // Origin goes last; everyone is selected by default.
+    const names = game.aiPersonalityNames();
+    const ordered = [...names.filter((n) => n !== 'Origin'), ...names.filter((n) => n === 'Origin')];
+    ordered.forEach((n) => {
       const b = document.createElement('button');
-      b.className = 'tourney-toggle';
+      b.className = 'tourney-toggle sel';
       b.textContent = n.charAt(0).toUpperCase();
       b.title = n;
-      if (n !== 'Origin') { tourneySelected.add(n); b.classList.add('sel'); }
+      tourneySelected.add(n);
       b.addEventListener('click', () => {
         if (tourneySelected.has(n)) { tourneySelected.delete(n); b.classList.remove('sel'); }
         else { tourneySelected.add(n); b.classList.add('sel'); }
@@ -1733,7 +1858,182 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     [...tourneyTogglesEl.children].forEach((b) => b.classList.remove('sel'));
   });
   document.getElementById('btn-run-tournament')?.addEventListener('click', () => {
+    if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running a tournament.'; return; }
     if (!tournamentRunning) runTournament();
+  });
+
+  // ── Genetic evolution (Phase I: single-threaded) ──────────
+  const EVO_EVAL = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const EVO_ALL = [...EVO_EVAL, 'DT', 'AT'];  // the 13 evolvable numbers
+  let evolveRunning = false;
+  let evolveStop = false;
+
+  // Normalize: eval weights to max|w| = 1000; DT/AT scaled by the same factor.
+  function normalizeBrain(b) {
+    let M = 0;
+    EVO_EVAL.forEach((k) => { const a = Math.abs(b[k]); if (a > M) M = a; });
+    if (M === 0) M = 1;
+    const S = 1000 / M;
+    EVO_EVAL.forEach((k) => {
+      b[k] = Math.round(b[k] * S);
+      if (b[k] === 0) b[k] = Math.random() < 0.5 ? 1 : -1;   // never let a weight stick at 0
+    });
+    b.DT = Math.max(1, Math.round(b.DT * S));
+    b.AT = Math.max(1, Math.round(b.AT * S));
+    return b;
+  }
+
+  // Mutate all 13 by up to R% each; force one change if nothing moved.
+  function mutateBrain(parent, R) {
+    const m = { ...parent };
+    let changed = false;
+    EVO_ALL.forEach((k) => {
+      const delta = Math.round(parent[k] * (R / 100) * (Math.random() * 2 - 1));
+      if (delta !== 0) { m[k] = parent[k] + delta; changed = true; }
+    });
+    if (!changed) {
+      const k = EVO_ALL[Math.floor(Math.random() * EVO_ALL.length)];
+      m[k] = parent[k] + (Math.random() < 0.5 ? 1 : -1);
+    }
+    return m;
+  }
+
+  // Shared match length (play-to-X points), read from the tournament dropdown.
+  function matchLength() {
+    const el = document.getElementById('match-length');
+    let X = el ? parseInt(el.value, 10) : 11;
+    if (!X || X < 1) X = 11;
+    if (X % 2 === 0) X += 1;                 // safety: force odd
+    return X;
+  }
+
+  // Play nMatches matches to X points. Net (fitness) = A's match wins - B's match
+  // wins, so a blown-up cube can never inflate the signal: a match win counts 1.
+  // The A/B argument order is swapped on alternate matches to cancel any residual
+  // first-game side bias (simulateBGMatch already alternates colours within a match).
+  async function evoMatch(A, B, nMatches, label) {
+    const X = matchLength();
+    let winsA = 0, winsB = 0;
+    for (let i = 0; i < nMatches && !evolveStop; i++) {
+      const swap = (i % 2 === 1);
+      const res = simulateBGMatch(swap ? B : A, swap ? A : B, X);
+      const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+      if (aWon) winsA++; else winsB++;
+      if (label) gameMessageEl.textContent = `${label} — ${i + 1}/${nMatches} matches (to ${X})`;
+      await new Promise((r) => setTimeout(r, 0));   // keep the UI alive between matches
+    }
+    return { net: winsA - winsB, winsA, winsB };
+  }
+
+  const evoAdd = (X, V, s) => { const o = {}; EVO_ALL.forEach((k) => { o[k] = X[k] + s * V[k]; }); return o; };
+  const evoHalve = (V) => { const o = {}; EVO_ALL.forEach((k) => { o[k] = Math.trunc(V[k] / 2); }); return o; };
+  const evoDouble = (V) => { const o = {}; EVO_ALL.forEach((k) => { o[k] = V[k] * 2; }); return o; };
+  const evoEqual = (A, X) => EVO_ALL.every((k) => A[k] === X[k]);
+  const evoAllZero = (V) => EVO_ALL.every((k) => V[k] === 0);
+
+  // Deterministic line search along the mutation direction (up to 30 steps).
+  async function evoLineSearch(parent, firstMutant, n, label) {
+    let X = normalizeBrain({ ...firstMutant });
+    let V = {}; EVO_ALL.forEach((k) => { V[k] = X[k] - parent[k]; });
+    let expanding = true;
+    for (let step = 0; step < 30 && !evolveStop; step++) {
+      const A = normalizeBrain(evoAdd(X, V, +1));
+      const B = normalizeBrain(evoAdd(X, V, -1));
+      if (evoEqual(A, X) && evoEqual(B, X)) break;              // integer math collapsed
+      const tag = `${label} step ${step + 1}`;
+      const sAX = await evoMatch(A, X, n, tag); if (evolveStop) break;
+      const sBX = await evoMatch(B, X, n, tag); if (evolveStop) break;
+      const aWins = sAX.net > 0, bWins = sBX.net > 0;
+      if (!aWins && !bWins) { expanding = false; V = evoHalve(V); }              // X is a local max
+      else if (aWins && !bWins) { X = A; V = expanding ? evoDouble(V) : evoHalve(V); }
+      else if (!aWins && bWins) { X = B; expanding = false; V = evoHalve(V); }   // overshot, reverse
+      else { const sAB = await evoMatch(A, B, n, tag); X = sAB.net > 0 ? A : B; expanding = false; V = evoHalve(V); }
+      if (evoAllZero(V)) break;
+    }
+    return X;
+  }
+
+  // Download one AI's parameters as a spreadsheet. Called for the original at the
+  // start of a run and for each champion as it is crowned.
+  function downloadBrainCSV(name, brain, note) {
+    let csv = 'Backgammon AI Parameters\n';
+    csv += 'Name,' + name + '\n';
+    if (note) csv += 'Note,' + note + '\n';
+    csv += 'Date,' + new Date().toLocaleString() + '\n\n';
+    csv += 'Param,Value\n';
+    BRAIN_KEYS.forEach((k) => { csv += k + ',' + (brain[k] != null ? brain[k] : 0) + '\n'; });
+    downloadCSV(name + '.csv', csv);
+  }
+
+  async function runEvolution() {
+    if (tournamentRunning) { gameMessageEl.textContent = 'Wait for the tournament to finish.'; return; }
+    const baseName = editBrainSel ? editBrainSel.value : 'Origin';
+    const maxGens = Math.max(1, parseInt(document.getElementById('evo-gens').value, 10) || 1000);
+    const n = Math.max(1, parseInt(document.getElementById('evo-games').value, 10) || 50);
+    const R = Math.max(0, Math.min(100, parseInt(document.getElementById('evo-rate').value, 10) || 50));
+
+    let parent = normalizeBrain({ ...game.personalityWeights(baseName) });
+    let baseline = { ...parent };
+    let bestScore = 0, multiplier = 10, champions = 0, gen = 0;
+
+    evolveRunning = true; evolveStop = false;
+    const btn = document.getElementById('btn-evolve');
+    if (btn) { btn.textContent = 'Stop Evolution'; btn.style.background = '#991b1b'; }
+    sysLog(`[Evolve] Start from ${baseName}: maxGens=${maxGens}, matches/sample=${n}, matchLen=${matchLength()}, R=${R}%.`);
+
+    // Two downloads up front (a run-info note, then the starting AI) so the browser's
+    // multi-download approval is handled at the start, not whenever the first champion
+    // happens to appear.
+    const info = `Backgammon Evolution\n${new Date().toLocaleString()}\n`
+      + `Commencing evolution of ${baseName}.\n\n`
+      + `Parameters:\n`
+      + `  Maximum generations: ${maxGens}\n`
+      + `  Matches per sample: ${n}\n`
+      + `  Match length (play to): ${matchLength()}\n`
+      + `  Max % random change per weight: ${R}\n`;
+    downloadCSV(`${baseName}-evolution.txt`, info);
+    showBrainInFields(parent);
+    downloadBrainCSV(`${baseName}-gen0`, parent, `original (start of evolution)`);
+
+    while (gen < maxGens && !evolveStop) {
+      gen++;
+      const mutant = normalizeBrain(mutateBrain(parent, R));
+      const scout = await evoMatch(mutant, parent, n, `Gen ${gen}: scout`);
+      if (evolveStop) break;
+      if (scout.net > 0) {
+        sysLog(`[Evolve] Gen ${gen}: scout hit +${scout.net}. Line search...`);
+        let X = normalizeBrain(await evoLineSearch(parent, mutant, n, `Gen ${gen}: line search`));
+        if (evolveStop) break;
+        sysLog(`[Evolve] Gen ${gen}: gauntlet (${n * multiplier} matches) vs baseline...`);
+        const gaunt = await evoMatch(X, baseline, n * multiplier, `Gen ${gen}: gauntlet`);
+        if (evolveStop) break;
+        if (gaunt.net > bestScore) {
+          bestScore = gaunt.net; parent = { ...X }; champions++;
+          const champName = `${baseName}-evo-g${gen}`;
+          showBrainInFields(X);                            // control column shows the latest champion
+          downloadBrainCSV(champName, X, `champion #${champions}, gauntlet +${gaunt.net}`);
+          sysLog(`[Evolve] Gen ${gen}: CHAMPION #${champions} (+${gaunt.net}), saved ${champName}.csv. ${champName} = ${JSON.stringify(X)}`);
+          if (gaunt.winsB === 0) {                       // perfect sweep of the baseline
+            baseline = { ...X }; bestScore = 0; multiplier *= 2;
+            sysLog(`[Evolve] Gen ${gen}: PERFECT SWEEP — new baseline, multiplier ${multiplier}.`);
+          }
+        } else {
+          sysLog(`[Evolve] Gen ${gen}: gauntlet +${gaunt.net} did not beat best +${bestScore}.`);
+        }
+      }
+      gameMessageEl.textContent = `Evolving ${baseName}: gen ${gen}/${maxGens} · champions ${champions} · best +${bestScore}`;
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    evolveRunning = false;
+    if (btn) { btn.textContent = 'Evolve'; btn.style.background = ''; }
+    sysLog(`[Evolve] Stopped at generation ${gen}. ${champions} champion(s) this run, each saved as a CSV as it was crowned.`);
+    gameMessageEl.textContent = `Evolution ended: ${gen} generations, ${champions} champion(s) saved.`;
+  }
+
+  document.getElementById('btn-evolve')?.addEventListener('click', () => {
+    if (evolveRunning) { evolveStop = true; }
+    else runEvolution();
   });
 
   const PARAM_ORDER = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
@@ -1750,21 +2050,23 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     URL.revokeObjectURL(link.href);
   }
 
-  // Detailed CSV in the style of the Reversi tournament output.
-  function buildTournamentCSV(names, pts, wins, losses, h2h, gamesPer, tStart, tEnd) {
-    const ranked = names.slice().sort((a, b) => (pts[b] - pts[a]) || (wins[b] - wins[a]));
+  // Detailed CSV in the style of the Reversi tournament output. Standings are by
+  // matches won; total game points are kept as a bounded secondary/tiebreak column.
+  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd) {
+    const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'Starting Date:,' + tStart.toLocaleString() + '\n';
     csv += 'Ending Date:,' + tEnd.toLocaleString() + '\n';
     csv += 'Duration:,"' + numCommas(tEnd - tStart) + ' ms"\n';
     csv += 'Players:,' + names.length + '\n';
-    csv += 'Games per Pair,' + gamesPer + '\n\n';
+    csv += 'Matches per Pair,' + matchesPer + '\n';
+    csv += 'Match Length (play to),' + X + '\n\n';
 
-    csv += 'Standings\nRank,Name,Points,Wins,Losses\n';
-    ranked.forEach((n, i) => { csv += `${i + 1},${n},${pts[n]},${wins[n]},${losses[n]}\n`; });
+    csv += 'Standings\nRank,Name,Matches Won,Matches Lost,Game Points\n';
+    ranked.forEach((n, i) => { csv += `${i + 1},${n},${mWins[n]},${mLoss[n]},${gpts[n]}\n`; });
     csv += '\n';
 
-    csv += 'Head-to-Head (net points, row minus column)\n';
+    csv += 'Head-to-Head (net matches won, row minus column)\n';
     csv += 'Row vs Col,' + ranked.join(',') + '\n';
     ranked.forEach((r) => {
       const row = ranked.map((c) => (r === c ? '' : (h2h[r][c] || 0) - (h2h[c][r] || 0)));
@@ -1780,23 +2082,25 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return csv;
   }
 
-  // Round-robin: each selected pair plays `games/pair` games (colours alternate).
+  // Round-robin: each selected pair plays `matches/pair` matches to the shared
+  // match length X. Standings are by matches won (cube-safe: a match win counts 1).
   // Progress shows in the instruction window; a detailed CSV downloads at the end.
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
-    const gamesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
+    const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
+    const X = matchLength();
 
-    const pts = {}, wins = {}, losses = {}, h2h = {};
+    const mWins = {}, mLoss = {}, gpts = {}, h2h = {};
     names.forEach((n) => {
-      pts[n] = 0; wins[n] = 0; losses[n] = 0; h2h[n] = {};
+      mWins[n] = 0; mLoss[n] = 0; gpts[n] = 0; h2h[n] = {};
       names.forEach((m) => { if (m !== n) h2h[n][m] = 0; });
     });
 
     const pairs = [];
     for (let i = 0; i < names.length; i++)
       for (let j = i + 1; j < names.length; j++) pairs.push([names[i], names[j]]);
-    const total = pairs.length * gamesPer;
+    const total = pairs.length * matchesPer;
 
     tournamentRunning = true;
     const runBtn = document.getElementById('btn-run-tournament');
@@ -1806,27 +2110,26 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
     for (const [A, B] of pairs) {
       const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
-      for (let k = 0; k < gamesPer; k++) {
-        const aWhite = (k % 2 === 0);                        // alternate colours for fairness
-        const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA);
-        let winner = null, loser = null;
-        if (res.winner === 1) { winner = aWhite ? A : B; loser = aWhite ? B : A; }
-        else if (res.winner === 2) { winner = aWhite ? B : A; loser = aWhite ? A : B; }
-        if (winner) { pts[winner] += res.points; wins[winner]++; losses[loser]++; h2h[winner][loser] += res.points; }
+      for (let k = 0; k < matchesPer; k++) {
+        const swap = (k % 2 === 1);                          // balance first-game side bias
+        const res = simulateBGMatch(swap ? wB : wA, swap ? wA : wB, X);
+        const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+        const winner = aWon ? A : B, loser = aWon ? B : A;
+        const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
+        mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
+        gpts[A] += aScore; gpts[B] += bScore;
         done++;
-        if (done % 2 === 0 || done === total) {
-          gameMessageEl.textContent = `Tournament running… ${done}/${total} games (${A} vs ${B})`;
-          await new Promise((r) => setTimeout(r, 0));        // yield so the UI stays responsive
-        }
+        gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
+        await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
       }
     }
 
     const tEnd = new Date();
-    const ranked = names.slice().sort((a, b) => (pts[b] - pts[a]) || (wins[b] - wins[a]));
+    const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
-    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, pts, wins, losses, h2h, gamesPer, tStart, tEnd));
-    gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${pts[ranked[0]]} pts). ${total} games in ${secs}s. Results saved.`;
-    sysLog(`[Tournament] ${total} games in ${secs}s. Winner: ${ranked[0]} (${pts[ranked[0]]} pts).`);
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd));
+    gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
+    sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
     if (runBtn) runBtn.disabled = false;
     tournamentRunning = false;

@@ -1337,6 +1337,23 @@ body {
   padding: 0.2rem 0.3rem;
   font-size: 0.72rem; font-weight: 700;
 }
+.evo-field {
+  width: 52px;
+  background: #fff; color: #000;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 0.2rem;
+  text-align: center;
+  font-size: 0.72rem; font-weight: 700;
+}
+.match-len {
+  background: #fff; color: #000;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 0.15rem 0.2rem;
+  text-align: center;
+  font-size: 0.72rem; font-weight: 700;
+}
 .brain-params { display: flex; flex-wrap: wrap; gap: 2px 6px; }
 .brain-param { display: flex; flex-direction: column; align-items: center; }
 .brain-param label {

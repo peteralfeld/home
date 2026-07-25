@@ -25,7 +25,7 @@ const AI_PERSONALITIES = {
   Celebrian: { PC: -445,  EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 1000 },
   Dwalin:    { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
   Eowyn:     { PC: -667,  EC1: -500, EC0: -1000, PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
-  Frodo:     { PC: -556,  EC1: -111, EC0: -333,  PH: 556,  HB: 111, AN: 1000, DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
+  Frodo:     { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved champion)
   Galadriel: { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 1000, IP: 500, DE: 667  },
   Hamfast:   { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 500, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
 };
@@ -36,7 +36,10 @@ const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 // Doubling thresholds (absolute score, in the mover's own perspective; positive
 // numbers, the sign is handled internally per side): offer/redouble when own
 // score > DT; accept an offered double unless own score < -AT.
-Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 100; });
+Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 200; });
+// Frodo carries its evolved doubling thresholds (Eowyn-evo-g11).
+AI_PERSONALITIES.Frodo.DT = 59;
+AI_PERSONALITIES.Frodo.AT = 251;
 
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
@@ -889,6 +892,58 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
+   * Same computation as evaluate(), but returns a per-feature breakdown for the
+   * Board Value report. Each row: { code, meaning, white, red, v, weight, term }
+   * where term = weight * v and the sum of terms is the White-view score.
+   */
+  evaluateBreakdown(points, bar, borneOff, weights) {
+    const pf = (len) => (len >= 6 ? 1.0 : (PRIME_FACTOR[len] || 0));
+    const rows = [];
+
+    const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
+    rows.push({ code: 'PC', meaning: 'Pip count', white: pipW, red: pipR, v: (pipW - pipR) / 167, weight: weights.PC });
+
+    const ecW = this.computeEC(points, bar, 1), ecR = this.computeEC(points, bar, 2);
+    rows.push({ code: 'EC1', meaning: 'Rolls with one move', white: ecW.ec1, red: ecR.ec1, v: (ecW.ec1 - ecR.ec1) / 36, weight: weights.EC1 });
+    rows.push({ code: 'EC0', meaning: 'Rolls with no move', white: ecW.ec0, red: ecR.ec0, v: (ecW.ec0 - ecR.ec0) / 36, weight: weights.EC0 });
+
+    const phW = this.longestPrimeTrapped(points, bar, 1), phR = this.longestPrimeTrapped(points, bar, 2);
+    const phValW = pf(phW.len) * phW.trapped, phValR = pf(phR.len) * phR.trapped;
+    rows.push({ code: 'PH', meaning: `Prime x trapped (W ${phW.len}pt/${phW.trapped}, R ${phR.len}pt/${phR.trapped})`, white: phValW, red: phValR, v: (phValW - phValR), weight: weights.PH });
+
+    const hbW = this.homeBoardPoints(points, 1), hbR = this.homeBoardPoints(points, 2);
+    rows.push({ code: 'HB', meaning: 'Home-board points', white: hbW, red: hbR, v: (hbW - hbR), weight: weights.HB });
+
+    const anW = pipW > pipR ? this.anchorsP(points, 1) : 0;
+    const anR = pipR > pipW ? this.anchorsP(points, 2) : 0;
+    rows.push({ code: 'AN', meaning: 'Anchors (only if behind)', white: anW, red: anR, v: (anW - anR), weight: weights.AN });
+
+    // Blots collapsed to DO/IO/DP/IP; white = White blots at risk, red = Red blots at risk.
+    const blot = { DO: { w: 0, r: 0 }, IO: { w: 0, r: 0 }, DP: { w: 0, r: 0 }, IP: { w: 0, r: 0 } };
+    for (let i = 1; i <= 24; i++) {
+      if (points[i].player === null || points[i].count !== 1) continue;
+      const owner = points[i].player, hitter = owner === 1 ? 2 : 1;
+      const nearLo = owner === 1 ? 1 : 13, nearHi = owner === 1 ? 12 : 24;
+      const near = i >= nearLo && i <= nearHi;
+      const { direct, indirect } = this.hitThreat(points, bar, hitter, i);
+      const dirKey = near ? 'DP' : 'DO', indKey = near ? 'IP' : 'IO';
+      if (direct) { owner === 1 ? blot[dirKey].w++ : blot[dirKey].r++; }
+      if (indirect) { owner === 1 ? blot[indKey].w++ : blot[indKey].r++; }
+    }
+    [['DO', 'Direct hit, far board'], ['IO', 'Indirect hit, far board'],
+     ['DP', 'Direct hit, near board'], ['IP', 'Indirect hit, near board']].forEach(([code, meaning]) => {
+      const b = blot[code];
+      // term is + when Red is more exposed than White (good for White)
+      rows.push({ code, meaning, white: b.w, red: b.r, v: (b.r - b.w), weight: weights[code] });
+    });
+
+    let score = 0;
+    rows.forEach((row) => { row.term = row.weight * row.v; score += row.term; });
+
+    return { rows, score: Math.round(score), contact: this.hasContact(points, bar), pipW, pipR };
+  }
+
+  /**
    * Generates all unique final board positions reachable by executing legal moves for the current dice.
    * Backgammon rules require you to play the maximum number of dice possible.
    * If you can play only one of the dice, you must play the larger one (if both are separately playable).
@@ -1129,7 +1184,7 @@ rollDice(d1 = null, d2 = null) {
  * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
  * Used by the tournament runner.
  */
-function simulateBGGame(wWhite, wRed) {
+function simulateBGGame(wWhite, wRed, maxCube = Infinity) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1143,28 +1198,75 @@ function simulateBGGame(wWhite, wRed) {
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to);
     }
-    if (g.winner) break;
+    if (g.winner) break;                 // bore off all 15 during the move
     g.endTurn();
+
+    // The player now on roll may offer a double before rolling. The cube is
+    // "live" only while doubling it stays within maxCube (match-play cap: never
+    // raise the stake past what can decide the match; maxCube=1 kills doubling
+    // entirely, giving cube-free single games for X=1 and Crawford).
+    if (g.doublingCubeValue * 2 <= maxCube && g.aiShouldDouble(g.currentPlayer)) {
+      const responder = g.currentPlayer === 1 ? 2 : 1;
+      if (g.aiShouldAcceptDouble(responder)) {
+        g.acceptDouble();                // cube doubles; the taker owns it
+      } else {
+        // Declined: the doubler wins the current stake, single, no gammon.
+        return { winner: g.currentPlayer, points: g.doublingCubeValue };
+      }
+    }
     g.rollDice();
   }
 
+  // Ended by bearing off — score with gammon/backgammon and the cube value.
   let points = 0;
   const winner = g.winner;
   if (winner) {
     const loser = winner === 1 ? 2 : 1;
-    points = 1;
+    let mult = 1;
     if (g.borneOff[loser] === 0) {
       const lo = winner === 1 ? 1 : 19, hi = winner === 1 ? 6 : 24;
       let backg = g.bar[loser] > 0;
       for (let i = lo; i <= hi && !backg; i++) if (g.points[i].player === loser) backg = true;
-      points = backg ? 3 : 2;
+      mult = backg ? 3 : 2;
     }
+    points = g.doublingCubeValue * mult;
   }
   return { winner, points };
+}
+
+/**
+ * Play one match to X points between two AI weight sets, returning
+ * { winner, scoreA, scoreB, games }. winner is 'A' or 'B'.
+ *   - Colours alternate each game (A is White on even games) to cancel side bias.
+ *   - The cube resets to 1 each game and games award cube x gammon multiplier.
+ *   - Dead-cube cap: doubling can't raise the stake past what the trailing player
+ *     needs to win the match (maxCube = X - min(scoreA, scoreB)). At X=1 this is 1,
+ *     so the cube is dead and games are plain single games.
+ *   - Crawford: the single game right after either side first reaches X-1 is played
+ *     with no doubling (maxCube = 1), then doubling resumes.
+ */
+function simulateBGMatch(wA, wB, X) {
+  let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
+  while (scoreA < X && scoreB < X && games < 100000) {
+    games++;
+    const aWhite = (games % 2 === 1);
+    const atMatchPoint = (scoreA === X - 1 || scoreB === X - 1);
+    const crawford = atMatchPoint && !crawfordDone;   // the one no-double game
+    const maxCube = crawford ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
+
+    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube);
+    // Map the game winner (White/Red) back to A/B and award points.
+    const aWon = (res.winner === 1) === aWhite;
+    if (aWon) scoreA += res.points; else scoreB += res.points;
+
+    if (crawford) crawfordDone = true;
+  }
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
 }
 
 // Export class if running in Node environment for testing, otherwise leave global
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = BackgammonGame;
   module.exports.simulateBGGame = simulateBGGame;
+  module.exports.simulateBGMatch = simulateBGMatch;
 }
