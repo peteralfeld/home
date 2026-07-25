@@ -927,18 +927,25 @@ function handleRollClick() {
    * the cube until the opponent accepts.
    */
   function handleDoubleOffer() {
-    if (pendingDouble) return;
+    // --- TEMP DIAGNOSTIC: why can/can't this side offer a double? ---
+    sysLog(`[DoubleDbg] click: net=${isNetworkGame} role=${localPlayerRole} cur=${game.currentPlayer} `
+      + `rolled=${game.hasRolled} doublingOn=${doublingOn} pType=${game.playerTypes[game.currentPlayer]} `
+      + `cubeOwner=${game.doublingCubeOwner} pending=${!!pendingDouble} started=${gameStarted} rollOff=${initialRollOff} `
+      + `canDouble=${game.canDouble(game.currentPlayer)}`);
+
+    if (pendingDouble) { sysLog('[DoubleDbg] blocked: pendingDouble'); return; }
     if (!doublingOn) {                                          // doubling disabled in Settings
       gameMessageEl.textContent = "Enable doubling in the settings!";
+      sysLog('[DoubleDbg] blocked: doublingOn is OFF on this side');
       return;
     }
-    if (!gameStarted || initialRollOff) return;
+    if (!gameStarted || initialRollOff) { sysLog('[DoubleDbg] blocked: not started / roll-off'); return; }
     const player = game.currentPlayer;
-    if (game.playerTypes[player] === 'ai') return;             // humans double, not the AI (yet)
-    if (isNetworkGame && localPlayerRole !== player) return;    // only the player on roll may offer
+    if (game.playerTypes[player] === 'ai') { sysLog('[DoubleDbg] blocked: playerTypes is ai'); return; }
+    if (isNetworkGame && localPlayerRole !== player) { sysLog(`[DoubleDbg] blocked: not your turn (role ${localPlayerRole} != cur ${player})`); return; }
     // Doubling is only legal on your turn before rolling (and if you hold/share the cube).
     // At any other time the cube click is simply ignored — no popup.
-    if (!game.canDouble(player)) return;
+    if (!game.canDouble(player)) { sysLog('[DoubleDbg] blocked: canDouble() false'); return; }
 
     pendingDouble = { by: player };
     if (isNetworkGame && conn && conn.open) conn.send({ type: 'double' });
