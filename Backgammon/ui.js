@@ -14,6 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let networkQueue = [];
   let isProcessingQueue = false;
 
+  // Compact board signature (points + bar + off) for desync detection/logging.
+  function boardSig(points, bar, borneOff) {
+    const pts = points.map((p, i) => (p.count > 0 ? `${i}:${p.player}(${p.count})` : '')).filter(Boolean).join(',');
+    return `${pts} | bar ${bar[1]}/${bar[2]} | off ${borneOff[1]}/${borneOff[2]}`;
+  }
+
   function processNetworkQueue() {
     if (isProcessingQueue || networkQueue.length === 0) return;
     isProcessingQueue = true;
@@ -21,15 +27,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const action = networkQueue.shift();
     
     if (action.type === 'move') {
+        // Apply the opponent's move faithfully. The sender already enforced all rules
+        // (including maximum-usage); the receiver must NOT re-validate, or a disagreement
+        // would silently drop the move and desync the boards. Pass validateMax=false.
         if (animationOn) {
           animateCheckerMove(action.data.from, action.data.to).then(() => {
-            game.makeMove(action.data.from, action.data.to);
+            game.makeMove(action.data.from, action.data.to, false);
             updateUI();
             isProcessingQueue = false;
             processNetworkQueue(); // Process next in queue
           });
         } else {
-          game.makeMove(action.data.from, action.data.to);
+          game.makeMove(action.data.from, action.data.to, false);
           updateUI();
           isProcessingQueue = false;
           processNetworkQueue();
@@ -41,6 +50,22 @@ document.addEventListener('DOMContentLoaded', () => {
         processNetworkQueue();
     } else if (action.type === 'end_turn') {
         game.endTurn();
+        // Reconcile to the sender's authoritative board (self-healing against any desync).
+        if (action.data && action.data.points) {
+          const mine = boardSig(game.points, game.bar, game.borneOff);
+          const auth = boardSig(action.data.points, action.data.bar, action.data.borneOff);
+          if (mine !== auth) {
+            sysLog(`[Desync] Board mismatch after turn ${game.turnCount} — reconciling to opponent's board.`);
+            sysLog(`[Desync]   mine: ${mine}`);
+            sysLog(`[Desync]   auth: ${auth}`);
+          }
+          game.points = action.data.points;
+          game.bar = action.data.bar;
+          game.borneOff = action.data.borneOff;
+          if (action.data.cubeValue !== undefined) game.doublingCubeValue = action.data.cubeValue;
+          if (action.data.cubeOwner !== undefined) game.doublingCubeOwner = action.data.cubeOwner;
+          game.checkWinner();
+        }
         updateUI();
         isProcessingQueue = false;
         processNetworkQueue();
@@ -2755,10 +2780,11 @@ peer = new Peer({
   // Store the original prototype methods safely
   const originalMakeMove = BackgammonGame.prototype.makeMove;
   
-  game.makeMove = function(from, to) {
-    // Execute the original move logic cleanly with the current instance
-    const success = originalMakeMove.apply(this, [from, to]);
-    
+  game.makeMove = function(from, to, validateMax = true) {
+    // Execute the original move logic, forwarding validateMax so network replay can
+    // pass false and bypass the maximum-usage re-check (the sender already validated).
+    const success = originalMakeMove.apply(this, [from, to, validateMax]);
+
     if (success && isNetworkGame && this.currentPlayer === localPlayerRole) {
        if (conn && conn.open) conn.send({ type: 'move', from, to });
     }
@@ -2785,9 +2811,15 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     const activeBefore = this.currentPlayer;
     const result = originalEndTurn.apply(this);
     
-    // Broadcast the explicit end-turn signal if we were the active player
+    // Broadcast the explicit end-turn signal if we were the active player, and
+    // include an authoritative board snapshot so the opponent reconciles to it each
+    // turn (self-healing: corrects any drift from imperfect move replay).
     if (isNetworkGame && activeBefore === localPlayerRole) {
-      if (conn && conn.open) conn.send({ type: 'end_turn' });
+      if (conn && conn.open) conn.send({
+        type: 'end_turn',
+        points: this.points, bar: this.bar, borneOff: this.borneOff,
+        cubeValue: this.doublingCubeValue, cubeOwner: this.doublingCubeOwner
+      });
     }
     return result;
   };
