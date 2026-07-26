@@ -971,6 +971,20 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
   }
 
   /**
+   * If a rejected move was individually legal but disallowed by the maximum-usage
+   * rule, explain it in the instruction line. Returns true if such a message shown.
+   */
+  function notifyIfMaxBlocked(source, target) {
+    const raw = game.getRawDestinations(source);
+    if (!raw.some((d) => d.to === target)) return false;   // plain illegal, not a max-usage block
+    const msg = game.maxUsageMessage() || 'You must play the maximum number of dice possible.';
+    gameMessageEl.textContent = msg;
+    speakImportant(msg);
+    sysLog(`[Rule] Move ${source} -> ${target} blocked by the maximum-usage rule.`);
+    return true;
+  }
+
+  /**
    * Handle Drag Drop.
    */
   function handleDrop(e, target) {
@@ -991,6 +1005,7 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
       updateUI();
     } else {
       sysLog(`[Drop] Drag-to-drop failed validation!`);
+      notifyIfMaxBlocked(sourceVal, targetVal);
     }
   }
 
@@ -1089,6 +1104,9 @@ function handleRollClick() {
         updateUI();
         return; // Move succeeded, exit
       }
+      // Move rejected — if it was blocked by the maximum-usage rule, say so and keep
+      // the current selection so the player can pick a different destination.
+      if (notifyIfMaxBlocked(selectedSource, pointIdx)) return;
     }
 
     // 2. Select source checker
@@ -1185,6 +1203,8 @@ function handleRollClick() {
         clearHighlights();
         updateUI();
       }
+    } else {
+      notifyIfMaxBlocked(selectedSource, "off");
     }
   }
 

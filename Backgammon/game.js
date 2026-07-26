@@ -18,16 +18,19 @@
  *   DO/IO/DP/IP  collapsed blot threat-vs-exposure features   +1000/600/500/300
  *   DE  disengagement bonus (move-selection only, not static) +667
  */
+// Alphabetical names are kept in descending order of tournament performance:
+// Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
+// is the fixed historic baseline and is listed last (bottom of the player menus).
 const AI_PERSONALITIES = {
-  Origin:    { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
-  Arwen:     { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
-  Bilbo:     { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
-  Celebrian: { PC: -445,  EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 1000 },
-  Dwalin:    { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
-  Eowyn:     { PC: -667,  EC1: -500, EC0: -1000, PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
-  Frodo:     { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved champion)
-  Galadriel: { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 1000, IP: 500, DE: 667  },
-  Hamfast:   { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 500, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
+  Arwen:     { PC: -1000, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
+  Bilbo:     { PC: -387,  EC1: -17,  EC0: -178,  PH: 289,  HB: 1,   AN: 34,   DO: 1000, IO: -20, DP: 57,   IP: 39,  DE: 173  },  // = Bilbo-evo-g17 (evolved)
+  Celebrian: { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
+  Dwalin:    { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
+  Eowyn:     { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
+  Frodo:     { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
+  Galadriel: { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 500, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
+  Hamfast:   { PC: -445,  EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 1000 },
+  Origin:    { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
 };
 
 // The baseline AI. Each personality is normalized so max|w| = 1000.
@@ -37,9 +40,10 @@ const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 // numbers, the sign is handled internally per side): offer/redouble when own
 // score > DT; accept an offered double unless own score < -AT.
 Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 200; });
-// Frodo carries its evolved doubling thresholds (Eowyn-evo-g11).
-AI_PERSONALITIES.Frodo.DT = 59;
-AI_PERSONALITIES.Frodo.AT = 251;
+// Evolved brains carry their own doubling thresholds.
+AI_PERSONALITIES.Arwen.DT = 63;  AI_PERSONALITIES.Arwen.AT = 337;      // Galadriel-evo-g539
+AI_PERSONALITIES.Bilbo.DT = 134; AI_PERSONALITIES.Bilbo.AT = 214;      // Bilbo-evo-g17
+AI_PERSONALITIES.Celebrian.DT = 59; AI_PERSONALITIES.Celebrian.AT = 251; // Eowyn-evo-g11
 
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
@@ -351,12 +355,14 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
-   * Gets list of legal target destinations from a starting point index.
+   * Raw, per-die legal destinations from a starting point — each die is checked on
+   * its own, WITHOUT the maximum-usage rule. Used internally for move execution and
+   * as the candidate set that getLegalDestinations() filters.
    * fromPoint can be:
    * - A number 1 to 24
    * - "bar" (or represented internally as 25 for P1, 0 for P2)
    */
-  getLegalDestinations(fromPoint) {
+  getRawDestinations(fromPoint) {
     if (!this.hasRolled || this.movesLeft.length === 0) return [];
     
     const player = this.currentPlayer;
@@ -465,12 +471,110 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
+   * The set of legal FIRST steps of the turn, as "from|to|die" keys, taken from the
+   * maximum-usage complete-turn sequences. Encodes every rule: use both dice when
+   * possible, play the higher die when only one can be used, and (for doubles) play
+   * as many as possible.
+   */
+  // Board-state-only clone for exploring hypothetical moves.
+  _cloneForSearch() {
+    const g = new BackgammonGame();
+    g.points = JSON.parse(JSON.stringify(this.points));
+    g.bar = { ...this.bar };
+    g.borneOff = { ...this.borneOff };
+    g.movesLeft = [...this.movesLeft];
+    g.dice = [...this.dice];
+    g.hasRolled = this.hasRolled;
+    g.currentPlayer = this.currentPlayer;
+    g.winner = this.winner;
+    return g;
+  }
+
+  _legalFirstSteps() {
+    const player = this.currentPlayer;
+    const rootSeqs = this._maxUsageSequences(player, this.movesLeft);
+    if (rootSeqs.length === 0) return new Set();
+    const maxDice = this.movesLeft.length - rootSeqs[0].diceLeftCount;   // most dice usable
+
+    const sources = this.hasCheckersOnBar(player)
+      ? ['bar']
+      : Array.from({ length: 24 }, (_, k) => k + 1).filter((i) => this.points[i].player === player);
+
+    // A first move is legal iff, after playing it, the player can still use maxDice-1
+    // more dice. (Trial-based, because the memoised search records only one move order
+    // per resulting position and would hide equivalent first moves.)
+    const set = new Set();
+    for (const src of sources) {
+      for (const d of this.getRawDestinations(src)) {
+        const clone = this._cloneForSearch();
+        clone.makeMove(src, d.to, false);
+        const sub = clone._maxUsageSequences(player, clone.movesLeft);
+        const afterMax = clone.movesLeft.length - (sub.length ? sub[0].diceLeftCount : clone.movesLeft.length);
+        if (1 + afterMax === maxDice) set.add(`${src}|${d.to}|${d.dieUsed}`);
+      }
+    }
+
+    // "If only one die can be played, it must be the higher one."
+    if (maxDice === 1 && this.movesLeft.length === 2 && this.movesLeft[0] !== this.movesLeft[1]) {
+      const larger = Math.max(this.movesLeft[0], this.movesLeft[1]);
+      const usesLarger = [...set].some((k) => k.endsWith('|' + larger));
+      if (usesLarger) for (const k of [...set]) if (!k.endsWith('|' + larger)) set.delete(k);
+    }
+    return set;
+  }
+
+  /**
+   * Legal destinations from a point WITH the maximum-usage rule applied: only moves
+   * that can begin a turn using the greatest possible number of dice. This is what the
+   * UI highlights and what a human's move is validated against.
+   */
+  getLegalDestinations(fromPoint) {
+    const raw = this.getRawDestinations(fromPoint);
+    if (raw.length === 0) return raw;
+    const allowed = this._legalFirstSteps();
+    const fromKey = fromPoint === "bar" ? "bar" : String(parseInt(fromPoint));
+    return raw.filter((d) => allowed.has(`${fromKey}|${d.to}|${d.dieUsed}`));
+  }
+
+  /**
+   * When a move is individually legal but disallowed by the maximum-usage rule, this
+   * returns a short human-readable reason for the instruction line (else null).
+   */
+  maxUsageMessage() {
+    const total = this.movesLeft.length;
+    if (!this.hasRolled || total === 0) return null;
+    const states = this._maxUsageSequences(this.currentPlayer, this.movesLeft);
+    if (states.length === 0) return null;
+    const minLeft = Math.min(...states.map((s) => s.diceLeftCount));
+    const used = total - minLeft;
+    if (used === 0) return null;
+    const isDouble = total > 2 || this.movesLeft[0] === this.movesLeft[1];
+    if (used >= total) {
+      return isDouble
+        ? "You must play all your dice — choose a move that keeps the rest playable."
+        : "You must play both dice — this move would waste one. Try a different move, or play the dice in the other order.";
+    }
+    if (!isDouble && used === 1) {
+      const larger = Math.max(this.movesLeft[0], this.movesLeft[1]);
+      const firstDice = states.filter((s) => s.moves.length).map((s) => s.moves[0].dieUsed);
+      if (firstDice.length && firstDice.every((d) => d === larger)) {
+        return `Only one die can be played, so you must play the higher one (${larger}).`;
+      }
+      return "Only one die can be played this turn.";
+    }
+    return `You must play as many dice as you can (${used} of ${total}).`;
+  }
+
+  /**
    * Execute a move from -> to.
+   * validateMax=true (default) enforces the maximum-usage rule (human/UI moves);
+   * pass false for callers that already supply a legal max-usage sequence (AI
+   * simulation), to avoid a redundant full-turn search per move.
    * Returns true if successful, false otherwise.
    */
-  makeMove(from, to) {
+  makeMove(from, to, validateMax = true) {
     const player = this.currentPlayer;
-    const destinations = this.getLegalDestinations(from);
+    const destinations = validateMax ? this.getLegalDestinations(from) : this.getRawDestinations(from);
     
     // Find matching destination in legal moves
     const targetMove = destinations.find(d => d.to === to);
@@ -559,24 +663,8 @@ rollDice(d1 = null, d2 = null) {
   hasLegalMoves() {
     if (!this.hasRolled || this.movesLeft.length === 0) return false;
     if (this.winner) return false;
-
-    const player = this.currentPlayer;
-
-    // If player has checkers on bar, check if they can move any out of the bar
-    if (this.hasCheckersOnBar(player)) {
-      return this.getLegalDestinations("bar").length > 0;
-    }
-
-    // Check all points on the board containing current player's checkers
-    for (let i = 1; i <= 24; i++) {
-      if (this.points[i].player === player) {
-        if (this.getLegalDestinations(i).length > 0) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    const states = this.generateAllCompleteTurnMoves(this.currentPlayer, this.movesLeft);
+    return states.some((s) => s.moves.length > 0);
   }
 
   /**
@@ -948,7 +1036,7 @@ rollDice(d1 = null, d2 = null) {
    * Backgammon rules require you to play the maximum number of dice possible.
    * If you can play only one of the dice, you must play the larger one (if both are separately playable).
    */
-  generateAllCompleteTurnMoves(player, diceRolls) {
+  _maxUsageSequences(player, diceRolls) {
     const finalStates = [];
     const visitedStates = new Set();
 
@@ -1109,18 +1197,24 @@ rollDice(d1 = null, d2 = null) {
       }
     }
 
-    const uniqueCompleteStates = [];
-    const seenSignatures = new Set();
-    
-    for (const state of validCompleteStates) {
-      const sig = serializeState(state.points, state.bar, state.borneOff);
-      if (!seenSignatures.has(sig)) {
-        seenSignatures.add(sig);
-        uniqueCompleteStates.push(state);
-      }
-    }
+    return validCompleteStates;
+  }
 
-    return uniqueCompleteStates;
+  /**
+   * All maximum-usage complete turns, de-duplicated by final board position. The AI
+   * only cares about distinct resulting positions, so it uses this. (Legal first-step
+   * and rule-message logic use the pre-dedup list, since two move orders can reach the
+   * same position yet represent two genuinely legal first moves.)
+   */
+  generateAllCompleteTurnMoves(player, diceRolls) {
+    const states = this._maxUsageSequences(player, diceRolls);
+    const unique = [];
+    const seen = new Set();
+    for (const s of states) {
+      const sig = `${s.points.map((p) => `${p.count}:${p.player || 0}`).join(',')}|${s.bar[1]}:${s.bar[2]}|${s.borneOff[1]}:${s.borneOff[2]}`;
+      if (!seen.has(sig)) { seen.add(sig); unique.push(s); }
+    }
+    return unique;
   }
 
   /**
@@ -1196,7 +1290,7 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity) {
   while (!g.winner && guard++ < 100000) {
     const moves = g.getBestAIMove();
     if (moves && moves.length) {
-      for (const m of moves) g.makeMove(m.from, m.to);
+      for (const m of moves) g.makeMove(m.from, m.to, false);  // already a legal max-usage sequence
     }
     if (g.winner) break;                 // bore off all 15 during the move
     g.endTurn();
