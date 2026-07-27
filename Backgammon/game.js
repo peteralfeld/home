@@ -22,14 +22,14 @@
 // Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
 // is the fixed historic baseline and is listed last (bottom of the player menus).
 const AI_PERSONALITIES = {
-  Arwen:     { PC: -1000, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
-  Bilbo:     { PC: -1000, EC1: -178, EC0: 2,     PH: 22,   HB: 24,  AN: -1,   DO: 781,  IO: 346, DP: 68,   IP: 5,   DE: -64  },  // = Dwalin-evo-g190 (evolved)
+  Arwen:     { PC: -1000, EC1: -80,  EC0: -47,   PH: 106,  HB: 55,  AN: -1,   DO: 1,    IO: 6,   DP: 18,   IP: 1,   DE: -31  },  // = Arwen-evo-g365 (evolved)
+  Bilbo:     { PC: -1000, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
   Celebrian: { PC: -387,  EC1: -17,  EC0: -178,  PH: 289,  HB: 1,   AN: 34,   DO: 1000, IO: -20, DP: 57,   IP: 39,  DE: 173  },  // = Bilbo-evo-g17 (evolved)
-  Dwalin:    { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
-  Eowyn:     { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
-  Frodo:     { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
-  Galadriel: { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
-  Hamfast:   { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 500, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  },
+  Dwalin:    { PC: -1000, EC1: -178, EC0: 2,     PH: 22,   HB: 24,  AN: -1,   DO: 781,  IO: 346, DP: 68,   IP: 5,   DE: -64  },  // = Dwalin-evo-g190 (evolved)
+  Eowyn:     { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
+  Frodo:     { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
+  Galadriel: { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
+  Hamfast:   { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
   Origin:    { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
 };
 
@@ -41,10 +41,11 @@ const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 // score > DT; accept an offered double unless own score < -AT.
 Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 200; });
 // Evolved brains carry their own doubling thresholds.
-AI_PERSONALITIES.Arwen.DT = 63;  AI_PERSONALITIES.Arwen.AT = 337;      // Galadriel-evo-g539
-AI_PERSONALITIES.Bilbo.DT = 335; AI_PERSONALITIES.Bilbo.AT = 275;      // Dwalin-evo-g190
+AI_PERSONALITIES.Arwen.DT = 32;  AI_PERSONALITIES.Arwen.AT = 9;        // Arwen-evo-g365
+AI_PERSONALITIES.Bilbo.DT = 63;  AI_PERSONALITIES.Bilbo.AT = 337;      // Galadriel-evo-g539
 AI_PERSONALITIES.Celebrian.DT = 134; AI_PERSONALITIES.Celebrian.AT = 214; // Bilbo-evo-g17
-AI_PERSONALITIES.Dwalin.DT = 59; AI_PERSONALITIES.Dwalin.AT = 251;     // Eowyn-evo-g11
+AI_PERSONALITIES.Dwalin.DT = 335; AI_PERSONALITIES.Dwalin.AT = 275;    // Dwalin-evo-g190
+AI_PERSONALITIES.Eowyn.DT = 59;  AI_PERSONALITIES.Eowyn.AT = 251;      // Eowyn-evo-g11
 
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
