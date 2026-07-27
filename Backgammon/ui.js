@@ -732,7 +732,7 @@ renderBorneOff();
       if (isNetworkGame && localPlayerRole === pendingDouble.by) {
         gameMessageEl.textContent = `You doubled to ${offered}. Waiting for ${respName}…`;
       } else {
-        gameMessageEl.textContent = `${respName}: DOUBLE. Click the dice to continue, the cube to stop play.`;
+        gameMessageEl.textContent = `${byName} Doubles. ${respName}, press the playing cubes to accept the double, or the doubling cube to reject it, and resign.`;
       }
       btnUndo.disabled = true;
     } else if (game.winner) {
