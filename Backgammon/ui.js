@@ -361,7 +361,7 @@ function sysLog(msg) {
         const loserStr  = game.winner === 1 ? 'Red'   : 'White';
         const loserIdx  = game.winner === 1 ? 2 : 1;
         let winType = 'defeated';
-        if (game.borneOff[loserIdx] === 0) {
+        if (!game.winByDecline && game.borneOff[loserIdx] === 0) {
           winType = 'gammoned';
           let isBackgammon = game.bar[loserIdx] > 0;
           if (!isBackgammon) {
@@ -741,8 +741,11 @@ renderBorneOff();
       const winnerName = winner === 1 ? 'White' : 'Red';
       const loserName  = winner === 1 ? 'Red' : 'White';
       // Result multiplier: 1 = single, 2 = gammon, 3 = backgammon.
+      // A declined double is always a plain single at the current cube value —
+      // skip the gammon/backgammon test (the loser has borne off nothing and has
+      // checkers all over the board, which would otherwise read as a backgammon).
       let mult = 1, verb = 'defeats';
-      if (game.borneOff[loser] === 0) {
+      if (!game.winByDecline && game.borneOff[loser] === 0) {
         // Loser bore off nothing → at least a gammon; a backgammon if the loser
         // still has a checker on the bar or in the winner's home board.
         const homeLo = winner === 1 ? 1 : 19;
@@ -755,7 +758,9 @@ renderBorneOff();
         else { mult = 2; verb = 'gammons'; }
       }
       const pts = game.doublingCubeValue * mult;
-      gameMessageEl.textContent = `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
+      gameMessageEl.textContent = game.winByDecline
+        ? `Game over! ${loserName} declined the double. ${winnerName} wins ${pts} point${pts === 1 ? '' : 's'}.`
+        : `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
       btnUndo.disabled = true;
     } else if (!gameStarted) {
       // UPDATE: Show waiting message for guest, standard message for host
@@ -811,8 +816,11 @@ renderBorneOff();
     if (game.winner) {
       speakImportant(gameMessageEl.textContent);
     } else if (pendingDouble
-               && game.playerTypes[opponentOf(pendingDouble.by)] === 'human'
-               && !(isNetworkGame && localPlayerRole === pendingDouble.by)) {
+               && game.playerTypes[opponentOf(pendingDouble.by)] === 'human') {
+      // Speak the doubling prompt on BOTH machines in a network game: the responder
+      // hears "…DOUBLE. Click the dice…" and the offerer hears their own "You doubled
+      // to N. Waiting…" line. (Suppressed only when the responder is an AI, which
+      // answers on its own.)
       speakImportant(gameMessageEl.textContent);
     } else {
       speakImportant(null);

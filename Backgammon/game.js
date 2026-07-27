@@ -97,6 +97,9 @@ class BackgammonGame {
     this.movesLeft = []; // Remaining die values for the current turn
     this.hasRolled = false;
     this.winner = null;
+    // Set when the game ends because a doubling offer was declined; forces the win
+    // to score as a single (cube value), not a gammon/backgammon.
+    this.winByDecline = false;
 
     // Doubling cube state
     this.doublingCubeValue = 1;
@@ -698,6 +701,10 @@ rollDice(d1 = null, d2 = null) {
    */
   declineDouble() {
     this.winner = this.currentPlayer;
+    // A declined double always scores a plain single for the current cube value —
+    // never a gammon/backgammon, even though the loser has borne off nothing and
+    // still has checkers all over the board. Flag it so scoring skips the multiplier.
+    this.winByDecline = true;
   }
 
   /** Names of all available AI personalities (used to populate the player menus). */
