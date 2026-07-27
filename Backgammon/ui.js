@@ -693,11 +693,15 @@ renderBorneOff();
       doublingCubeEl.classList.remove('owned-p1', 'owned-p2', 'double-pending');
 
       if (pendingDouble) {
-        // Show the offered (doubled) stake in the taker's colour while awaiting a decision.
+        // Show the offered (doubled) stake while awaiting a decision. Colour the cube
+        // by its CURRENT owner (centred = neutral grey), NOT the responder — ownership
+        // only transfers on accept, so a pending offer must never look like the
+        // responder already owns the cube. A pulsing glow marks the offer instead.
         const offered = game.doublingCubeValue === 1 ? 2 : game.doublingCubeValue * 2;
         doublingCubeEl.textContent = offered;
-        const responder = opponentOf(pendingDouble.by);
-        doublingCubeEl.classList.add(responder === 1 ? 'owned-p1' : 'owned-p2', 'double-pending');
+        if (game.doublingCubeOwner === 1) doublingCubeEl.classList.add('owned-p1');
+        else if (game.doublingCubeOwner === 2) doublingCubeEl.classList.add('owned-p2');
+        doublingCubeEl.classList.add('double-pending');
       } else {
         doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
         if (game.doublingCubeOwner === 1) doublingCubeEl.classList.add('owned-p1');
