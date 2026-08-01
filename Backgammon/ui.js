@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* ignore speech errors */ }
   }
   let aiStopped   = false;  // true while AI is manually paused via STOP button
-  let highlightOn = true;
+  let highlightOn = false;
   let autoRollOn  = false;
   let autoRollTimeout = null;
   let autoMoveOn  = false;
@@ -1727,10 +1727,13 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   populatePlayerMenus();
   syncPlayersFromMenus();
+  syncDepthMenu(1);
+  syncDepthMenu(2);
 
   // Listen for live dropdown changes so players can swap Human/AI in/out mid-game
   document.getElementById('p1-type').addEventListener('change', (e) => {
     applyPlayerMenu(1);
+    syncDepthMenu(1);           // enable/disable White's depth menu for AI/Human
     clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] White player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
@@ -1739,6 +1742,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   document.getElementById('p2-type').addEventListener('change', (e) => {
     applyPlayerMenu(2);
+    syncDepthMenu(2);           // enable/disable Red's depth menu for AI/Human
     clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] Red player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
@@ -1918,6 +1922,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running a tournament.'; return; }
     if (!tournamentRunning) runTournament();
   });
+  document.getElementById('btn-compete')?.addEventListener('click', () => {
+    if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running Compete.'; return; }
+    if (!tournamentRunning) runCompete();
+  });
 
   // ── Genetic evolution (Phase I: single-threaded) ──────────
   const EVO_EVAL = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
@@ -1964,16 +1972,60 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return X;
   }
 
+  // AI lookahead depth in plies (expectimax over the dice) for BATCH runs —
+  // tournament and evolution — read from the batch-depth dropdown next to Evolve.
+  // 1 = one-ply static baseline.
+  function lookaheadDepth() {
+    const el = document.getElementById('batch-depth');
+    let d = el ? parseInt(el.value, 10) : 1;
+    if (!d || d < 1) d = 1;
+    return d;
+  }
+
+  // Cooperative yield: hands control back to the browser (so it can paint and stay
+  // responsive) but only if enough wall-clock time has passed since the last yield.
+  // Time-slicing keeps fast depth-1 runs from drowning in setTimeout overhead while
+  // still guaranteeing the main thread breathes at least every ~sliceMs during slow
+  // depth-2+ matches — which is what prevents Chrome's "Page unresponsive" dialog.
+  let _lastBreath = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  function breathe(sliceMs = 50) {
+    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (now - _lastBreath < sliceMs) return Promise.resolve();
+    _lastBreath = now;
+    return new Promise((r) => setTimeout(r, 0));
+  }
+
+  // Per-player interactive AI depth, read from that side's Depth menu (White = p1,
+  // Red = p2). Lets the same AI play at different depths so the effect of depth is
+  // visible. Only consulted when the player is an AI.
+  function playerDepth(player) {
+    const el = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
+    let d = el ? parseInt(el.value, 10) : 1;
+    if (!d || d < 1) d = 1;
+    return d;
+  }
+
+  // A side's Depth menu only affects play when that side is an AI. We keep it
+  // clickable at all times (so it can be pre-set, and never reads as a dead
+  // control) and just dim it for Human to signal it's inactive for that side.
+  function syncDepthMenu(player) {
+    const typeSel = document.getElementById(player === 1 ? 'p1-type' : 'p2-type');
+    const depthSel = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
+    if (!typeSel || !depthSel) return;
+    depthSel.style.opacity = (typeSel.value === 'human') ? '0.45' : '1';
+  }
+
   // Play nMatches matches to X points. Net (fitness) = A's match wins - B's match
   // wins, so a blown-up cube can never inflate the signal: a match win counts 1.
   // The A/B argument order is swapped on alternate matches to cancel any residual
   // first-game side bias (simulateBGMatch already alternates colours within a match).
   async function evoMatch(A, B, nMatches, label) {
     const X = matchLength();
+    const depth = lookaheadDepth();
     let winsA = 0, winsB = 0;
     for (let i = 0; i < nMatches && !evolveStop; i++) {
       const swap = (i % 2 === 1);
-      const res = simulateBGMatch(swap ? B : A, swap ? A : B, X);
+      const res = await simulateBGMatchYielding(swap ? B : A, swap ? A : B, X, depth, depth, breathe);
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
       if (aWon) winsA++; else winsB++;
       if (label) gameMessageEl.textContent = `${label} — ${i + 1}/${nMatches} matches (to ${X})`;
@@ -2142,11 +2194,61 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Round-robin: each selected pair plays `matches/pair` matches to the shared
   // match length X. Standings are by matches won (cube-safe: a match win counts 1).
   // Progress shows in the instruction window; a detailed CSV downloads at the end.
+  // Compete: play the two AIs chosen in the player rows (WP = White, RP = Red)
+  // head-to-head, each at ITS OWN depth (p1-depth / p2-depth). Colours alternate to
+  // cancel side bias, but each brain keeps its depth. Requires both sides to be AIs.
+  async function runCompete() {
+    const p1 = document.getElementById('p1-type').value;   // White selection
+    const p2 = document.getElementById('p2-type').value;   // Red selection
+    if (p1 === 'human' || p2 === 'human') {
+      gameMessageEl.textContent = 'Specify AI players to compete.';
+      return;
+    }
+
+    const wWhite = game.personalityWeights(p1), wRed = game.personalityWeights(p2);
+    const dWhite = playerDepth(1), dRed = playerDepth(2);
+    const X = matchLength();
+    const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 50);
+
+    tournamentRunning = true;
+    const btn = document.getElementById('btn-compete');
+    if (btn) btn.disabled = true;
+    const tStart = new Date();
+    let winsWhite = 0, winsRed = 0;
+
+    for (let i = 0; i < nMatches; i++) {
+      // Alternate which brain is "A" (plays White in the first game of the match) to
+      // balance side bias; depth travels with the brain via the paired depth args.
+      const swap = (i % 2 === 1);
+      const res = await simulateBGMatchYielding(
+        swap ? wRed : wWhite,
+        swap ? wWhite : wRed,
+        X,
+        swap ? dRed : dWhite,
+        swap ? dWhite : dRed,
+        breathe);
+      const whiteWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+      if (whiteWon) winsWhite++; else winsRed++;
+      gameMessageEl.textContent = `Compete… ${i + 1}/${nMatches} (to ${X}) — ${p1} d${dWhite}: ${winsWhite}  ${p2} d${dRed}: ${winsRed}`;
+      await new Promise((r) => setTimeout(r, 0));   // keep the UI responsive
+    }
+
+    const secs = ((new Date() - tStart) / 1000).toFixed(1);
+    const lead = winsWhite === winsRed ? 'tie'
+      : (winsWhite > winsRed ? `${p1} (WP, d${dWhite}) wins` : `${p2} (RP, d${dRed}) wins`);
+    gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s.`;
+    sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
+
+    if (btn) btn.disabled = false;
+    tournamentRunning = false;
+  }
+
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
     const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
     const X = matchLength();
+    const depth = lookaheadDepth();
 
     const mWins = {}, mLoss = {}, gpts = {}, h2h = {};
     names.forEach((n) => {
@@ -2169,7 +2271,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
       for (let k = 0; k < matchesPer; k++) {
         const swap = (k % 2 === 1);                          // balance first-game side bias
-        const res = simulateBGMatch(swap ? wB : wA, swap ? wA : wB, X);
+        const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe);
         const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
         const winner = aWon ? A : B, loser = aWon ? B : A;
         const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
@@ -2192,6 +2294,23 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     tournamentRunning = false;
   }
 
+    // Colour the closed View control to match the selected option: White = red-on-
+    // white, Red = white-on-red, Home/Outer = white-on-blue.
+    function syncViewColors() {
+      const sel = document.getElementById('board-view');
+      if (!sel) return;
+      const palette = {
+        white: { bg: '#ffffff', fg: '#ef4444' },
+        red:   { bg: '#ef4444', fg: '#ffffff' },
+        home:  { bg: '#1d4ed8', fg: '#ffffff' },
+        outer: { bg: '#1d4ed8', fg: '#ffffff' },
+      };
+      const c = palette[sel.value] || palette.red;
+      sel.style.background = c.bg;
+      sel.style.color = c.fg;
+    }
+    syncViewColors();
+
     document.getElementById('board-view').addEventListener('change', (e) => {
     const view = e.target.value;
     const wrapper = document.querySelector('.board-wrapper');
@@ -2199,6 +2318,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (view !== 'white') {
       wrapper.classList.add(`view-${view}`);
     }
+    syncViewColors();
     sysLog(`[System] Board view changed to ${view}`);
   });
 
@@ -2252,7 +2372,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       sysLog(`[AI] Player ${game.currentPlayer} (AI) is thinking...`);
       aiActionTimeout = setTimeout(() => {
         aiActionTimeout = null;
-        const bestMoves = game.getBestAIMove();
+        const bestMoves = game.getBestAIMove(playerDepth(game.currentPlayer));
         if (bestMoves && bestMoves.length > 0) {
           sysLog(`[AI] Chosen move sequence: ${bestMoves.map(m => `${m.from} -> ${m.to}`).join(', ')}`);
           isAIPlaying = true;
@@ -2528,6 +2648,8 @@ function initNetworkGame(role) {
     document.getElementById('p2-type').value = 'human';
     document.getElementById('p1-type').disabled = true;
     document.getElementById('p2-type').disabled = true;
+    syncDepthMenu(1);           // both sides human in a network game → depth menus off
+    syncDepthMenu(2);
     
     // We removed the lines that hid the setup panel here.
     // Instead, we just reveal the connection status text.
