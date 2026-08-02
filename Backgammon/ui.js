@@ -2005,6 +2005,16 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   let workersAvailable = false;
   try {
     const probe = new Worker('BackgammonWorker.js');
+    // A missing/broken worker script 404s ASYNCHRONOUSLY (new Worker doesn't throw),
+    // so catch that here and honestly flip to single-thread + update the field —
+    // otherwise the app shows "N workers" while silently running on one core.
+    probe.onerror = () => {
+      if (!workersAvailable) return;
+      workersAvailable = false;
+      const el = document.getElementById('num-workers');
+      if (el) { el.value = 0; el.disabled = true; el.title = 'Web Workers failed to load (is BackgammonWorker.js deployed alongside index.html?). Running single-threaded.'; }
+      sysLog('[Workers] BackgammonWorker.js failed to load — running single-threaded. Check that it is deployed next to index.html.');
+    };
     workerPool.push(probe);
     workersAvailable = true;
     sysLog(`[Workers] enabled — ${numWorkers} of ${navigator.hardwareConcurrency || '?'} cores.`);
