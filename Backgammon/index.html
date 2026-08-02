@@ -148,7 +148,13 @@
 
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
-    <h2>Backgammon v. 108</h2>
+    <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
+      <h2 style="margin: 0;">Backgammon v. 109</h2>
+      <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
+        <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
+        <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
+      </div>
+    </div>
     
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
@@ -191,7 +197,8 @@
           <option value="ai" selected>AI</option>
         </select>
         <label for="p1-depth" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
-        <select id="p1-depth" title="White AI search depth in plies (expectimax). Applies only when White is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+          <option value="0">0</option>
           <option value="1">1</option>
           <option value="2" selected>2</option>
           <option value="3">3</option>
@@ -206,7 +213,8 @@
           <option value="ai">AI</option>
         </select>
         <label for="p2-depth" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
-        <select id="p2-depth" title="Red AI search depth in plies (expectimax). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+          <option value="0">0</option>
           <option value="1">1</option>
           <option value="2" selected>2</option>
           <option value="3">3</option>
@@ -279,7 +287,8 @@
     <div class="brain-row">
       <button id="btn-evolve" class="tourney-run" title="Evolve the selected AI">Evolve</button>
       <span class="tourney-label">depth</span>
-      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for tournaments and evolution. 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower.">
+      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for tournaments and evolution. 0 = play the first legal move (no evaluation); 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower.">
+        <option value="0">0 ply</option>
         <option value="1">1 ply</option>
         <option value="2" selected>2 ply</option>
         <option value="3">3 ply</option>

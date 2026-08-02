@@ -863,19 +863,38 @@ rollDice(d1 = null, d2 = null) {
   /** Longest prime in p's home+outer board and how many opponent checkers it traps. */
   longestPrimeTrapped(points, bar, p) {
     const lo = p === 1 ? 1 : 13, hi = p === 1 ? 12 : 24;
-    let bestLen = 0, bestStart = -1, bestEnd = -1, curStart = -1;
+    const opp = p === 1 ? 2 : 1;
+
+    // Opponent checkers trapped behind a run [start,end]: the bar plus the opponent's
+    // checkers on the far side of the run (lower points for White, higher for Red).
+    const trappedFor = (start, end) => {
+      let t = bar[opp];
+      if (p === 1) { for (let i = 1; i < start; i++) if (points[i].player === 2) t += points[i].count; }
+      else { for (let i = end + 1; i <= 24; i++) if (points[i].player === 1) t += points[i].count; }
+      return t;
+    };
+
+    // Scan all maximal made-point runs (length >= 2) and keep the longest; break ties
+    // by the most opponent checkers trapped. The tie-break must be by trapped count,
+    // NOT scan order: scan order picks a different physical prime for White (scans
+    // from its home) than for Red (scans from the far side), which broke evaluate()'s
+    // colour symmetry (mirrored positions did not negate the PH term).
+    let best = { len: 0, trapped: 0 };
+    let curStart = -1;
+    const consider = (start, end) => {
+      const len = end - start + 1;
+      if (len < 2) return;
+      const trapped = trappedFor(start, end);
+      if (len > best.len || (len === best.len && trapped > best.trapped)) best = { len, trapped };
+    };
     for (let i = lo; i <= hi; i++) {
       const made = points[i].player === p && points[i].count >= 2;
       if (made) { if (curStart === -1) curStart = i; }
-      else { if (curStart !== -1) { const len = i - curStart; if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = i - 1; } curStart = -1; } }
+      else { if (curStart !== -1) { consider(curStart, i - 1); curStart = -1; } }
     }
-    if (curStart !== -1) { const len = hi + 1 - curStart; if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = hi; } }
-    if (bestLen < 2) return { len: 0, trapped: 0 };
-    const opp = p === 1 ? 2 : 1;
-    let trapped = bar[opp];
-    if (p === 1) { for (let i = 1; i < bestStart; i++) if (points[i].player === 2) trapped += points[i].count; }
-    else { for (let i = bestEnd + 1; i <= 24; i++) if (points[i].player === 1) trapped += points[i].count; }
-    return { len: bestLen, trapped };
+    if (curStart !== -1) consider(curStart, hi);
+
+    return best;
   }
 
   /** Points made (2+) in p's own home board. */
@@ -1008,7 +1027,9 @@ rollDice(d1 = null, d2 = null) {
     // Blots — collapsed threat/exposure, already from White's view
     score += this.blotContribution(points, bar, weights);
 
-    return Math.round(score);
+    // Round half AWAY FROM ZERO (not JS's default half-to-+Infinity), so the score is
+    // exactly colour-antisymmetric: evaluate(mirror) === -evaluate(original).
+    return score < 0 ? -Math.round(-score) : Math.round(score);
   }
 
   /**
@@ -1060,7 +1081,9 @@ rollDice(d1 = null, d2 = null) {
     let score = 0;
     rows.forEach((row) => { row.term = row.weight * row.v; score += row.term; });
 
-    return { rows, score: Math.round(score), contact: this.hasContact(points, bar), pipW, pipR };
+    // Match evaluate(): round half away from zero for colour antisymmetry.
+    const rounded = score < 0 ? -Math.round(-score) : Math.round(score);
+    return { rows, score: rounded, contact: this.hasContact(points, bar), pipW, pipR };
   }
 
   /**
@@ -1276,30 +1299,37 @@ rollDice(d1 = null, d2 = null) {
     if (board.borneOff[1] >= 15) return BG_WIN;
     if (board.borneOff[2] >= 15) return -BG_WIN;
 
-    const opp = player === 1 ? 2 : 1;
     let acc = 0;
-
     for (const [d1, d2, weight] of BG_DICE_DIST) {
       const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
-      const states = this._statesFrom(board, player, dice);
-
-      // The player chooses among its complete turns (a no-move roll yields a single
-      // state equal to the board, so "pass" needs no special case). White maximizes,
-      // Red minimizes the White-view value.
-      let best = player === 1 ? -Infinity : Infinity;
-      for (const st of states) {
-        let v;
-        if (st.borneOff[1] >= 15) v = BG_WIN;
-        else if (st.borneOff[2] >= 15) v = -BG_WIN;
-        else if (plies <= 1) v = this.evaluate(st.points, st.bar, st.borneOff, W);
-        else v = this._expecti(st, opp, plies - 1, W);
-
-        if (player === 1) { if (v > best) best = v; }
-        else { if (v < best) best = v; }
-      }
-      acc += weight * best;
+      acc += weight * this.expectiRollValue(board, player, dice, plies, W);
     }
-    return acc / 36;
+    return acc / 36;   // weights sum to 36
+  }
+
+  /**
+   * Value of one dice outcome inside a chance node: `player` is on roll with `dice`
+   * from `board`; returns the White-view value of `player`'s best reply, searching
+   * `plies` deeper (static `evaluate` at the leaf). This is the atomic unit the
+   * expectimax averages over — and the granularity a Web Worker computes for one
+   * (my-move, opponent-roll) task during interactive play. A no-move roll yields a
+   * single state equal to the board, so "pass" needs no special case.
+   */
+  expectiRollValue(board, player, dice, plies, W) {
+    const opp = player === 1 ? 2 : 1;
+    const states = this._statesFrom(board, player, dice);
+    let best = player === 1 ? -Infinity : Infinity;   // White maximizes, Red minimizes
+    for (const st of states) {
+      let v;
+      if (st.borneOff[1] >= 15) v = BG_WIN;
+      else if (st.borneOff[2] >= 15) v = -BG_WIN;
+      else if (plies <= 1) v = this.evaluate(st.points, st.bar, st.borneOff, W);
+      else v = this._expecti(st, opp, plies - 1, W);
+
+      if (player === 1) { if (v > best) best = v; }
+      else { if (v < best) best = v; }
+    }
+    return best;
   }
 
   /**
@@ -1312,52 +1342,119 @@ rollDice(d1 = null, d2 = null) {
    * selection time (root only) to any move that breaks contact when the mover is
    * ahead in the race (+DE for White, -DE for Red). Returns null if no moves exist.
    */
-  getBestAIMove(depth) {
+  // Shared setup for the move choosers. Resolves the search depth (per-side
+  // this.searchDepths[player] wins when set — nullish checks so a depth of 0 isn't
+  // lost — else this.searchDepth, default 1) and generates the candidate turns.
+  // Returns null when no move is possible.
+  _rootContext(depth) {
     const player = this.currentPlayer;
-    // Per-side depth (this.searchDepths[player]) wins when set — lets White and Red
-    // search to different depths in the same game; else fall back to this.searchDepth.
     if (depth === undefined) {
-      depth = (this.searchDepths && this.searchDepths[player]) || this.searchDepth || 1;
+      const perSide = this.searchDepths && this.searchDepths[player];
+      depth = (perSide != null) ? perSide : (this.searchDepth != null ? this.searchDepth : 1);
     }
-    const weights = this.aiWeights[player];
-    const opp = player === 1 ? 2 : 1;
-    const possibleStates = this.generateAllCompleteTurnMoves(player, this.movesLeft);
-    if (possibleStates.length === 0) return null;
+    const states = this.generateAllCompleteTurnMoves(player, this.movesLeft);
+    if (states.length === 0) return null;
+    return {
+      depth, player,
+      weights: this.aiWeights[player],
+      opp: player === 1 ? 2 : 1,
+      states,
+      parentContact: this.hasContact(this.points, this.bar),
+    };
+  }
 
-    const parentContact = this.hasContact(this.points, this.bar);
-    let bestState = null;
-    let bestVal = player === 1 ? -Infinity : Infinity;
+  // White-view value of one candidate complete turn, incl. the root-only DE bonus.
+  _scoreRootCandidate(state, ctx) {
+    const { depth, player, weights, opp, parentContact } = ctx;
+    const whiteWon = state.borneOff[1] >= 15;
+    const redWon = state.borneOff[2] >= 15;
+    let val;
+    if (whiteWon) val = BG_WIN;
+    else if (redWon) val = -BG_WIN;
+    else if (depth <= 1) val = this.evaluate(state.points, state.bar, state.borneOff, weights);
+    else val = this._expecti(state, opp, depth - 1, weights);   // look ahead
 
-    for (const state of possibleStates) {
-      let val;
-      const whiteWon = state.borneOff[1] >= 15;
-      const redWon = state.borneOff[2] >= 15;
-      if (whiteWon) {
-        val = BG_WIN;
-      } else if (redWon) {
-        val = -BG_WIN;
-      } else if (depth <= 1) {
-        val = this.evaluate(state.points, state.bar, state.borneOff, weights);
-      } else {
-        // Look ahead: expected value over the opponent's reply and beyond.
-        val = this._expecti(state, opp, depth - 1, weights);
-      }
+    // Disengagement bonus: one-time, on the move that turns contact into a pure race
+    // (selection heuristic, not part of the static score; root only, never terminal).
+    if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
+      const pipW = this.pipCountP(state.points, state.bar, 1);
+      const pipR = this.pipCountP(state.points, state.bar, 2);
+      if (player === 1 && pipW < pipR) val += weights.DE;
+      else if (player === 2 && pipR < pipW) val -= weights.DE;
+    }
+    return val;
+  }
 
-      // Disengagement bonus: one-time, on the move that turns contact into a pure
-      // race (a selection heuristic, not part of the static score; root only, and
-      // never on a terminal position).
-      if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
-        const pipW = this.pipCountP(state.points, state.bar, 1);
-        const pipR = this.pipCountP(state.points, state.bar, 2);
-        if (player === 1 && pipW < pipR) val += weights.DE;
-        else if (player === 2 && pipR < pipW) val -= weights.DE;
-      }
+  getBestAIMove(depth) {
+    const ctx = this._rootContext(depth);
+    if (!ctx) return null;
+    // Depth 0: no evaluation — just play the first available legal complete turn.
+    if (ctx.depth <= 0) return ctx.states[0].moves;
 
-      if (player === 1) { if (val > bestVal) { bestVal = val; bestState = state; } }
+    let bestState = null, bestVal = ctx.player === 1 ? -Infinity : Infinity;
+    for (const state of ctx.states) {
+      const val = this._scoreRootCandidate(state, ctx);
+      if (ctx.player === 1) { if (val > bestVal) { bestVal = val; bestState = state; } }
       else { if (val < bestVal) { bestVal = val; bestState = state; } }
     }
-
     return bestState ? bestState.moves : null;
+  }
+
+  // Async twin of getBestAIMove: identical result, but yields cooperatively so a deep
+  // search never blocks the main thread long enough to trip "Page unresponsive". It
+  // yields between root candidates AND, via _expectiTopYielding, between the 21 dice
+  // outcomes of each candidate's top chance node — at depth 3 one candidate alone is
+  // ~10 s, so per-candidate yielding isn't enough; per-roll caps a block at ~1/21 of
+  // that. Depth is resolved per-side from this.searchDepths (set by the simulators).
+  async getBestAIMoveYielding(breathe) {
+    const ctx = this._rootContext(undefined);
+    if (!ctx) return null;
+    if (ctx.depth <= 0) return ctx.states[0].moves;
+
+    let bestState = null, bestVal = ctx.player === 1 ? -Infinity : Infinity;
+    for (const state of ctx.states) {
+      const val = await this._scoreRootCandidateYielding(state, ctx, breathe);
+      if (ctx.player === 1) { if (val > bestVal) { bestVal = val; bestState = state; } }
+      else { if (val < bestVal) { bestVal = val; bestState = state; } }
+      if (breathe) await breathe();
+    }
+    return bestState ? bestState.moves : null;
+  }
+
+  // Async version of _scoreRootCandidate: expands the top chance node with per-roll
+  // yields (deeper levels stay sync). Returns the same value as _scoreRootCandidate.
+  async _scoreRootCandidateYielding(state, ctx, breathe) {
+    const { depth, player, weights, opp, parentContact } = ctx;
+    const whiteWon = state.borneOff[1] >= 15;
+    const redWon = state.borneOff[2] >= 15;
+    let val;
+    if (whiteWon) val = BG_WIN;
+    else if (redWon) val = -BG_WIN;
+    else if (depth <= 1) val = this.evaluate(state.points, state.bar, state.borneOff, weights);
+    else val = await this._expectiTopYielding(state, opp, depth - 1, weights, breathe);
+
+    if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
+      const pipW = this.pipCountP(state.points, state.bar, 1);
+      const pipR = this.pipCountP(state.points, state.bar, 2);
+      if (player === 1 && pipW < pipR) val += weights.DE;
+      else if (player === 2 && pipR < pipW) val -= weights.DE;
+    }
+    return val;
+  }
+
+  // Top-level expectimax chance node with a yield between the 21 dice outcomes; the
+  // subtree below the top uses the sync _expecti. The summation is identical to
+  // _expecti, so the value (and therefore the chosen move) is unchanged.
+  async _expectiTopYielding(board, player, plies, W, breathe) {
+    if (board.borneOff[1] >= 15) return BG_WIN;
+    if (board.borneOff[2] >= 15) return -BG_WIN;
+    let acc = 0;
+    for (const [d1, d2, weight] of BG_DICE_DIST) {
+      const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
+      acc += weight * this.expectiRollValue(board, player, dice, plies, W);
+      if (breathe) await breathe();       // yield between dice outcomes
+    }
+    return acc / 36;
   }
 
   /**
@@ -1420,7 +1517,15 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
     g.rollDice();
   }
 
-  // Ended by bearing off — score with gammon/backgammon and the cube value.
+  return scoreFinishedBGGame(g);
+}
+
+/**
+ * Score a game that ended by bearing off: { winner, points } where points is the
+ * cube value × gammon multiplier (1 single, 2 gammon, 3 backgammon). Shared by the
+ * sync and yielding game runners.
+ */
+function scoreFinishedBGGame(g) {
   let points = 0;
   const winner = g.winner;
   if (winner) {
@@ -1435,6 +1540,44 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
     points = g.doublingCubeValue * mult;
   }
   return { winner, points };
+}
+
+/**
+ * Cooperative (async) twin of simulateBGGame: identical logic, but chooses each move
+ * via g.getBestAIMoveYielding(breathe) and awaits breathe() between turns. This lets
+ * the main thread yield WITHIN a single move's search (between root candidates), so
+ * even a slow depth-3 move doesn't block long enough to trip "Page unresponsive".
+ * `breathe` is optional; with none it behaves like the sync version (safe for Node).
+ * MIRRORS simulateBGGame — keep the two in sync if the game/cube rules change.
+ */
+async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null) {
+  const g = new BackgammonGame();
+  g.playerTypes[1] = 'ai';
+  g.playerTypes[2] = 'ai';
+  g.aiWeights[1] = wWhite;
+  g.aiWeights[2] = wRed;
+  g.searchDepths = { 1: depthWhite, 2: depthRed };
+  g.rollForFirstTurn();
+
+  let guard = 0;
+  while (!g.winner && guard++ < 100000) {
+    const moves = await g.getBestAIMoveYielding(breathe);
+    if (moves && moves.length) {
+      for (const m of moves) g.makeMove(m.from, m.to, false);
+    }
+    if (g.winner) break;
+    g.endTurn();
+
+    if (g.doublingCubeValue * 2 <= maxCube && g.aiShouldDouble(g.currentPlayer)) {
+      const responder = g.currentPlayer === 1 ? 2 : 1;
+      if (g.aiShouldAcceptDouble(responder)) g.acceptDouble();
+      else return { winner: g.currentPlayer, points: g.doublingCubeValue };
+    }
+    g.rollDice();
+    if (breathe) await breathe();
+  }
+
+  return scoreFinishedBGGame(g);
 }
 
 /**
@@ -1490,7 +1633,10 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
 
     const dWhite = aWhite ? depthA : depthB;
     const dRed   = aWhite ? depthB : depthA;
-    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed);
+    // Use the yielding game runner so the thread also breathes WITHIN a move's
+    // search (crucial at depth 3, where a single move can otherwise block for tens
+    // of seconds and trip "Page unresponsive").
+    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe);
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
 
@@ -1504,6 +1650,7 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = BackgammonGame;
   module.exports.simulateBGGame = simulateBGGame;
+  module.exports.simulateBGGameYielding = simulateBGGameYielding;
   module.exports.simulateBGMatch = simulateBGMatch;
   module.exports.simulateBGMatchYielding = simulateBGMatchYielding;
 }
