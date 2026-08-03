@@ -53,32 +53,9 @@ const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
 // Steep length factor for a prime of a given length (0 for < 2, 1.0 for full 6-prime).
 const PRIME_FACTOR = { 2: 0.05, 3: 0.15, 4: 0.35, 5: 0.65, 6: 1.0 };
 
-// --- Lookahead (expectimax) support -------------------------------------------
-// The 21 distinct dice rolls with their multiplicities out of 36: a non-double
-// (i<j) happens two ways (weight 2), a double one way (weight 1). Weights sum to
-// 36, so a chance-node expectation is Σ weightᵢ·valueᵢ / 36. Used to average over
-// the opponent's (and our own future) rolls in the search tree.
-const BG_DICE_DIST = (() => {
-  const rolls = [];
-  for (let i = 1; i <= 6; i++) {
-    for (let j = i; j <= 6; j++) {
-      rolls.push([i, j, i === j ? 1 : 2]);
-    }
-  }
-  return rolls;              // 21 entries, Σ weight = 36
-})();
-
-// A terminal (all 15 borne off) is worth more than any static score, so the
-// search always prefers a real win/loss to any heuristic position. White-view:
-// +BG_WIN if White has won, -BG_WIN if Red has won.
-const BG_WIN = 1e9;
-
 class BackgammonGame {
   constructor() {
     this.restart();
-    // Plies of lookahead for the AI (1 = one-ply static, today's baseline). Set by
-    // the UI / tournament / evolution; getBestAIMove() falls back to this field.
-    this.searchDepth = 1;
   }
 
   restart() {
@@ -1250,72 +1227,15 @@ rollDice(d1 = null, d2 = null) {
   }
 
   /**
-   * Generate all unique complete-turn positions reachable from an ARBITRARY board
-   * (not just `this`), for the given player and dice. Used by the lookahead search
-   * to expand hypothetical positions. A single reusable scratch game is seeded with
-   * the supplied board; `_maxUsageSequences` only ever reads the seed board (it deep-
-   * copies before mutating), so pointing the scratch at these arrays is safe.
-   */
-  _statesFrom(board, player, dice) {
-    const s = this._searchScratch || (this._searchScratch = new BackgammonGame());
-    s.points = board.points;
-    s.bar = board.bar;
-    s.borneOff = board.borneOff;
-    return s.generateAllCompleteTurnMoves(player, dice);
-  }
-
-  /**
-   * Expectimax value of `board` (White's view) when `player` is on roll, looking
-   * `plies` further plies ahead (plies >= 1). Every leaf is scored with the single
-   * weight vector `W` (the deciding AI's own weights): White decision nodes maximize
-   * that score, Red decision nodes minimize it, and each turn is a chance node that
-   * averages over the 21 dice rolls. Terminal positions (all 15 borne off) short-
-   * circuit to ±BG_WIN so a certain win/loss always outranks any heuristic.
-   */
-  _expecti(board, player, plies, W) {
-    if (board.borneOff[1] >= 15) return BG_WIN;
-    if (board.borneOff[2] >= 15) return -BG_WIN;
-
-    const opp = player === 1 ? 2 : 1;
-    let acc = 0;
-
-    for (const [d1, d2, weight] of BG_DICE_DIST) {
-      const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
-      const states = this._statesFrom(board, player, dice);
-
-      // The player chooses among its complete turns (a no-move roll yields a single
-      // state equal to the board, so "pass" needs no special case). White maximizes,
-      // Red minimizes the White-view value.
-      let best = player === 1 ? -Infinity : Infinity;
-      for (const st of states) {
-        let v;
-        if (st.borneOff[1] >= 15) v = BG_WIN;
-        else if (st.borneOff[2] >= 15) v = -BG_WIN;
-        else if (plies <= 1) v = this.evaluate(st.points, st.bar, st.borneOff, W);
-        else v = this._expecti(st, opp, plies - 1, W);
-
-        if (player === 1) { if (v > best) best = v; }
-        else { if (v < best) best = v; }
-      }
-      acc += weight * best;
-    }
-    return acc / 36;
-  }
-
-  /**
    * Returns the best full-turn move sequence for the current player. White maximizes
-   * the White-view score, Red minimizes it, using the mover's own weight vector as
-   * the single evaluation currency for the whole search tree. `depth` plies of
-   * lookahead (default this.searchDepth): depth 1 is one-ply static (today's
-   * baseline); deeper searches average over future rolls via expectimax, scoring
-   * leaves with the static `evaluate()`. A disengagement bonus (DE) is added at
-   * selection time (root only) to any move that breaks contact when the mover is
-   * ahead in the race (+DE for White, -DE for Red). Returns null if no moves exist.
+   * the White-view score, Red minimizes it, each using its own weight vector. A
+   * disengagement bonus (DE) is added at selection time to any move that breaks contact
+   * when the mover is ahead in the race (+DE for White, -DE for Red). Returns null if
+   * no moves are possible.
    */
-  getBestAIMove(depth = this.searchDepth || 1) {
+  getBestAIMove() {
     const player = this.currentPlayer;
     const weights = this.aiWeights[player];
-    const opp = player === 1 ? 2 : 1;
     const possibleStates = this.generateAllCompleteTurnMoves(player, this.movesLeft);
     if (possibleStates.length === 0) return null;
 
@@ -1324,24 +1244,10 @@ rollDice(d1 = null, d2 = null) {
     let bestVal = player === 1 ? -Infinity : Infinity;
 
     for (const state of possibleStates) {
-      let val;
-      const whiteWon = state.borneOff[1] >= 15;
-      const redWon = state.borneOff[2] >= 15;
-      if (whiteWon) {
-        val = BG_WIN;
-      } else if (redWon) {
-        val = -BG_WIN;
-      } else if (depth <= 1) {
-        val = this.evaluate(state.points, state.bar, state.borneOff, weights);
-      } else {
-        // Look ahead: expected value over the opponent's reply and beyond.
-        val = this._expecti(state, opp, depth - 1, weights);
-      }
+      let val = this.evaluate(state.points, state.bar, state.borneOff, weights);
 
-      // Disengagement bonus: one-time, on the move that turns contact into a pure
-      // race (a selection heuristic, not part of the static score; root only, and
-      // never on a terminal position).
-      if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
+      // Disengagement bonus: one-time, on the move that turns contact into a pure race.
+      if (parentContact && !this.hasContact(state.points, state.bar)) {
         const pipW = this.pipCountP(state.points, state.bar, 1);
         const pipR = this.pipCountP(state.points, state.bar, 2);
         if (player === 1 && pipW < pipR) val += weights.DE;
@@ -1381,13 +1287,12 @@ rollDice(d1 = null, d2 = null) {
  * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
  * Used by the tournament runner.
  */
-function simulateBGGame(wWhite, wRed, maxCube = Infinity, depth = 1) {
+function simulateBGGame(wWhite, wRed, maxCube = Infinity) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
   g.aiWeights[1] = wWhite;
   g.aiWeights[2] = wRed;
-  g.searchDepth = depth;                 // plies of lookahead for both AIs
   g.rollForFirstTurn();
 
   let guard = 0;
@@ -1443,7 +1348,7 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depth = 1) {
  *   - Crawford: the single game right after either side first reaches X-1 is played
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
-function simulateBGMatch(wA, wB, X, depth = 1) {
+function simulateBGMatch(wA, wB, X) {
   let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
@@ -1452,7 +1357,7 @@ function simulateBGMatch(wA, wB, X, depth = 1) {
     const crawford = atMatchPoint && !crawfordDone;   // the one no-double game
     const maxCube = crawford ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
 
-    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, depth);
+    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube);
     // Map the game winner (White/Red) back to A/B and award points.
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;

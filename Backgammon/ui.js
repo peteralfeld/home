@@ -693,15 +693,11 @@ renderBorneOff();
       doublingCubeEl.classList.remove('owned-p1', 'owned-p2', 'double-pending');
 
       if (pendingDouble) {
-        // Show the offered (doubled) stake while awaiting a decision. Colour the cube
-        // by its CURRENT owner (centred = neutral grey), NOT the responder — ownership
-        // only transfers on accept, so a pending offer must never look like the
-        // responder already owns the cube. A pulsing glow marks the offer instead.
+        // Show the offered (doubled) stake in the taker's colour while awaiting a decision.
         const offered = game.doublingCubeValue === 1 ? 2 : game.doublingCubeValue * 2;
         doublingCubeEl.textContent = offered;
-        if (game.doublingCubeOwner === 1) doublingCubeEl.classList.add('owned-p1');
-        else if (game.doublingCubeOwner === 2) doublingCubeEl.classList.add('owned-p2');
-        doublingCubeEl.classList.add('double-pending');
+        const responder = opponentOf(pendingDouble.by);
+        doublingCubeEl.classList.add(responder === 1 ? 'owned-p1' : 'owned-p2', 'double-pending');
       } else {
         doublingCubeEl.textContent = game.doublingCubeValue === 1 ? "64" : game.doublingCubeValue;
         if (game.doublingCubeOwner === 1) doublingCubeEl.classList.add('owned-p1');
@@ -736,7 +732,7 @@ renderBorneOff();
       if (isNetworkGame && localPlayerRole === pendingDouble.by) {
         gameMessageEl.textContent = `You doubled to ${offered}. Waiting for ${respName}…`;
       } else {
-        gameMessageEl.textContent = `${byName} Doubles. ${respName}, press the playing cubes to accept the double, or the doubling cube to reject it, and resign.`;
+        gameMessageEl.textContent = `${respName}: DOUBLE. Click the dice to continue, the cube to stop play.`;
       }
       btnUndo.disabled = true;
     } else if (game.winner) {
@@ -1727,13 +1723,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   populatePlayerMenus();
   syncPlayersFromMenus();
-  syncDepthMenu(1);
-  syncDepthMenu(2);
 
   // Listen for live dropdown changes so players can swap Human/AI in/out mid-game
   document.getElementById('p1-type').addEventListener('change', (e) => {
     applyPlayerMenu(1);
-    syncDepthMenu(1);           // enable/disable White's depth menu for AI/Human
     clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] White player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
@@ -1742,7 +1735,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   document.getElementById('p2-type').addEventListener('change', (e) => {
     applyPlayerMenu(2);
-    syncDepthMenu(2);           // enable/disable Red's depth menu for AI/Human
     clearHistoryScoreCache();   // scoring AI may have changed
     sysLog(`[System] Red player set to ${e.target.value}`);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
@@ -1968,47 +1960,16 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return X;
   }
 
-  // AI lookahead depth in plies (expectimax over the dice) for BATCH runs —
-  // tournament and evolution — read from the batch-depth dropdown next to Evolve.
-  // 1 = one-ply static baseline.
-  function lookaheadDepth() {
-    const el = document.getElementById('batch-depth');
-    let d = el ? parseInt(el.value, 10) : 1;
-    if (!d || d < 1) d = 1;
-    return d;
-  }
-
-  // Per-player interactive AI depth, read from that side's Depth menu (White = p1,
-  // Red = p2). Lets the same AI play at different depths so the effect of depth is
-  // visible. Only consulted when the player is an AI.
-  function playerDepth(player) {
-    const el = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
-    let d = el ? parseInt(el.value, 10) : 1;
-    if (!d || d < 1) d = 1;
-    return d;
-  }
-
-  // A side's Depth menu only affects play when that side is an AI. We keep it
-  // clickable at all times (so it can be pre-set, and never reads as a dead
-  // control) and just dim it for Human to signal it's inactive for that side.
-  function syncDepthMenu(player) {
-    const typeSel = document.getElementById(player === 1 ? 'p1-type' : 'p2-type');
-    const depthSel = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
-    if (!typeSel || !depthSel) return;
-    depthSel.style.opacity = (typeSel.value === 'human') ? '0.45' : '1';
-  }
-
   // Play nMatches matches to X points. Net (fitness) = A's match wins - B's match
   // wins, so a blown-up cube can never inflate the signal: a match win counts 1.
   // The A/B argument order is swapped on alternate matches to cancel any residual
   // first-game side bias (simulateBGMatch already alternates colours within a match).
   async function evoMatch(A, B, nMatches, label) {
     const X = matchLength();
-    const depth = lookaheadDepth();
     let winsA = 0, winsB = 0;
     for (let i = 0; i < nMatches && !evolveStop; i++) {
       const swap = (i % 2 === 1);
-      const res = simulateBGMatch(swap ? B : A, swap ? A : B, X, depth);
+      const res = simulateBGMatch(swap ? B : A, swap ? A : B, X);
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
       if (aWon) winsA++; else winsB++;
       if (label) gameMessageEl.textContent = `${label} — ${i + 1}/${nMatches} matches (to ${X})`;
@@ -2182,7 +2143,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
     const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
     const X = matchLength();
-    const depth = lookaheadDepth();
 
     const mWins = {}, mLoss = {}, gpts = {}, h2h = {};
     names.forEach((n) => {
@@ -2205,7 +2165,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
       for (let k = 0; k < matchesPer; k++) {
         const swap = (k % 2 === 1);                          // balance first-game side bias
-        const res = simulateBGMatch(swap ? wB : wA, swap ? wA : wB, X, depth);
+        const res = simulateBGMatch(swap ? wB : wA, swap ? wA : wB, X);
         const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
         const winner = aWon ? A : B, loser = aWon ? B : A;
         const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
@@ -2288,7 +2248,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       sysLog(`[AI] Player ${game.currentPlayer} (AI) is thinking...`);
       aiActionTimeout = setTimeout(() => {
         aiActionTimeout = null;
-        const bestMoves = game.getBestAIMove(playerDepth(game.currentPlayer));
+        const bestMoves = game.getBestAIMove();
         if (bestMoves && bestMoves.length > 0) {
           sysLog(`[AI] Chosen move sequence: ${bestMoves.map(m => `${m.from} -> ${m.to}`).join(', ')}`);
           isAIPlaying = true;
@@ -2564,8 +2524,6 @@ function initNetworkGame(role) {
     document.getElementById('p2-type').value = 'human';
     document.getElementById('p1-type').disabled = true;
     document.getElementById('p2-type').disabled = true;
-    syncDepthMenu(1);           // both sides human in a network game → depth menus off
-    syncDepthMenu(2);
     
     // We removed the lines that hid the setup panel here.
     // Instead, we just reveal the connection status text.

@@ -614,19 +614,6 @@ body {
   border-color: rgba(239, 68, 68, 0.8);
 }
 
-/* A double has been offered and is awaiting accept/decline — pulsing gold glow.
-   Ownership hasn't transferred yet, so the cube keeps its current owner colour
-   (or neutral grey when centred); this glow is what signals the pending offer. */
-.doubling-cube.double-pending {
-  border-color: var(--accent-gold);
-  animation: cube-pending-pulse 1s ease-in-out infinite;
-}
-
-@keyframes cube-pending-pulse {
-  0%, 100% { box-shadow: 0 8px 16px rgba(0,0,0,0.6), 0 0 6px rgba(229,193,88,0.5); }
-  50%      { box-shadow: 0 8px 16px rgba(0,0,0,0.6), 0 0 16px rgba(229,193,88,0.95); }
-}
-
 .doubling-cube:hover {
   transform: scale(1.05);
   box-shadow: 
