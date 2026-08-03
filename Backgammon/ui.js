@@ -2877,7 +2877,24 @@ if (view === 'white') {
 /* =========================================
      NETWORK LOGIC (PeerJS)
   ========================================= */
-  
+
+  // ICE servers for WebRTC (used by BOTH host and guest — edit here, one place).
+  // STUN alone only works when at least one side has a friendly NAT; cross-network
+  // play generally needs a live TURN relay. The old free openrelay.metered.ca relay
+  // was DISCONTINUED, which is why connections now stall at "Setting up P2P data
+  // channel listeners…" and never open. Paste working TURN credentials below (a free
+  // Metered account at https://dashboard.metered.ca gives you a set) — replace the
+  // YOUR_TURN_* placeholders. Until then, only same-/friendly-NAT connections work.
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    // --- Live TURN relay goes here (uncomment and fill in) ---
+    // { urls: 'turn:global.relay.metered.ca:80',  username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
+    // { urls: 'turn:global.relay.metered.ca:443', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
+    // { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
+  ];
+
   const btnHost = document.getElementById('btn-host');
   const btnJoin = document.getElementById('btn-join');
   const joinCodeInput = document.getElementById('join-code');
@@ -2926,7 +2943,21 @@ function initNetworkGame(role) {
 
     function setupConnectionListeners(connection) {
     sysLog(`[Network] Setting up P2P data channel listeners...`);
-    
+
+    // ICE diagnostics: surface why a data channel does/doesn't open. If you see it
+    // reach "checking" then "failed"/"disconnected" (and no 'relay' candidates), the
+    // peers can't form a direct path and need a working TURN relay.
+    const wireIceLogging = () => {
+      const pc = connection.peerConnection;
+      if (!pc || pc.__iceLogged) return;
+      pc.__iceLogged = true;
+      pc.addEventListener('iceconnectionstatechange', () => sysLog(`[Network] ICE state: ${pc.iceConnectionState}`));
+      pc.addEventListener('icegatheringstatechange', () => sysLog(`[Network] ICE gathering: ${pc.iceGatheringState}`));
+      pc.addEventListener('icecandidate', (e) => { if (e.candidate) sysLog(`[Network] local candidate: ${e.candidate.type}/${e.candidate.protocol}`); });
+    };
+    wireIceLogging();
+    setTimeout(wireIceLogging, 300);   // peerConnection may not exist yet at setup time
+
     const handleOpen = () => {
       sysLog(`[Network] SUCCESS! Data channel is open.`);
       connStatus.textContent = "Connected! Game Active.";
@@ -3056,22 +3087,7 @@ connection.on('data', (data) => {
     
       sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
-peer = new Peer('pointworks-bg-' + roomCode, {
-  config: { 'iceServers': [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { 
-      urls: 'turn:openrelay.metered.ca:80', 
-      username: 'openrelayproject', 
-      credential: 'openrelayproject' 
-    },
-    { 
-      urls: 'turn:openrelay.metered.ca:443', 
-      username: 'openrelayproject', 
-      credential: 'openrelayproject' 
-    }
-  ]}
- });
+peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers: ICE_SERVERS } });
       
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
@@ -3100,22 +3116,7 @@ peer = new Peer('pointworks-bg-' + roomCode, {
     
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
-peer = new Peer({
-      config: { 'iceServers': [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { 
-          urls: 'turn:openrelay.metered.ca:80', 
-          username: 'openrelayproject', 
-          credential: 'openrelayproject' 
-        },
-        { 
-          urls: 'turn:openrelay.metered.ca:443', 
-          username: 'openrelayproject', 
-          credential: 'openrelayproject' 
-        }
-      ]}
-});
+peer = new Peer({ config: { iceServers: ICE_SERVERS } });
       
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
