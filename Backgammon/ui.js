@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* ignore speech errors */ }
   }
   let aiStopped   = false;  // true while AI is manually paused via STOP button
-  let highlightOn = false;
+  let highlightOn = true;
   let autoRollOn  = false;
   let autoRollTimeout = null;
   let autoMoveOn  = false;
@@ -1922,10 +1922,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running a tournament.'; return; }
     if (!tournamentRunning) runTournament();
   });
-  document.getElementById('btn-compete')?.addEventListener('click', () => {
-    if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running Compete.'; return; }
-    if (!tournamentRunning) runCompete();
-  });
 
   // ── Genetic evolution (Phase I: single-threaded) ──────────
   const EVO_EVAL = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
@@ -1978,168 +1974,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function lookaheadDepth() {
     const el = document.getElementById('batch-depth');
     let d = el ? parseInt(el.value, 10) : 1;
-    if (isNaN(d) || d < 0) d = 1;          // 0 is valid (play first legal move)
+    if (!d || d < 1) d = 1;
     return d;
-  }
-
-  // Cooperative yield: hands control back to the browser (so it can paint and stay
-  // responsive) but only if enough wall-clock time has passed since the last yield.
-  // Time-slicing keeps fast depth-1 runs from drowning in setTimeout overhead while
-  // still guaranteeing the main thread breathes at least every ~sliceMs during slow
-  // depth-2+ matches — which is what prevents Chrome's "Page unresponsive" dialog.
-  let _lastBreath = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-  function breathe(sliceMs = 50) {
-    const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    if (now - _lastBreath < sliceMs) return Promise.resolve();
-    _lastBreath = now;
-    return new Promise((r) => setTimeout(r, 0));
-  }
-
-  // ---- Web Worker pool -------------------------------------------------------
-  // The search runs off the main thread (no popup, no pause overhead) and across
-  // all cores. Requires an http(s) origin: on file:// `new Worker` throws, so we
-  // detect availability once and fall back to the single-thread + breathe() path.
-  let numWorkers = (navigator.hardwareConcurrency && navigator.hardwareConcurrency > 0)
-    ? navigator.hardwareConcurrency : 4;
-  let workerPool = [];
-  let workersAvailable = false;
-  try {
-    const probe = new Worker('BackgammonWorker.js');
-    // A missing/broken worker script 404s ASYNCHRONOUSLY (new Worker doesn't throw),
-    // so catch that here and honestly flip to single-thread + update the field —
-    // otherwise the app shows "N workers" while silently running on one core.
-    probe.onerror = () => {
-      if (!workersAvailable) return;
-      workersAvailable = false;
-      const el = document.getElementById('num-workers');
-      if (el) { el.value = 0; el.disabled = true; el.title = 'Web Workers failed to load (is BackgammonWorker.js deployed alongside index.html?). Running single-threaded.'; }
-      sysLog('[Workers] BackgammonWorker.js failed to load — running single-threaded. Check that it is deployed next to index.html.');
-    };
-    workerPool.push(probe);
-    workersAvailable = true;
-    sysLog(`[Workers] enabled — ${numWorkers} of ${navigator.hardwareConcurrency || '?'} cores.`);
-  } catch (e) {
-    workersAvailable = false;
-    sysLog(`[Workers] unavailable (${e && e.message}); using single thread. Serve over http:// to enable.`);
-  }
-  function getWorker() { return workerPool.length ? workerPool.pop() : new Worker('BackgammonWorker.js'); }
-  function releaseWorker(w) { workerPool.push(w); }
-  function terminateWorkers() { workerPool.forEach((w) => { try { w.terminate(); } catch (e) {} }); workerPool = []; }
-
-  // Worker-count field (top line, right of the version label). Defaults to the core
-  // count; the user can change it (as in Reversi). Changing it recycles the pool.
-  (function initWorkerField() {
-    const el = document.getElementById('num-workers');
-    if (!el) return;
-    if (!workersAvailable) { el.value = 0; el.disabled = true; el.title = 'Web Workers unavailable — serve the app over http:// (e.g. XAMPP) to enable parallel search.'; return; }
-    el.value = numWorkers;
-    el.addEventListener('change', () => {
-      let n = parseInt(el.value, 10);
-      const max = (navigator.hardwareConcurrency || 16);
-      if (isNaN(n) || n < 1) n = 1;
-      if (n > 64) n = 64;                    // sane upper bound
-      numWorkers = n; el.value = n;
-      terminateWorkers();                    // fresh workers spawn on next use at the new count
-      sysLog(`[Workers] set to ${numWorkers} (of ${navigator.hardwareConcurrency || '?'} cores).`);
-    });
-  })();
-
-  // Run a queue of jobs across up to numWorkers workers, keeping the pool busy.
-  // makeMsg(job,i) builds the postMessage payload; onResult(data,job,i) consumes it.
-  function runJobsParallel(jobs, makeMsg, onResult) {
-    return new Promise((resolve, reject) => {
-      const total = jobs.length;
-      if (total === 0) { resolve(); return; }
-      let next = 0, done = 0, active = 0;
-      const pump = () => {
-        while (active < numWorkers && next < total) {
-          const i = next++, job = jobs[i], w = getWorker();
-          active++;
-          w.onmessage = (e) => {
-            active--; releaseWorker(w);
-            if (e.data && e.data.error) { reject(new Error(e.data.error)); return; }
-            try { onResult(e.data, job, i); } catch (err) { reject(err); return; }
-            done++;
-            if (done === total) resolve(); else pump();
-          };
-          w.onerror = (err) => { active--; reject(err.error || new Error(err.message || 'worker error')); };
-          w.postMessage(makeMsg(job, i));
-        }
-      };
-      pump();
-    });
-  }
-
-  // Play a list of match specs in parallel (one match per worker). Each spec:
-  // { wA, wB, X, depthA, depthB, ...meta }. onResult(res, spec, i) tallies live.
-  function runMatchesParallel(specs, onResult) {
-    return runJobsParallel(
-      specs,
-      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB }),
-      (data, spec, i) => onResult(data.result, spec, i),
-    );
-  }
-
-  // Local copies of the dice distribution / win sentinel for combining worker
-  // results on the main thread (kept in lockstep with game.js's BG_DICE_DIST/BG_WIN).
-  const UI_DICE_DIST = (() => { const r = []; for (let i = 1; i <= 6; i++) for (let j = i; j <= 6; j++) r.push([i, j, i === j ? 1 : 2]); return r; })();
-  const UI_BG_WIN = 1e9;
-
-  // Compute the AI's move for `depth` >= 2 by farming each (my move × opponent dice
-  // roll) out to the worker pool, then combining exactly as the sync search does:
-  // value(m1) = Σ weight·expectiRollValue(afterM1, opp, roll, depth-1) / 36, White
-  // maximizes / Red minimizes, plus the root-only DE bonus. Returns the same move as
-  // game.getBestAIMove(depth).
-  async function computeAIMoveParallel(depth) {
-    const player = game.currentPlayer;
-    const W = game.aiWeights[player];
-    const opp = player === 1 ? 2 : 1;
-    const states = game.generateAllCompleteTurnMoves(player, game.movesLeft);
-    if (!states.length) return null;
-    if (depth <= 0) return states[0].moves;
-    if (depth <= 1) return game.getBestAIMove(1);   // one-ply is instant; no need to farm out
-
-    const parentContact = game.hasContact(game.points, game.bar);
-    const rollVals = states.map(() => new Array(UI_DICE_DIST.length).fill(0));
-
-    // Build one task per (non-terminal m1, dice roll).
-    const tasks = [];
-    states.forEach((st, si) => {
-      if (st.borneOff[1] >= 15 || st.borneOff[2] >= 15) return;   // terminal m1 scored directly
-      UI_DICE_DIST.forEach(([d1, d2], ri) => {
-        const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
-        tasks.push({ si, ri, dice, board: { points: st.points, bar: st.bar, borneOff: st.borneOff } });
-      });
-    });
-
-    let done = 0;
-    const label = gameMessageEl.textContent;
-    await runJobsParallel(
-      tasks,
-      (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: W }),
-      (data, t) => { rollVals[t.si][t.ri] = data.val; if ((++done % 21) === 0) gameMessageEl.textContent = label; },
-    );
-
-    let bestState = null, bestVal = player === 1 ? -Infinity : Infinity;
-    states.forEach((st, si) => {
-      let val;
-      const whiteWon = st.borneOff[1] >= 15, redWon = st.borneOff[2] >= 15;
-      if (whiteWon) val = UI_BG_WIN;
-      else if (redWon) val = -UI_BG_WIN;
-      else {
-        let acc = 0;
-        UI_DICE_DIST.forEach(([, , wt], ri) => { acc += wt * rollVals[si][ri]; });
-        val = acc / 36;
-      }
-      if (!whiteWon && !redWon && parentContact && !game.hasContact(st.points, st.bar)) {
-        const pipW = game.pipCountP(st.points, st.bar, 1), pipR = game.pipCountP(st.points, st.bar, 2);
-        if (player === 1 && pipW < pipR) val += W.DE;
-        else if (player === 2 && pipR < pipW) val -= W.DE;
-      }
-      if (player === 1) { if (val > bestVal) { bestVal = val; bestState = st; } }
-      else { if (val < bestVal) { bestVal = val; bestState = st; } }
-    });
-    return bestState ? bestState.moves : null;
   }
 
   // Per-player interactive AI depth, read from that side's Depth menu (White = p1,
@@ -2148,7 +1984,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function playerDepth(player) {
     const el = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
     let d = el ? parseInt(el.value, 10) : 1;
-    if (isNaN(d) || d < 0) d = 1;          // 0 is valid (play first legal move)
+    if (!d || d < 1) d = 1;
     return d;
   }
 
@@ -2169,29 +2005,14 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   async function evoMatch(A, B, nMatches, label) {
     const X = matchLength();
     const depth = lookaheadDepth();
-    let winsA = 0, winsB = 0, done = 0;
-    const tally = (res, swap) => {
+    let winsA = 0, winsB = 0;
+    for (let i = 0; i < nMatches && !evolveStop; i++) {
+      const swap = (i % 2 === 1);
+      const res = simulateBGMatch(swap ? B : A, swap ? A : B, X, depth);
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
       if (aWon) winsA++; else winsB++;
-      done++;
-      if (label) gameMessageEl.textContent = `${label} — ${done}/${nMatches} matches (to ${X})`;
-    };
-
-    if (workersAvailable) {
-      // One match per worker, across the pool.
-      const specs = [];
-      for (let i = 0; i < nMatches; i++) {
-        const swap = (i % 2 === 1);
-        specs.push({ wA: swap ? B : A, wB: swap ? A : B, X, depthA: depth, depthB: depth, swap });
-      }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
-    } else {
-      for (let i = 0; i < nMatches && !evolveStop; i++) {
-        const swap = (i % 2 === 1);
-        const res = await simulateBGMatchYielding(swap ? B : A, swap ? A : B, X, depth, depth, breathe);
-        tally(res, swap);
-        await new Promise((r) => setTimeout(r, 0));   // keep the UI alive between matches
-      }
+      if (label) gameMessageEl.textContent = `${label} — ${i + 1}/${nMatches} matches (to ${X})`;
+      await new Promise((r) => setTimeout(r, 0));   // keep the UI alive between matches
     }
     return { net: winsA - winsB, winsA, winsB };
   }
@@ -2356,119 +2177,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Round-robin: each selected pair plays `matches/pair` matches to the shared
   // match length X. Standings are by matches won (cube-safe: a match win counts 1).
   // Progress shows in the instruction window; a detailed CSV downloads at the end.
-  // Compete: play the two AIs chosen in the player rows (WP = White, RP = Red)
-  // head-to-head, each at ITS OWN depth (p1-depth / p2-depth). Colours alternate to
-  // cancel side bias, but each brain keeps its depth. Requires both sides to be AIs.
-  async function runCompete() {
-    const p1 = document.getElementById('p1-type').value;   // White selection
-    const p2 = document.getElementById('p2-type').value;   // Red selection
-    if (p1 === 'human' || p2 === 'human') {
-      gameMessageEl.textContent = 'Specify AI players to compete.';
-      return;
-    }
-
-    const wWhite = game.personalityWeights(p1), wRed = game.personalityWeights(p2);
-    const dWhite = playerDepth(1), dRed = playerDepth(2);
-    const X = matchLength();
-    const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 50);
-
-    tournamentRunning = true;
-    const btn = document.getElementById('btn-compete');
-    if (btn) btn.disabled = true;
-    const tStart = new Date();
-    let winsWhite = 0, winsRed = 0;   // match wins for WP / RP
-    let gptsWhite = 0, gptsRed = 0;   // total game points for WP / RP (tiebreak)
-    let totalGames = 0;
-
-    // Show status before work starts, and yield once so the browser paints it.
-    gameMessageEl.textContent = `Compete starting… ${p1} d${dWhite} vs ${p2} d${dRed}, ${nMatches} matches to ${X}…`;
-    await new Promise((r) => setTimeout(r, 0));
-
-    let done = 0;
-    // Tally one finished match (A is WP when !swap, else RP).
-    const tally = (res, swap) => {
-      const whiteWon = swap ? (res.winner === 'B') : (res.winner === 'A');
-      if (whiteWon) winsWhite++; else winsRed++;
-      gptsWhite += swap ? res.scoreB : res.scoreA;
-      gptsRed   += swap ? res.scoreA : res.scoreB;
-      totalGames += res.games;
-      done++;
-      gameMessageEl.textContent = `Compete… ${done}/${nMatches} (to ${X}) — ${p1} d${dWhite}: ${winsWhite}  ${p2} d${dRed}: ${winsRed}`;
-    };
-
-    if (workersAvailable) {
-      // One match per worker — depth travels with the brain via the paired depths.
-      const specs = [];
-      for (let i = 0; i < nMatches; i++) {
-        const swap = (i % 2 === 1);
-        specs.push({
-          wA: swap ? wRed : wWhite, wB: swap ? wWhite : wRed,
-          X, depthA: swap ? dRed : dWhite, depthB: swap ? dWhite : dRed, swap,
-        });
-      }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
-    } else {
-      for (let i = 0; i < nMatches; i++) {
-        const swap = (i % 2 === 1);
-        const res = await simulateBGMatchYielding(
-          swap ? wRed : wWhite, swap ? wWhite : wRed, X,
-          swap ? dRed : dWhite, swap ? dWhite : dRed, breathe);
-        tally(res, swap);
-        await new Promise((r) => setTimeout(r, 0));
-      }
-    }
-
-    const tEnd = new Date();
-    const secs = ((tEnd - tStart) / 1000).toFixed(1);
-    const lead = winsWhite === winsRed ? 'tie'
-      : (winsWhite > winsRed ? `${p1} (WP, d${dWhite}) wins` : `${p2} (RP, d${dRed}) wins`);
-    downloadCSV('BGCompeteResults.csv', buildCompeteCSV({
-      p1, p2, dWhite, dRed, winsWhite, winsRed, gptsWhite, gptsRed,
-      totalGames, nMatches, X, tStart, tEnd,
-    }));
-    gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s. Results saved.`;
-    sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
-
-    if (btn) btn.disabled = false;
-    tournamentRunning = false;
-  }
-
-  // Compete summary CSV, in the style of buildTournamentCSV but for the two player-
-  // row AIs at their own depths. Standings rank by match wins (game points tiebreak).
-  function buildCompeteCSV(r) {
-    const wpWins = r.winsWhite, rpWins = r.winsRed;
-    const wpFirst = wpWins >= rpWins;
-    const rows = [
-      { role: 'WP (White)', name: r.p1, depth: r.dWhite, won: wpWins, lost: rpWins, gpts: r.gptsWhite },
-      { role: 'RP (Red)',   name: r.p2, depth: r.dRed,   won: rpWins, lost: wpWins, gpts: r.gptsRed },
-    ];
-    if (!wpFirst) rows.reverse();
-
-    let csv = 'Backgammon Compete Results\n';
-    csv += 'Starting Date:,' + r.tStart.toLocaleString() + '\n';
-    csv += 'Ending Date:,' + r.tEnd.toLocaleString() + '\n';
-    csv += 'Duration:,"' + numCommas(r.tEnd - r.tStart) + ' ms"\n';
-    csv += 'White (WP):,' + r.p1 + ',depth,' + r.dWhite + '\n';
-    csv += 'Red (RP):,' + r.p2 + ',depth,' + r.dRed + '\n';
-    csv += 'Matches:,' + r.nMatches + '\n';
-    csv += 'Match Length (play to),' + r.X + '\n';
-    csv += 'Total Games:,' + r.totalGames + '\n\n';
-
-    csv += 'Standings\nRank,Role,Name,Depth,Matches Won,Matches Lost,Game Points\n';
-    rows.forEach((row, i) => {
-      csv += `${i + 1},${row.role},${row.name},${row.depth},${row.won},${row.lost},${row.gpts}\n`;
-    });
-    csv += '\nResult,' + (wpWins === rpWins
-      ? 'Tie ' + wpWins + '-' + rpWins
-      : (wpFirst ? `${r.p1} (WP, d${r.dWhite})` : `${r.p2} (RP, d${r.dRed})`) + ' wins ' + Math.max(wpWins, rpWins) + '-' + Math.min(wpWins, rpWins)) + '\n\n';
-
-    csv += 'Player Parameters:\nRole,Name,Depth,' + PARAM_ORDER.join(',') + '\n';
-    const wWP = game.personalityWeights(r.p1), wRP = game.personalityWeights(r.p2);
-    csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => wWP[k]).join(',') + '\n';
-    csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => wRP[k]).join(',') + '\n';
-    return csv;
-  }
-
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
@@ -2493,37 +2201,19 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const tStart = new Date();
     let done = 0;
 
-    // Tally one finished match given its pair/swap meta.
-    const tally = (res, A, B, swap) => {
-      const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
-      const winner = aWon ? A : B, loser = aWon ? B : A;
-      const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
-      mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
-      gpts[A] += aScore; gpts[B] += bScore;
-      done++;
-      gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
-    };
-
-    if (workersAvailable) {
-      // Flatten every pair × match into specs and run them across the worker pool.
-      const specs = [];
-      for (const [A, B] of pairs) {
-        const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
-        for (let k = 0; k < matchesPer; k++) {
-          const swap = (k % 2 === 1);
-          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap });
-        }
-      }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap));
-    } else {
-      for (const [A, B] of pairs) {
-        const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
-        for (let k = 0; k < matchesPer; k++) {
-          const swap = (k % 2 === 1);                          // balance first-game side bias
-          const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe);
-          tally(res, A, B, swap);
-          await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
-        }
+    for (const [A, B] of pairs) {
+      const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
+      for (let k = 0; k < matchesPer; k++) {
+        const swap = (k % 2 === 1);                          // balance first-game side bias
+        const res = simulateBGMatch(swap ? wB : wA, swap ? wA : wB, X, depth);
+        const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+        const winner = aWon ? A : B, loser = aWon ? B : A;
+        const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
+        mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
+        gpts[A] += aScore; gpts[B] += bScore;
+        done++;
+        gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
+        await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
       }
     }
 
@@ -2538,23 +2228,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     tournamentRunning = false;
   }
 
-    // Colour the closed View control to match the selected option: White = red-on-
-    // white, Red = white-on-red, Home/Outer = white-on-blue.
-    function syncViewColors() {
-      const sel = document.getElementById('board-view');
-      if (!sel) return;
-      const palette = {
-        white: { bg: '#ffffff', fg: '#ef4444' },
-        red:   { bg: '#ef4444', fg: '#ffffff' },
-        home:  { bg: '#1d4ed8', fg: '#ffffff' },
-        outer: { bg: '#1d4ed8', fg: '#ffffff' },
-      };
-      const c = palette[sel.value] || palette.red;
-      sel.style.background = c.bg;
-      sel.style.color = c.fg;
-    }
-    syncViewColors();
-
     document.getElementById('board-view').addEventListener('change', (e) => {
     const view = e.target.value;
     const wrapper = document.querySelector('.board-wrapper');
@@ -2562,7 +2235,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (view !== 'white') {
       wrapper.classList.add(`view-${view}`);
     }
-    syncViewColors();
     sysLog(`[System] Board view changed to ${view}`);
   });
 
@@ -2614,22 +2286,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       }, 300);
     } else if (game.movesLeft.length > 0 && game.hasLegalMoves()) {
       sysLog(`[AI] Player ${game.currentPlayer} (AI) is thinking...`);
-      aiActionTimeout = setTimeout(async () => {
+      aiActionTimeout = setTimeout(() => {
         aiActionTimeout = null;
-        const mover = game.currentPlayer;
-        const depth = playerDepth(mover);
-        let bestMoves;
-        // Deep searches (depth >= 2) run on the worker pool when available so the UI
-        // never blocks; depth 0/1 are instant on the main thread. If workers aren't
-        // available, fall back to the synchronous search.
-        if (workersAvailable && depth >= 2) {
-          try { bestMoves = await computeAIMoveParallel(depth); }
-          catch (err) { sysLog(`[AI] Worker search failed (${err && err.message}); using single thread.`); bestMoves = game.getBestAIMove(depth); }
-        } else {
-          bestMoves = game.getBestAIMove(depth);
-        }
-        // Guard: state may have changed during the await (stop/restart/turn change).
-        if (!gameStarted || game.winner || game.currentPlayer !== mover || game.playerTypes[mover] !== 'ai') return;
+        const bestMoves = game.getBestAIMove(playerDepth(game.currentPlayer));
         if (bestMoves && bestMoves.length > 0) {
           sysLog(`[AI] Chosen move sequence: ${bestMoves.map(m => `${m.from} -> ${m.to}`).join(', ')}`);
           isAIPlaying = true;
@@ -2877,24 +2536,7 @@ if (view === 'white') {
 /* =========================================
      NETWORK LOGIC (PeerJS)
   ========================================= */
-
-  // ICE servers for WebRTC (used by BOTH host and guest — edit here, one place).
-  // STUN alone only works when at least one side has a friendly NAT; cross-network
-  // play generally needs a live TURN relay. The old free openrelay.metered.ca relay
-  // was DISCONTINUED, which is why connections now stall at "Setting up P2P data
-  // channel listeners…" and never open. Paste working TURN credentials below (a free
-  // Metered account at https://dashboard.metered.ca gives you a set) — replace the
-  // YOUR_TURN_* placeholders. Until then, only same-/friendly-NAT connections work.
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    // --- Live TURN relay goes here (uncomment and fill in) ---
-    // { urls: 'turn:global.relay.metered.ca:80',  username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
-    // { urls: 'turn:global.relay.metered.ca:443', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
-    // { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
-  ];
-
+  
   const btnHost = document.getElementById('btn-host');
   const btnJoin = document.getElementById('btn-join');
   const joinCodeInput = document.getElementById('join-code');
@@ -2943,21 +2585,7 @@ function initNetworkGame(role) {
 
     function setupConnectionListeners(connection) {
     sysLog(`[Network] Setting up P2P data channel listeners...`);
-
-    // ICE diagnostics: surface why a data channel does/doesn't open. If you see it
-    // reach "checking" then "failed"/"disconnected" (and no 'relay' candidates), the
-    // peers can't form a direct path and need a working TURN relay.
-    const wireIceLogging = () => {
-      const pc = connection.peerConnection;
-      if (!pc || pc.__iceLogged) return;
-      pc.__iceLogged = true;
-      pc.addEventListener('iceconnectionstatechange', () => sysLog(`[Network] ICE state: ${pc.iceConnectionState}`));
-      pc.addEventListener('icegatheringstatechange', () => sysLog(`[Network] ICE gathering: ${pc.iceGatheringState}`));
-      pc.addEventListener('icecandidate', (e) => { if (e.candidate) sysLog(`[Network] local candidate: ${e.candidate.type}/${e.candidate.protocol}`); });
-    };
-    wireIceLogging();
-    setTimeout(wireIceLogging, 300);   // peerConnection may not exist yet at setup time
-
+    
     const handleOpen = () => {
       sysLog(`[Network] SUCCESS! Data channel is open.`);
       connStatus.textContent = "Connected! Game Active.";
@@ -3087,7 +2715,22 @@ connection.on('data', (data) => {
     
       sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
     
-peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers: ICE_SERVERS } });
+peer = new Peer('pointworks-bg-' + roomCode, {
+  config: { 'iceServers': [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { 
+      urls: 'turn:openrelay.metered.ca:80', 
+      username: 'openrelayproject', 
+      credential: 'openrelayproject' 
+    },
+    { 
+      urls: 'turn:openrelay.metered.ca:443', 
+      username: 'openrelayproject', 
+      credential: 'openrelayproject' 
+    }
+  ]}
+ });
       
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
@@ -3116,7 +2759,22 @@ peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers: ICE_SERVERS
     
     sysLog(`[Network] Connecting to signaling server as Guest...`);
     
-peer = new Peer({ config: { iceServers: ICE_SERVERS } });
+peer = new Peer({
+      config: { 'iceServers': [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { 
+          urls: 'turn:openrelay.metered.ca:80', 
+          username: 'openrelayproject', 
+          credential: 'openrelayproject' 
+        },
+        { 
+          urls: 'turn:openrelay.metered.ca:443', 
+          username: 'openrelayproject', 
+          credential: 'openrelayproject' 
+        }
+      ]}
+});
       
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
