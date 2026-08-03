@@ -2878,22 +2878,47 @@ if (view === 'white') {
      NETWORK LOGIC (PeerJS)
   ========================================= */
 
-  // ICE servers for WebRTC (used by BOTH host and guest — edit here, one place).
-  // STUN alone only works when at least one side has a friendly NAT; cross-network
-  // play generally needs a live TURN relay. The old free openrelay.metered.ca relay
-  // was DISCONTINUED, which is why connections now stall at "Setting up P2P data
-  // channel listeners…" and never open. Paste working TURN credentials below (a free
-  // Metered account at https://dashboard.metered.ca gives you a set) — replace the
-  // YOUR_TURN_* placeholders. Until then, only same-/friendly-NAT connections work.
-  const ICE_SERVERS = [
+  // WebRTC ICE servers. Cross-network play needs a live TURN relay (STUN alone can't
+  // punch through most NATs / Wi-Fi client isolation). We fetch fresh TURN credentials
+  // at runtime from Metered (free tier). getIceServers() is awaited before creating the
+  // Peer, and falls back to STUN-only if the fetch fails.
+  //
+  // NOTE: METERED_API_KEY is Metered's SECRET key and is visible in this public file.
+  // That's the accepted trade-off for a keyless static site — worst case someone burns
+  // the free 0.5 GB/mo relay quota; regenerate the key at dashboard.metered.ca if abused.
+  const METERED_DOMAIN  = 'peteralfeld.metered.live';
+  const METERED_API_KEY = '-EKhmZo9x4FKbX6RMYgYbq4yQtbgjATNE_XhtZvHtzQMeuof';
+
+  // STUN-only fallback if the TURN fetch fails (same-/friendly-NAT only).
+  const ICE_FALLBACK = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    // --- Live TURN relay goes here (uncomment and fill in) ---
-    // { urls: 'turn:global.relay.metered.ca:80',  username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
-    // { urls: 'turn:global.relay.metered.ca:443', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
-    // { urls: 'turns:global.relay.metered.ca:443?transport=tcp', username: 'YOUR_TURN_USERNAME', credential: 'YOUR_TURN_CREDENTIAL' },
   ];
+
+  let _iceServersPromise = null;
+  function getIceServers() {
+    if (_iceServersPromise) return _iceServersPromise;
+    _iceServersPromise = fetch(`https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`)
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((data) => {
+        // Metered returns a bare array; be tolerant of an {iceServers:[…]} wrapper too.
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.iceServers) ? data.iceServers : null);
+        if (list && list.length) {
+          const hasTurn = list.some((s) => /^turns?:/i.test(s.urls || (Array.isArray(s.urls) ? s.urls.join(',') : '')));
+          sysLog(`[Network] Loaded ${list.length} ICE servers from Metered (${hasTurn ? 'incl. TURN' : 'no TURN?!'}).`);
+          return list;
+        }
+        throw new Error('unexpected ICE response');
+      })
+      .catch((err) => {
+        sysLog(`[Network] TURN fetch failed (${err.message}); using STUN-only fallback (cross-network may not connect).`);
+        _iceServersPromise = null;     // allow a retry on the next host/join
+        return ICE_FALLBACK;
+      });
+    return _iceServersPromise;
+  }
+  getIceServers();   // warm the cache at load so HOST/JOIN are instant
 
   const btnHost = document.getElementById('btn-host');
   const btnJoin = document.getElementById('btn-join');
@@ -3068,26 +3093,27 @@ connection.on('data', (data) => {
 }
     
 // --- HOSTING ---
-  btnHost.addEventListener('click', () => {
+  btnHost.addEventListener('click', async () => {
     initNetworkGame(1);
-    
+
     // Explicitly set the host view to 'white'
     document.getElementById('board-view').value = 'white';
     document.getElementById('board-view').dispatchEvent(new Event('change'));
-    
+
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    
+
     // Update text AND color
     connStatus.textContent = "Waiting for opponent...";
-    connStatus.style.color = "var(--accent-gold)"; 
-    
+    connStatus.style.color = "var(--accent-gold)";
+
     // Inject the code into the text field and lock it so it can't be typed over
     joinCodeInput.value = roomCode;
-    joinCodeInput.readOnly = true; 
-    
+    joinCodeInput.readOnly = true;
+
       sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
-    
-peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers: ICE_SERVERS } });
+
+    const iceServers = await getIceServers();   // fresh STUN+TURN (or STUN-only fallback)
+peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers } });
       
     peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
@@ -3100,23 +3126,24 @@ peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers: ICE_SERVERS
   });
     
 // --- JOINING ---
-  btnJoin.addEventListener('click', () => {
+  btnJoin.addEventListener('click', async () => {
     const code = joinCodeInput.value.trim().toUpperCase();
     if (!code) return;
-    
+
     initNetworkGame(2);
-    
+
     // Update text AND color
     connStatus.textContent = "Connecting to Host...";
     connStatus.style.color = "var(--accent-gold)";
-    
+
     // Explicitly set the guest view to 'red'
-    document.getElementById('board-view').value = 'red'; 
+    document.getElementById('board-view').value = 'red';
     document.getElementById('board-view').dispatchEvent(new Event('change'));
-    
+
     sysLog(`[Network] Connecting to signaling server as Guest...`);
-    
-peer = new Peer({ config: { iceServers: ICE_SERVERS } });
+
+    const iceServers = await getIceServers();   // fresh STUN+TURN (or STUN-only fallback)
+peer = new Peer({ config: { iceServers } });
       
     peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
     peer.on('open', (id) => {
