@@ -353,7 +353,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  min-height: 140px;
+  flex: 1 1 0;        /* each player's bar area fills ~half the bar column */
+  min-height: 60px;
   width: 100%;
   justify-content: center;
 }
@@ -1493,3 +1494,6 @@ input[type="number"]::-webkit-outer-spin-button {
   background: rgb(0, 140, 0);
   box-shadow: 0 0 10px rgba(0, 200, 0, 0.7);
 }
+
+/* Setup/Analysis row: stretch controls to fill the column width */
+.setup-station .setup-btn, .setup-station .setup-die { flex: 1 1 0; min-width: 0; }

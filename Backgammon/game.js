@@ -10,6 +10,7 @@
  * Weights are integers normalized so max|w| = 1000.
  *
  *   PC  normalized pip count            (term w*pip/167)      -667
+ *   BO  checkers borne off              (term w*(boW-boR)/15) +500
  *   EC1 rolls allowing exactly one move (term w*EC1/36)       -133
  *   EC0 rolls allowing no move          (term w*EC0/36)       -400
  *   PH  longest prime * checkers trapped (steep, pure mult)   +667
@@ -22,15 +23,15 @@
 // Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
 // is the fixed historic baseline and is listed last (bottom of the player menus).
 const AI_PERSONALITIES = {
-  Arwen:     { PC: -1000, EC1: -80,  EC0: -47,   PH: 106,  HB: 55,  AN: -1,   DO: 1,    IO: 6,   DP: 18,   IP: 1,   DE: -31  },  // = Arwen-evo-g365 (evolved)
-  Bilbo:     { PC: -1000, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
-  Celebrian: { PC: -387,  EC1: -17,  EC0: -178,  PH: 289,  HB: 1,   AN: 34,   DO: 1000, IO: -20, DP: 57,   IP: 39,  DE: 173  },  // = Bilbo-evo-g17 (evolved)
-  Dwalin:    { PC: -1000, EC1: -178, EC0: 2,     PH: 22,   HB: 24,  AN: -1,   DO: 781,  IO: 346, DP: 68,   IP: 5,   DE: -64  },  // = Dwalin-evo-g190 (evolved)
-  Eowyn:     { PC: -1000, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
-  Frodo:     { PC: -334,  EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
-  Galadriel: { PC: -1000, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
-  Hamfast:   { PC: -556,  EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
-  Origin:    { PC: -667,  EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
+  Arwen:     { PC: -1000, BO: 500, EC1: -80,  EC0: -47,   PH: 106,  HB: 55,  AN: -1,   DO: 1,    IO: 6,   DP: 18,   IP: 1,   DE: -31  },  // = Arwen-evo-g365 (evolved)
+  Bilbo:     { PC: -1000, BO: 500, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
+  Celebrian: { PC: -387,  BO: 500, EC1: -17,  EC0: -178,  PH: 289,  HB: 1,   AN: 34,   DO: 1000, IO: -20, DP: 57,   IP: 39,  DE: 173  },  // = Bilbo-evo-g17 (evolved)
+  Dwalin:    { PC: -1000, BO: 500, EC1: -178, EC0: 2,     PH: 22,   HB: 24,  AN: -1,   DO: 781,  IO: 346, DP: 68,   IP: 5,   DE: -64  },  // = Dwalin-evo-g190 (evolved)
+  Eowyn:     { PC: -1000, BO: 500, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
+  Frodo:     { PC: -334,  BO: 500, EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
+  Galadriel: { PC: -1000, BO: 500, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
+  Hamfast:   { PC: -556,  BO: 500, EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
+  Origin:    { PC: -667,  BO: 500, EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
 };
 
 // The baseline AI. Each personality is normalized so max|w| = 1000.
@@ -153,6 +154,72 @@ class BackgammonGame {
     // Populated by restoreGameSnapshot(); consumed one entry per rollDice() call.
     this.futureRolls = [];
     this.futureRollIndex = 0;
+  }
+
+  /**
+   * Board-setup helpers for the setup/analysis mode. They reset the board and turn
+   * state ONLY — player types, AI seat selections (aiWeights/aiNames) and cube are
+   * left to the caller-facing reset below, so the user's White/Red picks survive.
+   */
+  _setupResetTurn() {
+    this.currentPlayer = null;
+    this.dice = [0, 0];
+    this.movesLeft = [];
+    this.hasRolled = false;
+    this.winner = null;
+    this.winByDecline = false;
+    this.doublingCubeValue = 1;
+    this.doublingCubeOwner = null;
+    this.turnHistory = [];
+    this.gameHistory = [];
+    this.playedMovesThisTurn = [];
+    this.turnCount = 0;
+    this.futureRolls = [];
+    this.futureRollIndex = 0;
+  }
+
+  // CLEAR: empty board, all 30 checkers parked on the two borne-off trays.
+  setupClear() {
+    this.points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
+    this.bar = { 1: 0, 2: 0 };
+    this.borneOff = { 1: 15, 2: 15 };
+    this._setupResetTurn();
+  }
+
+  // INITIAL: the standard opening position (empty trays), same stacks as restart().
+  setupInitial() {
+    this.points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
+    this.points[24] = { player: 1, count: 2 };
+    this.points[13] = { player: 1, count: 5 };
+    this.points[8]  = { player: 1, count: 3 };
+    this.points[6]  = { player: 1, count: 5 };
+    this.points[1]  = { player: 2, count: 2 };
+    this.points[12] = { player: 2, count: 5 };
+    this.points[17] = { player: 2, count: 3 };
+    this.points[19] = { player: 2, count: 5 };
+    this.bar = { 1: 0, 2: 0 };
+    this.borneOff = { 1: 0, 2: 0 };
+    this._setupResetTurn();
+  }
+
+  /**
+   * Rank every legal complete turn for `player` from the CURRENT board with the given
+   * `dice`, scored with `weights` at `depth` plies (the same currency getBestAIMove
+   * uses, incl. the root-only DE bonus). Returns [{ moves, value }] sorted best-for-
+   * mover first (White descending, Red ascending). Powers the MOV analysis list.
+   */
+  rankAIMoves(player, dice, depth, weights) {
+    const states = this.generateAllCompleteTurnMoves(player, dice);
+    if (states.length === 0) return [];
+    const ctx = {
+      depth, player, weights,
+      opp: player === 1 ? 2 : 1,
+      states,
+      parentContact: this.hasContact(this.points, this.bar),
+    };
+    const scored = states.map((s) => ({ moves: s.moves, value: this._scoreRootCandidate(s, ctx) }));
+    scored.sort((a, b) => (player === 1 ? b.value - a.value : a.value - b.value));
+    return scored;
   }
 
   /**
@@ -1004,6 +1071,10 @@ rollDice(d1 = null, d2 = null) {
     const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
     score += weights.PC * (pipW - pipR) / 167;
 
+    // BO — checkers borne off (w positive: taking checkers off is good). Breaks the
+    // pip-count tie between bearing a checker off and stacking it deeper in the home.
+    score += weights.BO * (borneOff[1] - borneOff[2]) / 15;
+
     // EC — encumbrance / mobility
     const ecW = this.computeEC(points, bar, 1), ecR = this.computeEC(points, bar, 2);
     score += weights.EC1 * (ecW.ec1 - ecR.ec1) / 36;
@@ -1043,6 +1114,8 @@ rollDice(d1 = null, d2 = null) {
 
     const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
     rows.push({ code: 'PC', meaning: 'Pip count', white: pipW, red: pipR, v: (pipW - pipR) / 167, weight: weights.PC });
+
+    rows.push({ code: 'BO', meaning: 'Checkers borne off', white: borneOff[1], red: borneOff[2], v: (borneOff[1] - borneOff[2]) / 15, weight: weights.BO });
 
     const ecW = this.computeEC(points, bar, 1), ecR = this.computeEC(points, bar, 2);
     rows.push({ code: 'EC1', meaning: 'Rolls with one move', white: ecW.ec1, red: ecR.ec1, v: (ecW.ec1 - ecR.ec1) / 36, weight: weights.EC1 });

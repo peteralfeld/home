@@ -155,6 +155,19 @@ document.addEventListener('DOMContentLoaded', () => {
   let highlightOn = false;
   let autoRollOn  = false;
   let autoRollTimeout = null;
+
+  // ── Board Setup & Analysis mode ───────────────────────────────────────
+  // setupMode reroutes the board to free placement (drag/click, no legality),
+  // repurposes the green window for the MOV analysis list, and drives CLEAR/
+  // INITIAL/MOV/PLAY/START. setupOnRoll = the side to move next when stepping.
+  let setupMode    = false;
+  let setupSel     = null;   // two-click source location ('pN'|'bar1'|'bar2'|'tray1'|'tray2')
+  let setupDragLoc = null;   // drag source location
+  let setupOnRoll  = null;   // side to move next (1|2|null)
+  let setupKind    = null;   // 'clear' | 'initial' | 'examine' (last entered)
+  let setupBaseMsg = 'Setup Mode';   // idle instruction-line text while in setup
+  let setupAutoStop = false;         // set by STOP/exit to break the examine auto-play loop
+  let startedFromSetup = false;  // a game launched via START from setup → STOP resets it to initial
   let autoMoveOn  = false;
 
   // ── History Navigation state ────────────────────────────────────────
@@ -206,6 +219,23 @@ function sysLog(msg) {
   // Bar containers interaction
   barP1El.addEventListener('click', () => handleBarClick(1));
   barP2El.addEventListener('click', () => handleBarClick(2));
+
+  // Bar drop targets (only active in setup mode; handleDragOver/handleDrop guard on it)
+  barP1El.addEventListener('dragover', (e) => handleDragOver(e, 'bar1'));
+  barP1El.addEventListener('dragenter', (e) => handleDragOver(e, 'bar1'));
+  barP1El.addEventListener('drop', (e) => handleDrop(e, 'bar1'));
+  barP2El.addEventListener('dragover', (e) => handleDragOver(e, 'bar2'));
+  barP2El.addEventListener('dragenter', (e) => handleDragOver(e, 'bar2'));
+  barP2El.addEventListener('drop', (e) => handleDrop(e, 'bar2'));
+
+  // The whole bar column is also a drop target, so a checker can be dropped ANYWHERE
+  // on the bar (setupMoveOne redirects bar1/bar2 → the moving checker's own colour).
+  const barDividerEl = document.querySelector('.bar-divider');
+  if (barDividerEl) {
+    barDividerEl.addEventListener('dragover',  (e) => handleDragOver(e, 'bar1'));
+    barDividerEl.addEventListener('dragenter', (e) => handleDragOver(e, 'bar1'));
+    barDividerEl.addEventListener('drop',      (e) => handleDrop(e, 'bar1'));
+  }
   
   // Setup click and drop listeners for bear off zones
   bearOffP1.addEventListener('click', () => handleBearOffClick(1));
@@ -221,6 +251,7 @@ function sysLog(msg) {
 
   // Event Listeners
   diceContainerEl.addEventListener('click', () => {
+    if (setupMode) return;   // dice are inert while editing a setup position
     if (!gameStarted) {
       // Auto Start: a dice click starts a local game (no need to click Start first);
       // for a human it also performs the opening roll so one click gets you going.
@@ -273,38 +304,30 @@ function sysLog(msg) {
     exportScreenEl.addEventListener('click', async () => {
       const label = exportScreenEl.querySelector('.settings-item-label');
       const original = label.textContent;
-      label.textContent = 'Selecting Tab…';
 
+      // Render the board straight to an image with html2canvas (loaded in index.html)
+      // — no screen-share picker, so it can't be "cancelled".
+      if (typeof html2canvas === 'undefined') {
+        sysLog('[Error] html2canvas not loaded.');
+        label.textContent = 'Lib missing';
+        setTimeout(() => { label.textContent = original; }, 2000);
+        return;
+      }
+      const target = document.querySelector('.board-wrapper')
+                  || document.getElementById('backgammon-board')
+                  || document.body;
+      label.textContent = 'Capturing…';
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          preferCurrentTab: true,
-          video: { displaySurface: 'browser' }
-        });
-        label.textContent = 'Capturing…';
-
-        const video = document.createElement('video');
-        video.srcObject = stream;
-        await new Promise(resolve => {
-          video.onloadedmetadata = () => { video.play(); resolve(); };
-        });
-
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        stream.getTracks().forEach(t => t.stop());
-
+        const canvas = await html2canvas(target, { backgroundColor: '#0f172a', scale: 2, logging: false, useCORS: true });
         const link = document.createElement('a');
-        link.download = `bg-screenshot-${Date.now()}.png`;
+        link.download = `bg-board-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-
-        sysLog('[System] Screenshot captured and downloaded.');
+        sysLog('[System] Board image captured and downloaded.');
         label.textContent = original;
-
       } catch (err) {
-        sysLog(`[Error] Screenshot failed: ${err.message}`);
-        label.textContent = 'Cancelled';
+        sysLog(`[Error] Board capture failed: ${err.message}`);
+        label.textContent = 'Failed';
         setTimeout(() => { label.textContent = original; }, 2000);
       }
     });
@@ -445,7 +468,7 @@ function sysLog(msg) {
   const settingsChevron = document.getElementById('settings-chevron');
 
   // Doubling on/off (default ON). When off, clicking the cube offers nothing.
-  let doublingOn = true;
+  let doublingOn = false;
   // Auto Start (default OFF). When on, clicking the dice with no game running starts it.
   let autoStartOn = false;
 
@@ -609,7 +632,11 @@ function sysLog(msg) {
    */
   function updateUI() {
     sysLog("[Update] Board state logical: " + game.points.map((p, idx) => p.count > 0 ? `${idx}:${p.player}(${p.count})` : '').filter(Boolean).join(', '));
-    
+
+    // Setup mode owns the board render and both text windows itself; skip the
+    // normal dice/turn/history/message/AI pipeline entirely.
+    if (setupMode) { renderPoints(); renderBar(); renderBorneOff(); return; }
+
 // Render dice faces dynamically based on unused moves
     if (!isRolling) {
       if (game.hasRolled) {
@@ -909,10 +936,25 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
             setupDragEvents(checker, i);
           }
 
+          if (setupMode) {
+            checker.setAttribute('draggable', 'true');
+            setupDragAttach(checker, 'p' + i);
+          }
+
           container.appendChild(checker);
         }
       }
     }
+  }
+
+  // Overlap (negative top margin) so a crowded bar can show up to 15 checkers,
+  // mirroring the point-stacking logic. Returns 0 (no overlap) when they fit.
+  function barStackOverlap(barEl, count) {
+    if (count < 2) return 0;
+    const rect = barEl.getBoundingClientRect();
+    const checkerSize = rect.width * 0.8;
+    const gap = 5;   // the flex `gap` between bar checkers (see .bar-container)
+    return Math.min(0, (rect.height * 0.95 - count * checkerSize) / (count - 1) - gap);
   }
 
   /**
@@ -923,23 +965,35 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
     barP2El.innerHTML = '';
 
     // Player 1 (White) Bar
+    const barOverlap1 = barStackOverlap(barP1El, game.bar[1]);
     for (let c = 0; c < game.bar[1]; c++) {
       const checker = document.createElement('div');
       checker.className = 'checker player-1';
+      if (c > 0) checker.style.marginTop = `${barOverlap1}px`;
 	if (game.currentPlayer === 1 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[1] === 'human' && (!isNetworkGame || game.currentPlayer === localPlayerRole)) {
         checker.setAttribute('draggable', 'true');
         setupDragEvents(checker, "bar");
+      }
+      if (setupMode) {
+        checker.setAttribute('draggable', 'true');
+        setupDragAttach(checker, 'bar1');
       }
       barP1El.appendChild(checker);
     }
 
     // Player 2 (Red) Bar
+    const barOverlap2 = barStackOverlap(barP2El, game.bar[2]);
     for (let c = 0; c < game.bar[2]; c++) {
       const checker = document.createElement('div');
       checker.className = 'checker player-2';
+      if (c > 0) checker.style.marginTop = `${barOverlap2}px`;
 	if (game.currentPlayer === 2 && game.hasRolled && game.movesLeft.length > 0 && game.playerTypes[2] === 'human' && (!isNetworkGame || game.currentPlayer === localPlayerRole)) {
         checker.setAttribute('draggable', 'true');
         setupDragEvents(checker, "bar");
+      }
+      if (setupMode) {
+        checker.setAttribute('draggable', 'true');
+        setupDragAttach(checker, 'bar2');
       }
       barP2El.appendChild(checker);
     }
@@ -955,12 +1009,20 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
     for (let c = 0; c < game.borneOff[1]; c++) {
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-1';
+      if (setupMode) {
+        slab.setAttribute('draggable', 'true');
+        setupDragAttach(slab, 'tray1');
+      }
       bearOffP1.appendChild(slab);
     }
 
     for (let c = 0; c < game.borneOff[2]; c++) {
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-2';
+      if (setupMode) {
+        slab.setAttribute('draggable', 'true');
+        setupDragAttach(slab, 'tray2');
+      }
       bearOffP2.appendChild(slab);
     }
   }
@@ -1001,6 +1063,7 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
    * Handle Drag Over destination.
    */
   function handleDragOver(e, target) {
+    if (setupMode) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; return; }
     if (legalDestinations.some(d => d.to === target || (target === 'off' && d.to === 'off'))) {
       e.preventDefault(); // allow drop
       e.dataTransfer.dropEffect = 'move';
@@ -1026,6 +1089,13 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
    */
   function handleDrop(e, target) {
     e.preventDefault();
+    if (setupMode) {
+      let loc = target;
+      if (target === 'off') loc = (e.currentTarget === bearOffP1) ? 'tray1' : 'tray2';
+      else if (typeof target === 'number') loc = 'p' + target;
+      setupDrop(loc);
+      return;
+    }
     const sourceVal = selectedSource;
     
     let targetVal = target;
@@ -1127,6 +1197,7 @@ function handleRollClick() {
    * Click interaction for points.
    */
   function handlePointClick(pointIdx) {
+    if (setupMode) { setupClickLoc('p' + pointIdx); return; }
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     const pointState = game.points[pointIdx];
@@ -1181,6 +1252,7 @@ function handleRollClick() {
    * Click interaction for central bar.
    */
   function handleBarClick(player) {
+    if (setupMode) { setupClickLoc('bar' + player); return; }
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     if (game.currentPlayer !== player || !game.hasRolled || !game.hasCheckersOnBar(player)) {
@@ -1228,6 +1300,7 @@ function handleRollClick() {
    * Click interaction for bearing off trays.
    */
   function handleBearOffClick(player) {
+    if (setupMode) { setupClickLoc('tray' + player); return; }
     if (!gameStarted || game.playerTypes[game.currentPlayer] === 'ai') return;
     if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
     if (game.currentPlayer !== player || selectedSource === null) return;
@@ -1314,6 +1387,7 @@ function handleRollClick() {
     if (autoRollTimeout)  { clearTimeout(autoRollTimeout);  autoRollTimeout  = null; }
 
     gameStarted       = false;
+    startedFromSetup  = false;
     isAIPlaying       = false;
     selectedSource    = null;
     legalDestinations = [];
@@ -1406,6 +1480,7 @@ function handleRollClick() {
   }
 
   function renderHistoryList() {
+    if (setupMode) return;   // the green window shows the MOV list in setup mode
     sysLog(`[History] Rendering list. count=${game.gameHistory.length}`);
     const showScore = showScoreOn;
     historyListEl.innerHTML = '';
@@ -1534,6 +1609,7 @@ function handleRollClick() {
    * Does NOT destroy historyNavBuffer so forward navigation stays possible.
    */
   function navigateTo(idx) {
+    if (setupMode) return;  // history navigation is disabled during setup
     stopAI();               // navigating pauses AI so the board is readable
     if (!ensureNavBuffer()) return;
     idx = Math.max(0, Math.min(idx, historyNavBuffer.length - 1));
@@ -1675,13 +1751,17 @@ function handleRollClick() {
   sysLog(`[System] Game ready, waiting for manual start.`);
 
 document.getElementById('btn-start-game').addEventListener('click', () => {
+    if (setupMode) { doSTART(); return; }   // START launches a game from the setup position
     startGame(false);
 });
 
-  // STOP button — pause AI; START re-enables it
+  // STOP button — in setup mode it exits setup back to the initial position;
+  // otherwise it pauses AI (START re-enables it).
   const btnStop = document.getElementById('btn-stop');
   if (btnStop) {
     btnStop.addEventListener('click', (e) => {
+      if (setupMode) { exitSetup(); return; }
+      if (startedFromSetup) { startedFromSetup = false; performRestart(); return; }
       stopAI();
       if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
         conn.send({ type: 'stop_ai' });
@@ -1752,7 +1832,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // ── AI parameter editor ───────────────────────────────────
   const editBrainSel  = document.getElementById('edit-brain');
   const brainParamsEl = document.getElementById('brain-params');
-  const BRAIN_KEYS = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'DT', 'AT'];
+  const BRAIN_KEYS = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'DT', 'AT'];
 
   function refreshBrainSelect() {
     if (!editBrainSel) return;
@@ -1887,6 +1967,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   const tourneySelected  = new Set();
   const tourneyTogglesEl = document.getElementById('tourney-toggles');
   let tournamentRunning  = false;
+  let tournamentStop     = false;   // set by entering setup mode; halts a running tournament/compete
 
   // One letter toggle per personality (first initial). Default: everyone except Origin.
   function buildTournamentToggles() {
@@ -1928,8 +2009,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   });
 
   // ── Genetic evolution (Phase I: single-threaded) ──────────
-  const EVO_EVAL = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
-  const EVO_ALL = [...EVO_EVAL, 'DT', 'AT'];  // the 13 evolvable numbers
+  const EVO_EVAL = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const EVO_ALL = [...EVO_EVAL, 'DT', 'AT'];  // the 14 evolvable numbers
   let evolveRunning = false;
   let evolveStop = false;
 
@@ -2159,7 +2240,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const typeSel = document.getElementById(player === 1 ? 'p1-type' : 'p2-type');
     const depthSel = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
     if (!typeSel || !depthSel) return;
-    depthSel.style.opacity = (typeSel.value === 'human') ? '0.45' : '1';
+    // A human seat still uses this depth in setup (Arwen at that depth), so keep it
+    // clearly readable — only a slight dim to hint it's inactive in ordinary play.
+    depthSel.style.opacity = (typeSel.value === 'human') ? '0.85' : '1';
   }
 
   // Play nMatches matches to X points. Net (fitness) = A's match wins - B's match
@@ -2307,7 +2390,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     else runEvolution();
   });
 
-  const PARAM_ORDER = ['PC', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const PARAM_ORDER = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
   const numCommas = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
   function downloadCSV(filename, text) {
@@ -2372,7 +2455,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const X = matchLength();
     const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 50);
 
-    tournamentRunning = true;
+    tournamentRunning = true; tournamentStop = false;
     const btn = document.getElementById('btn-compete');
     if (btn) btn.disabled = true;
     const tStart = new Date();
@@ -2409,6 +2492,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
     } else {
       for (let i = 0; i < nMatches; i++) {
+        if (tournamentStop) break;
         const swap = (i % 2 === 1);
         const res = await simulateBGMatchYielding(
           swap ? wRed : wWhite, swap ? wWhite : wRed, X,
@@ -2418,6 +2502,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       }
     }
 
+    if (tournamentStop) { tournamentRunning = false; if (btn) btn.disabled = false; return; }
     const tEnd = new Date();
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     const lead = winsWhite === winsRed ? 'tie'
@@ -2487,7 +2572,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       for (let j = i + 1; j < names.length; j++) pairs.push([names[i], names[j]]);
     const total = pairs.length * matchesPer;
 
-    tournamentRunning = true;
+    tournamentRunning = true; tournamentStop = false;
     const runBtn = document.getElementById('btn-run-tournament');
     if (runBtn) runBtn.disabled = true;
     const tStart = new Date();
@@ -2517,8 +2602,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap));
     } else {
       for (const [A, B] of pairs) {
+        if (tournamentStop) break;
         const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
         for (let k = 0; k < matchesPer; k++) {
+          if (tournamentStop) break;
           const swap = (k % 2 === 1);                          // balance first-game side bias
           const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe);
           tally(res, A, B, swap);
@@ -2527,6 +2614,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       }
     }
 
+    if (tournamentStop) { tournamentRunning = false; if (runBtn) runBtn.disabled = false; return; }
     const tEnd = new Date();
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
@@ -3424,10 +3512,11 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     }
 
     gameStarted = true;
+    startedFromSetup = false;   // ordinary game → STOP keeps its pause/resume behaviour
     initialRollOff = true;
     game.currentPlayer = 1;
     game.hasRolled = false;
-    
+
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
     btnStart.style.opacity = '0.5';
@@ -3497,5 +3586,285 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       updateUI();
     }, 600);
   };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Board Setup & Analysis mode (CLEAR / INITIAL / dice / MOV / PLAY / START)
+  // ═══════════════════════════════════════════════════════════════════════
+  const dieR1 = document.getElementById('setup-r1');
+  const dieR2 = document.getElementById('setup-r2');
+  const dieW1 = document.getElementById('setup-w1');
+  const dieW2 = document.getElementById('setup-w2');
+  let setupPickedEl = null;
+
+  const randDie = () => Math.floor(Math.random() * 6) + 1;
+  function clearSetupDice() { [dieR1, dieR2, dieW1, dieW2].forEach((el) => { if (el) el.value = ''; }); }
+
+  // Convention (matches the View control): red-on-white = White, white-on-red = Red.
+  // So the setup-r* menus are WHITE's dice and the setup-w* menus are RED's. Picking a
+  // value on one side blanks the other (only one side rolls at a time).
+  [dieR1, dieR2].forEach((el) => el && el.addEventListener('change', () => {
+    if (el.value !== '') { if (dieW1) dieW1.value = ''; if (dieW2) dieW2.value = ''; setupOnRoll = 1; }
+  }));
+  [dieW1, dieW2].forEach((el) => el && el.addEventListener('change', () => {
+    if (el.value !== '') { if (dieR1) dieR1.value = ''; if (dieR2) dieR2.value = ''; setupOnRoll = 2; }
+  }));
+
+  // Stop any game / tournament / evolution before entering setup.
+  function haltEverything() {
+    evolveStop = true;
+    tournamentStop = true;
+    aiStopped = true;
+    isAIPlaying = false;
+    if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
+    if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
+    if (autoRollTimeout) { clearTimeout(autoRollTimeout); autoRollTimeout = null; }
+  }
+
+  function enterSetup(kind) {
+    haltEverything();
+    setupMode = true;
+    setupKind = kind; setupAutoStop = false;
+    setupSel = null; setupDragLoc = null; setupOnRoll = null;
+    selectedSource = null; legalDestinations = [];
+    gameStarted = false;
+    if (kind === 'clear') game.setupClear();
+    else if (kind === 'initial') game.setupInitial();
+    else {   // 'examine' — keep the current position; just reset dice/turn scaffolding
+      setupOnRoll = game.currentPlayer || null;
+      game.movesLeft = []; game.hasRolled = false; game.dice = [0, 0]; game.winner = null;
+      game.turnHistory = []; game.playedMovesThisTurn = [];
+    }
+    renderDie(die1El, 0); renderDie(die2El, 0);
+    clearSetupDice();
+    clearSetupHighlight();
+    setupBaseMsg = (kind === 'examine') ? 'Setup Mode, click STOP to exit.' : 'Setup Mode';
+    gameMessageEl.textContent = setupBaseMsg;
+    historyListEl.innerHTML = '';           // green window blank until MOV
+    renderPoints(); renderBar(); renderBorneOff();
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+  }
+
+  function exitSetup() {
+    setupMode = false;
+    setupAutoStop = true;   // halt any examine auto-play loop
+    setupSel = null; setupDragLoc = null; setupOnRoll = null;
+    clearSetupHighlight();
+    performRestart();   // back to the standard initial position + normal play state
+  }
+
+  // ── free board editing (drag + two-click); the 30 checkers are conserved ──
+  function locColor(loc) {
+    if (loc[0] === 'p') { const i = +loc.slice(1); return game.points[i].count > 0 ? game.points[i].player : null; }
+    if (loc === 'bar1')  return game.bar[1] > 0 ? 1 : null;
+    if (loc === 'bar2')  return game.bar[2] > 0 ? 2 : null;
+    if (loc === 'tray1') return game.borneOff[1] > 0 ? 1 : null;
+    if (loc === 'tray2') return game.borneOff[2] > 0 ? 2 : null;
+    return null;
+  }
+  function canPlace(loc, color) {
+    if (loc[0] === 'p') { const p = game.points[+loc.slice(1)]; return p.count === 0 || p.player === color; }
+    if (loc === 'bar1' || loc === 'tray1') return color === 1;
+    if (loc === 'bar2' || loc === 'tray2') return color === 2;
+    return false;
+  }
+  function removeOne(loc) {
+    if (loc[0] === 'p') { const p = game.points[+loc.slice(1)]; p.count--; if (p.count <= 0) { p.count = 0; p.player = null; } return; }
+    if (loc === 'bar1')  game.bar[1]--;
+    else if (loc === 'bar2')  game.bar[2]--;
+    else if (loc === 'tray1') game.borneOff[1]--;
+    else if (loc === 'tray2') game.borneOff[2]--;
+  }
+  function addOne(loc, color) {
+    if (loc[0] === 'p') { const p = game.points[+loc.slice(1)]; if (p.count > 0 && p.player === color) p.count++; else { p.player = color; p.count = 1; } return; }
+    if (loc === 'bar1')  game.bar[1]++;
+    else if (loc === 'bar2')  game.bar[2]++;
+    else if (loc === 'tray1') game.borneOff[1]++;
+    else if (loc === 'tray2') game.borneOff[2]++;
+  }
+  function setupMoveOne(from, to) {
+    if (from === to) return;
+    const color = locColor(from);
+    if (!color) return;
+    if (to === 'bar1' || to === 'bar2') to = 'bar' + color;   // any spot on the bar → that checker's own bar area
+    if (from === to) return;
+    if (!canPlace(to, color)) { gameMessageEl.textContent = 'Setup Mode — a point can hold only one colour.'; return; }
+    removeOne(from); addOne(to, color);
+    gameMessageEl.textContent = setupBaseMsg;
+    renderPoints(); renderBar(); renderBorneOff();
+  }
+
+  function setupLocEl(loc) {
+    if (loc[0] === 'p')  return document.getElementById('point-' + loc.slice(1));
+    if (loc === 'bar1')  return barP1El;
+    if (loc === 'bar2')  return barP2El;
+    if (loc === 'tray1') return bearOffP1;
+    if (loc === 'tray2') return bearOffP2;
+    return null;
+  }
+  function clearSetupHighlight() {
+    if (setupPickedEl) { setupPickedEl.classList.remove('highlight-source'); setupPickedEl = null; }
+  }
+  function setupClickLoc(loc) {
+    if (setupSel === null) {
+      if (locColor(loc)) { setupSel = loc; setupPickedEl = setupLocEl(loc); if (setupPickedEl) setupPickedEl.classList.add('highlight-source'); }
+      return;
+    }
+    if (loc === setupSel) { setupSel = null; clearSetupHighlight(); return; }
+    setupMoveOne(setupSel, loc);
+    setupSel = null; clearSetupHighlight();
+  }
+  function setupDragAttach(el, loc) {
+    el.addEventListener('dragstart', (e) => {
+      setupDragLoc = loc;
+      if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', loc); }
+    });
+    el.addEventListener('dragend', () => { setupDragLoc = null; });
+  }
+  function setupDrop(loc) {
+    if (setupDragLoc) { setupMoveOne(setupDragLoc, loc); setupDragLoc = null; }
+  }
+
+  // ── dice resolution, MOV, PLAY, START ──
+  function setupAllBlank() { return [dieR1, dieR2, dieW1, dieW2].every((el) => !el || el.value === ''); }
+
+  // Resolve the side on roll and its dice. A lone die is filled at random; an all-
+  // blank state rolls for a side (the pending stepping side, else an opening roll-off).
+  function resolveMoverAndDice() {
+    const whiteVals = [dieR1, dieR2].map((el) => el && el.value).filter((v) => v);  // setup-r* = White
+    const redVals   = [dieW1, dieW2].map((el) => el && el.value).filter((v) => v);  // setup-w* = Red
+    let player, faces;
+    if (whiteVals.length)    { player = 1; faces = whiteVals.map(Number); }
+    else if (redVals.length) { player = 2; faces = redVals.map(Number); }
+    else if (setupOnRoll)    { player = setupOnRoll; faces = [randDie(), randDie()]; }
+    else { let d1, d2; do { d1 = randDie(); d2 = randDie(); } while (d1 === d2); player = d1 > d2 ? 1 : 2; faces = [d1, d2]; }
+    if (faces.length === 1) faces = [faces[0], randDie()];
+    const dice = (faces[0] === faces[1]) ? [faces[0], faces[0], faces[0], faces[0]] : [faces[0], faces[1]];
+    return { player, dice, faces: faces.slice(0, 2) };
+  }
+  function showDiceForSide(player, faces) {
+    if (player === 1) { dieR1.value = String(faces[0]); dieR2.value = String(faces[1]); dieW1.value = ''; dieW2.value = ''; }
+    else { dieW1.value = String(faces[0]); dieW2.value = String(faces[1]); dieR1.value = ''; dieR2.value = ''; }
+  }
+  function sideWeights(player) {
+    if (game.playerTypes[player] === 'ai') return game.personalityWeights(game.aiNames[player]);
+    return game.personalityWeights('Arwen');   // a human seat → Arwen does the analysis / move
+  }
+  function moveText(moves) {
+    if (!moves || moves.length === 0) return '(no move)';
+    return moves.map((m) => `${m.from === 'bar' ? 'bar' : m.from}/${m.to === 'off' ? 'off' : m.to}`).join(', ');
+  }
+  function fmtScore(v) { if (v >= 1e8) return 'WIN'; if (v <= -1e8) return 'LOSS'; return String(Math.round(v)); }
+  function facesText(faces) { return faces[0] === faces[1] ? `${faces[0]}-${faces[0]}` : `${faces[0]}-${faces[1]}`; }
+
+  function renderMoveList(ranked, player, faces) {
+    const who = player === 1 ? 'White' : 'Red';
+    let html = `<div style="font-size:0.72rem;font-weight:bold;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.25);flex:0 0 auto;">${who} ${facesText(faces)} — ${ranked.length} move${ranked.length === 1 ? '' : 's'} (best first)</div>`;
+    if (ranked.length === 0) {
+      html += `<div style="padding:6px 4px;font-size:0.72rem;">No legal moves — ${who} dances.</div>`;
+    } else {
+      html += `<div style="overflow-y:auto;flex:1 1 auto;">`;
+      ranked.forEach((r, i) => {
+        html += `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 4px;font-size:0.72rem;${i === 0 ? 'background:rgba(255,255,255,0.14);' : ''}"><span>${moveText(r.moves)}</span><span style="font-variant-numeric:tabular-nums;opacity:0.9;">${fmtScore(r.value)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+    historyListEl.innerHTML = html;
+  }
+
+  function doMOV() {
+    if (!setupMode) return;
+    const { player, dice, faces } = resolveMoverAndDice();
+    showDiceForSide(player, faces);
+    setupOnRoll = player;
+    const ranked = game.rankAIMoves(player, dice, playerDepth(player), sideWeights(player));
+    renderMoveList(ranked, player, faces);
+    gameMessageEl.textContent = setupBaseMsg;
+  }
+
+  async function doPLAY() {
+    if (!setupMode) return;
+    const { player, dice, faces } = resolveMoverAndDice();
+    showDiceForSide(player, faces);
+    const who = player === 1 ? 'White' : 'Red';
+    const ranked = game.rankAIMoves(player, dice, playerDepth(player), sideWeights(player));
+    if (ranked.length === 0) {
+      gameMessageEl.textContent = `Setup Mode — ${who} dances on ${facesText(faces)}.`;
+      setupOnRoll = player === 1 ? 2 : 1;
+      clearSetupDice();
+      return;
+    }
+    const best = ranked[0].moves;
+    // Apply the chosen sequence via the engine. makeMove reads currentPlayer/movesLeft,
+    // so set them first; validateMax=false since the sequence is already legal. When
+    // animation is on, fly each sub-move before committing it (mirrors the AI path).
+    game.currentPlayer = player;
+    game.dice = [faces[0], faces[1]];
+    game.movesLeft = dice.slice();
+    game.hasRolled = true;
+    game.turnHistory = [];
+    game.playedMovesThisTurn = [];
+    for (const m of best) {
+      if (animationOn) { renderPoints(); renderBar(); renderBorneOff(); await animateCheckerMove(m.from, m.to); }
+      if (!setupMode) return;   // STOP/exit during the animation
+      game.makeMove(m.from, m.to, false);
+    }
+    game.currentPlayer = null; game.movesLeft = []; game.hasRolled = false;
+    renderPoints(); renderBar(); renderBorneOff();
+    setupOnRoll = player === 1 ? 2 : 1;
+    clearSetupDice();
+    if (game.borneOff[1] >= 15 || game.borneOff[2] >= 15) {
+      gameMessageEl.textContent = `Setup Mode — ${game.borneOff[1] >= 15 ? 'White' : 'Red'} has borne off all 15.`;
+    } else {
+      gameMessageEl.textContent = `Setup Mode — ${who} played ${moveText(best)} (${facesText(faces)}).`;
+    }
+  }
+
+  // Examine START self-plays the position to the end (each side's AI, Arwen for a human
+  // seat), animating when the toggle is on. STOP (setupAutoStop) halts it.
+  async function autoPlayToEnd() {
+    setupAutoStop = false;
+    let guard = 0;
+    while (setupMode && !setupAutoStop && game.borneOff[1] < 15 && game.borneOff[2] < 15 && guard < 4000) {
+      guard++;
+      await doPLAY();
+      if (!animationOn) await new Promise((r) => setTimeout(r, 40));   // let the board repaint
+    }
+  }
+
+  function doSTART() {
+    if (!setupMode) return;
+    if (setupKind === 'examine') { autoPlayToEnd(); return; }   // EX → play the position to the end
+    const allBlank = setupAllBlank();
+    setupMode = false;
+    clearSetupHighlight();
+    // Fresh game from the current board: clear history + cube, keep the position.
+    game.gameHistory = []; game.turnHistory = []; game.playedMovesThisTurn = [];
+    game.turnCount = 0; game.futureRolls = []; game.futureRollIndex = 0;
+    game.doublingCubeValue = 1; game.doublingCubeOwner = null; game.winner = null;
+    historyNavBuffer = []; historyNavIndex = null;
+    gameStarted = true; aiStopped = false; startedFromSetup = true;
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
+    if (allBlank && !setupOnRoll) {
+      initialRollOff = true; game.currentPlayer = 1; game.hasRolled = false;
+    } else {
+      const { player, dice, faces } = resolveMoverAndDice();
+      initialRollOff = false;
+      game.currentPlayer = player;
+      game.dice = [faces[0], faces[1]];
+      game.movesLeft = dice.slice();
+      game.hasRolled = true;
+      game.turnCount = 1;
+    }
+    clearSetupDice();
+    updateUI();   // normal pipeline resumes; checkAndTriggerAITurn drives any AI side
+  }
+
+  document.getElementById('btn-ex')?.addEventListener('click', () => enterSetup('examine'));
+  document.getElementById('btn-clear')?.addEventListener('click', () => enterSetup('clear'));
+  document.getElementById('btn-initial')?.addEventListener('click', () => enterSetup('initial'));
+  document.getElementById('btn-mov')?.addEventListener('click', doMOV);
+  document.getElementById('btn-play')?.addEventListener('click', doPLAY);
 
 }); // This closing brace now correctly wraps all your event-dependent logic.

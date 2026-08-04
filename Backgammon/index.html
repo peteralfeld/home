@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 style="margin: 0;">Backgammon v. 111</h2>
+      <h2 style="margin: 0;">Backgammon v. 114</h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -194,32 +194,32 @@
 
       <!-- Player 1 (White) -->
       <div style="display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem;">
-        <label for="p1-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">WP:</label>
-        <select id="p1-type" style="flex: 0 1 8rem; min-width: 0; background: #ffffff; color: #ef4444; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <label for="p1-type" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">WP:</label>
+        <select id="p1-type" style="flex: 0 1 8rem; min-width: 0; background: #ffffff; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
-        <label for="p1-depth" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
-        <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <label for="p1-depth" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
+        <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2" selected>2</option>
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
           <option value="3">3</option>
         </select>
       </div>
 
       <!-- Player 2 (Red) -->
       <div style="display: flex; align-items: center; gap: 0.3rem;">
-        <label for="p2-type" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">RP:</label>
-        <select id="p2-type" style="flex: 0 1 8rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <label for="p2-type" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">RP:</label>
+        <select id="p2-type" style="flex: 0 1 8rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
-        <label for="p2-depth" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
-        <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e293b; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+        <label for="p2-depth" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
+        <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2" selected>2</option>
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
           <option value="3">3</option>
         </select>
       </div>
@@ -278,6 +278,31 @@
     </div>
   </div>
 
+  <!-- Board Setup & Analysis -->
+  <div class="glass-card setup-station" style="padding: 0.6rem 0.8rem;">
+    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; width: 100%;">
+      <button id="btn-ex" class="setup-btn" title="Examine: enter setup keeping the current position on the board" style="padding: 0.4rem 0.3rem; background: #a21caf; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Ex</button>
+      <button id="btn-clear" class="setup-btn" title="Stop play and clear the board (all checkers to the trays)" style="padding: 0.4rem 0.3rem; background: #b91c1c; color: #fed7aa; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Cl</button>
+      <button id="btn-initial" class="setup-btn" title="Stop play and load the standard starting position" style="padding: 0.4rem 0.3rem; background: #ea580c; color: #fef08a; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">In</button>
+
+      <select id="setup-r1" class="setup-die setup-die-white" title="White die (White on roll)" style="background: #ffffff; color: #dc2626; border: 1px solid #94a3b8; border-radius: 4px; font-size: 0.72rem; font-weight: bold; padding: 0.35rem 0.05rem; cursor: pointer;">
+        <option value="">&nbsp;</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+      <select id="setup-r2" class="setup-die setup-die-white" title="White die (White on roll)" style="background: #ffffff; color: #dc2626; border: 1px solid #94a3b8; border-radius: 4px; font-size: 0.72rem; font-weight: bold; padding: 0.35rem 0.05rem; cursor: pointer;">
+        <option value="">&nbsp;</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+      <select id="setup-w1" class="setup-die setup-die-red" title="Red die (Red on roll)" style="background: #dc2626; color: #ffffff; border: 1px solid #7f1d1d; border-radius: 4px; font-size: 0.72rem; font-weight: bold; padding: 0.35rem 0.05rem; cursor: pointer;">
+        <option value="">&nbsp;</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+      <select id="setup-w2" class="setup-die setup-die-red" title="Red die (Red on roll)" style="background: #dc2626; color: #ffffff; border: 1px solid #7f1d1d; border-radius: 4px; font-size: 0.72rem; font-weight: bold; padding: 0.35rem 0.05rem; cursor: pointer;">
+        <option value="">&nbsp;</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+
+      <button id="btn-mov" class="setup-btn" title="List legal moves for this roll with their scores, best first" style="padding: 0.4rem 0.3rem; background: #1d4ed8; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Mov</button>
+      <button id="btn-play" class="setup-btn" title="Play the next move with the on-roll side's AI (Arwen if that side is human)" style="padding: 0.4rem 0.3rem; background: #14532d; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Play</button>
+    </div>
+  </div>
+
   <!-- AI parameter editor -->
   <div class="glass-card brain-station">
     <div class="brain-row">
@@ -290,10 +315,10 @@
     <div class="brain-row">
       <button id="btn-evolve" class="tourney-run" title="Evolve the selected AI">Evolve</button>
       <span class="tourney-label">depth</span>
-      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for tournaments and evolution. 0 = play the first legal move (no evaluation); 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower.">
+      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for tournaments and evolution. 0 = play the first legal move (no evaluation); 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower." style="background: #1e3a8a; color: #86efac;">
         <option value="0">0 ply</option>
-        <option value="1">1 ply</option>
-        <option value="2" selected>2 ply</option>
+        <option value="1" selected>1 ply</option>
+        <option value="2">2 ply</option>
         <option value="3">3 ply</option>
       </select>
       <input type="number" id="evo-gens" class="evo-field" value="1000" min="1" title="Maximum generations">
