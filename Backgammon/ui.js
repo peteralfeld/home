@@ -2875,50 +2875,166 @@ if (view === 'white') {
   }
 
 /* =========================================
-     NETWORK LOGIC (PeerJS)
+     NETWORK LOGIC (Firebase Realtime Database relay)
   ========================================= */
 
-  // WebRTC ICE servers. Cross-network play needs a live TURN relay (STUN alone can't
-  // punch through most NATs / Wi-Fi client isolation). We fetch fresh TURN credentials
-  // at runtime from Metered (free tier). getIceServers() is awaited before creating the
-  // Peer, and falls back to STUN-only if the fetch fails.
+  // Online play relays moves through a shared "room" in Firebase — no WebRTC, STUN,
+  // TURN or NAT traversal, so it just works across any networks. Host writes to
+  // host2guest and reads guest2host; guest does the opposite. Messages are stored as
+  // JSON strings so arrays (like the 25-cell board) round-trip exactly.
   //
-  // NOTE: METERED_API_KEY is Metered's SECRET key and is visible in this public file.
-  // That's the accepted trade-off for a keyless static site — worst case someone burns
-  // the free 0.5 GB/mo relay quota; regenerate the key at dashboard.metered.ca if abused.
-  const METERED_DOMAIN  = 'peteralfeld.metered.live';
-  const METERED_API_KEY = '-EKhmZo9x4FKbX6RMYgYbq4yQtbgjATNE_XhtZvHtzQMeuof';
+  // SETUP: paste your Firebase web config below (Firebase console → Project settings →
+  // "Your apps" → SDK setup and configuration → Config). The web config is designed to
+  // be public; access is controlled by Realtime Database security rules, not secrecy.
+  const FIREBASE_CONFIG = {
+    apiKey:      "AIzaSyDhjX4ULNwwHs4etViXMEqmsoDImVR8UBw",
+    authDomain:  "pabg-1b336.firebaseapp.com",
+    databaseURL: "https://pabg-1b336-default-rtdb.firebaseio.com",
+    projectId:   "pabg-1b336",
+    appId:       "1:1016658098456:web:41b4fd6992668c2d77c66d",
+  };
 
-  // STUN-only fallback if the TURN fetch fails (same-/friendly-NAT only).
-  const ICE_FALLBACK = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-  ];
-
-  let _iceServersPromise = null;
-  function getIceServers() {
-    if (_iceServersPromise) return _iceServersPromise;
-    _iceServersPromise = fetch(`https://${METERED_DOMAIN}/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`)
-      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .then((data) => {
-        // Metered returns a bare array; be tolerant of an {iceServers:[…]} wrapper too.
-        const list = Array.isArray(data) ? data : (data && Array.isArray(data.iceServers) ? data.iceServers : null);
-        if (list && list.length) {
-          const hasTurn = list.some((s) => /^turns?:/i.test(s.urls || (Array.isArray(s.urls) ? s.urls.join(',') : '')));
-          sysLog(`[Network] Loaded ${list.length} ICE servers from Metered (${hasTurn ? 'incl. TURN' : 'no TURN?!'}).`);
-          return list;
-        }
-        throw new Error('unexpected ICE response');
-      })
-      .catch((err) => {
-        sysLog(`[Network] TURN fetch failed (${err.message}); using STUN-only fallback (cross-network may not connect).`);
-        _iceServersPromise = null;     // allow a retry on the next host/join
-        return ICE_FALLBACK;
-      });
-    return _iceServersPromise;
+  let fbDb = null, fbInitTried = false;
+  function initFirebase() {
+    if (fbDb) return fbDb;
+    if (fbInitTried) return null;
+    fbInitTried = true;
+    if (typeof firebase === 'undefined') { sysLog('[Network] Firebase SDK not loaded (check the <script> tags in index.html).'); return null; }
+    if (String(FIREBASE_CONFIG.databaseURL).indexOf('PASTE_HERE') !== -1) { sysLog('[Network] Online play not configured yet — fill in FIREBASE_CONFIG.'); return null; }
+    try { firebase.initializeApp(FIREBASE_CONFIG); fbDb = firebase.database(); sysLog('[Network] Firebase ready.'); }
+    catch (e) { sysLog('[Network] Firebase init failed: ' + e.message); return null; }
+    return fbDb;
   }
-  getIceServers();   // warm the cache at load so HOST/JOIN are instant
+
+  // A DataConnection-like shim over Firebase so setupConnectionListeners() and every
+  // existing conn.send(...) / conn.on('data') call work unchanged. role: 1=host, 2=guest.
+  function makeFirebaseConnection(roomCode, role) {
+    const roomRef  = fbDb.ref('rooms/' + roomCode);
+    const outRef   = roomRef.child(role === 1 ? 'host2guest' : 'guest2host');
+    const inRef    = roomRef.child(role === 1 ? 'guest2host' : 'host2guest');
+    const meRef    = roomRef.child(role === 1 ? 'hostPresent' : 'guestPresent');
+    const otherRef = roomRef.child(role === 1 ? 'guestPresent' : 'hostPresent');
+
+    const handlers = { open: [], data: [], close: [] };
+    const fire = (evt, arg) => (handlers[evt] || []).forEach((cb) => { try { cb(arg); } catch (e) { sysLog('[Network] handler error: ' + e.message); } });
+
+    const conn = {
+      open: false,
+      peerConnection: null,   // no WebRTC; the ICE-logging block below no-ops
+      on(evt, cb) { if (handlers[evt]) handlers[evt].push(cb); },
+      send(obj) { try { outRef.push(JSON.stringify(obj)); } catch (e) { sysLog('[Network] send failed: ' + e.message); } },
+      close() { try { meRef.set(null); } catch (e) {} },
+    };
+
+    // Presence: announce self; auto-clear on tab close / refresh / disconnect.
+    meRef.set(true);
+    meRef.onDisconnect().remove();
+
+    // "Open" when the other side is present; "close" when they leave.
+    let opened = false;
+    otherRef.on('value', (snap) => {
+      const present = snap.val() === true;
+      if (present && !opened) { opened = true; conn.open = true; sysLog('[Network] Peer present — channel open.'); fire('open'); }
+      else if (!present && opened) { opened = false; conn.open = false; fire('close'); }
+    });
+
+    // Deliver incoming messages in order (child_added also replays any already-queued
+    // ones, so nothing is missed by a listener attaching a beat late). The host clears
+    // the room on create and neither side sends before both are present, so there are
+    // no stale messages from a prior session.
+    inRef.on('child_added', (snap) => {
+      let msg = snap.val();
+      if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { return; } }
+      if (msg) fire('data', msg);
+    });
+
+    return conn;
+  }
+
+  /* ---------------------------------------------------------------------
+     PHP LAN relay transport (relay.php on the same XAMPP origin).
+
+     Same DataConnection-shaped shim as makeFirebaseConnection, so
+     setupConnectionListeners() and every conn.send(...) call are unchanged.
+     Where Firebase pushes over a live socket, this polls relay.php ~1×/sec:
+     it appends outgoing messages to its own queue and drains the opposite
+     queue by index. Presence is heartbeat-based (each poll stamps my time;
+     the other side is "present" if seen within PRESENCE_TIMEOUT).
+
+     Transport is chosen by NET_TRANSPORT: 'php' (LAN) or 'firebase' (internet).
+     --------------------------------------------------------------------- */
+  // Transport for online play. 'firebase' works everywhere (internet relay), so it
+  // needs no XAMPP/LAN server — play from the GitHub link on any network. The PHP LAN
+  // relay ('php') is kept below as a dormant option (see relay.php) but is not used.
+  const NET_TRANSPORT = 'firebase';
+  const PHP_RELAY_URL = 'relay.php';  // relative → same origin as the served game
+  const PHP_POLL_MS   = 1000;
+
+  function phpPost(params) {
+    return fetch(PHP_RELAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    }).then((r) => r.json());
+  }
+  function phpGet(params) {
+    const qs = new URLSearchParams(params).toString();
+    return fetch(PHP_RELAY_URL + '?' + qs).then((r) => r.json());
+  }
+
+  function makePhpConnection(roomCode, role) {
+    const handlers = { open: [], data: [], close: [] };
+    const fire = (evt, arg) => (handlers[evt] || []).forEach((cb) => { try { cb(arg); } catch (e) { sysLog('[Network] handler error: ' + e.message); } });
+
+    let sinceIn = 0, opened = false, stopped = false, pollTimer = null;
+
+    const onUnload = () => {
+      try { navigator.sendBeacon(PHP_RELAY_URL, new Blob([JSON.stringify({ action: 'leave', room: roomCode, role })], { type: 'application/json' })); } catch (e) {}
+    };
+
+    const conn = {
+      open: false,
+      peerConnection: null,           // no WebRTC; the ICE-logging block no-ops
+      on(evt, cb) { if (handlers[evt]) handlers[evt].push(cb); },
+      send(obj) {
+        phpPost({ action: 'send', room: roomCode, role, msg: JSON.stringify(obj) })
+          .catch((e) => sysLog('[Network] send failed: ' + e.message));
+      },
+      close() {
+        stopped = true;
+        if (pollTimer) clearInterval(pollTimer);
+        window.removeEventListener('beforeunload', onUnload);
+        phpPost({ action: 'leave', room: roomCode, role }).catch(() => {});
+      },
+    };
+
+    async function pollOnce() {
+      if (stopped) return;
+      try {
+        const r = await phpGet({ action: 'poll', room: roomCode, role, since: sinceIn });
+        if (!r || !r.ok) return;
+        if (Array.isArray(r.messages) && r.messages.length) {
+          for (const s of r.messages) {
+            let msg = s;
+            if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }
+            if (msg) fire('data', msg);
+          }
+        }
+        if (typeof r.next === 'number') sinceIn = r.next;
+
+        const present = !!r.otherPresent;
+        if (present && !opened) { opened = true; conn.open = true; sysLog('[Network] Peer present — channel open.'); fire('open'); }
+        else if (!present && opened) { opened = false; conn.open = false; fire('close'); }
+      } catch (e) {
+        // transient network hiccup — keep polling
+      }
+    }
+
+    window.addEventListener('beforeunload', onUnload);
+    pollOnce();                        // announce presence + fetch immediately
+    pollTimer = setInterval(pollOnce, PHP_POLL_MS);
+    return conn;
+  }
 
   const btnHost = document.getElementById('btn-host');
   const btnJoin = document.getElementById('btn-join');
@@ -3092,8 +3208,59 @@ connection.on('data', (data) => {
     });
 }
     
+  // --- PHP LAN transport: host / join ---
+  function hostViaPhp() {
+    initNetworkGame(1);
+    document.getElementById('board-view').value = 'white';
+    document.getElementById('board-view').dispatchEvent(new Event('change'));
+
+    const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    connStatus.textContent = "Waiting for opponent...";
+    connStatus.style.color = "var(--accent-gold)";
+    joinCodeInput.value = roomCode;
+    joinCodeInput.readOnly = true;
+    sysLog(`[Network] Hosting room ${roomCode} via LAN relay. Waiting for guest…`);
+
+    phpPost({ action: 'create', room: roomCode })
+      .then((r) => {
+        if (!r || !r.ok) throw new Error(r && r.error ? r.error : 'create failed');
+        conn = makePhpConnection(roomCode, 1);
+        setupConnectionListeners(conn);
+      })
+      .catch((e) => { sysLog('[Network] Could not create room: ' + e.message); connStatus.textContent = "Could not reach relay.php."; connStatus.style.color = '#ef4444'; });
+  }
+
+  function joinViaPhp() {
+    const code = joinCodeInput.value.trim();
+    if (!code) return;
+    initNetworkGame(2);
+    connStatus.textContent = "Connecting to Host...";
+    connStatus.style.color = "var(--accent-gold)";
+    document.getElementById('board-view').value = 'red';
+    document.getElementById('board-view').dispatchEvent(new Event('change'));
+    sysLog(`[Network] Joining room ${code} via LAN relay…`);
+
+    phpGet({ action: 'check', room: code })
+      .then((r) => {
+        if (!r || !r.present) {
+          connStatus.textContent = `No game found for code ${code}.`;
+          connStatus.style.color = '#ef4444';
+          sysLog(`[Network] No host present at code ${code}.`);
+          return;
+        }
+        conn = makePhpConnection(code, 2);
+        setupConnectionListeners(conn);
+      })
+      .catch((e) => { sysLog('[Network] Join failed: ' + e.message); connStatus.textContent = "Could not reach relay.php."; connStatus.style.color = '#ef4444'; });
+  }
+
 // --- HOSTING ---
-  btnHost.addEventListener('click', async () => {
+  btnHost.addEventListener('click', () => {
+    if (NET_TRANSPORT === 'php') { hostViaPhp(); return; }
+
+    const db = initFirebase();
+    if (!db) { connStatus.textContent = "Online play not configured."; connStatus.style.color = '#ef4444'; return; }
+
     initNetworkGame(1);
 
     // Explicitly set the host view to 'white'
@@ -3102,7 +3269,6 @@ connection.on('data', (data) => {
 
     const roomCode = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
 
-    // Update text AND color
     connStatus.textContent = "Waiting for opponent...";
     connStatus.style.color = "var(--accent-gold)";
 
@@ -3110,29 +3276,26 @@ connection.on('data', (data) => {
     joinCodeInput.value = roomCode;
     joinCodeInput.readOnly = true;
 
-      sysLog(`[Network] Connecting to signaling server as Host: pointworks-bg-${roomCode}`);
+    sysLog(`[Network] Hosting room ${roomCode} via Firebase. Waiting for guest…`);
 
-    const iceServers = await getIceServers();   // fresh STUN+TURN (or STUN-only fallback)
-peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers } });
-      
-    peer.on('open', (id) => sysLog(`[Network] Host successfully registered on server! Waiting for Guest...`));
-    peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`)); 
-    
-    peer.on('connection', (connection) => {
-      sysLog(`[Network] Incoming connection detected from a Guest!`);
-      conn = connection;
-      setupConnectionListeners(conn);
-    });
+    // Fresh room (wipes any stale data at this code), then open our side.
+    db.ref('rooms/' + roomCode).set({ createdAt: firebase.database.ServerValue.TIMESTAMP })
+      .then(() => { conn = makeFirebaseConnection(roomCode, 1); setupConnectionListeners(conn); })
+      .catch((e) => { sysLog('[Network] Could not create room: ' + e.message); connStatus.textContent = "Could not create room."; connStatus.style.color = '#ef4444'; });
   });
-    
+
 // --- JOINING ---
-  btnJoin.addEventListener('click', async () => {
-    const code = joinCodeInput.value.trim().toUpperCase();
+  btnJoin.addEventListener('click', () => {
+    if (NET_TRANSPORT === 'php') { joinViaPhp(); return; }
+
+    const code = joinCodeInput.value.trim();
     if (!code) return;
+
+    const db = initFirebase();
+    if (!db) { connStatus.textContent = "Online play not configured."; connStatus.style.color = '#ef4444'; return; }
 
     initNetworkGame(2);
 
-    // Update text AND color
     connStatus.textContent = "Connecting to Host...";
     connStatus.style.color = "var(--accent-gold)";
 
@@ -3140,19 +3303,19 @@ peer = new Peer('pointworks-bg-' + roomCode, { config: { iceServers } });
     document.getElementById('board-view').value = 'red';
     document.getElementById('board-view').dispatchEvent(new Event('change'));
 
-    sysLog(`[Network] Connecting to signaling server as Guest...`);
+    sysLog(`[Network] Joining room ${code} via Firebase…`);
 
-    const iceServers = await getIceServers();   // fresh STUN+TURN (or STUN-only fallback)
-peer = new Peer({ config: { iceServers } });
-      
-    peer.on('error', (err) => sysLog(`[Network Error] PeerJS Error: ${err.type} - ${err.message}`));
-    peer.on('open', (id) => {
-      sysLog(`[Network] Guest registered on server! Reaching out to room ${code}...`);
-      
-      conn = peer.connect('pointworks-bg-' + code);
-      conn.on('error', (err) => sysLog(`[Network Error] Connection Error: ${err}`));
+    // Confirm a host is actually in that room before joining.
+    db.ref('rooms/' + code + '/hostPresent').once('value').then((snap) => {
+      if (snap.val() !== true) {
+        connStatus.textContent = `No game found for code ${code}.`;
+        connStatus.style.color = '#ef4444';
+        sysLog(`[Network] No host present at code ${code}.`);
+        return;
+      }
+      conn = makeFirebaseConnection(code, 2);
       setupConnectionListeners(conn);
-    });
+    }).catch((e) => { sysLog('[Network] Join failed: ' + e.message); connStatus.textContent = "Join failed."; connStatus.style.color = '#ef4444'; });
   });
 
   // Allow pressing Enter in the code field to join (same as clicking JOIN)
