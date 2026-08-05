@@ -305,30 +305,55 @@ function sysLog(msg) {
       const label = exportScreenEl.querySelector('.settings-item-label');
       const original = label.textContent;
 
-      // Render the board straight to an image with html2canvas (loaded in index.html)
-      // — no screen-share picker, so it can't be "cancelled".
-      if (typeof html2canvas === 'undefined') {
-        sysLog('[Error] html2canvas not loaded.');
-        label.textContent = 'Lib missing';
-        setTimeout(() => { label.textContent = original; }, 2000);
+      // True bit-for-bit screen capture (actual rendered pixels) via getDisplayMedia.
+      // It ONLY works on a "secure" page: https://…, http://localhost, http://127.0.0.1,
+      // or a file:// page. A plain http://192.168.x.x LAN address is NOT secure, so the
+      // browser hides the API and no prompt appears.
+      if (!window.isSecureContext || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
+        sysLog(`[Error] Screen capture unavailable — page is not a secure context (isSecureContext=${window.isSecureContext}). Load via http://localhost/Backgammon/ or your https (GitHub Pages) URL.`);
+        label.textContent = 'Use localhost/https';
+        setTimeout(() => { label.textContent = original; }, 3000);
         return;
       }
-      const target = document.querySelector('.board-wrapper')
-                  || document.getElementById('backgammon-board')
-                  || document.body;
-      label.textContent = 'Capturing…';
+
+      label.textContent = 'Selecting Tab…';
       try {
-        const canvas = await html2canvas(target, { backgroundColor: '#0f172a', scale: 2, logging: false, useCORS: true });
+        let stream;
+        try {
+          // Preferred: auto-hint the current tab (fewer clicks).
+          stream = await navigator.mediaDevices.getDisplayMedia({ preferCurrentTab: true, video: { displaySurface: 'browser' } });
+        } catch (eHint) {
+          // Some Chrome builds reject those hints outright (no picker). Retry plain.
+          sysLog(`[System] Screenshot: hinted request failed (${eHint.name}); retrying with a plain request…`);
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        }
+        label.textContent = 'Capturing…';
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await new Promise(resolve => {
+          video.onloadedmetadata = () => { video.play(); resolve(); };
+        });
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        stream.getTracks().forEach(t => t.stop());
+
         const link = document.createElement('a');
-        link.download = `bg-board-${Date.now()}.png`;
+        link.download = `bg-screenshot-${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
-        sysLog('[System] Board image captured and downloaded.');
+
+        sysLog('[System] Screenshot captured and downloaded.');
         label.textContent = original;
+
       } catch (err) {
-        sysLog(`[Error] Board capture failed: ${err.message}`);
-        label.textContent = 'Failed';
-        setTimeout(() => { label.textContent = original; }, 2000);
+        // NotAllowedError / AbortError = you dismissed the picker; anything else is a real failure.
+        sysLog(`[Error] Screenshot failed: ${err.name}: ${err.message}`);
+        label.textContent = (err.name === 'NotAllowedError' || err.name === 'AbortError') ? 'Cancelled' : (err.name || 'Failed');
+        setTimeout(() => { label.textContent = original; }, 2500);
       }
     });
   }

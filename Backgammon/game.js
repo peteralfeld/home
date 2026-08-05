@@ -9,7 +9,7 @@
  * except the collapsed blot terms which are already computed from White's view.
  * Weights are integers normalized so max|w| = 1000.
  *
- *   PC  normalized pip count            (term w*pip/167)      -667
+ *   PC  normalized pip count            (term w*pip/20)        -80
  *   BO  checkers borne off              (term w*(boW-boR)/15) +500
  *   EC1 rolls allowing exactly one move (term w*EC1/36)       -133
  *   EC0 rolls allowing no move          (term w*EC0/36)       -400
@@ -22,31 +22,24 @@
 // Alphabetical names are kept in descending order of tournament performance:
 // Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
 // is the fixed historic baseline and is listed last (bottom of the player menus).
+// Weights normalized to max|w| = 1000 over the 12 eval weights; DT/AT (doubling
+// thresholds, same score units) travel inline with each brain. NOTE: the PC weights
+// here go with the /20 pip divisor in evaluate() (rescaled from the old /167 — same
+// play, just a saner band for the number).
 const AI_PERSONALITIES = {
-  Arwen:     { PC: -1000, BO: 500, EC1: -80,  EC0: -47,   PH: 106,  HB: 55,  AN: -1,   DO: 1,    IO: 6,   DP: 18,   IP: 1,   DE: -31  },  // = Arwen-evo-g365 (evolved)
-  Bilbo:     { PC: -1000, BO: 500, EC1: -12,  EC0: -80,   PH: 29,   HB: 5,   AN: 20,   DO: -2,   IO: 2,   DP: 48,   IP: -2,  DE: 182  },  // = Galadriel-evo-g539 (evolved)
-  Celebrian: { PC: -387,  BO: 500, EC1: -17,  EC0: -178,  PH: 289,  HB: 1,   AN: 34,   DO: 1000, IO: -20, DP: 57,   IP: 39,  DE: 173  },  // = Bilbo-evo-g17 (evolved)
-  Dwalin:    { PC: -1000, BO: 500, EC1: -178, EC0: 2,     PH: 22,   HB: 24,  AN: -1,   DO: 781,  IO: 346, DP: 68,   IP: 5,   DE: -64  },  // = Dwalin-evo-g190 (evolved)
-  Eowyn:     { PC: -1000, BO: 500, EC1: -497, EC0: 110,   PH: 393,  HB: -10, AN: -13,  DO: 611,  IO: -105,DP: 805,  IP: 119, DE: 128  },  // = Eowyn-evo-g11 (evolved)
-  Frodo:     { PC: -334,  BO: 500, EC1: -67,  EC0: -200,  PH: 334,  HB: 67,  AN: 100,  DO: 1000, IO: 500, DP: 250,  IP: 150, DE: 334  },
-  Galadriel: { PC: -1000, BO: 500, EC1: -89,  EC0: -267,  PH: 445,  HB: 89,  AN: 133,  DO: 667,  IO: 400, DP: 333,  IP: 200, DE: 445  },
-  Hamfast:   { PC: -556,  BO: 500, EC1: -111, EC0: -333,  PH: 1000, HB: 111, AN: 167,  DO: 833,  IO: 500, DP: 417,  IP: 250, DE: 556  },
-  Origin:    { PC: -667,  BO: 500, EC1: -133, EC0: -400,  PH: 667,  HB: 133, AN: 200,  DO: 1000, IO: 600, DP: 500,  IP: 300, DE: 667  }
+  Arwen:     { PC: -665, BO: 1000, EC1: -228, EC0: -239, PH: 167, HB: 256, AN: -6,  DO: 11,   IO: 44,   DP: 133,  IP: 22,  DE: 117,  DT: 94,  AT: 761  },  // = Arwen-evo-g112 (evolved)
+  Bilbo:     { PC: -665, BO: 1000, EC1: -444, EC0: -261, PH: 589, HB: 306, AN: -6,  DO: 6,    IO: 33,   DP: 100,  IP: 6,   DE: -172, DT: 178, AT: 50   },  // = Arwen-evo-g365 (evolved)
+  Celebrian: { PC: -658, BO: 989,  EC1: -66,  EC0: -440, PH: 159, HB: 27,  AN: 110, DO: -11,  IO: 11,   DP: 264,  IP: -11, DE: 1000, DT: 346, AT: 1852 },  // = Galadriel-evo-g539 (evolved)
+  Dwalin:    { PC: -46,  BO: 180,  EC1: -17,  EC0: -178, PH: 289, HB: 1,   AN: 34,  DO: 1000, IO: -20,  DP: 57,   IP: 39,  DE: 173,  DT: 134, AT: 214  },  // = Bilbo-evo-g17 (evolved)
+  Eowyn:     { PC: -153, BO: 230,  EC1: -228, EC0: 3,    PH: 28,  HB: 31,  AN: -1,  DO: 1000, IO: 443,  DP: 87,   IP: 6,   DE: -82,  DT: 429, AT: 352  },  // = Dwalin-evo-g190 (evolved)
+  Frodo:     { PC: -149, BO: 224,  EC1: -617, EC0: 137,  PH: 488, HB: -12, AN: -16, DO: 759,  IO: -130, DP: 1000, IP: 148, DE: 159,  DT: 73,  AT: 312  },  // = Eowyn-evo-g11 (evolved)
+  Galadriel: { PC: -180, BO: 270,  EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 199, DO: 1000, IO: 600,  DP: 499,  IP: 300, DE: 667,  DT: 150, AT: 300  },
+  Hamfast:   { PC: -40,  BO: 180,  EC1: -67,  EC0: -200, PH: 334, HB: 67,  AN: 100, DO: 1000, IO: 500,  DP: 250,  IP: 150, DE: 334,  DT: 100, AT: 200  },
+  Origin:    { PC: -80,  BO: 500,  EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 200, DO: 1000, IO: 600,  DP: 500,  IP: 300, DE: 667,  DT: 100, AT: 200  }
 };
 
 // The baseline AI. Each personality is normalized so max|w| = 1000.
 const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
-
-// Doubling thresholds (absolute score, in the mover's own perspective; positive
-// numbers, the sign is handled internally per side): offer/redouble when own
-// score > DT; accept an offered double unless own score < -AT.
-Object.values(AI_PERSONALITIES).forEach((w) => { w.DT = 100; w.AT = 200; });
-// Evolved brains carry their own doubling thresholds.
-AI_PERSONALITIES.Arwen.DT = 32;  AI_PERSONALITIES.Arwen.AT = 9;        // Arwen-evo-g365
-AI_PERSONALITIES.Bilbo.DT = 63;  AI_PERSONALITIES.Bilbo.AT = 337;      // Galadriel-evo-g539
-AI_PERSONALITIES.Celebrian.DT = 134; AI_PERSONALITIES.Celebrian.AT = 214; // Bilbo-evo-g17
-AI_PERSONALITIES.Dwalin.DT = 335; AI_PERSONALITIES.Dwalin.AT = 275;    // Dwalin-evo-g190
-AI_PERSONALITIES.Eowyn.DT = 59;  AI_PERSONALITIES.Eowyn.AT = 251;      // Eowyn-evo-g11
 
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
@@ -1067,9 +1060,11 @@ rollDice(d1 = null, d2 = null) {
   evaluate(points, bar, borneOff, weights) {
     let score = 0;
 
-    // PC — normalized pip count (w negative: fewer White pips is better)
+    // PC — normalized pip count (w negative: fewer White pips is better). Divisor 20
+    // (was 167) is just a representation choice — brain PC weights were rescaled to
+    // match, so play is unchanged; it keeps PC's weight in the same band as the others.
     const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
-    score += weights.PC * (pipW - pipR) / 167;
+    score += weights.PC * (pipW - pipR) / 20;
 
     // BO — checkers borne off (w positive: taking checkers off is good). Breaks the
     // pip-count tie between bearing a checker off and stacking it deeper in the home.
@@ -1113,7 +1108,7 @@ rollDice(d1 = null, d2 = null) {
     const rows = [];
 
     const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
-    rows.push({ code: 'PC', meaning: 'Pip count', white: pipW, red: pipR, v: (pipW - pipR) / 167, weight: weights.PC });
+    rows.push({ code: 'PC', meaning: 'Pip count', white: pipW, red: pipR, v: (pipW - pipR) / 20, weight: weights.PC });
 
     rows.push({ code: 'BO', meaning: 'Checkers borne off', white: borneOff[1], red: borneOff[2], v: (borneOff[1] - borneOff[2]) / 15, weight: weights.BO });
 
