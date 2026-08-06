@@ -487,6 +487,50 @@ function sysLog(msg) {
       sysLog('[System] Board value exported.');
     });
   }
+
+  // Move Table: best move for every roll from the CURRENT board (setup edits, a mid-
+  // game position, or the initial position), for the on-roll side, using the AI
+  // selected in the editor at the on-roll side's Depth menu. Worker pool via rankMovesFor. The 15
+  // non-doubles come first (so they line up with an opening column), then the 6 doubles.
+  const exportOpeningEl = document.getElementById('export-opening');
+  if (exportOpeningEl) {
+    exportOpeningEl.addEventListener('click', async () => {
+      const label = exportOpeningEl.querySelector('.settings-item-label');
+      const orig = label ? label.textContent : '';
+      const brainName = (editBrainSel && editBrainSel.value) || 'Arwen';
+      const W = game.personalityWeights(brainName);
+      const player = setupMode ? (setupOnRoll || 1) : (game.currentPlayer || 1);
+      const who = player === 1 ? 'White' : 'Red';
+      const depth = playerDepth(player);   // the on-roll side's Depth menu (White = p1, Red = p2)
+      const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };   // CURRENT position
+      const rolls = [[2,1],[3,1],[3,2],[4,1],[4,2],[4,3],[5,1],[5,2],[5,3],[5,4],[6,1],[6,2],[6,3],[6,4],[6,5],
+                     [1,1],[2,2],[3,3],[4,4],[5,5],[6,6]];
+
+      let csv = `Move table — ${brainName}, depth ${depth}, ${who} on roll\n`;
+      csv += `Position:,"${describeBoard()}"\nDice,Best move,Score (White view)\n`;
+      try {
+        for (let k = 0; k < rolls.length; k++) {
+          const [d1, d2] = rolls[k];
+          const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
+          if (label) label.textContent = `${k + 1}/${rolls.length}…`;
+          gameMessageEl.textContent = `Move table (${brainName} d${depth}, ${who}): ${k + 1}/${rolls.length} — ${d1}-${d2}…`;
+          const ranked = await rankMovesFor(board, player, dice, depth, W);
+          const best = ranked[0];
+          const mv = best ? best.moves.map((m) => `${m.from === 'bar' ? 'bar' : m.from}/${m.to === 'off' ? 'off' : m.to}`).join(', ') : '(none)';
+          csv += `${d1} ${d2},"${mv}",${best ? Math.round(best.value) : ''}\n`;
+        }
+        csv += `\nParameters,${BRAIN_KEYS.join(',')}\n`;
+        csv += `${brainName},${BRAIN_KEYS.map((k) => (W[k] != null ? W[k] : 0)).join(',')}\n`;
+        downloadCSV(`movetable-${brainName}-d${depth}.csv`, csv);
+        gameMessageEl.textContent = `Move table exported — ${brainName}, depth ${depth}, ${who} on roll.`;
+        sysLog(`[System] Move table exported (${brainName}, depth ${depth}, ${who} on roll).`);
+      } catch (err) {
+        sysLog('[Error] Move table failed: ' + (err && err.message));
+        gameMessageEl.textContent = 'Move table failed — see log.';
+      }
+      if (label) label.textContent = orig;
+    });
+  }
     // ── Settings Menu ────────────────────────────────────────────
   const settingsHeader  = document.getElementById('settings-header');
   const settingsPanel   = document.getElementById('settings-panel');
@@ -2248,6 +2292,68 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return bestState ? bestState.moves : null;
   }
 
+  // Rank every legal complete turn for `player` from an ARBITRARY board, using the
+  // worker pool for depth >= 2 (same tasks/combination as computeAIMoveParallel).
+  // Returns [{ moves, value }] sorted best-for-mover — the parallel twin of
+  // game.rankAIMoves, so MOV / PLAY / the opening table get real multithreading.
+  async function rankMovesParallel(board, player, dice, depth, W) {
+    const opp = player === 1 ? 2 : 1;
+    const states = game._statesFrom(board, player, dice);
+    if (!states.length) return [];
+    const parentContact = game.hasContact(board.points, board.bar);
+    const withDE = (st, val) => {
+      const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
+      if (!wWon && !rWon && parentContact && !game.hasContact(st.points, st.bar)) {
+        const pipW = game.pipCountP(st.points, st.bar, 1), pipR = game.pipCountP(st.points, st.bar, 2);
+        if (player === 1 && pipW < pipR) val += W.DE;
+        else if (player === 2 && pipR < pipW) val -= W.DE;
+      }
+      return val;
+    };
+
+    let scored;
+    if (depth <= 1) {
+      scored = states.map((st) => {
+        const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
+        let val = wWon ? UI_BG_WIN : rWon ? -UI_BG_WIN : game.evaluate(st.points, st.bar, st.borneOff, W);
+        return { moves: st.moves, value: withDE(st, val) };
+      });
+    } else {
+      const rollVals = states.map(() => new Array(UI_DICE_DIST.length).fill(0));
+      const tasks = [];
+      states.forEach((st, si) => {
+        if (st.borneOff[1] >= 15 || st.borneOff[2] >= 15) return;
+        UI_DICE_DIST.forEach(([d1, d2], ri) => {
+          const dd = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
+          tasks.push({ si, ri, dice: dd, board: { points: st.points, bar: st.bar, borneOff: st.borneOff } });
+        });
+      });
+      await runJobsParallel(
+        tasks,
+        (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: W }),
+        (data, t) => { rollVals[t.si][t.ri] = data.val; },
+      );
+      scored = states.map((st, si) => {
+        const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
+        let val;
+        if (wWon) val = UI_BG_WIN; else if (rWon) val = -UI_BG_WIN;
+        else { let acc = 0; UI_DICE_DIST.forEach(([, , wt], ri) => { acc += wt * rollVals[si][ri]; }); val = acc / 36; }
+        return { moves: st.moves, value: withDE(st, val) };
+      });
+    }
+    scored.sort((a, b) => (player === 1 ? b.value - a.value : a.value - b.value));
+    return scored;
+  }
+
+  // Dispatch: worker-parallel rank for depth >= 2 when workers exist; otherwise a
+  // synchronous rank on a scratch game seeded with `board` (so it works off any board).
+  async function rankMovesFor(board, player, dice, depth, W) {
+    if (workersAvailable && depth >= 2) return await rankMovesParallel(board, player, dice, depth, W);
+    const s = new game.constructor();
+    s.points = board.points; s.bar = board.bar; s.borneOff = board.borneOff;
+    return s.rankAIMoves(player, dice, depth, W);
+  }
+
   // Per-player interactive AI depth, read from that side's Depth menu (White = p1,
   // Red = p2). Lets the same AI play at different depths so the effect of depth is
   // visible. Only consulted when the player is an AI.
@@ -2657,10 +2763,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const sel = document.getElementById('board-view');
       if (!sel) return;
       const palette = {
-        white: { bg: '#ffffff', fg: '#ef4444' },
-        red:   { bg: '#ef4444', fg: '#ffffff' },
-        home:  { bg: '#1d4ed8', fg: '#ffffff' },
-        outer: { bg: '#1d4ed8', fg: '#ffffff' },
+        white:   { bg: '#ffffff', fg: '#ef4444' },
+        red:     { bg: '#ef4444', fg: '#ffffff' },
+        home:    { bg: '#1d4ed8', fg: '#ffffff' },
+        outer:   { bg: '#1d4ed8', fg: '#ffffff' },
+        magriel: { bg: '#7c3aed', fg: '#ffffff' },
       };
       const c = palette[sel.value] || palette.red;
       sel.style.background = c.bg;
@@ -2671,7 +2778,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     document.getElementById('board-view').addEventListener('change', (e) => {
     const view = e.target.value;
     const wrapper = document.querySelector('.board-wrapper');
-    wrapper.classList.remove('view-red', 'view-home', 'view-outer');
+    wrapper.classList.remove('view-red', 'view-home', 'view-outer', 'view-magriel');
     if (view !== 'white') {
       wrapper.classList.add(`view-${view}`);
     }
@@ -2876,13 +2983,14 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
           
           const margin = 15;
           
-          if (view === 'white' || view === 'red') {
-            // Standard vertical stacking
+          if (view === 'white' || view === 'red' || view === 'magriel') {
+            // Standard vertical stacking (magriel = white orientation, mirrored L-R:
+            // the horizontal flip is already baked into rect via getBoundingClientRect)
             const checkerSize = rect.width * 0.8;
             const offset = count * checkerSize * 0.7;
             targetX = rect.left + rect.width / 2;
-            
-            if (view === 'white') {
+
+            if (view === 'white' || view === 'magriel') {
               targetY = isDestTop ? (rect.top + margin + offset) : (rect.bottom - margin - offset);
             } else { // view === 'red'
               targetY = isDestTop ? (rect.bottom - margin - offset) : (rect.top + margin + offset);
@@ -3797,12 +3905,16 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     historyListEl.innerHTML = html;
   }
 
-  function doMOV() {
+  async function doMOV() {
     if (!setupMode) return;
     const { player, dice, faces } = resolveMoverAndDice();
     showDiceForSide(player, faces);
     setupOnRoll = player;
-    const ranked = game.rankAIMoves(player, dice, playerDepth(player), sideWeights(player));
+    const depth = playerDepth(player);
+    const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
+    if (depth >= 2 && workersAvailable) gameMessageEl.textContent = 'Setup Mode — computing…';
+    const ranked = await rankMovesFor(board, player, dice, depth, sideWeights(player));
+    if (!setupMode) return;   // exited during the await
     renderMoveList(ranked, player, faces);
     gameMessageEl.textContent = setupBaseMsg;
   }
@@ -3812,7 +3924,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     const { player, dice, faces } = resolveMoverAndDice();
     showDiceForSide(player, faces);
     const who = player === 1 ? 'White' : 'Red';
-    const ranked = game.rankAIMoves(player, dice, playerDepth(player), sideWeights(player));
+    const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
+    const ranked = await rankMovesFor(board, player, dice, playerDepth(player), sideWeights(player));
+    if (!setupMode) return;   // exited during the await
     if (ranked.length === 0) {
       gameMessageEl.textContent = `Setup Mode — ${who} dances on ${facesText(faces)}.`;
       setupOnRoll = player === 1 ? 2 : 1;

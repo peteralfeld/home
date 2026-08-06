@@ -1045,6 +1045,8 @@ body {
 .board-wrapper.view-red { transform: rotate(180deg); }
 .board-wrapper.view-home { transform: rotate(90deg); }
 .board-wrapper.view-outer { transform: rotate(-90deg); }
+/* Magriel: white orientation mirrored left-right so the 24-point sits top-LEFT. */
+.board-wrapper.view-magriel { transform: scaleX(-1); }
 
 /* Counter-rotate margin labels to stay upright */
 .board-labels-outer span {
@@ -1054,6 +1056,7 @@ body {
 .board-wrapper.view-red .board-labels-outer span { transform: rotate(-180deg); }
 .board-wrapper.view-home .board-labels-outer span { transform: rotate(-90deg); }
 .board-wrapper.view-outer .board-labels-outer span { transform: rotate(90deg); }
+.board-wrapper.view-magriel .board-labels-outer span { transform: scaleX(-1); }
 
 /* Counter-rotate checkers to preserve highlight/shadow lighting */
 .board-wrapper.view-red .checker { transform: rotate(-180deg); }
@@ -1064,6 +1067,9 @@ body {
 
 .board-wrapper.view-outer .checker { transform: rotate(90deg); }
 .board-wrapper.view-outer .checker.dragging { transform: rotate(90deg) scale(1.15); }
+
+.board-wrapper.view-magriel .checker { transform: scaleX(-1); }
+.board-wrapper.view-magriel .checker.dragging { transform: scaleX(-1) scale(1.15); }
 
 /* iPad/Mobile Touch Device Fix */
 @media screen and (max-width: 1366px) and (hover: none) and (pointer: coarse) {
