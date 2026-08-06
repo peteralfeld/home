@@ -373,7 +373,7 @@ function sysLog(msg) {
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
       txt += `White: ${p1Type}, Red: ${p2Type}\n\n`;
       txt += withScore
-        ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score\n\n'
+        ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score (White view)\n\n'
         : 'Turn  Player  Dice   Moves\n\n';
 
       game.gameHistory.forEach((snap, idx) => {
@@ -1079,8 +1079,11 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-1';
       if (setupMode) {
+        slab.style.pointerEvents = 'auto';   // CSS sets none; re-enable so slabs can be dragged out
         slab.setAttribute('draggable', 'true');
         setupDragAttach(slab, 'tray1');
+        slab.addEventListener('dragover', (e) => handleDragOver(e, 'tray1'));
+        slab.addEventListener('drop', (e) => handleDrop(e, 'tray1'));
       }
       bearOffP1.appendChild(slab);
     }
@@ -1089,8 +1092,11 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
       const slab = document.createElement('div');
       slab.className = 'borne-checker player-2';
       if (setupMode) {
+        slab.style.pointerEvents = 'auto';   // CSS sets none; re-enable so slabs can be dragged out
         slab.setAttribute('draggable', 'true');
         setupDragAttach(slab, 'tray2');
+        slab.addEventListener('dragover', (e) => handleDragOver(e, 'tray2'));
+        slab.addEventListener('drop', (e) => handleDrop(e, 'tray2'));
       }
       bearOffP2.appendChild(slab);
     }
@@ -1511,16 +1517,17 @@ function handleRollClick() {
     return game.personalityWeights((selEl && selEl.value) || 'Origin');
   }
 
-  // Score of a snapshot's (post-move) position from the perspective of the player
-  // on roll there — the player whose move it is when you navigate to that row.
+  // Score of a snapshot's (post-move) position, always in WHITE's view (positive =
+  // good for White, negative = good for Red) — one fixed frame so the column reads
+  // consistently and a dance shows the same value twice instead of flipping sign.
+  // The scoring AI is still the side on roll there (matters only for mixed brains).
   // Cached on the snapshot (evaluated once) until the scoring context changes.
   function snapshotScore(snapshot) {
     if (snapshot._score !== undefined) return snapshot._score;
     const onRoll = snapshot.isInitial
       ? snapshot.currentPlayer
       : (snapshot.currentPlayer === 1 ? 2 : 1);
-    const s = game.evaluate(snapshot.points, snapshot.bar, snapshot.borneOff, scoringWeights(onRoll));
-    snapshot._score = onRoll === 1 ? s : -s;
+    snapshot._score = game.evaluate(snapshot.points, snapshot.bar, snapshot.borneOff, scoringWeights(onRoll));
     return snapshot._score;
   }
 
@@ -1566,7 +1573,7 @@ function handleRollClick() {
           <th style="padding: 4px; width: 8%; text-align: left;">P</th>
           <th style="padding: 4px; width: 18%; text-align: left;">Dice</th>
           <th style="padding: 4px; width: ${showScore ? '46%' : '64%'}; text-align: left;">Moves</th>
-          ${showScore ? '<th style="padding: 4px; width: 20%; text-align: left;">Score</th>' : ''}
+          ${showScore ? '<th style="padding: 4px; width: 20%; text-align: left;" title="White\'s view: positive = good for White, negative = good for Red">Score</th>' : ''}
         </tr>
       </thead>`;
     historyListEl.appendChild(tableHeader);
