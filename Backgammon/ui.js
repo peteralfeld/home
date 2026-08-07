@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let setupDragLoc = null;   // drag source location
   let setupOnRoll  = null;   // side to move next (1|2|null)
   let setupKind    = null;   // 'clear' | 'initial' | 'examine' (last entered)
-  let setupBaseMsg = 'Setup Mode';   // idle instruction-line text while in setup
+  let setupBaseMsg = 'Examination Mode';   // idle instruction-line text while in setup
   let setupAutoStop = false;         // set by STOP/exit to break the examine auto-play loop
   let startedFromSetup = false;  // a game launched via START from setup → STOP resets it to initial
   let autoMoveOn  = false;
@@ -497,11 +497,14 @@ function sysLog(msg) {
     exportOpeningEl.addEventListener('click', async () => {
       const label = exportOpeningEl.querySelector('.settings-item-label');
       const orig = label ? label.textContent : '';
-      const brainName = (editBrainSel && editBrainSel.value) || 'Arwen';
-      const W = game.personalityWeights(brainName);
       const player = setupMode ? (setupOnRoll || 1) : (game.currentPlayer || 1);
       const who = player === 1 ? 'White' : 'Red';
       const depth = playerDepth(player);   // the on-roll side's Depth menu (White = p1, Red = p2)
+      // Examination mode → live editor fields; play mode → the on-roll seat's brain (Arwen if human).
+      const brainName = setupMode
+        ? ((editBrainSel && editBrainSel.value) || 'Arwen')
+        : (game.playerTypes[player] === 'ai' ? game.aiNames[player] : 'Arwen');
+      const W = setupMode ? editorWeights() : sideWeights(player);
       const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };   // CURRENT position
       const rolls = [[2,1],[3,1],[3,2],[4,1],[4,2],[4,3],[5,1],[5,2],[5,3],[5,4],[6,1],[6,2],[6,3],[6,4],[6,5],
                      [1,1],[2,2],[3,3],[4,4],[5,5],[6,6]];
@@ -3778,7 +3781,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     renderDie(die1El, 0); renderDie(die2El, 0);
     clearSetupDice();
     clearSetupHighlight();
-    setupBaseMsg = (kind === 'examine') ? 'Setup Mode, click STOP to exit.' : 'Setup Mode';
+    setupBaseMsg = (kind === 'examine') ? 'Examination Mode, click STOP to exit.' : 'Examination Mode';
     gameMessageEl.textContent = setupBaseMsg;
     historyListEl.innerHTML = '';           // green window blank until MOV
     renderPoints(); renderBar(); renderBorneOff();
@@ -3829,7 +3832,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     if (!color) return;
     if (to === 'bar1' || to === 'bar2') to = 'bar' + color;   // any spot on the bar → that checker's own bar area
     if (from === to) return;
-    if (!canPlace(to, color)) { gameMessageEl.textContent = 'Setup Mode — a point can hold only one colour.'; return; }
+    if (!canPlace(to, color)) { gameMessageEl.textContent = 'Examination Mode — a point can hold only one colour.'; return; }
     removeOne(from); addOne(to, color);
     gameMessageEl.textContent = setupBaseMsg;
     renderPoints(); renderBar(); renderBorneOff();
@@ -3887,9 +3890,17 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     if (player === 1) { dieR1.value = String(faces[0]); dieR2.value = String(faces[1]); dieW1.value = ''; dieW2.value = ''; }
     else { dieW1.value = String(faces[0]); dieW2.value = String(faces[1]); dieR1.value = ''; dieR2.value = ''; }
   }
-  function sideWeights(player) {
-    if (game.playerTypes[player] === 'ai') return game.personalityWeights(game.aiNames[player]);
-    return game.personalityWeights('Arwen');   // a human seat → Arwen does the analysis / move
+  // Weights for MOV / PLAY come LIVE from the brain-editor parameter fields (the white
+  // number boxes), so editing a weight and pressing MOV again immediately shows its
+  // effect. Falls back to the selected personality for any missing field.
+  function editorWeights() {
+    const base = game.personalityWeights((editBrainSel && editBrainSel.value) || 'Arwen');
+    const w = { ...base };
+    BRAIN_KEYS.forEach((k) => {
+      const inp = document.getElementById('bp-' + k);
+      if (inp && inp.value !== '') { const v = parseInt(inp.value, 10); if (!isNaN(v)) w[k] = v; }
+    });
+    return w;
   }
   function moveText(moves) {
     if (!moves || moves.length === 0) return '(no move)';
@@ -3920,8 +3931,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     setupOnRoll = player;
     const depth = playerDepth(player);
     const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
-    if (depth >= 2 && workersAvailable) gameMessageEl.textContent = 'Setup Mode — computing…';
-    const ranked = await rankMovesFor(board, player, dice, depth, sideWeights(player));
+    if (depth >= 2 && workersAvailable) gameMessageEl.textContent = 'Examination Mode — computing…';
+    const ranked = await rankMovesFor(board, player, dice, depth, editorWeights());
     if (!setupMode) return;   // exited during the await
     renderMoveList(ranked, player, faces);
     gameMessageEl.textContent = setupBaseMsg;
@@ -3933,10 +3944,10 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     showDiceForSide(player, faces);
     const who = player === 1 ? 'White' : 'Red';
     const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
-    const ranked = await rankMovesFor(board, player, dice, playerDepth(player), sideWeights(player));
+    const ranked = await rankMovesFor(board, player, dice, playerDepth(player), editorWeights());
     if (!setupMode) return;   // exited during the await
     if (ranked.length === 0) {
-      gameMessageEl.textContent = `Setup Mode — ${who} dances on ${facesText(faces)}.`;
+      gameMessageEl.textContent = `Examination Mode — ${who} dances on ${facesText(faces)}.`;
       setupOnRoll = player === 1 ? 2 : 1;
       clearSetupDice();
       return;
@@ -3961,9 +3972,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     setupOnRoll = player === 1 ? 2 : 1;
     clearSetupDice();
     if (game.borneOff[1] >= 15 || game.borneOff[2] >= 15) {
-      gameMessageEl.textContent = `Setup Mode — ${game.borneOff[1] >= 15 ? 'White' : 'Red'} has borne off all 15.`;
+      gameMessageEl.textContent = `Examination Mode — ${game.borneOff[1] >= 15 ? 'White' : 'Red'} has borne off all 15.`;
     } else {
-      gameMessageEl.textContent = `Setup Mode — ${who} played ${moveText(best)} (${facesText(faces)}).`;
+      gameMessageEl.textContent = `Examination Mode — ${who} played ${moveText(best)} (${facesText(faces)}).`;
     }
   }
 
