@@ -1644,8 +1644,9 @@ function handleRollClick() {
         let scoreCell = '';
         if (showScore) {
           const scoreVal = Math.round(snapshotScore(snapshot));
-          const scoreColor = scoreVal > 0 ? '#86efac' : (scoreVal < 0 ? '#f87171' : '#9ca3af');
-          scoreCell = `<td style="padding: 2px 4px; font-family: monospace; color: ${scoreColor};">${scoreVal}</td>`;
+          // White view: positive (good for White) drawn white, negative (good for Red) red.
+          const scoreColor = scoreVal > 0 ? '#ffffff' : (scoreVal < 0 ? '#f87171' : '#9ca3af');
+          scoreCell = `<td style="padding: 2px 4px; font-family: monospace; font-weight: bold; color: ${scoreColor};">${scoreVal}</td>`;
         }
         row.innerHTML = `
           <td style="padding: 2px 4px; font-weight: bold;">${idx}</td>
