@@ -13,29 +13,33 @@
  *   BO  checkers borne off              (term w*(boW-boR)/15) +500
  *   EC1 rolls allowing exactly one move (term w*EC1/36)       -133
  *   EC0 rolls allowing no move          (term w*EC0/36)       -400
- *   PH  longest prime * checkers trapped (steep, pure mult)   +667
  *   HB  home-board points made (standing)                     +133
  *   AN  anchors, gated on being behind in the race            +200
  *   DO/IO/DP/IP  collapsed blot threat-vs-exposure features   +1000/600/500/300
  *   DE  disengagement bonus (move-selection only, not static) +667
+ *   F0..F5  freedom/containment: checkers by escape-count 0..5 -1000..-200
+ *           (past-the-front-of-the-wall; F6 free = no weight; replaced PH)
  */
 // Alphabetical names are kept in descending order of tournament performance:
 // Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
 // is the fixed historic baseline and is listed last (bottom of the player menus).
-// Weights normalized to max|w| = 1000 over the 12 eval weights; DT/AT (doubling
+// Weights normalized to max|w| = 1000 over the 17 eval weights; DT/AT (doubling
 // thresholds, same score units) travel inline with each brain. NOTE: the PC weights
 // here go with the /20 pip divisor in evaluate() (rescaled from the old /167 — same
 // play, just a saner band for the number).
 const AI_PERSONALITIES = {
-  Arwen:     { PC: -665, BO: 1000, EC1: -228, EC0: -239, PH: 167, HB: 256, AN: -6,  DO: 11,   IO: 44,   DP: 133,  IP: 22,  DE: 117,  DT: 94,  AT: 761  },  // = Arwen-evo-g112 (evolved)
-  Bilbo:     { PC: -665, BO: 1000, EC1: -444, EC0: -261, PH: 589, HB: 306, AN: -6,  DO: 6,    IO: 33,   DP: 100,  IP: 6,   DE: -172, DT: 178, AT: 50   },  // = Arwen-evo-g365 (evolved)
-  Celebrian: { PC: -658, BO: 989,  EC1: -66,  EC0: -440, PH: 159, HB: 27,  AN: 110, DO: -11,  IO: 11,   DP: 264,  IP: -11, DE: 1000, DT: 346, AT: 1852 },  // = Galadriel-evo-g539 (evolved)
-  Dwalin:    { PC: -46,  BO: 180,  EC1: -17,  EC0: -178, PH: 289, HB: 1,   AN: 34,  DO: 1000, IO: -20,  DP: 57,   IP: 39,  DE: 173,  DT: 134, AT: 214  },  // = Bilbo-evo-g17 (evolved)
-  Eowyn:     { PC: -153, BO: 230,  EC1: -228, EC0: 3,    PH: 28,  HB: 31,  AN: -1,  DO: 1000, IO: 443,  DP: 87,   IP: 6,   DE: -82,  DT: 429, AT: 352  },  // = Dwalin-evo-g190 (evolved)
-  Frodo:     { PC: -149, BO: 224,  EC1: -617, EC0: 137,  PH: 488, HB: -12, AN: -16, DO: 759,  IO: -130, DP: 1000, IP: 148, DE: 159,  DT: 73,  AT: 312  },  // = Eowyn-evo-g11 (evolved)
-  Galadriel: { PC: -180, BO: 270,  EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 199, DO: 1000, IO: 600,  DP: 499,  IP: 300, DE: 667,  DT: 150, AT: 300  },
-  Hamfast:   { PC: -40,  BO: 180,  EC1: -67,  EC0: -200, PH: 334, HB: 67,  AN: 100, DO: 1000, IO: 500,  DP: 250,  IP: 150, DE: 334,  DT: 100, AT: 200  },
-  Origin:    { PC: -80,  BO: 500,  EC1: -133, EC0: -400, PH: 667, HB: 133, AN: 200, DO: 1000, IO: 600,  DP: 500,  IP: 300, DE: 667,  DT: 100, AT: 200  }
+  // Re-sorted after the tournament so alphabetical name order = performance rank
+  // (Arwen strongest ... Hamfast weakest). All named brains share Hamfast's evolved
+  // F0-F5 (Celebrian-evo-g69: -120,-121,-98,-60,-30,-12); Origin stays F=0 (baseline).
+  Arwen: { PC: -366, BO: 82, EC1: -166, EC0: -1000, HB: 146, AN: -1, DO: 1, IO: 1, DP: 192, IP: 31, DE: 19, F0: -88, F1: 2, F2: 1, F3: -7, F4: -14, F5: -3, BE: 17, G5: 388, G7: 19, G4: 31, GA: -2, DT: 222, AT: 386 },  // = Arwen-evo-g105 (non-racer) (1st)
+  Bilbo: { PC: -1000, BO: 408, EC1: 3, EC0: -397, HB: 228, AN: -3, DO: 11, IO: 4, DP: 293, IP: 4, DE: 75, F0: -14, F1: -81, F2: -11, F3: -21, F4: -16, F5: -3, BE: 2, G5: -1, G7: 127, G4: 24, GA: -10, DT: 85, AT: 811 },  // = Arwen-evo-g343 (2nd)
+  Celebrian: { PC: -665, BO: 1000, EC1: -228, EC0: -239, HB: 256, AN: -6, DO: 11, IO: 44, DP: 133, IP: 22, DE: 117, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 256, G7: 256, G4: 256, GA: -6, DT: 94, AT: 761 },  // = Arwen-evo-g112 (3rd)
+  Dwalin: { PC: -658, BO: 989, EC1: -66, EC0: -440, HB: 27, AN: 110, DO: -11, IO: 11, DP: 264, IP: -11, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 27, G7: 27, G4: 27, GA: 110, DT: 346, AT: 1852 },  // = Galadriel-evo-g539 (4th)
+  Eowyn: { PC: -665, BO: 1000, EC1: -444, EC0: -261, HB: 306, AN: -6, DO: 6, IO: 33, DP: 100, IP: 6, DE: -172, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 306, G7: 306, G4: 306, GA: -6, DT: 178, AT: 50 },  // = Arwen-evo-g365 (5th)
+  Frodo: { PC: -324, BO: 155, EC1: -25, EC0: -95, HB: 44, AN: 33, DO: -5, IO: 4, DP: 53, IP: -1, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 44, G7: 44, G4: 44, GA: 33, DT: 516, AT: 1092 },  // = Celebrian-evo-g69 (6th)
+  Galadriel: { PC: -153, BO: 230, EC1: -228, EC0: 3, HB: 31, AN: -1, DO: 1000, IO: 443, DP: 87, IP: 6, DE: -82, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 31, G7: 31, G4: 31, GA: -1, DT: 429, AT: 352 },  // = Dwalin-evo-g190 (7th)
+  Hamfast: { PC: -46, BO: 180, EC1: -17, EC0: -178, HB: 1, AN: 34, DO: 1000, IO: -20, DP: 57, IP: 39, DE: 173, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 1, G7: 1, G4: 1, GA: 34, DT: 134, AT: 214 },  // = Bilbo-evo-g17 (8th)
+  Origin:    { PC: -80,  BO: 500,  EC1: -133, EC0: -400, HB: 133, AN: 200, DO: 1000, IO: 600,  DP: 500,  IP: 300, DE: 667,  F0: 0,    F1: 0,    F2: 0,    F3: 0,    F4: 0,    F5: 0,    BE: 0,   G5: 133, G7: 0, G4: 133, GA: 200, DT: 100, AT: 200  }
 };
 
 // The baseline AI. Each personality is normalized so max|w| = 1000.
@@ -43,9 +47,6 @@ const DEFAULT_WEIGHTS = AI_PERSONALITIES.Origin;
 
 // Immutable snapshot of the built-in roster, for the "Def" (reset) action.
 const BUILTIN_PERSONALITIES = JSON.parse(JSON.stringify(AI_PERSONALITIES));
-
-// Steep length factor for a prime of a given length (0 for < 2, 1.0 for full 6-prime).
-const PRIME_FACTOR = { 2: 0.05, 3: 0.15, 4: 0.35, 5: 0.65, 6: 1.0 };
 
 // --- Lookahead (expectimax) support -------------------------------------------
 // The 21 distinct dice rolls with their multiplicities out of 36: a non-double
@@ -920,43 +921,6 @@ rollDice(d1 = null, d2 = null) {
     return { ec0, ec1 };
   }
 
-  /** Longest prime in p's home+outer board and how many opponent checkers it traps. */
-  longestPrimeTrapped(points, bar, p) {
-    const lo = p === 1 ? 1 : 13, hi = p === 1 ? 12 : 24;
-    const opp = p === 1 ? 2 : 1;
-
-    // Opponent checkers trapped behind a run [start,end]: the bar plus the opponent's
-    // checkers on the far side of the run (lower points for White, higher for Red).
-    const trappedFor = (start, end) => {
-      let t = bar[opp];
-      if (p === 1) { for (let i = 1; i < start; i++) if (points[i].player === 2) t += points[i].count; }
-      else { for (let i = end + 1; i <= 24; i++) if (points[i].player === 1) t += points[i].count; }
-      return t;
-    };
-
-    // Scan all maximal made-point runs (length >= 2) and keep the longest; break ties
-    // by the most opponent checkers trapped. The tie-break must be by trapped count,
-    // NOT scan order: scan order picks a different physical prime for White (scans
-    // from its home) than for Red (scans from the far side), which broke evaluate()'s
-    // colour symmetry (mirrored positions did not negate the PH term).
-    let best = { len: 0, trapped: 0 };
-    let curStart = -1;
-    const consider = (start, end) => {
-      const len = end - start + 1;
-      if (len < 2) return;
-      const trapped = trappedFor(start, end);
-      if (len > best.len || (len === best.len && trapped > best.trapped)) best = { len, trapped };
-    };
-    for (let i = lo; i <= hi; i++) {
-      const made = points[i].player === p && points[i].count >= 2;
-      if (made) { if (curStart === -1) curStart = i; }
-      else { if (curStart !== -1) { consider(curStart, i - 1); curStart = -1; } }
-    }
-    if (curStart !== -1) consider(curStart, hi);
-
-    return best;
-  }
-
   /** Points made (2+) in p's own home board. */
   homeBoardPoints(points, p) {
     const lo = p === 1 ? 1 : 19, hi = p === 1 ? 6 : 24;
@@ -969,6 +933,17 @@ rollDice(d1 = null, d2 = null) {
     const lo = p === 1 ? 19 : 1, hi = p === 1 ? 24 : 6;
     let c = 0; for (let i = lo; i <= hi; i++) if (points[i].player === p && points[i].count >= 2) c++;
     return c;
+  }
+
+  /**
+   * Is player `p`'s OWNER-RELATIVE n-point made (2+)? Owner-relative so it stays colour-
+   * antisymmetric: White's n-point is board point n; Red's n-point is board point 25−n.
+   * Used by the golden-point weights (G5/G7/G4 = owner's 5/bar/4-point; GA = owner's
+   * 20-point = the opponent's 5-point, the golden anchor). Returns 1 or 0.
+   */
+  madeOwnerPoint(points, n, p) {
+    const idx = p === 1 ? n : 25 - n;
+    return (points[idx].player === p && points[idx].count >= 2) ? 1 : 0;
   }
 
   /**
@@ -1075,23 +1050,57 @@ rollDice(d1 = null, d2 = null) {
     score += weights.EC1 * (ecW.ec1 - ecR.ec1) / 36;
     score += weights.EC0 * (ecW.ec0 - ecR.ec0) / 36;
 
-    // PH — longest prime * checkers trapped (steep length factor, pure multiply)
-    const phW = this.longestPrimeTrapped(points, bar, 1);
-    const phR = this.longestPrimeTrapped(points, bar, 2);
-    const phValW = (PRIME_FACTOR[phW.len] || (phW.len >= 6 ? 1.0 : 0)) * phW.trapped;
-    const phValR = (PRIME_FACTOR[phR.len] || (phR.len >= 6 ? 1.0 : 0)) * phR.trapped;
-    score += weights.PH * (phValW - phValR);
+    // F0-F5 — freedom / containment. Per side, count checkers by how many die-values
+    // let them clear the prime in front of them (escapeCountForChecker): F0 = sealed
+    // (entombed / closed out) ... F5 = nearly free. F6 (fully free) carries no signal,
+    // so it is deliberately NOT a weight. Replaces the old PH prime term with a graded,
+    // per-checker, evolvable containment measure.
+    const fW = escapeBuckets(points, bar, 1), fR = escapeBuckets(points, bar, 2);
+    for (let n = 0; n <= 5; n++) score += (weights['F' + n] || 0) * (fW[n] - fR[n]);
 
-    // HB — home-board points made (standing)
-    score += weights.HB * (this.homeBoardPoints(points, 1) - this.homeBoardPoints(points, 2));
+    // Golden points (per-point made-point VALUE, owner-relative, colour-antisymmetric).
+    // Some points are worth far more than others: the 5-point (G5), bar/7-point (G7) and
+    // 4-point (G4) are the prime-building "golden" points; the golden ANCHOR (GA) is the
+    // opponent's 5-point held from the back (owner-20). Each is a separate evolvable weight;
+    // HB and AN cover the *remaining* points so nothing is double-counted.
+    const md = (n, p) => this.madeOwnerPoint(points, n, p);
 
-    // AN — anchors, only for the side that is behind in the race
-    const anW = pipW > pipR ? this.anchorsP(points, 1) : 0;
-    const anR = pipR > pipW ? this.anchorsP(points, 2) : 0;
+    // HB — home-board points made, EXCLUDING the golden home points (4,5): owner {1,2,3,6}.
+    const hbW = this.homeBoardPoints(points, 1) - md(4, 1) - md(5, 1);
+    const hbR = this.homeBoardPoints(points, 2) - md(4, 2) - md(5, 2);
+    score += weights.HB * (hbW - hbR);
+
+    // Golden offensive points: 5-point, bar point (7), 4-point.
+    score += (weights.G5 || 0) * (md(5, 1) - md(5, 2));
+    score += (weights.G7 || 0) * (md(7, 1) - md(7, 2));
+    score += (weights.G4 || 0) * (md(4, 1) - md(4, 2));
+
+    // AN — anchors (opponent's home), EXCLUDING the golden anchor (owner-20); gated behind.
+    const anW = pipW > pipR ? (this.anchorsP(points, 1) - md(20, 1)) : 0;
+    const anR = pipR > pipW ? (this.anchorsP(points, 2) - md(20, 2)) : 0;
     score += weights.AN * (anW - anR);
+
+    // GA — golden anchor (the opponent's 5-point, owner-20); same behind-gate as AN.
+    const gaW = pipW > pipR ? md(20, 1) : 0;
+    const gaR = pipR > pipW ? md(20, 2) : 0;
+    score += (weights.GA || 0) * (gaW - gaR);
 
     // Blots — collapsed threat/exposure, already from White's view
     score += this.blotContribution(points, bar, weights);
+
+    // BE — bar entombment. A checker on the bar freezes the whole army until it enters, so
+    // it is worse than the same escape-count checker on a point. Price it at BE per expected
+    // FROZEN TURN (barFreezeTurns): fixed durations for F1-F5, and for a sealed bar checker
+    // (F0) the live "how long can the opponent hold his closed board" = (oppPip - 42)/8. Each
+    // side's F0 reads the OPPONENT's pip count (he holds the sealing board), which keeps the
+    // term colour-antisymmetric. A White bar checker hurts White (-), a Red one helps (+).
+    const BE = weights.BE || 0;
+    if (BE) {
+      let wFreeze = 0, rFreeze = 0;
+      for (let n = 0; n < bar[1]; n++) wFreeze += barFreezeTurns(escapeCountForChecker(points, 25, 1), pipR);
+      for (let n = 0; n < bar[2]; n++) rFreeze += barFreezeTurns(escapeCountForChecker(points, 0, 2), pipW);
+      score += BE * (rFreeze - wFreeze);
+    }
 
     // Round half AWAY FROM ZERO (not JS's default half-to-+Infinity), so the score is
     // exactly colour-antisymmetric: evaluate(mirror) === -evaluate(original).
@@ -1104,7 +1113,6 @@ rollDice(d1 = null, d2 = null) {
    * where term = weight * v and the sum of terms is the White-view score.
    */
   evaluateBreakdown(points, bar, borneOff, weights) {
-    const pf = (len) => (len >= 6 ? 1.0 : (PRIME_FACTOR[len] || 0));
     const rows = [];
 
     const pipW = this.pipCountP(points, bar, 1), pipR = this.pipCountP(points, bar, 2);
@@ -1116,16 +1124,27 @@ rollDice(d1 = null, d2 = null) {
     rows.push({ code: 'EC1', meaning: 'Rolls with one move', white: ecW.ec1, red: ecR.ec1, v: (ecW.ec1 - ecR.ec1) / 36, weight: weights.EC1 });
     rows.push({ code: 'EC0', meaning: 'Rolls with no move', white: ecW.ec0, red: ecR.ec0, v: (ecW.ec0 - ecR.ec0) / 36, weight: weights.EC0 });
 
-    const phW = this.longestPrimeTrapped(points, bar, 1), phR = this.longestPrimeTrapped(points, bar, 2);
-    const phValW = pf(phW.len) * phW.trapped, phValR = pf(phR.len) * phR.trapped;
-    rows.push({ code: 'PH', meaning: `Prime x trapped (W ${phW.len}pt/${phW.trapped}, R ${phR.len}pt/${phR.trapped})`, white: phValW, red: phValR, v: (phValW - phValR), weight: weights.PH });
+    const fW = escapeBuckets(points, bar, 1), fR = escapeBuckets(points, bar, 2);
+    for (let n = 0; n <= 5; n++) {
+      rows.push({ code: 'F' + n, meaning: `Freedom bucket ${n} (checkers with ${n} escape rolls)`, white: fW[n], red: fR[n], v: (fW[n] - fR[n]), weight: (weights['F' + n] || 0) });
+    }
 
-    const hbW = this.homeBoardPoints(points, 1), hbR = this.homeBoardPoints(points, 2);
-    rows.push({ code: 'HB', meaning: 'Home-board points', white: hbW, red: hbR, v: (hbW - hbR), weight: weights.HB });
+    const md = (n, p) => this.madeOwnerPoint(points, n, p);
+    const hbW = this.homeBoardPoints(points, 1) - md(4, 1) - md(5, 1);
+    const hbR = this.homeBoardPoints(points, 2) - md(4, 2) - md(5, 2);
+    rows.push({ code: 'HB', meaning: 'Home-board points (excl. 4,5)', white: hbW, red: hbR, v: (hbW - hbR), weight: weights.HB });
 
-    const anW = pipW > pipR ? this.anchorsP(points, 1) : 0;
-    const anR = pipR > pipW ? this.anchorsP(points, 2) : 0;
-    rows.push({ code: 'AN', meaning: 'Anchors (only if behind)', white: anW, red: anR, v: (anW - anR), weight: weights.AN });
+    rows.push({ code: 'G5', meaning: 'Golden 5-point made', white: md(5, 1), red: md(5, 2), v: (md(5, 1) - md(5, 2)), weight: (weights.G5 || 0) });
+    rows.push({ code: 'G7', meaning: 'Bar point (7) made', white: md(7, 1), red: md(7, 2), v: (md(7, 1) - md(7, 2)), weight: (weights.G7 || 0) });
+    rows.push({ code: 'G4', meaning: 'Golden 4-point made', white: md(4, 1), red: md(4, 2), v: (md(4, 1) - md(4, 2)), weight: (weights.G4 || 0) });
+
+    const anW = pipW > pipR ? (this.anchorsP(points, 1) - md(20, 1)) : 0;
+    const anR = pipR > pipW ? (this.anchorsP(points, 2) - md(20, 2)) : 0;
+    rows.push({ code: 'AN', meaning: 'Anchors excl. golden (if behind)', white: anW, red: anR, v: (anW - anR), weight: weights.AN });
+
+    const gaW = pipW > pipR ? md(20, 1) : 0;
+    const gaR = pipR > pipW ? md(20, 2) : 0;
+    rows.push({ code: 'GA', meaning: 'Golden anchor (opp 5-pt, if behind)', white: gaW, red: gaR, v: (gaW - gaR), weight: (weights.GA || 0) });
 
     // Blots collapsed to DO/IO/DP/IP; white = White blots at risk, red = Red blots at risk.
     const blot = { DO: { w: 0, r: 0 }, IO: { w: 0, r: 0 }, DP: { w: 0, r: 0 }, IP: { w: 0, r: 0 } };
@@ -1145,6 +1164,12 @@ rollDice(d1 = null, d2 = null) {
       // term is + when Red is more exposed than White (good for White)
       rows.push({ code, meaning, white: b.w, red: b.r, v: (b.r - b.w), weight: weights[code] });
     });
+
+    // BE — bar entombment: expected frozen turns per side (F0 reads opponent pip). v = red - white.
+    let wFreeze = 0, rFreeze = 0;
+    for (let n = 0; n < bar[1]; n++) wFreeze += barFreezeTurns(escapeCountForChecker(points, 25, 1), pipR);
+    for (let n = 0; n < bar[2]; n++) rFreeze += barFreezeTurns(escapeCountForChecker(points, 0, 2), pipW);
+    rows.push({ code: 'BE', meaning: 'Bar entombment (frozen turns)', white: wFreeze, red: rFreeze, v: (rFreeze - wFreeze), weight: (weights.BE || 0) });
 
     let score = 0;
     rows.forEach((row) => { row.term = row.weight * row.v; score += row.term; });
@@ -1547,11 +1572,152 @@ rollDice(d1 = null, d2 = null) {
 }
 
 /**
+ * Escape count of ONE checker (the "freedom" primitive behind the F0-F5 eval features
+ * and the escape-roll statistic). Counts how many of the six die-values let the checker
+ * get PAST THE FRONT OF THE PRIME that contains it — not merely shuffle to an open
+ * square behind the wall. So a checker sitting a few pips short of a prime with open
+ * squares in front still reads as trapped (it can't clear the blockade this turn).
+ *   - No prime ahead, or only a LONE blocking point (weave around it): count every open
+ *     forward landing (bear-off / running off the far edge counts) — up to 6 = free.
+ *   - Behind a prime of length >= 2: count only die-values that land past the prime's
+ *     front (home-side end) on an open point (or bear off).
+ *   - The BAR is a virtual point one pip behind the entry edge (White = 25, Red = 0), so
+ *     entry is just the checker's first move and a bar checker behind a prime reads as
+ *     sealed (0), whether the board is closed OR the prime sits just past the entry zone.
+ * 0 = entombed/closed out ... 6 = free. Direction-dependent (White scans toward 1, Red
+ * toward 24), so it MUST stay colour-antisymmetric — verify with eval-symmetry-test.js.
+ */
+function escapeCountForChecker(points, p, me) {
+  const opp = me === 1 ? 2 : 1;
+  const made = (t) => points[t].player === opp && points[t].count >= 2;
+  let open = 0;
+  if (me === 1) {                                   // White: p -> p-d, home past 1
+    let b = -1;
+    for (let t = p - 1; t >= 1; t--) if (made(t)) { b = t; break; }
+    if (b === -1) {                                 // no wall ahead -> free
+      for (let d = 1; d <= 6; d++) { const t = p - d; if (t < 1 || !made(t)) open++; }
+      return open;
+    }
+    let f = b; while (f - 1 >= 1 && made(f - 1)) f--;   // front (home-side end) of the prime
+    if (b - f + 1 === 1) {                          // lone point -> weave around it
+      for (let d = 1; d <= 6; d++) { const t = p - d; if (t < 1 || !made(t)) open++; }
+      return open;
+    }
+    for (let d = 1; d <= 6; d++) { const t = p - d; if (t < 1 || (t < f && !made(t))) open++; }
+    return open;
+  }
+  let b = -1;                                       // Red: p -> p+d, home past 24
+  for (let t = p + 1; t <= 24; t++) if (made(t)) { b = t; break; }
+  if (b === -1) {
+    for (let d = 1; d <= 6; d++) { const t = p + d; if (t > 24 || !made(t)) open++; }
+    return open;
+  }
+  let f = b; while (f + 1 <= 24 && made(f + 1)) f++;    // front (home-side end) of the prime
+  if (f - b + 1 === 1) {
+    for (let d = 1; d <= 6; d++) { const t = p + d; if (t > 24 || !made(t)) open++; }
+    return open;
+  }
+  for (let d = 1; d <= 6; d++) { const t = p + d; if (t > 24 || (t > f && !made(t))) open++; }
+  return open;
+}
+
+/**
+ * Bar-entombment freeze duration, in expected FROZEN TURNS, for one checker sitting on
+ * the bar with the given escape-count. A checker on the bar freezes the WHOLE army until
+ * it enters, so it is worse than the same escape-count checker on a point (the BE eval
+ * weight prices this at BE per frozen turn). The duration is:
+ *   - F1..F5: fixed, from the geometric miss model. If a bar checker enters on `e` of the
+ *     six die-values, both dice miss with probability ((6-e)/6)^2, and the expected number
+ *     of frozen turns is the geometric sum p_fail/(1-p_fail):
+ *       e=1 -> 25/11 ≈ 2.27,  e=2 -> 0.80,  e=3 -> 1/3,  e=4 -> 0.125,  e=5 -> 1/35 ≈ 0.029.
+ *   - F0 (sealed / closed out): the board holds as long as the OPPONENT can stall without
+ *     breaking it, i.e. the remaining journey of his three spare checkers. A bare closed
+ *     board is 12 checkers (2 per home point) = 42 pips, so his spare pips are oppPip - 42;
+ *     divide by ~8 pips played per turn (doubles included). Capped at 8 turns.
+ *   - F6 (fully free): 0 (not entombment; F6 carries no signal anyway).
+ * NB direction-dependent (F0 reads the OPPONENT's pip count), so it must stay colour-
+ * antisymmetric — re-run eval-symmetry-test.js after any change here.
+ */
+const BAR_FREEZE = [0, 25 / 11, 0.8, 1 / 3, 0.125, 1 / 35, 0]; // index = escape-count; [0] computed live
+function barFreezeTurns(escCount, oppPip) {
+  if (escCount === 0) {                         // sealed on the bar / closed out
+    const t = (oppPip - 42) / 8;
+    return t < 0 ? 0 : (t > 8 ? 8 : t);
+  }
+  return BAR_FREEZE[escCount];                   // 1..6 fixed (6 -> 0)
+}
+
+/** Per-side escape-count histogram [c0..c6] over all of `me`'s checkers (incl. the bar,
+ *  each as a virtual checker at point 25 (White) / 0 (Red)). */
+function escapeBuckets(points, bar, me) {
+  const h = [0, 0, 0, 0, 0, 0, 0];
+  const virt = me === 1 ? 25 : 0;
+  for (let n = 0; n < bar[me]; n++) h[escapeCountForChecker(points, virt, me)]++;
+  for (let p = 1; p <= 24; p++) {
+    const pt = points[p];
+    if (pt.count > 0 && pt.player === me) {
+      const e = escapeCountForChecker(points, p, me);
+      for (let c = 0; c < pt.count; c++) h[e]++;
+    }
+  }
+  return h;
+}
+
+/**
+ * Escape-roll statistic (a diagnostic, opt-in via the tournament's Statistics setting).
+ * Tallies every checker, both sides, once per ply into hist[0..6] by its escapeCount
+ * (see escapeCountForChecker) — 0 = sealed (entombment / closeout), 6 = free. Uses the
+ * SAME past-the-front-of-the-wall measure the F0-F5 eval features use, so the histogram
+ * reports how often each F-bucket actually occurs in self-play.
+ */
+function escapeCountsInto(points, bar, hist) {
+  const w = escapeBuckets(points, bar, 1), r = escapeBuckets(points, bar, 2);
+  for (let k = 0; k <= 6; k++) hist[k] += w[k] + r[k];
+}
+
+/**
+ * BE-effectiveness diagnostic (opt-in via the Statistics setting) — "does BE bite?".
+ * At the current decision, does the bar-entombment weight actually change which move the
+ * AI picks? We re-rank the same candidates with BE zeroed and compare the top choice. A
+ * static bar penalty can only bite through what it can SEE in the position it scores, and
+ * at depth 1 that is the board AFTER the mover's own turn — where the mover's own bar
+ * checker has already entered (or it danced, no choice) and the only bar checker present
+ * is one it just hit (already priced by PC). So BE is expected to bite rarely at depth 1;
+ * this counter measures exactly how rarely, per ply, across real self-play. It is only
+ * meaningful (and only computed) at depth 1 — deeper searches bury BE inside the leaves,
+ * where this cheap root subtraction doesn't apply. Accumulates into stats[7] (decisions
+ * with a real choice) and stats[8] (of those, where the pick changed).
+ */
+function beBiteInto(g, stats) {
+  const player = g.currentPlayer;
+  const perSide = g.searchDepths && g.searchDepths[player];
+  const depth = (perSide != null) ? perSide : (g.searchDepth != null ? g.searchDepth : 1);
+  const W = g.aiWeights[player];
+  if (depth !== 1 || !W || !W.BE) return;                 // depth-1 only; nothing to bite if BE=0
+  const states = g.generateAllCompleteTurnMoves(player, g.movesLeft);
+  if (states.length < 2) return;                          // forced move — no decision to influence
+  const ctx = { depth: 1, player, opp: player === 1 ? 2 : 1, states,
+    parentContact: g.hasContact(g.points, g.bar) };
+  const pick = (weights) => {
+    const c = { ...ctx, weights };
+    let best = null, bv = player === 1 ? -Infinity : Infinity;
+    for (const s of states) {
+      const v = g._scoreRootCandidate(s, c);
+      if (player === 1 ? v > bv : v < bv) { bv = v; best = s; }
+    }
+    return best;
+  };
+  stats[7]++;
+  if (pick(W) !== pick({ ...W, BE: 0 })) stats[8]++;       // did zeroing BE change the choice?
+}
+
+/**
  * Play one full AI-vs-AI game head-to-head (no UI, no doubling cube), returning
  * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
- * Used by the tournament runner.
+ * Used by the tournament runner. If `stats` (a 7-length array) is supplied, the
+ * escape-count histogram is accumulated into it once per ply (both sides).
  */
-function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite) {
+function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, stats = null) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1562,6 +1728,7 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
 
   let guard = 0;
   while (!g.winner && guard++ < 100000) {
+    if (stats) { escapeCountsInto(g.points, g.bar, stats); beBiteInto(g, stats); }
     const moves = g.getBestAIMove();
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);  // already a legal max-usage sequence
@@ -1618,7 +1785,7 @@ function scoreFinishedBGGame(g) {
  * `breathe` is optional; with none it behaves like the sync version (safe for Node).
  * MIRRORS simulateBGGame — keep the two in sync if the game/cube rules change.
  */
-async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null) {
+async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null, stats = null) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1629,6 +1796,7 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
 
   let guard = 0;
   while (!g.winner && guard++ < 100000) {
+    if (stats) { escapeCountsInto(g.points, g.bar, stats); beBiteInto(g, stats); }
     const moves = await g.getBestAIMoveYielding(breathe);
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);
@@ -1659,8 +1827,9 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
  *   - Crawford: the single game right after either side first reaches X-1 is played
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
-function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
+function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, collectStats = false) {
   let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
+  const stats = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape hist, [7] BE decisions, [8] BE bites
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1672,14 +1841,14 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
     // game searches at its own depth. With depthA === depthB this is a no-op.
     const dWhite = aWhite ? depthA : depthB;
     const dRed   = aWhite ? depthB : depthA;
-    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed);
+    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, stats);
     // Map the game winner (White/Red) back to A/B and award points.
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
 
     if (crawford) crawfordDone = true;
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, escHist: stats };
 }
 
 /**
@@ -1690,8 +1859,9 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
  * is optional; with none it behaves exactly like the sync version (safe for Node).
  * MIRRORS simulateBGMatch — keep the two loops in sync if the match rules change.
  */
-async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null) {
+async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null, collectStats = false) {
   let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
+  const stats = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape hist, [7] BE decisions, [8] BE bites
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1704,14 +1874,14 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
     // Use the yielding game runner so the thread also breathes WITHIN a move's
     // search (crucial at depth 3, where a single move can otherwise block for tens
     // of seconds and trip "Page unresponsive").
-    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe);
+    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe, stats);
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
 
     if (crawford) crawfordDone = true;
     if (breathe) await breathe();          // let the browser paint / stay responsive
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, escHist: stats };
 }
 
 // Export class if running in Node environment for testing, otherwise leave global
@@ -1721,4 +1891,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports.simulateBGGameYielding = simulateBGGameYielding;
   module.exports.simulateBGMatch = simulateBGMatch;
   module.exports.simulateBGMatchYielding = simulateBGMatchYielding;
+  module.exports.escapeCountsInto = escapeCountsInto;
+  module.exports.escapeCountForChecker = escapeCountForChecker;
+  module.exports.escapeBuckets = escapeBuckets;
+  module.exports.barFreezeTurns = barFreezeTurns;
 }

@@ -119,6 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Declared early because renderHistoryList() reads it during the first render.
   let showScoreOn = true;
 
+  // Statistics (default OFF): when on, a tournament collects diagnostic stats
+  // (currently the escape-roll distribution) during simulation and appends them to
+  // the results CSV. Off by default so ordinary batch runs pay nothing.
+  let statsOn = false;
+
   // Speak (default ON): read important instruction lines aloud (doubling offer, game over).
   let speakOn = true;
   let lastSpoken = '';
@@ -553,6 +558,7 @@ function sysLog(msg) {
   updateSettingBadge('badge-highlight',  highlightOn);
   updateSettingBadge('badge-autoroll',   autoRollOn);
   updateSettingBadge('badge-automove',   autoMoveOn);
+  updateSettingBadge('badge-stats',      statsOn);
 
   // Header click → open / close panel
   if (settingsHeader) {
@@ -637,6 +643,16 @@ function sysLog(msg) {
       updateSettingBadge('badge-showscore', showScoreOn);
       sysLog(`[System] Show Score toggled to ${showScoreOn ? 'ON' : 'OFF'}`);
       renderHistoryList();
+    });
+  }
+
+  // Statistics row
+  const settingStatsEl = document.getElementById('setting-stats');
+  if (settingStatsEl) {
+    settingStatsEl.addEventListener('click', () => {
+      statsOn = !statsOn;
+      updateSettingBadge('badge-stats', statsOn);
+      sysLog(`[System] Statistics toggled to ${statsOn ? 'ON' : 'OFF'}`);
     });
   }
 
@@ -1912,7 +1928,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // ── AI parameter editor ───────────────────────────────────
   const editBrainSel  = document.getElementById('edit-brain');
   const brainParamsEl = document.getElementById('brain-params');
-  const BRAIN_KEYS = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'DT', 'AT'];
+  const BRAIN_KEYS = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA', 'DT', 'AT'];
 
   function refreshBrainSelect() {
     if (!editBrainSel) return;
@@ -2089,8 +2105,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   });
 
   // ── Genetic evolution (Phase I: single-threaded) ──────────
-  const EVO_EVAL = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
-  const EVO_ALL = [...EVO_EVAL, 'DT', 'AT'];  // the 14 evolvable numbers
+  const EVO_EVAL = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA'];
+  const EVO_ALL = [...EVO_EVAL, 'DT', 'AT'];  // the 24 evolvable numbers (22 eval + DT/AT)
   let evolveRunning = false;
   let evolveStop = false;
 
@@ -2162,10 +2178,17 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // detect availability once and fall back to the single-thread + breathe() path.
   let numWorkers = (navigator.hardwareConcurrency && navigator.hardwareConcurrency > 0)
     ? navigator.hardwareConcurrency : 4;
+  // Cache-bust the worker on every page load. A hard refresh reloads the page and its
+  // scripts but NOT reliably a worker's importScripts('game.js') subresource, so the
+  // pool can keep running a stale game.js after an engine edit (this silently zeroed
+  // the escape-roll stats). One fresh stamp per load forces both BackgammonWorker.js
+  // and (via location.search inside it) game.js to re-fetch. Constant per load, so all
+  // workers in a session share the URL and it's cached within the load, fresh across.
+  const WORKER_SRC = 'BackgammonWorker.js?v=' + Date.now();
   let workerPool = [];
   let workersAvailable = false;
   try {
-    const probe = new Worker('BackgammonWorker.js');
+    const probe = new Worker(WORKER_SRC);
     // A missing/broken worker script 404s ASYNCHRONOUSLY (new Worker doesn't throw),
     // so catch that here and honestly flip to single-thread + update the field —
     // otherwise the app shows "N workers" while silently running on one core.
@@ -2183,7 +2206,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     workersAvailable = false;
     sysLog(`[Workers] unavailable (${e && e.message}); using single thread. Serve over http:// to enable.`);
   }
-  function getWorker() { return workerPool.length ? workerPool.pop() : new Worker('BackgammonWorker.js'); }
+  function getWorker() { return workerPool.length ? workerPool.pop() : new Worker(WORKER_SRC); }
   function releaseWorker(w) { workerPool.push(w); }
   function terminateWorkers() { workerPool.forEach((w) => { try { w.terminate(); } catch (e) {} }); workerPool = []; }
 
@@ -2236,7 +2259,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function runMatchesParallel(specs, onResult) {
     return runJobsParallel(
       specs,
-      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB }),
+      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB, collectStats: s.collectStats }),
       (data, spec, i) => onResult(data.result, spec, i),
     );
   }
@@ -2532,7 +2555,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     else runEvolution();
   });
 
-  const PARAM_ORDER = ['PC', 'BO', 'EC1', 'EC0', 'PH', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE'];
+  const PARAM_ORDER = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA'];
   const numCommas = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
   function downloadCSV(filename, text) {
@@ -2548,7 +2571,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escHist) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'Starting Date:,' + tStart.toLocaleString() + '\n';
@@ -2575,6 +2598,32 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const w = game.personalityWeights(n);
       csv += n + ',' + PARAM_ORDER.map((k) => w[k]).join(',') + '\n';
     });
+
+    // Statistics (only when the Statistics setting was on). Escape-roll distribution:
+    // every checker, both sides, tallied once per ply by how many of the 6 die-values
+    // give it an unblocked forward landing. 0 = sealed (entombment / closeout); 6 =
+    // free. Tells us how often each containment level actually occurs in self-play.
+    if (escHist) {
+      const hist = escHist.slice(0, 7);                       // [0..6] = escape-roll histogram
+      const tot = hist.reduce((a, b) => a + b, 0) || 1;
+      csv += '\nStatistics\n';
+      csv += 'Escape-roll distribution (checkers by number of open dice, both sides, every position)\n';
+      csv += 'Open dice (escape rolls),' + [0, 1, 2, 3, 4, 5, 6].join(',') + '\n';
+      csv += 'Count,' + hist.join(',') + '\n';
+      csv += 'Percent,' + hist.map((c) => (100 * c / tot).toFixed(3)).join(',') + '\n';
+
+      // BE effectiveness — how often the bar-entombment weight actually changed the move
+      // the AI picked (re-ranking with BE zeroed). Measured at depth 1 only; a static bar
+      // penalty mostly can't bite at one ply (see beBiteInto in game.js).
+      const decisions = escHist[7] || 0, bites = escHist[8] || 0;
+      csv += '\nBE effectiveness (depth-1 decisions where bar-entombment changed the chosen move)\n';
+      if (decisions > 0) {
+        csv += 'Decisions,Bites,Percent\n';
+        csv += `${decisions},${bites},${(100 * bites / decisions).toFixed(3)}\n`;
+      } else {
+        csv += '(no depth-1 decisions measured — BE bite is only tracked at depth 1)\n';
+      }
+    }
     return csv;
   }
 
@@ -2702,6 +2751,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
     const X = matchLength();
     const depth = lookaheadDepth();
+    const collectStats = statsOn;
+    const escTotal = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape-roll histogram, [7] BE decisions, [8] BE bites
 
     const mWins = {}, mLoss = {}, gpts = {}, h2h = {};
     names.forEach((n) => {
@@ -2727,6 +2778,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
       mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
       gpts[A] += aScore; gpts[B] += bScore;
+      if (escTotal && res.escHist) for (let i = 0; i < 9; i++) escTotal[i] += (res.escHist[i] || 0);
       done++;
       gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
     };
@@ -2738,7 +2790,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
         for (let k = 0; k < matchesPer; k++) {
           const swap = (k % 2 === 1);
-          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap });
+          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap, collectStats });
         }
       }
       await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap));
@@ -2749,7 +2801,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         for (let k = 0; k < matchesPer; k++) {
           if (tournamentStop) break;
           const swap = (k % 2 === 1);                          // balance first-game side bias
-          const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe);
+          const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe, collectStats);
           tally(res, A, B, swap);
           await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
         }
@@ -2760,7 +2812,13 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const tEnd = new Date();
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
-    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd));
+    // Guard against a silent all-zero histogram: if Statistics is on but nothing was
+    // collected, the worker pool is almost certainly running a cached (pre-change)
+    // game.js — a hard-refresh reloads the worker scripts. Warn instead of shipping 0s.
+    if (collectStats && escTotal && escTotal.reduce((a, b) => a + b, 0) === 0) {
+      sysLog('[Statistics] No escape-roll data collected — the worker pool is likely running a cached game.js. Hard-refresh (Ctrl+Shift+R) to reload the workers, then re-run.');
+    }
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escTotal));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 

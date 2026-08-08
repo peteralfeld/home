@@ -14,7 +14,10 @@
 //       -> returns { id, val } = expectiRollValue: the value of `player`'s best reply
 //          to `dice` from `board`, searched `plies` deep. One (my-move, opp-roll) task.
 
-importScripts('game.js');
+// location.search carries the ?v=<stamp> cache-buster the main thread put on the
+// Worker URL, so game.js re-fetches in lockstep with the worker (a hard refresh does
+// NOT reliably bust a worker's importScripts cache on its own — this does).
+importScripts('game.js' + (self.location && self.location.search || ''));
 
 // A persistent host so the search's internal scratch board (_searchScratch) is
 // reused across tasks instead of reallocated each message.
@@ -24,8 +27,8 @@ self.onmessage = function (e) {
   const d = e.data;
   try {
     if (d.cmd === 'play_match') {
-      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB);
-      self.postMessage({ id: d.id, result });
+      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB, d.collectStats);
+      self.postMessage({ id: d.id, result });   // result.escHist rides back when collectStats
       return;
     }
     if (d.cmd === 'search') {
