@@ -31,14 +31,14 @@ const AI_PERSONALITIES = {
   // Re-sorted after the tournament so alphabetical name order = performance rank
   // (Arwen strongest ... Hamfast weakest). All named brains share Hamfast's evolved
   // F0-F5 (Celebrian-evo-g69: -120,-121,-98,-60,-30,-12); Origin stays F=0 (baseline).
-  Arwen: { PC: -722, BO: 25, EC1: -148, EC0: -1000, HB: 102, AN: -28, DO: 14, IO: 7, DP: 306, IP: 28, DE: 10, F0: -13, F1: -12, F2: -20, F3: -16, F4: -9, F5: -11, BE: 10, G5: 458, G7: 12, G4: 39, GA: -38, DT: 334, AT: 754 },  // = Arwen-evo-g147 (non-racer, G5 458) (1st)
+  Arwen: { PC: -903, BO: 32, EC1: -153, EC0: -1000, HB: 58, AN: -47, DO: 18, IO: 13, DP: 469, IP: 46, DE: 6, F0: -8, F1: -16, F2: -25, F3: -12, F4: -10, F5: -6, BE: 16, G5: 281, G7: 18, G4: 44, GA: -61, DT: 398, AT: 1009 },  // = Arwen-evo-g206 (non-racer, G5 281) (1st)
   Bilbo: { PC: -978, BO: 351, EC1: -117, EC0: -1000, HB: 268, AN: -3, DO: 9, IO: 4, DP: 347, IP: 25, DE: 67, F0: -73, F1: -57, F2: -7, F3: -20, F4: -21, F5: -4, BE: 14, G5: 277, G7: 105, G4: 39, GA: -9, DT: 220, AT: 857 },  // = avg(Arwen g105 + Bilbo g343) (2nd)
-  Celebrian: { PC: -366, BO: 82, EC1: -166, EC0: -1000, HB: 146, AN: -1, DO: 1, IO: 1, DP: 192, IP: 31, DE: 19, F0: -88, F1: 2, F2: 1, F3: -7, F4: -14, F5: -3, BE: 17, G5: 388, G7: 19, G4: 31, GA: -2, DT: 222, AT: 386 },  // = Arwen-evo-g105 (non-racer) (3rd)
-  Dwalin: { PC: -1000, BO: 408, EC1: 3, EC0: -397, HB: 228, AN: -3, DO: 11, IO: 4, DP: 293, IP: 4, DE: 75, F0: -14, F1: -81, F2: -11, F3: -21, F4: -16, F5: -3, BE: 2, G5: -1, G7: 127, G4: 24, GA: -10, DT: 85, AT: 811 },  // = Arwen-evo-g343 (racer) (4th)
-  Eowyn: { PC: -665, BO: 1000, EC1: -228, EC0: -239, HB: 256, AN: -6, DO: 11, IO: 44, DP: 133, IP: 22, DE: 117, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 256, G7: 256, G4: 256, GA: -6, DT: 94, AT: 761 },  // = Arwen-evo-g112 (5th)
-  Frodo: { PC: -658, BO: 989, EC1: -66, EC0: -440, HB: 27, AN: 110, DO: -11, IO: 11, DP: 264, IP: -11, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 27, G7: 27, G4: 27, GA: 110, DT: 346, AT: 1852 },  // = Galadriel-evo-g539 (6th)
-  Galadriel: { PC: -324, BO: 155, EC1: -25, EC0: -95, HB: 44, AN: 33, DO: -5, IO: 4, DP: 53, IP: -1, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 44, G7: 44, G4: 44, GA: 33, DT: 516, AT: 1092 },  // = Celebrian-evo-g69 (7th)
-  Hamfast: { PC: -665, BO: 1000, EC1: -444, EC0: -261, HB: 306, AN: -6, DO: 6, IO: 33, DP: 100, IP: 6, DE: -172, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 306, G7: 306, G4: 306, GA: -6, DT: 178, AT: 50 },  // = Dwalin-evo-g190 (8th)
+  Celebrian: { PC: -722, BO: 25, EC1: -148, EC0: -1000, HB: 102, AN: -28, DO: 14, IO: 7, DP: 306, IP: 28, DE: 10, F0: -13, F1: -12, F2: -20, F3: -16, F4: -9, F5: -11, BE: 10, G5: 458, G7: 12, G4: 39, GA: -38, DT: 334, AT: 754 },  // = Arwen-evo-g147 (non-racer, G5 458) (3rd)
+  Dwalin: { PC: -366, BO: 82, EC1: -166, EC0: -1000, HB: 146, AN: -1, DO: 1, IO: 1, DP: 192, IP: 31, DE: 19, F0: -88, F1: 2, F2: 1, F3: -7, F4: -14, F5: -3, BE: 17, G5: 388, G7: 19, G4: 31, GA: -2, DT: 222, AT: 386 },  // = Arwen-evo-g105 (non-racer) (4th)
+  Eowyn: { PC: -1000, BO: 408, EC1: 3, EC0: -397, HB: 228, AN: -3, DO: 11, IO: 4, DP: 293, IP: 4, DE: 75, F0: -14, F1: -81, F2: -11, F3: -21, F4: -16, F5: -3, BE: 2, G5: -1, G7: 127, G4: 24, GA: -10, DT: 85, AT: 811 },  // = Arwen-evo-g343 (racer) (5th)
+  Frodo: { PC: -665, BO: 1000, EC1: -228, EC0: -239, HB: 256, AN: -6, DO: 11, IO: 44, DP: 133, IP: 22, DE: 117, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 256, G7: 256, G4: 256, GA: -6, DT: 94, AT: 761 },  // = Arwen-evo-g112 (6th)
+  Galadriel: { PC: -658, BO: 989, EC1: -66, EC0: -440, HB: 27, AN: 110, DO: -11, IO: 11, DP: 264, IP: -11, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 27, G7: 27, G4: 27, GA: 110, DT: 346, AT: 1852 },  // = Galadriel-evo-g539 (7th)
+  Hamfast: { PC: -324, BO: 155, EC1: -25, EC0: -95, HB: 44, AN: 33, DO: -5, IO: 4, DP: 53, IP: -1, DE: 1000, F0: -120, F1: -121, F2: -98, F3: -60, F4: -30, F5: -12, BE: 800, G5: 44, G7: 44, G4: 44, GA: 33, DT: 516, AT: 1092 },  // = Celebrian-evo-g69 (8th)
   Origin:    { PC: -80,  BO: 500,  EC1: -133, EC0: -400, HB: 133, AN: 200, DO: 1000, IO: 600,  DP: 500,  IP: 300, DE: 667,  F0: 0,    F1: 0,    F2: 0,    F3: 0,    F4: 0,    F5: 0,    BE: 0,   G5: 133, G7: 0, G4: 133, GA: 200, DT: 100, AT: 200  }
 };
 
@@ -258,6 +258,41 @@ class BackgammonGame {
     });
 
     return { currentPlayer: this.currentPlayer, dice: this.dice };
+  }
+
+  /**
+   * Begin a fresh game with a PREDETERMINED starter (no roll-off). The board must already
+   * be reset via restart(); this sets who is on roll and records the initial "Start of Game"
+   * time-travel snapshot, but does NOT roll — the opener rolls next through the normal path
+   * (an AI rolls itself, a human auto-rolls if Auto Roll is on, else clicks Roll), a normal
+   * roll with doubles allowed. Used by the Restart button to alternate the opener between
+   * games (see handleRestartClick in ui.js).
+   */
+  beginGameWithStarter(starter) {
+    this.currentPlayer = starter;
+    this.dice = [0, 0];
+    this.movesLeft = [];
+    this.hasRolled = false;
+    this.turnHistory = [];
+    this.turnCount = 1;
+    this.gameHistory = [];
+    this.gameHistory.push({
+      isInitial: true,
+      points: JSON.parse(JSON.stringify(this.points)),
+      bar: { ...this.bar },
+      borneOff: { ...this.borneOff },
+      currentPlayer: this.currentPlayer,
+      dice: [0, 0],
+      movesLeft: [],
+      hasRolled: false,
+      winner: null,
+      doublingCubeValue: this.doublingCubeValue,
+      doublingCubeOwner: this.doublingCubeOwner,
+      turnCount: 1,
+      description: `Start of Game`,
+      playedMoves: []
+    });
+    return { currentPlayer: this.currentPlayer };
   }
 
 /**

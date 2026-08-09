@@ -99,6 +99,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let legalDestinations = [];
   // Status check for initial roll-off
   let initialRollOff = true;
+  // Who opened the most recent game (1 or 2); null until a game has been played this
+  // session. Restart alternates from this to switch the opener each game.
+  let lastStarter = null;
+  // Whether the current finished game's points have already been added to the score
+  // fields (so the once-per-render updateUI winner branch tallies a game only once).
+  let gameScored = false;
+
+  // Per-seat running score (game points). Kept in the p1/p2-score fields. Start zeros
+  // both; Restart preserves them; the Z buttons zero one; a win adds the game's points.
+  const scoreEl = (player) => document.getElementById(player === 1 ? 'p1-score' : 'p2-score');
+  function addScore(player, pts) {
+    const el = scoreEl(player);
+    if (el) el.value = (parseInt(el.value, 10) || 0) + pts;
+  }
+  function resetScore(player) { const el = scoreEl(player); if (el) el.value = 0; }
+  function resetBothScores() { resetScore(1); resetScore(2); }
   // Track dice roll animation lock
   let isRolling = false;
   // Track active turn-end transitions to prevent overlapping timeouts
@@ -289,6 +305,9 @@ function sysLog(msg) {
   if (btnRestart) {
     btnRestart.addEventListener('click', () => handleRestartClick());
   }
+  // Per-seat score reset buttons (Z). Zero one seat's running score; local only.
+  document.getElementById('p1-scorereset')?.addEventListener('click', () => resetScore(1));
+  document.getElementById('p2-scorereset')?.addEventListener('click', () => resetScore(2));
 
 
 // ── Export Menu ────────────────────────────────────────────
@@ -545,7 +564,7 @@ function sysLog(msg) {
   const settingsChevron = document.getElementById('settings-chevron');
 
   // Doubling on/off (default ON). When off, clicking the cube offers nothing.
-  let doublingOn = false;
+  let doublingOn = true;
   // Auto Start (default OFF). When on, clicking the dice with no game running starts it.
   let autoStartOn = false;
 
@@ -880,6 +899,8 @@ renderBorneOff();
       gameMessageEl.textContent = game.winByDecline
         ? `Game over! ${loserName} declined the double. ${winnerName} wins ${pts} point${pts === 1 ? '' : 's'}.`
         : `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
+      // Tally the winner's game points once (this branch re-runs on every render).
+      if (!gameScored) { addScore(winner, pts); gameScored = true; }
       btnUndo.disabled = true;
     } else if (!gameStarted) {
       // UPDATE: Show waiting message for guest, standard message for host
@@ -1510,14 +1531,64 @@ function handleRollClick() {
    * Handle restart click.
    */
   function handleRestartClick() {
-    if (confirm("Are you sure you want to restart the game?")) {
-      // Notify the guest BEFORE resetting (connection is still live at this point)
-      if (isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
-        conn.send({ type: 'restart' });
-        sysLog('[Network] Sent restart signal to guest.');
-      }
-      performRestart();
+    // In a remote game the host is in control of restart; the guest's button does nothing.
+    if (isNetworkGame && localPlayerRole !== 1) return;
+
+    // No game has been played yet this session -> behave like the Start button (a roll-off
+    // decides the first opener). startGame() also notifies the guest in a network game.
+    if (lastStarter == null) {
+      startGame(false);
+      return;
     }
+
+    // A game has been played -> alternate the opener and launch the next game immediately.
+    const newStarter = (lastStarter === 1) ? 2 : 1;
+    if (isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
+      conn.send({ type: 'restart', starter: newStarter });
+      sysLog(`[Network] Sent restart to guest (starter = player ${newStarter}).`);
+    }
+    applyRestartNewGame(newStarter);
+  }
+
+  /**
+   * Reset the board and immediately begin a new game with `starter` on roll — no roll-off,
+   * no separate Start click. The opener's first roll happens through the normal path: an AI
+   * rolls itself, a human auto-rolls if Auto Roll is on, otherwise the human clicks Roll.
+   * Used by Restart to alternate the opener each game, locally and (mirrored from the host)
+   * over the network.
+   */
+  function applyRestartNewGame(starter) {
+    if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
+    if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
+    if (autoRollTimeout) { clearTimeout(autoRollTimeout); autoRollTimeout = null; }
+
+    aiStopped         = false;
+    isAIPlaying       = false;
+    selectedSource    = null;
+    legalDestinations = [];
+    initialRollOff    = false;   // opener is predetermined; the first roll is a normal roll
+    isRolling         = false;
+    pendingDouble     = null;
+    networkQueue      = [];
+    isProcessingQueue = false;
+
+    game.restart();
+    syncPlayersFromMenus();              // re-apply the White/Red menu picks after the reset
+    game.beginGameWithStarter(starter);  // forced opener, awaiting the first (normal) roll
+    gameStarted      = true;
+    startedFromSetup = false;
+    lastStarter      = starter;
+    gameScored       = false;   // new game to tally; scores themselves are preserved
+
+    // No overlay / Start needed — the game is already running.
+    const overlay = document.getElementById('start-menu-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
+
+    renderDie(die1El, 0);
+    renderDie(die2El, 0);
+    updateUI();   // -> checkAndTriggerAITurn (AI opener) / checkAndAutoRoll (human, if Auto Roll)
   }
 
 /**
@@ -3428,7 +3499,8 @@ connection.on('data', (data) => {
           // 1. Apply engine state instantly
           game.rollForFirstTurn(data.dice[0], data.dice[1]);
           initialRollOff = false;
-          
+          lastStarter = game.currentPlayer;   // mirror the opener so Restart can alternate
+
           // 2. Lock UI and visually animate
           isRolling = true;
           updateUI();
@@ -3474,8 +3546,15 @@ connection.on('data', (data) => {
 
       // Host restarted the game — mirror the reset on the guest's side
       else if (data.type === 'restart') {
-          sysLog('[Network] Restart signal received from host. Resetting board...');
-          performRestart();
+          if (data.starter) {
+            // New game with the host-chosen alternated opener (no roll-off, no Start click).
+            sysLog(`[Network] Restart received (starter = player ${data.starter}).`);
+            applyRestartNewGame(data.starter);
+          } else {
+            // Legacy/full reset back to the Start overlay.
+            sysLog('[Network] Restart signal received from host. Resetting board...');
+            performRestart();
+          }
       }
       
       // Host stopped AI or used time travel controls
@@ -3718,6 +3797,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     initialRollOff = true;
     game.currentPlayer = 1;
     game.hasRolled = false;
+    resetBothScores();          // Start zeros the running score (Restart keeps it)
+    gameScored = false;
 
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
@@ -3760,7 +3841,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
         
         game.rollForFirstTurn(d1, d2);
         initialRollOff = false;
-        
+        lastStarter = game.currentPlayer;   // remember the opener so Restart can alternate
+
         if (isNetworkGame && conn && conn.open) {
             conn.send({ type: 'roll_first', dice: [d1, d2] });
         }

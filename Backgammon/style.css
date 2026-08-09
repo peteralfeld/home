@@ -1283,7 +1283,7 @@ body {
   font-weight: 700;
   text-transform: uppercase;
 }
-.tourney-toggles { display: flex; gap: 3px; flex-wrap: wrap; }
+.tourney-toggles { display: flex; gap: 3px; flex-wrap: wrap; flex: 1 1 auto; justify-content: space-between; }
 .tourney-toggle {
   width: 22px; height: 22px; padding: 0;
   border-radius: 4px;

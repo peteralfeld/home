@@ -160,7 +160,7 @@
     </div>
     
     <!-- Streamlined Network Row -->
-    <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem;">
+    <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center;">
       <button id="btn-host" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
       
       <input type="text" id="join-code" placeholder="CODE" style="flex: 1.2; min-width: 0; padding: 0.4rem; border-radius: 4px; background: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000; border: 1px solid var(--glass-border); text-transform: uppercase; font-weight: bold; text-align: center; opacity: 1;">
@@ -171,13 +171,13 @@
     </div>
 
     <!-- Network Status Message (Permanently Visible) -->
-    <div id="network-status" style="display: block; font-size: 0.85rem; text-align: center; margin-bottom: 0.4rem;">
+    <div id="network-status" style="display: block; font-size: 0.85rem; text-align: center;">
       <span id="conn-status" style="color: var(--text-secondary); font-weight: bold;">No network connection</span>
       <div id="room-code-display" style="display: none;"></div>
     </div>
 
     <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
-    <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.8rem;">
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0;">
       <button id="btn-start-game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
 
       <button id="btn-stop" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
@@ -190,15 +190,17 @@
     <!-- Player Setup: White and Red on separate rows, each with its own AI search
          depth (the depth menu is disabled while that side is Human). Separate depth
          menus let the same AI play at different depths to study the effect of depth. -->
-    <div style="margin-bottom: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+    <div style="padding-bottom: 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
 
       <!-- Player 1 (White) -->
-      <div style="display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.4rem;">
+      <div style="display: flex; align-items: center; gap: 0.3rem;">
         <label for="p1-type" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">WP:</label>
-        <select id="p1-type" style="flex: 0 1 8rem; min-width: 0; background: #ffffff; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
+        <select id="p1-type" style="flex: 0 1 5.5rem; min-width: 0; background: #ffffff; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
+        <input id="p1-score" type="number" value="0" title="White's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 2.6rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none;">
+        <button id="p1-scorereset" title="Reset White's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.8rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p1-depth" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="0">0</option>
@@ -211,10 +213,12 @@
       <!-- Player 2 (Red) -->
       <div style="display: flex; align-items: center; gap: 0.3rem;">
         <label for="p2-type" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">RP:</label>
-        <select id="p2-type" style="flex: 0 1 8rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
+        <select id="p2-type" style="flex: 0 1 5.5rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
+        <input id="p2-score" type="number" value="0" title="Red's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 2.6rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none;">
+        <button id="p2-scorereset" title="Reset Red's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.8rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p2-depth" style="font-size: 0.7rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="0">0</option>
@@ -340,7 +344,7 @@
       <button id="btn-compete" class="tourney-run" title="Play the White (WP) and Red (RP) AIs against each other, each at its own depth from the player rows. Both sides must be AIs.">Compete</button>
       <button id="btn-run-tournament" class="tourney-run">Tournament</button>
       <input type="number" id="tourney-games" value="50" min="1" title="Number of matches per pair (also the number of matches for Compete)">
-      <span class="tourney-label">M.T.</span>
+      <span class="tourney-label">x</span>
       <select id="match-length" class="match-len" title="Match length: play each match to this many points (shared by tournament and evolution). 1 = single games, no doubling.">
         <option value="1">1</option>
         <option value="3">3</option>
