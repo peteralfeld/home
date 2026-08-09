@@ -394,6 +394,7 @@ function sysLog(msg) {
 
       const withScore = showScoreOn;
       let txt = 'Backgammon Game - Move History\n';
+      txt += `BG v. ${bgVersion()}\n`;
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
       txt += `White: ${p1Type}, Red: ${p2Type}\n\n`;
       txt += withScore
@@ -462,7 +463,8 @@ function sysLog(msg) {
       if (consoleLog.length === 0) { alert('Console log is empty.'); return; }
       const link = document.createElement('a');
       link.download = `backgammon-console-${Date.now()}.txt`;
-      link.href = URL.createObjectURL(new Blob([consoleLog.join('\n')], { type: 'text/plain' }));
+      const header = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n\n`;
+      link.href = URL.createObjectURL(new Blob([header + consoleLog.join('\n')], { type: 'text/plain' }));
       link.click();
       sysLog('[System] Console log downloaded.');
     });
@@ -480,6 +482,7 @@ function sysLog(msg) {
       const now = new Date();
 
       let csv = 'Backgammon Board Value\n';
+      csv += `BG v. ${bgVersion()}\n`;
       csv += `Date:,${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
       csv += `AI player (weights used):,${scoringAIName(onRoll)}\n`;
       csv += `On roll:,${onRollColor}\n`;
@@ -533,7 +536,8 @@ function sysLog(msg) {
       const rolls = [[2,1],[3,1],[3,2],[4,1],[4,2],[4,3],[5,1],[5,2],[5,3],[5,4],[6,1],[6,2],[6,3],[6,4],[6,5],
                      [1,1],[2,2],[3,3],[4,4],[5,5],[6,6]];
 
-      let csv = `Move table — ${brainName}, depth ${depth}, ${who} on roll\n`;
+      let csv = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n`;
+      csv += `Move table — ${brainName}, depth ${depth}, ${who} on roll\n`;
       csv += `Position:,"${describeBoard()}"\nDice,Best move,Score (White view)\n`;
       try {
         for (let k = 0; k < rolls.length; k++) {
@@ -2086,6 +2090,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     // A JS file that defines a personality named after the file.
     const content =
       `// Backgammon AI personality: ${exportName}\n` +
+      `// BG v. ${bgVersion()}\n` +
       `// ${new Date().toLocaleString()}\n\n` +
       `const ${clean} = ${JSON.stringify({ name: exportName, weights })};\n`;
     downloadCSV(fn, content);
@@ -2547,6 +2552,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // start of a run and for each champion as it is crowned.
   function downloadBrainCSV(name, brain, note) {
     let csv = 'Backgammon AI Parameters\n';
+    csv += 'BG v. ' + bgVersion() + '\n';
     csv += 'Name,' + name + '\n';
     if (note) csv += 'Note,' + note + '\n';
     csv += 'Date,' + new Date().toLocaleString() + '\n\n';
@@ -2574,7 +2580,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     // Two downloads up front (a run-info note, then the starting AI) so the browser's
     // multi-download approval is handled at the start, not whenever the first champion
     // happens to appear.
-    const info = `Backgammon Evolution\n${new Date().toLocaleString()}\n`
+    const info = `Backgammon Evolution\nBG v. ${bgVersion()}\n${new Date().toLocaleString()}\n`
       + `Commencing evolution of ${baseName}.\n\n`
       + `Parameters:\n`
       + `  Maximum generations: ${maxGens}\n`
@@ -2629,6 +2635,14 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   const PARAM_ORDER = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA'];
   const numCommas = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
+  // Version stamp for exported files — read live from the page's version label so it
+  // always matches the current build (the snapshot ritual only edits index.html).
+  function bgVersion() {
+    const el = document.getElementById('app-version');
+    const m = el && el.textContent.match(/v\.\s*(\d+)/i);
+    return m ? m[1] : '?';
+  }
+
   function downloadCSV(filename, text) {
     const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -2645,6 +2659,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escHist) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
+    csv += 'BG v. ' + bgVersion() + '\n';
     csv += 'Starting Date:,' + tStart.toLocaleString() + '\n';
     csv += 'Ending Date:,' + tEnd.toLocaleString() + '\n';
     csv += 'Duration:,"' + numCommas(tEnd - tStart) + ' ms"\n';
@@ -2792,6 +2807,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (!wpFirst) rows.reverse();
 
     let csv = 'Backgammon Compete Results\n';
+    csv += 'BG v. ' + bgVersion() + '\n';
     csv += 'Starting Date:,' + r.tStart.toLocaleString() + '\n';
     csv += 'Ending Date:,' + r.tEnd.toLocaleString() + '\n';
     csv += 'Duration:,"' + numCommas(r.tEnd - r.tStart) + ' ms"\n';

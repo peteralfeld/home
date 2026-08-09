@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 style="margin: 0;">Backgammon v. 124</h2>
+      <h2 id="app-version" style="margin: 0;">Backgammon v. 124</h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -199,7 +199,7 @@
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
-        <input id="p1-score" type="number" value="0" title="White's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 2.6rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
+        <input id="p1-score" type="number" value="0" title="White's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
         <button id="p1-scorereset" title="Reset White's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.95rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p1-depth" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
@@ -217,7 +217,7 @@
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
-        <input id="p2-score" type="number" value="0" title="Red's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 2.6rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
+        <input id="p2-score" type="number" value="0" title="Red's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
         <button id="p2-scorereset" title="Reset Red's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.95rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p2-depth" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
