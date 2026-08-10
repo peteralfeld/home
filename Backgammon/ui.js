@@ -571,10 +571,15 @@ function sysLog(msg) {
   let doublingOn = true;
   // Auto Start (default OFF). When on, clicking the dice with no game running starts it.
   let autoStartOn = false;
+  // Time Travel (default ON). When off, move-list clicks and the nav buttons don't
+  // navigate the board (guards against accidental clicks). Host-driven remote nav still
+  // applies. Applies to local and remote games.
+  let timeTravelOn = true;
 
   // Initialise badges to their defaults
   updateSettingBadge('badge-doubling', doublingOn);
   updateSettingBadge('badge-autostart', autoStartOn);
+  updateSettingBadge('badge-timetravel', timeTravelOn);
   updateSettingBadge('badge-showscore', showScoreOn);
   updateSettingBadge('badge-speak', speakOn);
   updateSettingBadge('badge-animation', animationOn);
@@ -635,6 +640,16 @@ function sysLog(msg) {
       autoMoveOn = !autoMoveOn;
       updateSettingBadge('badge-automove', autoMoveOn);
       sysLog(`[System] Auto Move toggled to ${autoMoveOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Time Travel row
+  const settingTimeTravelEl = document.getElementById('setting-timetravel');
+  if (settingTimeTravelEl) {
+    settingTimeTravelEl.addEventListener('click', () => {
+      timeTravelOn = !timeTravelOn;
+      updateSettingBadge('badge-timetravel', timeTravelOn);
+      sysLog(`[System] Time Travel toggled to ${timeTravelOn ? 'ON' : 'OFF'}`);
     });
   }
 
@@ -909,7 +924,7 @@ renderBorneOff();
     } else if (!gameStarted) {
       // UPDATE: Show waiting message for guest, standard message for host
       if (isNetworkGame && localPlayerRole === 2) {
-        gameMessageEl.textContent = "Waiting for the host to start the game...";
+        gameMessageEl.textContent = "Wait for the host to start the game!";
       } else {
         gameMessageEl.textContent = "Ready to go! To play, select players and click on Start";
       }
@@ -1709,8 +1724,11 @@ function handleRollClick() {
         row.title = 'Click to replay from this stage';
 
         row.addEventListener('click', () => {
+          if (!timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
           ensureNavBuffer();
           navigateTo(idx);
+          // Sync the host's jump to this stage over to the guest.
+          if (isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'goto', idx });
         });
 
         const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
@@ -1868,12 +1886,14 @@ function handleRollClick() {
     const btnLast  = document.getElementById('nav-last');
 
     if (btnFirst) btnFirst.addEventListener('click', (e) => {
+      if (e.isTrusted && !timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
       ensureNavBuffer();
       navigateTo(0);
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'first' });
+      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'first' });
     });
 
     if (btnBack) btnBack.addEventListener('click', (e) => {
+      if (e.isTrusted && !timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
       ensureNavBuffer();
       if (historyNavIndex === null) {
         if (historyNavBuffer.length >= 2) {
@@ -1885,10 +1905,11 @@ function handleRollClick() {
       } else if (historyNavIndex > 0) {
         navigateTo(historyNavIndex - 1);
       }
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'back' });
+      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'back' });
     });
 
     if (btnFwd) btnFwd.addEventListener('click', (e) => {
+      if (e.isTrusted && !timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
       if (historyNavIndex === null) return;
       if (historyNavIndex < historyNavBuffer.length - 1) {
         navigateTo(historyNavIndex + 1);
@@ -1899,10 +1920,11 @@ function handleRollClick() {
         updateNavButtons();
         updateUI();
       }
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'fwd' });
+      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'fwd' });
     });
 
     if (btnLast) btnLast.addEventListener('click', (e) => {
+      if (e.isTrusted && !timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
       if (historyNavIndex === null) return;
       // Navigate to the final buffered snapshot, then exit nav mode
       navigateTo(historyNavBuffer.length - 1);
@@ -1910,7 +1932,7 @@ function handleRollClick() {
       historyNavBuffer = [];
       updateNavButtons();
       // updateUI already called by navigateTo
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) conn.send({ type: 'nav', action: 'last' });
+      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'last' });
     });
   })();
   // ─────────────────────────────────────────────────────────────────────
@@ -2574,7 +2596,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
     evolveRunning = true; evolveStop = false;
     const btn = document.getElementById('btn-evolve');
-    if (btn) { btn.textContent = 'Stop Evolution'; btn.style.background = '#991b1b'; }
+    if (btn) { btn.textContent = 'Stop E'; btn.style.background = '#991b1b'; }
     sysLog(`[Evolve] Start from ${baseName}: maxGens=${maxGens}, matches/sample=${n}, matchLen=${matchLength()}, R=${R}%.`);
 
     // Two downloads up front (a run-info note, then the starting AI) so the browser's
@@ -3425,6 +3447,11 @@ function initNetworkGame(role) {
     isNetworkGame = true;
     localPlayerRole = role;
 
+    // Remote games default Time Travel OFF for the GUEST (guards against accidental
+    // move-list clicks); the guest can still turn it on to time travel, which syncs to
+    // the host. The HOST keeps whatever its setting already is (not forced on/off).
+    if (role === 2) { timeTravelOn = false; updateSettingBadge('badge-timetravel', timeTravelOn); }
+
     // --- WIPE ANY PREVIOUS LOCAL STATE ---
     game.restart();
     initialRollOff = true;
@@ -3584,6 +3611,7 @@ connection.on('data', (data) => {
           else if (data.action === 'back') document.getElementById('nav-back')?.click();
           else if (data.action === 'fwd') document.getElementById('nav-fwd')?.click();
           else if (data.action === 'last') document.getElementById('nav-last')?.click();
+          else if (data.action === 'goto') navigateTo(data.idx);   // the other player jumped to a stage in the move list
       }
     });
 
