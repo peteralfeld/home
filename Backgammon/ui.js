@@ -66,6 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (action.data.cubeOwner !== undefined) game.doublingCubeOwner = action.data.cubeOwner;
           game.checkWinner();
         }
+        // Authoritative turn ownership from the sender (corrects any drift from a missed turn).
+        if (action.data.nextPlayer !== undefined) game.currentPlayer = action.data.nextPlayer;
+        if (action.data.turnCount !== undefined) game.turnCount = action.data.turnCount;
         updateUI();
         isProcessingQueue = false;
         processNetworkQueue();
@@ -987,7 +990,7 @@ renderBorneOff();
       if (isNetworkGame && localPlayerRole === pendingDouble.by) {
         gameMessageEl.textContent = `You doubled to ${offered}. Waiting for ${respName}…`;
       } else {
-        gameMessageEl.textContent = `${byName} Doubles. ${respName}, press the playing cubes to accept the double, or the doubling cube to reject it, and resign.`;
+        gameMessageEl.textContent = `${byName} Doubles. ${respName}, press the playing dice to accept the double, or the doubling cube to reject it, and resign.`;
       }
       btnUndo.disabled = true;
     } else if (game.winner) {
@@ -3620,6 +3623,84 @@ function initNetworkGame(role) {
     updateUI(); 
 }
 
+    // --- NETWORK HEARTBEAT / RESYNC (silent-deadlock recovery) ---------------------------
+    // A whole turn's messages can be lost over the relay; then both sides sit idle, each
+    // thinking it's the other's turn, and nothing further is sent to correct it (exactly the
+    // "host says Red, guest says White" deadlock). So each side periodically broadcasts its
+    // FULL authoritative state, anchored by turnCount (which increments on every roll, local
+    // OR received — so a missed roll leaves the two turnCounts diverged). A side that is
+    // STRICTLY BEHIND adopts the ahead side's state wholesale, catching up the missing turn;
+    // at an equal turnCount with a divergent board the guest defers to the host (authoritative).
+    // This also silently heals any single lost message within one heartbeat interval.
+    let heartbeatTimer = null;
+    const HEARTBEAT_MS = 3000;
+
+    function heartbeatSnapshot() {
+      return {
+        type: 'heartbeat',
+        turnCount: game.turnCount,
+        currentPlayer: game.currentPlayer,
+        hasRolled: game.hasRolled,
+        dice: [...game.dice],
+        movesLeft: [...game.movesLeft],
+        points: game.points, bar: game.bar, borneOff: game.borneOff,
+        cubeValue: game.doublingCubeValue, cubeOwner: game.doublingCubeOwner,
+        winner: game.winner
+      };
+    }
+    function sendHeartbeat() {
+      if (!isNetworkGame || !gameStarted || game.winner) return;
+      if (!conn || !conn.open) return;
+      if (isRolling || pendingDouble) return;     // transient; the next tick will advertise
+      conn.send(heartbeatSnapshot());
+    }
+    function startHeartbeat() { if (heartbeatTimer) clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS); }
+    function stopHeartbeat()  { if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; } }
+
+    // Jump wholesale to the opponent's authoritative full state. We can't replay the missed
+    // individual moves, but the ahead side's board IS the truth, so we adopt it and resume.
+    function adoptRemoteState(s) {
+      game.points  = s.points;
+      game.bar     = s.bar;
+      game.borneOff = s.borneOff;
+      game.currentPlayer = s.currentPlayer;
+      game.turnCount = s.turnCount;
+      game.hasRolled = !!s.hasRolled;
+      game.dice = s.dice ? [...s.dice] : [0, 0];
+      game.movesLeft = s.movesLeft ? [...s.movesLeft] : [];
+      if (s.cubeValue !== undefined) game.doublingCubeValue = s.cubeValue;
+      if (s.cubeOwner !== undefined) game.doublingCubeOwner = s.cubeOwner;
+      game.winner = s.winner || null;
+      game.playedMovesThisTurn = [];
+      pendingDouble = null;
+      if (turnEndTimer) { clearTimeout(turnEndTimer); turnEndTimer = null; }
+      networkQueue = [];
+      isProcessingQueue = false;
+      game.checkWinner();
+      updateUI();
+    }
+    function handleHeartbeat(s) {
+      if (!isNetworkGame || !gameStarted) return;
+      if (isRolling) return;   // don't clobber a roll animation; the next heartbeat retries
+      // Only adopt a STABLE between-turns boundary (the on-roll side hasn't rolled) or a final
+      // position — never a mid-move snapshot, which would race the incremental move messages.
+      if (s.hasRolled && !s.winner) return;
+      // Never overwrite MY own in-progress turn (I've rolled and it's my move to make).
+      const myLiveTurn = game.hasRolled && game.currentPlayer === localPlayerRole && !game.winner;
+      if (myLiveTurn) return;
+      const behind = s.turnCount > game.turnCount;
+      // Same turnCount but a divergent handoff (only the end_turn was lost → whose-turn differs,
+      // or a board drift): the guest defers to the host (authoritative). Convergence is safe —
+      // any real end_turn that later arrives re-asserts the same authoritative nextPlayer/board.
+      const tieDeferToHost = (s.turnCount === game.turnCount) && (localPlayerRole === 2) &&
+        (game.currentPlayer !== s.currentPlayer ||
+         boardSig(game.points, game.bar, game.borneOff) !== boardSig(s.points, s.bar, s.borneOff));
+      if (behind || tieDeferToHost) {
+        sysLog(`[Resync] Adopting opponent's authoritative state (mine t${game.turnCount}/p${game.currentPlayer} → t${s.turnCount}/p${s.currentPlayer}).`);
+        adoptRemoteState(s);
+      }
+    }
+
     function setupConnectionListeners(connection) {
     sysLog(`[Network] Setting up P2P data channel listeners...`);
 
@@ -3652,6 +3733,7 @@ function initNetworkGame(role) {
         document.getElementById('btn-start-game').disabled = false;
         document.getElementById('btn-start-game').style.opacity = '1';
       }
+      startHeartbeat();   // begin periodic authoritative-state broadcasts (both sides)
     };
 
     if (connection.open) handleOpen();
@@ -3688,8 +3770,15 @@ connection.on('data', (data) => {
       }
       
       else if (data.type === 'roll') {
+          // Duplicate guard: if a heartbeat already advanced us to/past this roll's turnCount,
+          // applying it again would double-increment the anchor. Skip in that case.
+          if (data.turnCount !== undefined && data.turnCount <= game.turnCount) {
+            sysLog(`[Network] Ignoring already-applied roll (turn ${data.turnCount} ≤ local ${game.turnCount}).`);
+          } else {
           // 1. Apply engine state instantly
           game.rollDice(data.dice[0], data.dice[1]);
+          if (data.turnCount !== undefined) game.turnCount = data.turnCount;  // keep the anchor aligned
+          }
 
           // 2. Lock UI and visually animate
           isRolling = true;
@@ -3747,11 +3836,17 @@ connection.on('data', (data) => {
           else if (data.action === 'last') document.getElementById('nav-last')?.click();
           else if (data.action === 'goto') navigateTo(data.idx);   // the other player jumped to a stage in the move list
       }
+
+      // Periodic authoritative state — recovers a silent deadlock from a lost turn/message.
+      else if (data.type === 'heartbeat') {
+          handleHeartbeat(data);
+      }
     });
 
     connection.on('close', () => {
       connStatus.textContent = "Opponent Disconnected.";
       connStatus.style.color = "#ef4444";
+      stopHeartbeat();
     });
 }
     
@@ -3947,7 +4042,11 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       if (conn && conn.open) conn.send({
         type: 'end_turn',
         points: this.points, bar: this.bar, borneOff: this.borneOff,
-        cubeValue: this.doublingCubeValue, cubeOwner: this.doublingCubeOwner
+        cubeValue: this.doublingCubeValue, cubeOwner: this.doublingCubeOwner,
+        // Authoritative turn ownership so the receiver sets whose turn it is / the turn number
+        // from the sender instead of inferring it by a local flip (which drifts if a turn was
+        // ever missed). endTurn has already run here, so currentPlayer is the new on-roll side.
+        nextPlayer: this.currentPlayer, turnCount: this.turnCount
       });
     }
     return result;
@@ -4048,7 +4147,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
         const result = game.rollDice(d1, d2);
         if (result && isNetworkGame && conn && conn.open) {
-            conn.send({ type: 'roll', dice: [d1, d2] });
+            // Tag with the post-roll turnCount + roller so the receiver keeps turnCount aligned
+            // (the anchor the heartbeat uses to detect a missed turn).
+            conn.send({ type: 'roll', dice: [d1, d2], player: game.currentPlayer, turnCount: game.turnCount });
         }
     }
 
