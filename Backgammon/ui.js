@@ -105,6 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Whether the current finished game's points have already been added to the score
   // fields (so the once-per-render updateUI winner branch tallies a game only once).
   let gameScored = false;
+  // Whether the game-winning turn has been recorded in the move history (endTurn never runs
+  // on the winning move); reset at the start of each game.
+  let winTurnRecorded = false;
 
   // Per-seat running score (game points). Kept in the p1/p2-score fields. Start zeros
   // both; Restart preserves them; the Z buttons zero one; a win adds the game's points.
@@ -977,6 +980,19 @@ renderBorneOff();
       const loser = winner === 1 ? 2 : 1;
       const winnerName = winner === 1 ? 'White' : 'Red';
       const loserName  = winner === 1 ? 'Red' : 'White';
+      // The game-winning move never goes through endTurn (the game is already over), so its
+      // turn snapshot would otherwise be missing from the move history. Record it once here
+      // so the final move (e.g. the last bear-off) shows in the list. Both machines detect
+      // the win from the synced moves and record identically, so no extra network message.
+      if (!winTurnRecorded) {
+        winTurnRecorded = true;
+        const gh = game.gameHistory;
+        const already = gh.length && gh[gh.length - 1].turnCount === game.turnCount;
+        if (!already && game.currentPlayer !== null && game.playedMovesThisTurn.length) {
+          const c = game.currentPlayer === 1 ? 'White' : 'Red';
+          game.saveGameSnapshot(`Turn ${game.turnCount} (${c}): Rolled ${game.dice[0]}, ${game.dice[1]}`);
+        }
+      }
       // Result multiplier: 1 = single, 2 = gammon, 3 = backgammon.
       // A declined double is always a plain single at the current cube value —
       // skip the gammon/backgammon test (the loser has borne off nothing and has
@@ -1009,7 +1025,9 @@ renderBorneOff();
         gameMessageEl.textContent = "Ready to go! To play, select players and click on Start";
       }
     } else if (initialRollOff) {
-      gameMessageEl.textContent = "Click the dice to decide who starts!";
+      gameMessageEl.textContent = (isNetworkGame && localPlayerRole === 2)
+        ? "Wait for the host to make the initial roll."
+        : "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
 	gameMessageEl.textContent = `${game.currentPlayer === 1 ? 'White' : 'Red'}: Click the dice to roll.`;
 } else {
@@ -1046,7 +1064,7 @@ renderBorneOff();
           clearTimeout(turnEndTimer);
           turnEndTimer = null;
         }
-        gameMessageEl.textContent = `${game.currentPlayer === 1 ? 'White' : 'Red'} to move`;
+        gameMessageEl.textContent = game.currentPlayer === 1 ? 'White to move descending' : 'Red to move ascending';
       }
     }
 
@@ -1678,6 +1696,7 @@ function handleRollClick() {
     startedFromSetup = false;
     lastStarter      = starter;
     gameScored       = false;   // new game to tally; scores themselves are preserved
+    winTurnRecorded  = false;
 
     // No overlay / Start needed — the game is already running.
     const overlay = document.getElementById('start-menu-overlay');
@@ -3923,6 +3942,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     game.hasRolled = false;
     resetBothScores();          // Start zeros the running score (Restart keeps it)
     gameScored = false;
+    winTurnRecorded = false;
 
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
