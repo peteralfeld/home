@@ -3653,9 +3653,11 @@ connection.on('data', (data) => {
       }
       
       else if (data.type === 'roll') {
+          // TEMP dice diagnostic: what roll arrived from the opponent, for which player/turn.
+          sysLog(`[DiceDbg] RECEIVED roll ${data.dice[0]}-${data.dice[1]} for P${game.currentPlayer} turn ${game.turnCount} (role=${localPlayerRole})`);
           // 1. Apply engine state instantly
           game.rollDice(data.dice[0], data.dice[1]);
-          
+
           // 2. Lock UI and visually animate
           isRolling = true;
           updateUI();
@@ -3993,14 +3995,18 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     } else {
         // Replay mode: reuse the pre-recorded dice for deterministic replay after
         // a time-travel restore. Falls back to secureRoll() once exhausted.
+        let diceSrc = 'random';
         if (game.futureRollIndex < game.futureRolls.length) {
             [d1, d2] = game.futureRolls[game.futureRollIndex++];
+            diceSrc = 'REPLAY-BUFFER';
         } else {
             d1 = secureRoll();
             d2 = secureRoll();
         }
+        // TEMP dice diagnostic: source + values + which player/turn (to find the copied-dice bug).
+        sysLog(`[DiceDbg] local roll P${game.currentPlayer} (role=${localPlayerRole}) turn ${game.turnCount}: ${d1}-${d2} [${diceSrc}] futureRolls=${game.futureRolls.length}/${game.futureRollIndex}`);
 
-        const result = game.rollDice(d1, d2); 
+        const result = game.rollDice(d1, d2);
         if (result && isNetworkGame && conn && conn.open) {
             conn.send({ type: 'roll', dice: [d1, d2] });
         }
