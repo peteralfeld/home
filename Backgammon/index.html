@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 126</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 128</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -166,13 +166,13 @@
 
     <!-- Streamlined Network Row -->
     <div id="network-setup" style="display: flex; flex-direction: row; gap: 0.5rem; align-items: center;">
-      <button id="btn-host" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
+      <button id="btn-host" title="Host an online game" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #1e3a8a; color: #ffffff; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">HOST</button>
       
-      <input type="text" id="join-code" placeholder="CODE" style="flex: 1.2; min-width: 0; padding: 0.4rem; border-radius: 4px; background: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000; border: 1px solid var(--glass-border); text-transform: uppercase; font-weight: bold; text-align: center; opacity: 1;">
+      <input type="text" id="join-code" placeholder="CODE" title="Enter the host's room code" style="flex: 1.2; min-width: 0; padding: 0.4rem; border-radius: 4px; background: #ffffff !important; color: #000000 !important; -webkit-text-fill-color: #000000; border: 1px solid var(--glass-border); text-transform: uppercase; font-weight: bold; text-align: center; opacity: 1;">
       
-      <button id="btn-join" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #add8e6; color: var(--accent-red); font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">JOIN</button>
+      <button id="btn-join" title="Join an online game" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #add8e6; color: var(--accent-red); font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">JOIN</button>
 
-      <button id="btn-quit" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #facc15; color: #dc2626; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">QUIT</button>
+      <button id="btn-quit" title="Leave the online game" class="btn" style="flex: 1; padding: 0.4rem 0.2rem; background: #facc15; color: #dc2626; font-weight: bold; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">QUIT</button>
     </div>
 
     <!-- Network Status Message (Permanently Visible) -->
@@ -183,13 +183,13 @@
 
     <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
     <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0;">
-      <button id="btn-start-game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
+      <button id="btn-start-game" title="Start a new game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
 
-      <button id="btn-stop" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
+      <button id="btn-stop" title="Pause the AI (or stop a run)" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
 
-      <button id="btn-restart" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
+      <button id="btn-restart" title="Start the next game (alternates the opener)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
       
-      <button id="btn-defaults" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">RELOAD</button>
+      <button id="btn-defaults" title="Reset everything and reload the page" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">RELOAD</button>
     </div>
     
     <!-- Player Setup: White and Red on separate rows, each with its own AI search
@@ -200,7 +200,7 @@
       <!-- Player 1 (White) -->
       <div style="display: flex; align-items: center; gap: 0.3rem;">
         <label for="p1-type" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">WP:</label>
-        <select id="p1-type" style="flex: 0 1 5.5rem; min-width: 0; background: #ffffff; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
+        <select id="p1-type" title="White player: Human or an AI brain" style="flex: 0 1 5.5rem; min-width: 0; background: #ffffff; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
@@ -218,7 +218,7 @@
       <!-- Player 2 (Red) -->
       <div style="display: flex; align-items: center; gap: 0.3rem;">
         <label for="p2-type" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; width: 2.2rem;">RP:</label>
-        <select id="p2-type" style="flex: 0 1 5.5rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
+        <select id="p2-type" title="Red player: Human or an AI brain" style="flex: 0 1 5.5rem; min-width: 0; background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.1rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
@@ -255,7 +255,7 @@
       </div>
     </div>
 
-    <button id="btn-undo" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
+    <button id="btn-undo" title="Undo the last move" class="btn" disabled style="width: auto; text-transform: uppercase; font-weight: 800; padding: 0.4rem 0.6rem; font-size: 0.85rem; flex-shrink: 0;">Undo</button>
     
     <div class="doubling-cube" id="doubling-cube" title="Click to Double Stakes" style="margin: 0; flex-shrink: 0; width: 60px; height: 60px; font-size: 1.68rem;">
       64
@@ -264,7 +264,7 @@
     <!-- Board View (moved here, right of the doubling cube) -->
     <div style="display: flex; align-items: center; gap: 0.2rem; flex-shrink: 0;">
       <label for="board-view" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">View:</label>
-      <select id="board-view" style="background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
+      <select id="board-view" title="Board orientation / view" style="background: #ef4444; color: #ffffff; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.75rem; font-weight: bold; outline: none; cursor: pointer;">
         <option value="white" style="background: #ffffff; color: #ef4444;">White</option>
         <option value="red" selected style="background: #ef4444; color: #ffffff;">Red</option>
         <option value="home" style="background: #1d4ed8; color: #ffffff;">Home</option>
@@ -342,12 +342,12 @@
   <div class="glass-card tournament-station">
     <div class="tourney-row">
       <span class="tourney-toggles" id="tourney-toggles"></span>
-      <button class="tourney-mini" id="tourney-all">all</button>
-      <button class="tourney-mini" id="tourney-none">none</button>
+      <button class="tourney-mini" id="tourney-all" title="Select all participants">all</button>
+      <button class="tourney-mini" id="tourney-none" title="Deselect all participants">none</button>
     </div>
     <div class="tourney-row">
       <button id="btn-compete" class="tourney-run" title="Play the White (WP) and Red (RP) AIs against each other, each at its own depth from the player rows. Both sides must be AIs.">Compete</button>
-      <button id="btn-run-tournament" class="tourney-run">Tournament</button>
+      <button id="btn-run-tournament" title="Run a round-robin tournament among selected brains" class="tourney-run">Tournament</button>
       <input type="number" id="tourney-games" value="50" min="1" title="Number of matches per pair (also the number of matches for Compete)">
       <span class="tourney-label">x</span>
       <select id="match-length" class="match-len" title="Match length: play each match to this many points (shared by tournament and evolution). 1 = single games, no doubling.">
@@ -430,6 +430,10 @@
         <div class="settings-item" id="export-screen">
           <span class="settings-item-label">Screen Image</span>
           <span class="export-icon">📷</span>
+        </div>
+        <div class="settings-item" id="export-board-img" title="Export a PNG of just the board (no controls), at full screen quality.">
+          <span class="settings-item-label">Board Image</span>
+          <span class="export-icon">🖼️</span>
         </div>
         <div class="settings-item" id="export-moves">
           <span class="settings-item-label">Move List</span>

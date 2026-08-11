@@ -340,6 +340,12 @@ function sysLog(msg) {
         return;
       }
 
+      // Close the export menu first so it isn't captured in the screenshot; wait for the
+      // close transition (0.3s) to finish before the capture begins.
+      exportPanel.classList.remove('open');
+      exportChevron.classList.remove('open');
+      await new Promise((r) => setTimeout(r, 350));
+
       label.textContent = 'Selecting Tab…';
       try {
         let stream;
@@ -376,6 +382,80 @@ function sysLog(msg) {
       } catch (err) {
         // NotAllowedError / AbortError = you dismissed the picker; anything else is a real failure.
         sysLog(`[Error] Screenshot failed: ${err.name}: ${err.message}`);
+        label.textContent = (err.name === 'NotAllowedError' || err.name === 'AbortError') ? 'Cancelled' : (err.name || 'Failed');
+        setTimeout(() => { label.textContent = original; }, 2500);
+      }
+    });
+  }
+
+  // Board Image — a PNG of JUST the board at full screen quality. Uses the same real-pixel
+  // getDisplayMedia capture as Screen Image, then crops to the board's on-screen rectangle
+  // (so it's crisp, unlike an html2canvas re-render).
+  const exportBoardImgEl = document.getElementById('export-board-img');
+  if (exportBoardImgEl) {
+    exportBoardImgEl.addEventListener('click', async () => {
+      const label = exportBoardImgEl.querySelector('.settings-item-label');
+      const original = label.textContent;
+
+      if (!window.isSecureContext || !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
+        sysLog(`[Error] Board image capture unavailable — page is not a secure context (isSecureContext=${window.isSecureContext}). Load via http://localhost/Backgammon/ or your https URL.`);
+        label.textContent = 'Use localhost/https'; setTimeout(() => { label.textContent = original; }, 3000);
+        return;
+      }
+
+      // Close the export menu so it isn't over the board when we capture.
+      exportPanel.classList.remove('open');
+      exportChevron.classList.remove('open');
+      await new Promise((r) => setTimeout(r, 350));
+
+      label.textContent = 'Selecting Tab…';
+      try {
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({ preferCurrentTab: true, video: { displaySurface: 'browser' } });
+        } catch (eHint) {
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        }
+        label.textContent = 'Capturing…';
+
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await new Promise((resolve) => { video.onloadedmetadata = () => { video.play(); resolve(); }; });
+
+        // Capture the whole framed board (border, point numbers, and bear-off trays), not
+        // just the inner playing surface. Map its CSS-pixel rect to captured-pixel coords
+        // (handles devicePixelRatio).
+        const target = document.querySelector('.board-wrapper') || boardEl;
+        const rect = target.getBoundingClientRect();
+        const vw = (window.visualViewport && window.visualViewport.width)  || document.documentElement.clientWidth;
+        const vh = (window.visualViewport && window.visualViewport.height) || document.documentElement.clientHeight;
+        // getDisplayMedia can return a frame whose aspect ratio differs from the viewport (it
+        // fills one axis and crops the other), so videoWidth/vw and videoHeight/vh disagree.
+        // Using them per-axis under-scales one axis and clips the board's frame. Use a SINGLE
+        // uniform scale — the larger — so the crop reaches the frame on the tighter axis.
+        const s = Math.max(video.videoWidth / vw, video.videoHeight / vh);
+        const sx = Math.max(0, Math.round(rect.left * s));
+        const sy = Math.max(0, Math.round(rect.top  * s));
+        const sw = Math.min(Math.round(rect.width  * s), video.videoWidth  - sx);
+        const sh = Math.min(Math.round(rect.height * s), video.videoHeight - sy);
+
+        // Square canvas, board centered, transparent padding on the shorter dimension.
+        const side = Math.max(sw, sh);
+        const canvas = document.createElement('canvas');
+        canvas.width = side; canvas.height = side;
+        const dx = Math.round((side - sw) / 2), dy = Math.round((side - sh) / 2);
+        canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, dx, dy, sw, sh);
+        stream.getTracks().forEach((t) => t.stop());
+
+        const link = document.createElement('a');
+        link.download = `bg-board-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+        sysLog('[System] Board image captured and downloaded.');
+        label.textContent = original;
+      } catch (err) {
+        sysLog(`[Error] Board image failed: ${err.name}: ${err.message}`);
         label.textContent = (err.name === 'NotAllowedError' || err.name === 'AbortError') ? 'Cancelled' : (err.name || 'Failed');
         setTimeout(() => { label.textContent = original; }, 2500);
       }
@@ -935,32 +1015,32 @@ renderBorneOff();
 } else {
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
-        
-        // ADD THIS: Only the active player is allowed to auto-end the turn!
+
+        // Only the active player auto-ends the turn.
         if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
 
-        if (turnEndTimer) clearTimeout(turnEndTimer);
-        turnEndTimer = setTimeout(() => {
+        // Schedule the auto-end ONCE — do NOT clear-and-reschedule on every re-render, or
+        // frequent updateUI() calls could perpetually postpone it (leaving the turn
+        // unrecorded / the two machines out of sync). Re-validate before ending.
+        if (!turnEndTimer) turnEndTimer = setTimeout(() => {
           turnEndTimer = null;
-          game.endTurn();
-          updateUI();
+          if (game.hasRolled && game.movesLeft.length === 0 && !game.winner) { game.endTurn(); updateUI(); }
         }, 100);
 } else if (!game.hasLegalMoves()) {
   gameMessageEl.textContent = "No legal moves possible! Switching players...";
-  
+
   // Let the rolled dice stay visible on the screen!
-  
-  // 2. Only the active player is allowed to auto-end the turn!
+  // Only the active player auto-ends the turn.
   if (isNetworkGame && game.currentPlayer !== localPlayerRole) return;
 
-  if (turnEndTimer) clearTimeout(turnEndTimer);
-  
-  // 3. Wait two seconds before ending the turn so players can read the dice
-  turnEndTimer = setTimeout(() => {
+  // Schedule the no-move (dance) auto-end ONCE, after ~2s so players can read the dice.
+  // Scheduling once (rather than clear-and-reschedule) prevents repeated re-renders from
+  // perpetually postponing it — which would leave the dance turn unrecorded and desync the
+  // two machines. Re-validate before ending in case the state changed meanwhile.
+  if (!turnEndTimer) turnEndTimer = setTimeout(() => {
     turnEndTimer = null;
-    game.endTurn();
-    updateUI();
-  }, 2000); 
+    if (game.hasRolled && !game.hasLegalMoves() && !game.winner) { game.endTurn(); updateUI(); }
+  }, 2000);
       } else {
           if (turnEndTimer) {
           clearTimeout(turnEndTimer);
