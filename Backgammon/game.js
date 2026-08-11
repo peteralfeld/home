@@ -397,8 +397,14 @@ rollDice(d1 = null, d2 = null) {
     this.doublingCubeOwner = snapshot.doublingCubeOwner;
 
     // Capture the dice sequence of all future turns so they can be replayed
-    // deterministically. Moves remain the player's free choice.
-    this.futureRolls = this.gameHistory.slice(index + 1).map(s => [...s.dice]);
+    // deterministically. Moves remain the player's free choice. Each entry is TAGGED with
+    // the player who rolled it, and only REAL rolls are kept — the doubling-accept snapshots
+    // carry [0,0] dice (and don't alternate players), so including them would shift the whole
+    // sequence by one turn and hand each side the other side's dice. Filtering + the player
+    // tag (checked at consume time) makes that misalignment impossible.
+    this.futureRolls = this.gameHistory.slice(index + 1)
+      .filter(s => !s.isInitial && s.dice[0] && s.dice[1])
+      .map(s => ({ p: s.currentPlayer, d: [s.dice[0], s.dice[1]] }));
     this.futureRollIndex = 0;
 
     // Truncate game history to this point (future turns will be re-written)

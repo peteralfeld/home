@@ -472,20 +472,29 @@ function sysLog(msg) {
       if (game.gameHistory.length === 0) { alert('No moves have been played yet!'); return; }
 
       const now   = new Date();
-      const p1Type = game.playerTypes[1].charAt(0).toUpperCase() + game.playerTypes[1].slice(1);
-      const p2Type = game.playerTypes[2].charAt(0).toUpperCase() + game.playerTypes[2].slice(1);
+      // Header seat label: brain name for an AI, else "Human".
+      const seatLabel = (p) => game.playerTypes[p] === 'ai' ? `${game.aiNames[p]} (AI)` : 'Human';
 
       const withScore = showScoreOn;
       let txt = 'Backgammon Game - Move History\n';
       txt += `BG v. ${bgVersion()}\n`;
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
-      txt += `White: ${p1Type}, Red: ${p2Type}\n\n`;
+      txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n\n`;
       txt += withScore
         ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score (White view)\n\n'
         : 'Turn  Player  Dice   Moves\n\n';
 
-      game.gameHistory.forEach((snap, idx) => {
-        const turnNum = String(idx).padStart(4, ' '); // idx 0 is initial, so idx 1 becomes Turn 1
+      // A doubling-accept snapshot carries no dice ([0,0]) and no checker moves — it just
+      // records the new cube value. It is NOT its own turn: fold "DC=N" into the Moves column
+      // of the proposer's actual roll (the very next real snapshot), so the doubling shows on
+      // the turn it happened and the turn numbering stays continuous.
+      let displayTurn = 0;
+      let pendingDC = null;
+      game.gameHistory.forEach((snap) => {
+        const isDouble = !snap.isInitial && !snap.dice[0] && !snap.dice[1];
+        if (isDouble) { pendingDC = snap.doublingCubeValue; return; }   // fold into the next row
+
+        const turnNum = String(displayTurn++).padStart(4, ' '); // idx 0 is initial → Turn 0
         const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
         const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
 
@@ -501,6 +510,10 @@ function sysLog(msg) {
           }
           movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
         }
+        if (pendingDC != null) {   // proposer doubled before this roll → annotate the move
+          movesText = (movesText === '-' ? '' : movesText + ' ') + `DC=${pendingDC}`;
+          pendingDC = null;
+        }
         if (withScore) {
           const scoreStr = String(Math.round(snapshotScore(snap))).padStart(6, ' ');
           txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText.padEnd(20, ' ')} ${scoreStr}\n`;
@@ -508,6 +521,8 @@ function sysLog(msg) {
           txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
         }
       });
+      // Edge case: a double with no following roll (e.g. game ended on it) — show it on its own.
+      if (pendingDC != null) txt += `${String(displayTurn).padStart(4, ' ')}         -    DC=${pendingDC}\n`;
 
       txt += '\n';
       if (!game.winner) {
@@ -1816,7 +1831,16 @@ function handleRollClick() {
       }
       tbody.appendChild(emptyEl);
     } else {
+      // A doubling-accept snapshot ([0,0] dice, no moves) is not its own turn: fold "DC=N" into
+      // the Moves column of the proposer's actual roll (the next real snapshot) and skip the
+      // blank row, so numbering stays continuous.
+      let displayTurn = 0;
+      let pendingDC = null;
       game.gameHistory.forEach((snapshot, idx) => {
+        const isDouble = !snapshot.isInitial && !snapshot.dice[0] && !snapshot.dice[1];
+        if (isDouble) { pendingDC = snapshot.doublingCubeValue; return; }  // fold into next row
+        const rowNum = displayTurn++;
+
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
         row.style.cursor = 'pointer';
@@ -1832,7 +1856,7 @@ function handleRollClick() {
 
         const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
         const pColor = snapshot.currentPlayer === 1 ? '#ffffff' : '#f87171';
-        
+
         let movesText = '-';
         if (snapshot.playedMoves?.length > 0) {
           // Build Magriel-style notation: x/y, bar/x, x/off, x/y*, x/y(n)
@@ -1848,6 +1872,10 @@ function handleRollClick() {
           }
           movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
         }
+        if (pendingDC != null) {   // proposer doubled before this roll → annotate the move
+          movesText = (movesText === '-' ? '' : movesText + ' ') + `DC=${pendingDC}`;
+          pendingDC = null;
+        }
 
         let displayDice = snapshot.isInitial ? '-' : `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`;
         let displayPCode = snapshot.isInitial ? '-' : pCode;
@@ -1860,7 +1888,7 @@ function handleRollClick() {
           scoreCell = `<td style="padding: 2px 4px; font-family: monospace; font-weight: bold; color: ${scoreColor};">${scoreVal}</td>`;
         }
         row.innerHTML = `
-          <td style="padding: 2px 4px; font-weight: bold;">${idx}</td>
+          <td style="padding: 2px 4px; font-weight: bold;">${rowNum}</td>
           <td style="padding: 2px 4px; color: ${pColor}; font-weight: bold;">${displayPCode}</td>
           <td style="padding: 2px 4px;">${displayDice}</td>
           <td style="padding: 2px 4px; font-family: monospace;">${movesText}</td>
@@ -1928,9 +1956,16 @@ function handleRollClick() {
     game.doublingCubeValue = snap.doublingCubeValue;
     game.doublingCubeOwner = snap.doublingCubeOwner;
 
-    // Set history up to this point; future rolls come from the buffer
+    // Set history up to this point; future rolls come from the buffer. Each entry is TAGGED
+    // with the player who rolled it and only REAL rolls are kept (skip the initial snapshot and
+    // the [0,0]-dice doubling-accept snapshots) — otherwise the extra/non-alternating entries
+    // shift the sequence by a turn and each side replays the other side's dice. The player tag
+    // is re-checked when a roll consumes an entry (see handleRollClick), so any residual
+    // misalignment discards the buffer and rolls fresh instead of copying the opponent.
     game.gameHistory         = JSON.parse(JSON.stringify(historyNavBuffer.slice(0, idx + 1)));
-    game.futureRolls         = historyNavBuffer.slice(idx + 1).map(s => [...s.dice]);
+    game.futureRolls         = historyNavBuffer.slice(idx + 1)
+      .filter(s => !s.isInitial && s.dice[0] && s.dice[1])
+      .map(s => ({ p: s.currentPlayer, d: [s.dice[0], s.dice[1]] }));
     game.futureRollIndex     = 0;
 
     // Reset per-turn undo stack
@@ -3653,8 +3688,6 @@ connection.on('data', (data) => {
       }
       
       else if (data.type === 'roll') {
-          // TEMP dice diagnostic: what roll arrived from the opponent, for which player/turn.
-          sysLog(`[DiceDbg] RECEIVED roll ${data.dice[0]}-${data.dice[1]} for P${game.currentPlayer} turn ${game.turnCount} (role=${localPlayerRole})`);
           // 1. Apply engine state instantly
           game.rollDice(data.dice[0], data.dice[1]);
 
@@ -3995,16 +4028,23 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     } else {
         // Replay mode: reuse the pre-recorded dice for deterministic replay after
         // a time-travel restore. Falls back to secureRoll() once exhausted.
-        let diceSrc = 'random';
-        if (game.futureRollIndex < game.futureRolls.length) {
-            [d1, d2] = game.futureRolls[game.futureRollIndex++];
-            diceSrc = 'REPLAY-BUFFER';
+        //
+        // GUARD: a buffered roll is replayed ONLY if it belongs to the side now on roll (each
+        // entry is tagged with its player). If the next buffered entry is for the OTHER side,
+        // the buffer is misaligned — discard it entirely and roll fresh rather than hand this
+        // player the opponent's recorded dice (the "copies the opponent's roll" bug).
+        const fr = game.futureRolls[game.futureRollIndex];
+        if (fr && fr.p === game.currentPlayer) {
+            [d1, d2] = fr.d;
+            game.futureRollIndex++;
         } else {
+            if (fr) {                       // misaligned buffered roll → drop the whole buffer
+                game.futureRolls = [];
+                game.futureRollIndex = 0;
+            }
             d1 = secureRoll();
             d2 = secureRoll();
         }
-        // TEMP dice diagnostic: source + values + which player/turn (to find the copied-dice bug).
-        sysLog(`[DiceDbg] local roll P${game.currentPlayer} (role=${localPlayerRole}) turn ${game.turnCount}: ${d1}-${d2} [${diceSrc}] futureRolls=${game.futureRolls.length}/${game.futureRollIndex}`);
 
         const result = game.rollDice(d1, d2);
         if (result && isNetworkGame && conn && conn.open) {
