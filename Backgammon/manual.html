@@ -81,9 +81,153 @@
 
   <H1>The Game Board</h1>
 
-In the default view of the game board, as shown in Figure 1, the <e>home board</e> of White  is in the lower right quadrant, and White's <e>outer board</e> is in the lower left.   Similarly, Red's home and outer boards are on the top, on the right and left, respectively.   Red moves from the white home board to the red home board and White moves in the opposite direction. Both players move from their opponent's home board to their own home board, and from there to the <e>collecting tray</e> next to the home boards.     Red moves clockwise, and white moves counterclockwise.  The <e>bar</e> contains any checkers that have been forced off the board by the opponent, and the collection tray receives all checkers that have been born off. The points of the board are numbered from 1 to 24. It is sometimes convenient to think of the bar as point  25 for White and 0 for red,  and the collection tray as point 0 for white and 25 for Red.   With these conventions,  Red always moves from some point to a point with a <e>larger</e> index, and White moves to a point with a <e>smaller</e> index.   The default view is Red's view as it would be on a physical board.  That view is consistent with the diagrams shown in  this  <a href="https://www.bkgm.com/rules.html"> external rules page.</a>   You can change the view of the board, as described below.
+<p> In the default view of the game board, as shown in Figure 1, the <e>home board</e> of White  is in the lower right quadrant, and White's <e>outer board</e> is in the lower left.   Similarly, Red's home and outer boards are on the top, on the right and left, respectively.   Red moves from the white home board to the red home board and White moves in the opposite direction. Both players move from their opponent's home board to their own home board, and from there to the <e>collecting tray</e> next to the home boards.     Red moves clockwise, and white moves counterclockwise.  The <e>bar</e> contains any checkers that have been forced off the board by the opponent, and the collection tray receives all checkers that have been born off. The points of the board are numbered from 1 to 24. It is sometimes convenient to think of the bar as point  25 for White and 0 for red,  and the collection tray as point 0 for white and 25 for Red.   With these conventions,  Red always moves from some point to a point with a <e>larger</e> index, and White moves to a point with a <e>smaller</e> index.   The default view is Red's view as it would be on a physical board.  That view is consistent with the diagrams shown in  this  <a href="https://www.bkgm.com/rules.html"> external rules page.</a>   You can change the view of the board, as described below.
+
+<p>There are several ways to move a checker from point x to point y on the game board.  You can drag it from x to y or you can first click on x and then on y.   There is also a setting (see the description of row 18) that let's you move a checker with a single click of that click uniquely identifies the move.
+
+  <p> If the move is part of a game the system will only make legal moves.   However, there is also an examination mode, see the description of row 12, that let's you move checkers freely.
 
   <H1>The Control Column</h1>
+
+Figure 2 shows an image of the control column.  Each row of that column is explained in this section.  Clicking on the row number in the Figure takes you to the relevant explanation on this page.   Clicking on the row number on the explanation takes you back to the Figure.
+
+
+<style>
+  html { scroll-behavior: smooth; }
+
+  /* Shared look for the yellow number circles (used on the figure and in the headings) */
+  .cc-circle, .cc-circle:visited {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #f0c400; color: #141414;
+    border: 2px solid #000; border-radius: 50%;
+    font-weight: bold; font-family: Calibri, 'Carlito', sans-serif;
+    text-decoration: none; box-sizing: border-box; line-height: 1;
+  }
+  .cc-circle:hover {
+    color: #000; text-decoration: none;
+    box-shadow: 0 0 0 3px rgba(255,255,255,.75), 0 0 12px 4px rgba(240,196,0,.85);
+  }
+
+  /* The floating figure */
+  .cc-fig { float: left; width: 470px; max-width: 55%; margin: 0 22px 12px 0; }
+  .cc-fig figcaption { text-align: center; font-size: 0.9em; margin-top: 4px; }
+  .cc-canvas { position: relative; container-type: inline-size; line-height: 0; }
+  .cc-canvas img { display: block; width: 100%; height: auto; border-radius: 8px; }
+
+  /* Clickable numbers overlaid on the figure (sized relative to the figure width) */
+  .cc-hotspot {
+    position: absolute; left: 5.63%; transform: translate(-50%, -50%);
+    width: 4.6cqw; height: 4.6cqw; font-size: 2.5cqw;
+  }
+
+  /* Back-link circles inside the section headings (sized relative to the heading text) */
+  .cc-badge { width: 1.5em; height: 1.5em; font-size: 0.8em; vertical-align: middle; }
+  h2.cc-target { scroll-margin-top: 12px; }
+</style>
+
+<figure id="ccfig" class="cc-fig">
+  <div class="cc-canvas">
+    <img src="ControlColumnFig.png" alt="The control column, with clickable numbered rows">
+    <a class="cc-circle cc-hotspot" style="top:1.53%"  href="#CC1"  title="Row 1: Title bar &amp; Workers field">1</a>
+    <a class="cc-circle cc-hotspot" style="top:4.54%"  href="#CC2"  title="Row 2: Documentation link">2</a>
+    <a class="cc-circle cc-hotspot" style="top:7.50%"  href="#CC3"  title="Row 3: HOST / CODE / JOIN / QUIT">3</a>
+    <a class="cc-circle cc-hotspot" style="top:10.31%" href="#CC4"  title="Row 4: Network status line">4</a>
+    <a class="cc-circle cc-hotspot" style="top:13.93%" href="#CC5"  title="Row 5: START / STOP / RESTART / RELOAD">5</a>
+    <a class="cc-circle cc-hotspot" style="top:18.62%" href="#CC6"  title="Row 6: White player (WP) setup">6</a>
+    <a class="cc-circle cc-hotspot" style="top:22.35%" href="#CC7"  title="Row 7: Red player (RP) setup">7</a>
+    <a class="cc-circle cc-hotspot" style="top:28.93%" href="#CC8"  title="Row 8: Message / instruction box">8</a>
+    <a class="cc-circle cc-hotspot" style="top:36.68%" href="#CC9"  title="Row 9: Dice, UNDO, doubling cube, VIEW">9</a>
+    <a class="cc-circle cc-hotspot" style="top:48.21%" href="#CC10" title="Row 10: Move-history table">10</a>
+    <a class="cc-circle cc-hotspot" style="top:57.50%" href="#CC11" title="Row 11: Time-travel navigation">11</a>
+    <a class="cc-circle cc-hotspot" style="top:62.09%" href="#CC12" title="Row 12: Examine row (EX/CL/IN/MOV/PLAY)">12</a>
+    <a class="cc-circle cc-hotspot" style="top:66.38%" href="#CC13" title="Row 13: Brain selector, name, EXPORT/IMPORT/DEF">13</a>
+    <a class="cc-circle cc-hotspot" style="top:70.46%" href="#CC14" title="Row 14: EVOLVE controls">14</a>
+    <a class="cc-circle cc-hotspot" style="top:77.45%" href="#CC15" title="Row 15: AI parameter grid">15</a>
+    <a class="cc-circle cc-hotspot" style="top:84.95%" href="#CC16" title="Row 16: Participant toggles (A-O / ALL / NONE)">16</a>
+    <a class="cc-circle cc-hotspot" style="top:88.83%" href="#CC17" title="Row 17: COMPETE / TOURNAMENT">17</a>
+    <a class="cc-circle cc-hotspot" style="top:94.74%" href="#CC18" title="Row 18: SETTINGS / EXPORT panels">18</a>
+  </div>
+  <figcaption>Fig. 2: The Control Column (click a number for details)</figcaption>
+</figure>
+
+<!-- ===== Control Column row descriptions: fill in text after each heading ===== -->
+
+<h2 id="CC1" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">1</a>Title and Parallel Processing</h2>
+<!-- Row 1: Title bar (version / documentation link) & the Workers field -->
+
+<p>This line contains the name of the game, <E>BACKGAMMON</e>, and the current version number.   Together they constitute a clickable link that takes you to this manual page.
+
+ <p> <e>Workers</e> are individual processes that you computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer than workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
+
+
+<h2 id="CC2" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">2</a>Link to User's Guide</h2>
+<!-- Row 2: "Documentation and User's Guide" link -->
+
+This line just provides a clickable link to the manual page.
+
+<h2 id="CC3" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">3</a> Playing Over the Network</h2>
+<!-- Row 3: HOST / CODE / JOIN / QUIT (network play) -->
+
+These controls let you set up a match between two human players in two different locations. Both of you have to have an internet connection, and you also have to have an open communication channel to your opponent, by telephone, on screen, or by email. One of you serves as the <e>host</e>, the other as the <e>guest</e>.   To set up a match proceed as follows:
+
+<OL>
+  <LI>As host click on the button labeled <e>HOST</e>.    A code (usually a three digit integer) will appear in the text field labeled <e>CODE</e>.  Communicate that code to the Guest.</LI>
+  <LI>As guest enter the code into your CODE text field, by clicking on the word CODE and typing the code for your game.   The word CODE will disappear in the process. Establish the connection by press the <e>enter</e> key, or by clicking on the button labeled <e>JOIN</e>.  Once the connection is established a notification will appear in Line 4.</LI>
+  <LI>As host click on Start (in row 5) and then click on the playing dice in row 9 to determine who starts the game.  If you have already played a game, and you want to play another, as host click on <e>RESTART</e> in row 5.</LI>
+  <LI>The two of you can then play a game as described above in the section headed <e> The Game Board<e>.</LI>
+<LI> The <e>QUIT</e> button severs the connection and resets the game board.  
+  <h3>Notes:</h3>
+  <LI> The host always plays as White, the guest as Red.  Either player may be the first to roll the dice.   In the first game, the first player to roll the dice is determined by random.   Thereafter the beginning player alternates.</lI>
+  <LI>The Host's view by default is White, that of the guest is Red.</li>
+  <LI>Either of the two players can act as host, but the guest does not have all the privileges that the host has.   The main purpose of this restriction is to remove sources of confusion.  In particular the guest  cannot  restart a game, or navigate back and forth within the game (see the description of row 10).</LI>
+  </OL>
+
+
+<h2 id="CC4" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">4</a>Network Status Line</h2>
+When this line is green you can play over the network.
+<!-- Row 4: Network status line -->
+
+<h2 id="CC5" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">5</a></h2>
+<!-- Row 5: START / STOP / RESTART / RELOAD -->
+
+<h2 id="CC6" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">6</a></h2>
+<!-- Row 6: WP (White player) setup: brain, score, Z reset, depth -->
+
+<h2 id="CC7" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">7</a></h2>
+<!-- Row 7: RP (Red player) setup -->
+
+<h2 id="CC8" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">8</a></h2>
+<!-- Row 8: Message / instruction box -->
+
+<h2 id="CC9" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">9</a></h2>
+<!-- Row 9: Dice, UNDO, doubling cube, VIEW selector -->
+
+<h2 id="CC10" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">10</a></h2>
+<!-- Row 10: Move-history table -->
+
+<h2 id="CC11" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">11</a></h2>
+<!-- Row 11: Time-travel navigation (<< < > >>) -->
+
+<h2 id="CC12" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">12</a></h2>
+<!-- Row 12: Examine row (EX / CL / IN / dice menus / MOV / PLAY) -->
+
+<h2 id="CC13" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">13</a></h2>
+<!-- Row 13: Brain selector, name field, EXPORT / IMPORT / DEF -->
+
+<h2 id="CC14" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">14</a></h2>
+<!-- Row 14: EVOLVE controls (depth, generations, matches, rate) -->
+
+<h2 id="CC15" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">15</a></h2>
+<!-- Row 15: AI parameter grid (the evolvable weights) -->
+
+<h2 id="CC16" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">16</a></h2>
+<!-- Row 16: Participant toggles (A-O / ALL / NONE) -->
+
+<h2 id="CC17" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">17</a></h2>
+<!-- Row 17: COMPETE / TOURNAMENT -->
+
+<h2 id="CC18" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">18</a></h2>
+<!-- Row 18: SETTINGS / EXPORT panels -->
 
 
 </body>
