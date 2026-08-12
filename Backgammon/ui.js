@@ -2815,7 +2815,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escHist) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escHist, depth) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'BG v. ' + bgVersion() + '\n';
@@ -2824,7 +2824,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Duration:,"' + numCommas(tEnd - tStart) + ' ms"\n';
     csv += 'Players:,' + names.length + '\n';
     csv += 'Matches per Pair,' + matchesPer + '\n';
-    csv += 'Match Length (play to),' + X + '\n\n';
+    csv += 'Match Length (play to),' + X + '\n';
+    csv += 'Lookahead Depth (plies),' + (depth == null ? '?' : depth) + '\n\n';
 
     csv += 'Standings\nRank,Name,Matches Won,Matches Lost,Game Points\n';
     ranked.forEach((n, i) => { csv += `${i + 1},${n},${mWins[n]},${mLoss[n]},${gpts[n]}\n`; });
@@ -3064,7 +3065,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (collectStats && escTotal && escTotal.reduce((a, b) => a + b, 0) === 0) {
       sysLog('[Statistics] No escape-roll data collected — the worker pool is likely running a cached game.js. Hard-refresh (Ctrl+Shift+R) to reload the workers, then re-run.');
     }
-    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escTotal));
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escTotal, depth));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
