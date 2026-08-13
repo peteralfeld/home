@@ -187,14 +187,21 @@ These controls let you set up a match between two human players in two different
 When this line is green you can play over the network.  It will also notify you if the connection gets interrupted.
 <!-- Row 4: Network status line -->
 
-<h2 id="CC5" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">5</a></h2>
+<h2 id="CC5" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">5</a>Game Control</h2>
 <!-- Row 5: START / STOP / RESTART / RESET -->
 
-<h2 id="CC6" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">6</a></h2>
-<!-- Row 6: WP (White player) setup: brain, score, Z reset, depth -->
 
-<h2 id="CC7" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">7</a></h2>
-<!-- Row 7: RP (Red player) setup -->
+
+
+<p> These buttons let you start or stop and stop a game.   The start button also serves to continue a game after an interruption.   The Restart button stops a game and resets to the board to the initial configuration.   The reset button reloads the game page and thereby returns all settings to their default status.
+
+
+<h2 id="CC6" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">6</a>&nbsp;<a id="CC7" class="cc-circle cc-badge" href="#ccfig" title="Back to the figure" style="scroll-margin-top:12px">7</a>Player Selection</h2>
+<!-- Rows 6 & 7: WP (White player) and RP (Red player) setup — brain, score, Z reset, depth (described together) -->
+Here you can select  the white player in the first menu in that row..  The options are either Human (the default) or one of one of 9 AI players, ranked by decreasing performance.   The cyan text field keeps track of the score in a multi game match.   The button labeled Z resets the score field to zero.   The depth menu let's you select the search depth for AI players, measured in plies (half moves).   1 ply is the default, and overall by far the most useful setting. At  0 plies picks picks the first available legal move. You can use it if you are looking for an easy opponent.  1 ply applies a static evolution function to every board that can be obtained with a legal move.  It then picks the move that yields the best scoring board.  This is very fast, for human play as well as for tournaments or evolutions.  2 ply considers all possible dice rolls and moves after the first ply, and then computes an expected score for the board after the first ply.  A two ply search is a few percentage points better than one ply search, but it requires several seconds for each search. It is a reasonable choice for a human playing against an AI.  A 3 ply search goes one ply deeper, but it's utility is severely limited by the large amount of time it takes for the analysis of just one dice roll.
+
+<p> There is a more detailed discussion of the AI players and algorithms below. 
+
 
 <h2 id="CC8" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">8</a></h2>
 <!-- Row 8: Message / instruction box -->
