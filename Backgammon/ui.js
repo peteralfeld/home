@@ -2163,6 +2163,33 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   const editBrainSel  = document.getElementById('edit-brain');
   const brainParamsEl = document.getElementById('brain-params');
   const BRAIN_KEYS = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA', 'DT', 'AT'];
+  // Short hover reminders of what each evolvable weight means (shown as the field's tooltip).
+  const BRAIN_TITLES = {
+    PC:  'PC — pip count (the race); negative weight, so ahead-in-the-race is good',
+    BO:  'BO — checkers borne off',
+    EC1: 'EC1 — rolls with exactly one legal move (encumbrance; negative)',
+    EC0: 'EC0 — rolls with no legal move (encumbrance; negative)',
+    HB:  'HB — home-board points made (excludes the golden 4- and 5-points)',
+    AN:  'AN — anchors in the opponent home (excludes the golden anchor; gated on being behind)',
+    DO:  'DO — blot exposure: direct shots, far',
+    IO:  'IO — blot exposure: indirect shots, far',
+    DP:  'DP — blot exposure: direct shots, near',
+    IP:  'IP — blot exposure: indirect shots, near',
+    DE:  'DE — disengagement bonus: race away when ahead (move-selection only, not the static score)',
+    F0:  'F0 — freedom/containment: sealed (entombed or closed out)',
+    F1:  'F1 — freedom/containment: 1 of 6 die-values escapes the prime',
+    F2:  'F2 — freedom/containment: 2 of 6 die-values escape',
+    F3:  'F3 — freedom/containment: 3 of 6 die-values escape',
+    F4:  'F4 — freedom/containment: 4 of 6 die-values escape',
+    F5:  'F5 — freedom/containment: 5 of 6 escape (nearly free)',
+    BE:  'BE — bar entombment: extra penalty per expected frozen turn for a checker on the bar',
+    G5:  'G5 — the golden point (the 5-point), per-point made-point value',
+    G7:  'G7 — the bar/7-point, per-point made-point value',
+    G4:  'G4 — the 4-point, per-point made-point value',
+    GA:  'GA — the golden anchor (opponent 5-point), held from behind; gated on being behind',
+    DT:  'DT — doubling threshold: offer/redouble when own score exceeds DT',
+    AT:  'AT — accept threshold: accept a double unless own score is below −AT',
+  };
 
   function refreshBrainSelect() {
     if (!editBrainSel) return;
@@ -2185,8 +2212,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       wrap.className = 'brain-param';
       const lab = document.createElement('label');
       lab.textContent = k; lab.htmlFor = 'bp-' + k;
+      const tip = BRAIN_TITLES[k] || k;
+      lab.title = tip;
       const inp = document.createElement('input');
       inp.type = 'number'; inp.id = 'bp-' + k;
+      inp.title = tip;
       inp.addEventListener('change', () => {
         const name = editBrainSel.value;
         game.setPersonalityWeight(name, k, parseInt(inp.value, 10) || 0);
@@ -4021,39 +4051,21 @@ connection.on('data', (data) => {
     if (e.key === 'Enter') btnJoin.click();
   });
 
-// --- QUIT GAME ---
+// --- LEAVE (sever the online connection; no confirmation) ---
   const btnQuit = document.getElementById('btn-quit');
   if (btnQuit) {
     btnQuit.addEventListener('click', () => {
       if (!isNetworkGame) { sysLog('[Network] Leave: not currently in an online game.'); return; }
-      if (confirm("Leave the online game? This disconnects you from your opponent.")) {
-        // Sever the connection only — no page reload (that's the "Reset" button's job).
-        leaveNetworkGame();
-      }
+      // Sever the connection only — no page reload (that's the "Reset" button's job).
+      leaveNetworkGame();
     });
   }
 
-// --- DEFAULTS & EXIT ---
+// --- RESET (reload the page; no confirmation) ---
   const btnDefaults = document.getElementById('btn-defaults');
   if (btnDefaults) {
     btnDefaults.addEventListener('click', () => {
-      if (confirm("Restore default settings? This will clear all data and reload the page.")) {
-        window.location.reload();
-      }
-    });
-  }
-
-  const btnExit = document.getElementById('btn-exit');
-  if (btnExit) {
-    btnExit.addEventListener('click', () => {
-      if (confirm("Are you sure you want to exit the game?")) {
-        // Attempt to close the browser tab natively
-        window.close();
-        
-        // Fallback: Modern browsers sometimes block window.close() if the script didn't explicitly open the tab. 
-        // This clears the screen and gives a safe-to-close message just in case.
-        document.body.innerHTML = "<div style='display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column;'><h1 style='color:white; font-family:sans-serif;'>Game Closed.</h1><p style='color:#9ca3af; font-family:sans-serif;'>You can safely close this browser tab.</p></div>";
-      }
+      window.location.reload();
     });
   }
 
