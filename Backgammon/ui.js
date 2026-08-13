@@ -3460,7 +3460,14 @@ if (view === 'white') {
       peerConnection: null,   // no WebRTC; the ICE-logging block below no-ops
       on(evt, cb) { if (handlers[evt]) handlers[evt].push(cb); },
       send(obj) { try { outRef.push(JSON.stringify(obj)); } catch (e) { sysLog('[Network] send failed: ' + e.message); } },
-      close() { try { meRef.set(null); } catch (e) {} },
+      close() {
+        // Clear our presence (the opponent sees us leave) AND detach the inbound/presence
+        // listeners, so a "Leave" that does NOT reload the page leaves nothing live behind.
+        try { meRef.set(null); } catch (e) {}
+        try { otherRef.off(); } catch (e) {}
+        try { inRef.off(); } catch (e) {}
+        conn.open = false;
+      },
     };
 
     // Presence: announce self; auto-clear on tab close / refresh / disconnect.
@@ -3708,6 +3715,46 @@ function initNetworkGame(role) {
         sysLog(`[Resync] Adopting opponent's authoritative state (mine t${game.turnCount}/p${game.currentPlayer} → t${s.turnCount}/p${s.currentPlayer}).`);
         adoptRemoteState(s);
       }
+    }
+
+    // Sever the online connection WITHOUT reloading the page (the "Leave" button). Clears our
+    // presence so the opponent is notified, stops the heartbeat, detaches all listeners, and
+    // restores the local single-machine controls so play can continue offline immediately.
+    function leaveNetworkGame() {
+      if (!isNetworkGame) return;
+      const wasGuest = (localPlayerRole === 2);
+      stopHeartbeat();
+      if (conn) { try { conn.close(); } catch (e) {} conn = null; }
+      isNetworkGame  = false;
+      localPlayerRole = null;
+      pendingDouble  = null;
+      networkQueue   = [];
+      isProcessingQueue = false;
+
+      // A network game had forced both seats to Human and locked the type/depth menus — undo that.
+      const p1t = document.getElementById('p1-type');
+      const p2t = document.getElementById('p2-type');
+      if (p1t) p1t.disabled = false;
+      if (p2t) p2t.disabled = false;
+      syncDepthMenu(1);
+      syncDepthMenu(2);
+
+      // Restore local privileges the network game disabled. Most guest restrictions (Restart,
+      // rolling, drag, nav) are runtime checks on isNetworkGame and clear automatically now that
+      // it's false; the two PERSISTENT changes must be undone explicitly:
+      //  • the GUEST's Time Travel was forced OFF by initNetworkGame — turn it back on.
+      if (wasGuest) { timeTravelOn = true; updateSettingBadge('badge-timetravel', timeTravelOn); }
+      //  • the Start button was disabled during network setup — re-enable it for local play.
+      const btnStart = document.getElementById('btn-start-game');
+      if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+
+      // Keep the network-status line visible (it just reports the disconnect); only free the
+      // room-code field and update the status text.
+      if (joinCodeInput) joinCodeInput.readOnly = false;
+      if (connStatus) { connStatus.textContent = 'Not connected.'; connStatus.style.color = ''; }
+
+      sysLog('[Network] Left the online game — connection severed.');
+      updateUI();
     }
 
     function setupConnectionListeners(connection) {
@@ -3978,9 +4025,10 @@ connection.on('data', (data) => {
   const btnQuit = document.getElementById('btn-quit');
   if (btnQuit) {
     btnQuit.addEventListener('click', () => {
-      if (confirm("Are you sure you want to quit? This will disconnect the game and reset the board.")) {
-        // A hard reload is the safest way to completely sever WebRTC connections and restore the initial UI state
-        window.location.reload();
+      if (!isNetworkGame) { sysLog('[Network] Leave: not currently in an online game.'); return; }
+      if (confirm("Leave the online game? This disconnects you from your opponent.")) {
+        // Sever the connection only — no page reload (that's the "Reset" button's job).
+        leaveNetworkGame();
       }
     });
   }
