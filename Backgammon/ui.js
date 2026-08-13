@@ -3683,6 +3683,14 @@ function initNetworkGame(role) {
     function handleHeartbeat(s) {
       if (!isNetworkGame || !gameStarted) return;
       if (isRolling) return;   // don't clobber a roll animation; the next heartbeat retries
+      // Don't adopt while we're still applying an opponent's incremental move/end_turn
+      // messages (queued OR mid drop-animation): the queue will drain and run endTurn(),
+      // recording the turn normally. Adopting here would WIPE the pending end_turn (see
+      // adoptRemoteState's `networkQueue = []`), so game.endTurn() never runs — dropping that
+      // turn from the move history and diverging the turnCount anchors. That race is the real
+      // cause of the "guest is missing a move / game becomes unplayable" desync. A genuinely
+      // lost turn leaves the queue empty, so real deadlock recovery still fires on a later beat.
+      if (isProcessingQueue || networkQueue.length) return;
       // Only adopt a STABLE between-turns boundary (the on-roll side hasn't rolled) or a final
       // position — never a mid-move snapshot, which would race the incremental move messages.
       if (s.hasRolled && !s.winner) return;
