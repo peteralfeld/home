@@ -173,10 +173,13 @@ class BackgammonGame {
   }
 
   // CLEAR: empty board, all 30 checkers parked on the two borne-off trays.
+  // CLEAR: board empty, all 15 of each colour sitting on its own BAR (White bar = point 25,
+  // Red bar = point 0). Trays empty. So a game can be started straight from here with every
+  // checker entering from the bar.
   setupClear() {
     this.points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
-    this.bar = { 1: 0, 2: 0 };
-    this.borneOff = { 1: 15, 2: 15 };
+    this.bar = { 1: 15, 2: 15 };
+    this.borneOff = { 1: 0, 2: 0 };
     this._setupResetTurn();
   }
 
@@ -795,6 +798,19 @@ rollDice(d1 = null, d2 = null) {
     if (this.winner) return false;
     const states = this.generateAllCompleteTurnMoves(this.currentPlayer, this.movesLeft);
     return states.some((s) => s.moves.length > 0);
+  }
+
+  // True iff `player` can legally play at least one checker for SOME die value (1..6) from the
+  // CURRENT board — i.e. the player is not permanently stuck (independent of what's actually
+  // rolled). Non-destructive (the generator deep-copies before mutating). Used to detect a total
+  // deadlock where NEITHER side can ever move — possible only in a hand-set-up position, where it
+  // would otherwise leave both players rolling forever.
+  hasAnyLegalMove(player) {
+    for (let d = 1; d <= 6; d++) {
+      const states = this.generateAllCompleteTurnMoves(player, [d]);
+      if (states.some((s) => s.moves.length > 0)) return true;
+    }
+    return false;
   }
 
   /**

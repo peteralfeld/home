@@ -154,7 +154,7 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
 
 <p>This line contains the name of the game, <E>BACKGAMMON</e>, and the current version number.   Together they constitute a clickable link that takes you to this manual page.
 
- <p> <e>Workers</e> are individual processes that you computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
+ <p> <e>Workers</e> are individual processes that your computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
 
 
 <h2 id="CC2" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">2</a>Link to User's Guide</h2>
@@ -233,11 +233,17 @@ Here you can select  the white player in the first menu in that row..  The optio
 </li>
     </OL>
 
-<h2 id="CC10" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">10</a></h2>
+<h2 id="CC10" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">10</a>Move List and Game Navigation</h2>
 <!-- Row 10: Move-history table -->
 
-<h2 id="CC11" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">11</a></h2>
+<p> This field contains a scrollable list of the moves so far in the current game.  It lists the number of each move, the dice roll, and the resulting moves.   The score is assigned by the AI selected in Row 13.   Showing the score can be turned on and off in the Settings.  Positive scores are good for White and are shown in white print in a white font in the Table.   Similarly, negative scores are good for Red and are shown in red.  
+
+  <p>   Clicking on any row in the table will take you back to the current move and reset the game board to the configuration after that move. The game can be resumed from that position  by clicking on the playing dice.   However, any dice rolls made earlier will be repeated.  Thus the Table can be used to explore alternatives to previous moves.
+
+    <h2 id="CC11" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">11</a>Navigation Buttons</h2>
+
 <!-- Row 11: Time-travel navigation (<< < > >>) -->
+<p>    The buttons in this Table let you travel back and forth in the Move list.   <e><</e> and <e>></e> move you one move forward or backward, and <e><<</e> and <e>>></e> move you to the beginning or end of the table.   You can use these buttons to review a game.
 
 <h2 id="CC12" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">12</a></h2>
 <!-- Row 12: Examine row (EX / CL / IN / dice menus / MOV / PLAY) -->

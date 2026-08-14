@@ -193,8 +193,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let setupOnRoll  = null;   // side to move next (1|2|null)
   let setupKind    = null;   // 'clear' | 'initial' | 'examine' (last entered)
   let setupBaseMsg = 'Examination Mode';   // idle instruction-line text while in setup
-  let setupAutoStop = false;         // set by STOP/exit to break the examine auto-play loop
-  let startedFromSetup = false;  // a game launched via START from setup → STOP resets it to initial
   let autoMoveOn  = false;
 
   // ── History Navigation state ────────────────────────────────────────
@@ -482,7 +480,16 @@ function sysLog(msg) {
       let txt = 'Backgammon Game - Move History\n';
       txt += `BG v. ${bgVersion()}\n`;
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
-      txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n\n`;
+      txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n`;
+      // Describe the starting position: "Standard Start" for the ordinary opening, else the
+      // actual board (from the initial time-travel snapshot).
+      const initSnap = game.gameHistory.find((s) => s.isInitial) || game.gameHistory[0];
+      if (initSnap) {
+        txt += isStandardStart(initSnap.points, initSnap.bar, initSnap.borneOff)
+          ? 'Initial position: Standard Start\n'
+          : `Initial position: ${describeBoard(initSnap.points, initSnap.bar, initSnap.borneOff)}\n`;
+      }
+      txt += '\n';
       txt += withScore
         ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score (White view)\n\n'
         : 'Turn  Player  Dice   Moves\n\n';
@@ -1063,6 +1070,15 @@ renderBorneOff();
           if (game.hasRolled && game.movesLeft.length === 0 && !game.winner) { game.endTurn(); updateUI(); }
         }, 100);
 } else if (!game.hasLegalMoves()) {
+  // Total deadlock: a hand-set-up position where NEITHER player can play ANY roll. Without this
+  // guard the two sides just take turns rolling forever. Detect it, freeze, and say so.
+  if (!game.hasAnyLegalMove(1) && !game.hasAnyLegalMove(2)) {
+    gameMessageEl.textContent = "No player can play.  Very clever!";
+    if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
+    if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
+    aiStopped = true; isAIPlaying = false;
+    return;
+  }
   gameMessageEl.textContent = "No legal moves possible! Switching players...";
 
   // Let the rolled dice stay visible on the screen!
@@ -1637,7 +1653,6 @@ function handleRollClick() {
     if (autoRollTimeout)  { clearTimeout(autoRollTimeout);  autoRollTimeout  = null; }
 
     gameStarted       = false;
-    startedFromSetup  = false;
     isAIPlaying       = false;
     selectedSource    = null;
     legalDestinations = [];
@@ -1711,7 +1726,6 @@ function handleRollClick() {
     syncPlayersFromMenus();              // re-apply the White/Red menu picks after the reset
     game.beginGameWithStarter(starter);  // forced opener, awaiting the first (normal) roll
     gameStarted      = true;
-    startedFromSetup = false;
     lastStarter      = starter;
     gameScored       = false;   // new game to tally; scores themselves are preserved
     winTurnRecorded  = false;
@@ -1772,13 +1786,26 @@ function handleRollClick() {
   }
 
   // Compact text description of the current board.
-  function describeBoard() {
+  function describeBoard(points = game.points, bar = game.bar, borneOff = game.borneOff) {
     const pts = (pl) => {
       const arr = [];
-      for (let i = 1; i <= 24; i++) if (game.points[i].player === pl) arr.push(`${i}(${game.points[i].count})`);
+      for (let i = 1; i <= 24; i++) if (points[i].player === pl) arr.push(`${i}(${points[i].count})`);
       return arr.join(' ') || '-';
     };
-    return `White: ${pts(1)} | Red: ${pts(2)} | Bar W:${game.bar[1]} R:${game.bar[2]} | Off W:${game.borneOff[1]} R:${game.borneOff[2]}`;
+    return `White: ${pts(1)} | Red: ${pts(2)} | Bar W:${bar[1]} R:${bar[2]} | Off W:${borneOff[1]} R:${borneOff[2]}`;
+  }
+
+  // True iff the given board is the standard opening position (nothing on the bar or borne off,
+  // stacks exactly as setupInitial/restart lay them out).
+  function isStandardStart(points, bar, borneOff) {
+    if (bar[1] || bar[2] || borneOff[1] || borneOff[2]) return false;
+    const want = { 24: [1, 2], 13: [1, 5], 8: [1, 3], 6: [1, 5], 1: [2, 2], 12: [2, 5], 17: [2, 3], 19: [2, 5] };
+    for (let i = 1; i <= 24; i++) {
+      const w = want[i];
+      if (w) { if (points[i].player !== w[0] || points[i].count !== w[1]) return false; }
+      else if (points[i].count !== 0) return false;
+    }
+    return true;
   }
 
   function renderHistoryList() {
@@ -2085,14 +2112,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     startGame(false);
 });
 
-  // STOP button — in setup mode it exits setup back to the initial position;
-  // otherwise it pauses AI (START re-enables it).
+  // STOP button — in examination/setup mode it exits setup back to the initial position;
+  // otherwise it just PAUSES the AIs at the current position (START resumes from there). It
+  // never resets an ongoing game — that's what Restart / Reset are for.
   const btnStop = document.getElementById('btn-stop');
   if (btnStop) {
     btnStop.addEventListener('click', (e) => {
       if (setupMode) { exitSetup(); return; }
-      if (startedFromSetup) { startedFromSetup = false; performRestart(); return; }
       stopAI();
+      if (gameStarted && !game.winner) gameMessageEl.textContent = "Game stopped.  Press START to resume!";
       if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
         conn.send({ type: 'stop_ai' });
       }
@@ -4139,7 +4167,6 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     }
 
     gameStarted = true;
-    startedFromSetup = false;   // ordinary game → STOP keeps its pause/resume behaviour
     initialRollOff = true;
     game.currentPlayer = 1;
     game.hasRolled = false;
@@ -4267,7 +4294,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
   function enterSetup(kind) {
     haltEverything();
     setupMode = true;
-    setupKind = kind; setupAutoStop = false;
+    setupKind = kind;
     setupSel = null; setupDragLoc = null; setupOnRoll = null;
     selectedSource = null; legalDestinations = [];
     gameStarted = false;
@@ -4283,7 +4310,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     clearSetupHighlight();
     setupBaseMsg = (kind === 'examine') ? 'Examination Mode, click STOP to exit.' : 'Examination Mode';
     gameMessageEl.textContent = setupBaseMsg;
-    historyListEl.innerHTML = '';           // green window blank until MOV
+    historyListEl.innerHTML = '<div style="padding:6px 4px;font-size:0.72rem;font-weight:bold;">Entering Examination Mode</div>';  // green window until MOV / PLAY
     renderPoints(); renderBar(); renderBorneOff();
     const btnStart = document.getElementById('btn-start-game');
     if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
@@ -4291,7 +4318,6 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
   function exitSetup() {
     setupMode = false;
-    setupAutoStop = true;   // halt any examine auto-play loop
     setupSel = null; setupDragLoc = null; setupOnRoll = null;
     clearSetupHighlight();
     performRestart();   // back to the standard initial position + normal play state
@@ -4438,6 +4464,47 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     gameMessageEl.textContent = setupBaseMsg;
   }
 
+  // START (row 5) in examination mode does the SAME as PLAY: launch a real, recorded game
+  // from the current position with the WP/RP participants — for every setup kind (EX/CL/IN).
+  function doSTART() {
+    if (!setupMode) return;
+    startGameFromCurrentBoard();
+  }
+
+  // Launch a normal, fully-recorded game from whatever is currently on the board, using the
+  // WP/RP participants (rows 6/7). Exits examination mode and hands off to the normal pipeline
+  // (updateUI → checkAndTriggerAITurn), which drives any AI seat, lets a human seat play, and
+  // populates the move list (row 10) with the usual time-travel navigation and analysis.
+  function startGameFromCurrentBoard() {
+    const allBlank = setupAllBlank();
+    setupMode = false;
+    clearSetupHighlight();
+    // Fresh game from the current board: clear history + cube, keep the position.
+    game.gameHistory = []; game.turnHistory = []; game.playedMovesThisTurn = [];
+    game.turnCount = 0; game.futureRolls = []; game.futureRollIndex = 0;
+    game.doublingCubeValue = 1; game.doublingCubeOwner = null; game.winner = null;
+    historyNavBuffer = []; historyNavIndex = null;
+    gameStarted = true; aiStopped = false;
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
+    if (allBlank && !setupOnRoll) {
+      initialRollOff = true; game.currentPlayer = 1; game.hasRolled = false;
+    } else {
+      const { player, dice, faces } = resolveMoverAndDice();
+      initialRollOff = false;
+      game.currentPlayer = player;
+      game.dice = [faces[0], faces[1]];
+      game.movesLeft = dice.slice();
+      game.hasRolled = true;
+      game.turnCount = 1;
+    }
+    clearSetupDice();
+    updateUI();   // normal pipeline resumes; checkAndTriggerAITurn drives any AI side
+  }
+
+  // The PLAY button: apply the single best move for the on-roll side and hand the roll to the
+  // other side — a one-move analysis stepper (pairs with MOV, which just lists/ranks the moves).
+  // Stays in examination mode. START (row 5) is the one that launches a full recorded game.
   async function doPLAY() {
     if (!setupMode) return;
     const { player, dice, faces } = resolveMoverAndDice();
@@ -4453,9 +4520,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       return;
     }
     const best = ranked[0].moves;
-    // Apply the chosen sequence via the engine. makeMove reads currentPlayer/movesLeft,
-    // so set them first; validateMax=false since the sequence is already legal. When
-    // animation is on, fly each sub-move before committing it (mirrors the AI path).
+    // Apply the chosen sequence via the engine. makeMove reads currentPlayer/movesLeft, so set
+    // them first; validateMax=false since the sequence is already legal. When animation is on,
+    // fly each sub-move before committing it (mirrors the AI path).
     game.currentPlayer = player;
     game.dice = [faces[0], faces[1]];
     game.movesLeft = dice.slice();
@@ -4476,47 +4543,6 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     } else {
       gameMessageEl.textContent = `Examination Mode — ${who} played ${moveText(best)} (${facesText(faces)}).`;
     }
-  }
-
-  // Examine START self-plays the position to the end (each side's AI, Arwen for a human
-  // seat), animating when the toggle is on. STOP (setupAutoStop) halts it.
-  async function autoPlayToEnd() {
-    setupAutoStop = false;
-    let guard = 0;
-    while (setupMode && !setupAutoStop && game.borneOff[1] < 15 && game.borneOff[2] < 15 && guard < 4000) {
-      guard++;
-      await doPLAY();
-      if (!animationOn) await new Promise((r) => setTimeout(r, 40));   // let the board repaint
-    }
-  }
-
-  function doSTART() {
-    if (!setupMode) return;
-    if (setupKind === 'examine') { autoPlayToEnd(); return; }   // EX → play the position to the end
-    const allBlank = setupAllBlank();
-    setupMode = false;
-    clearSetupHighlight();
-    // Fresh game from the current board: clear history + cube, keep the position.
-    game.gameHistory = []; game.turnHistory = []; game.playedMovesThisTurn = [];
-    game.turnCount = 0; game.futureRolls = []; game.futureRollIndex = 0;
-    game.doublingCubeValue = 1; game.doublingCubeOwner = null; game.winner = null;
-    historyNavBuffer = []; historyNavIndex = null;
-    gameStarted = true; aiStopped = false; startedFromSetup = true;
-    const btnStart = document.getElementById('btn-start-game');
-    if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
-    if (allBlank && !setupOnRoll) {
-      initialRollOff = true; game.currentPlayer = 1; game.hasRolled = false;
-    } else {
-      const { player, dice, faces } = resolveMoverAndDice();
-      initialRollOff = false;
-      game.currentPlayer = player;
-      game.dice = [faces[0], faces[1]];
-      game.movesLeft = dice.slice();
-      game.hasRolled = true;
-      game.turnCount = 1;
-    }
-    clearSetupDice();
-    updateUI();   // normal pipeline resumes; checkAndTriggerAITurn drives any AI side
   }
 
   document.getElementById('btn-ex')?.addEventListener('click', () => enterSetup('examine'));
