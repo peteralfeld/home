@@ -41,9 +41,6 @@
 
 <body>
 
-xx     xx
-
-
     <A HREF="index.html"><H1> The Game of Backgammon </H1></a>
 
 
@@ -157,7 +154,7 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
 
 <p>This line contains the name of the game, <E>BACKGAMMON</e>, and the current version number.   Together they constitute a clickable link that takes you to this manual page.
 
- <p> <e>Workers</e> are individual processes that you computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer than workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
+ <p> <e>Workers</e> are individual processes that you computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
 
 
 <h2 id="CC2" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">2</a>Link to User's Guide</h2>
@@ -203,11 +200,38 @@ Here you can select  the white player in the first menu in that row..  The optio
 <p> There is a more detailed discussion of the AI players and algorithms below. 
 
 
-<h2 id="CC8" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">8</a></h2>
-<!-- Row 8: Message / instruction box -->
+<h2 id="CC8" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">8</a>Message and Instruction Field</h2>
+<!-- Row 8: Message / instruction field -->
 
-<h2 id="CC9" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">9</a></h2>
+<p>This text field contains instructions and status messages.
+
+
+<h2 id="CC9" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">9</a>Game Mechanics</h2>
 <!-- Row 9: Dice, UNDO, doubling cube, VIEW selector -->
+
+<p> You use the controls in this row during a game against a human or an AI.  Specifically, there are:
+
+  <OL>
+    <LI><e>The Playing Dice.</e>  Initially one of the dice is White, and the other is red.  Clicking one them will determine first move, and which player will make it.  Otherwise,  the color of the dice indicates the player whose turn it is. It alternates between red and white as the game proceeds.  When the dice are blank you can click on them to roll them.  For example, in Figure 2 it is Red's turn to roll the dice. As you make your moves the dice turn blank.  For example, if you roll 5-3 and move one checker 5 spots forward then the die showing the 5 will turn blank and the other die will continue to show 3.  Thus the dice always show what kind of moves you can still make. After you make the second move of three spots forward the dice will turn white, and it will be the other player's turn.   If you roll a Double both dice will continue to show the pips after your first two partial moves, and then will turn blank one at a time. </li>
+
+    <li><e>The Doubling Cube.</e>  You offer a Double by clicking on the Doubling Cube.  Your opponent is notified of your offer and can accept it by clicking on the playing dice or reject it and resign by clicking on the doubling cube.   The color of the Doubling cube indicates the current owner of the cube.  Initially it is gray, indicating that either player may double.</li>
+    
+<li><e>The Undo Button.</e>  If you have made a move but you still have moves available you Can undo a move using this button.   Thus you can always undo the first move, and when rolling a double you can undo the first three moves.   However, after you make the last move of your current toll the game automatically switches to the other player and the undo button is ineffective. </li>
+
+    <li><e>The View Menu.</e>
+  This menu let's you choose the orientation of the playing board on your screen.   There are five options:
+  <ol>
+    <li><e>White.</e>  White's home board is on the bottom right.   This is the view shown in Figure 1, and the view White would have when viewing a physical board.</li>
+    <li><e>Red</e>Similarly, the view Red would have.  Red's home board is in the bottom left quadrant. </li>
+    <li><e>Home</e> This is one view a spectator could have.  The home boards are at the bottom of the screen.</li>
+    <li><e>Outer.</e>The view a spectator on the other side of the board would have.   The outer boards are at the bottom of the screen.</li>
+    <li><e>Magriel.</e> A view that is consistent with the diagrams in Magriel's book, with White corresponding to X and Red corresponding to O.   It can be obtained by reflecting the White view across the bar, or the Red view across the horizontal axis. </li>
+    </ol>
+   The <e>default view</e> is White, except that
+   when playing a networked game the default view of  the guest is Red.    
+
+</li>
+    </OL>
 
 <h2 id="CC10" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">10</a></h2>
 <!-- Row 10: Move-history table -->
