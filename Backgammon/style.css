@@ -43,7 +43,9 @@ body {
   background-color: var(--bg-app);
   color: var(--text-primary);
   height: 100vh;
+  height: 100dvh;          /* dynamic viewport: excludes iOS Safari's toolbars, so content isn't pushed under them */
   max-height: 100vh;
+  max-height: 100dvh;
   overflow: hidden;
   padding: 0.5rem;
 }
@@ -162,8 +164,10 @@ body {
      so we subtract 420px (a few px of buffer) rather than the old 404px. */
   aspect-ratio: 1;
   width: min(calc(100vh - 1.5rem), calc(100vw - 420px)); /* Largest square that safely fits */
+  width: min(calc(100dvh - 1.5rem), calc(100vw - 420px)); /* dvh override (iOS Safari toolbar) */
   max-width: 100%;
   max-height: calc(100vh - 1.5rem); /* Explicit viewport calc — percentage is unreliable in flex */
+  max-height: calc(100dvh - 1.5rem);
   
   box-sizing: border-box;
   flex-shrink: 1;
@@ -1135,6 +1139,7 @@ body {
   .board-wrapper {
     aspect-ratio: 1;
     width: min(100vw - 1rem, 100vh - 1rem); /* Square = smaller of width/height */
+    width: min(100dvw - 1rem, 100dvh - 1rem); /* dvh/dvw override (iOS Safari toolbar) */
     height: auto;
     max-width: 100%;
     max-height: none;
