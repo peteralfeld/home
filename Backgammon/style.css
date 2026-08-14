@@ -153,11 +153,17 @@ body {
   align-items: center;
   justify-content: center;
   
-  /* PERFECT SQUARE — set width only, let aspect-ratio derive height */
+  /* PERFECT SQUARE — set width only, let aspect-ratio derive height.
+     The subtractions leave a small safety margin so the square is always a few px
+     SMALLER than the space it sits in — otherwise sub-pixel/DPI rounding can make it
+     ~1px too big and .game-layout's overflow:hidden shaves a border on some systems.
+     Height budget: body has 0.5rem padding top+bottom (=1rem); we subtract 1.5rem to
+     leave ~8px slack. Width chrome is really 416px (sidebar 384 + gap 16 + body pad 16),
+     so we subtract 420px (a few px of buffer) rather than the old 404px. */
   aspect-ratio: 1;
-  width: min(calc(100vh - 1rem), calc(100vw - 404px)); /* Largest square that fits */
+  width: min(calc(100vh - 1.5rem), calc(100vw - 420px)); /* Largest square that safely fits */
   max-width: 100%;
-  max-height: calc(100vh - 1rem); /* Explicit viewport calc — percentage is unreliable in flex */
+  max-height: calc(100vh - 1.5rem); /* Explicit viewport calc — percentage is unreliable in flex */
   
   box-sizing: border-box;
   flex-shrink: 1;
