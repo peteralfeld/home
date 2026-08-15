@@ -2641,6 +2641,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         if (player === 1 && pipW < pipR) val += W.DE;
         else if (player === 2 && pipR < pipW) val -= W.DE;
       }
+      val += game._crossoverTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
       if (player === 1) { if (val > bestVal) { bestVal = val; bestState = st; } }
       else { if (val < bestVal) { bestVal = val; bestState = st; } }
     });
@@ -2663,7 +2664,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         if (player === 1 && pipW < pipR) val += W.DE;
         else if (player === 2 && pipR < pipW) val -= W.DE;
       }
-      return val;
+      return val + game._crossoverTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
     };
 
     let scored;

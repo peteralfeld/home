@@ -1,0 +1,219 @@
+<!DOCTYPE>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Backgammon AIs</title>
+    <link rel="stylesheet" href="manual.css">
+
+    <script>
+      MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']]
+        }
+      };
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+    <style>
+        /* Wide parameter table: small type, its own horizontal scroll, striped rows. */
+        .param-wrap { overflow-x: auto; margin: 1em 0; }
+        table.params {
+            border-collapse: collapse;
+            font-size: 0.8em;
+            font-family: Consolas, 'Courier New', monospace;
+        }
+        table.params th, table.params td {
+            border: 1px solid #6495ED;
+            padding: 2px 6px;
+            text-align: right;
+            white-space: nowrap;
+        }
+        table.params th { color: #FFD700; }
+        table.params td.name, table.params th.name { text-align: left; color: rgb(200,255,200); font-weight: bold; }
+        table.params tr:nth-child(even) td { background: rgba(255,255,255,0.06); }
+        table.desc { border-collapse: collapse; margin: 1em 0; }
+        table.desc td { border: 1px solid #6495ED; padding: 3px 10px; vertical-align: top; }
+        table.desc td.code { color: #FFD700; font-family: Consolas, monospace; font-weight: bold; white-space: nowrap; }
+    </style>
+</head>
+
+<body>
+
+    <a href="manual.html"><H1> How the AIs Work </H1></a>
+
+<p> This page explains how the artificial players ("AIs", or <i>brains</i>) on this site decide their moves.
+It is a companion to the <a href="manual.html">User's Guide</a>; you may want to read the description of the
+<a href="manual.html">control column</a> first, since several controls there (the depth menus, the brain editor,
+Evolve, Compete and Tournament) only make sense once you understand what a brain is.
+
+<p> A <i>brain</i> is nothing more than a list of numbers, called <i>parameters</i> or <i>weights</i>. Those
+numbers tell the AI how much it should care about each of a couple of dozen features of a position &mdash; the
+race, blots, primes, the golden points, and so on. Two things then turn those numbers into actual play: a
+<i>static evaluation</i> that scores any board position, and a <i>lookahead search</i> that uses that score to
+choose among the legal moves. We take them in that order, then list the parameters and give a table of the
+current values.
+
+
+<H1>Lookahead: How Deep the AI Thinks</H1>
+
+<p> On its turn the AI looks at every legal way to play its dice and picks the one that leads to the best
+position. How far ahead it looks is set by the <e>Depth</e> menus in the control column (one per player, and one
+for batch runs), measured in <i>plies</i>. A ply is a single half-move &mdash; one player's turn. The depth is
+how many plies the AI reads before it falls back on the static evaluation to judge the resulting board.
+
+<OL>
+  <LI><i>Depth 0</i> &mdash; no thinking at all: the AI simply plays the first legal complete turn it finds. This
+      is a deliberately weak opponent, useful if you just want an easy game.</LI>
+  <LI><i>Depth 1</i> (one ply) &mdash; the AI applies the static evaluation to <e>every</e> board it could reach
+      with a legal play of the current dice, and chooses the move that yields the best-scoring board. This is
+      very fast &mdash; instant for human play, and quick enough for whole tournaments and evolution runs &mdash;
+      and it is the default.</LI>
+  <LI><i>Depth 2</i> (two ply) &mdash; the AI looks one turn further. For each of its own candidate moves it
+      considers <e>all</e> of the opponent's possible replies. Because the reply depends on dice that have not
+      been rolled yet, it averages the value over all 21 distinct rolls, each weighted by how likely it is (a
+      double is half as likely as a given non-double). The move with the best <e>expected</e> value is chosen.
+      Two-ply play is a few percentage points stronger than one ply, but it takes a few seconds per move.</LI>
+  <LI><i>Depth 3</i> and beyond &mdash; the same idea, one turn deeper each time. The cost grows very quickly:
+      a single three-ply decision can take tens of seconds, so it is practical only for the occasional analysed
+      position, not for a full game.</LI>
+</OL>
+
+<p> Because the dice are random, the correct way to search is not the familiar minimax of chess but
+<i>expectimax</i>: the tree alternates between <i>decision</i> nodes, where a player chooses the best move, and
+<i>chance</i> nodes, where we average over the dice. The whole tree is scored with the deciding brain's own
+static evaluation, from White's point of view: <e>White tries to maximise the score and Red tries to minimise
+it</e>. A win or loss (all fifteen checkers borne off) is treated as a value so large that it always outranks any
+ordinary position.
+
+<p> To keep the game responsive, searches of depth two or more are farmed out to several <i>Web Workers</i> (one
+per processor core), so the browser never freezes while the AI thinks. Depths 0 and 1 are instant and run on the
+main thread.
+
+
+<H1>The Static Evaluation</H1>
+
+<p> The static evaluation is the heart of a brain. It takes a single board position and returns one number: how
+good that position is for White. Every feature is measured for <e>both</e> sides and entered as a difference,
+White minus Red, so the whole score is automatically <i>anti-symmetric</i>: swap the colours and the score
+simply changes sign. Writing $w_i$ for the parameters and $f_i$ for the features, the score is
+
+<p style="text-align:center;"> $ \displaystyle S \;=\; \sum_i w_i\,\bigl(f_i^{\,\text{White}} - f_i^{\,\text{Red}}\bigr). $
+
+<p> A positive score is good for White, a negative one good for Red. Each brain is <i>normalised</i> so that its
+largest weight (in absolute value) is exactly 1000; this lets brains be compared on a common scale and keeps the
+doubling thresholds meaningful. The score is rounded to a whole number, rounding halves away from zero so that
+the anti-symmetry is exact.
+
+<p> Not every feature matters at every stage of the game. Once the two sides have passed each other and can no
+longer be hit &mdash; a pure <i>race</i> &mdash; blots cannot be hit, primes trap nobody, and made points and
+anchors block nobody. All of those terms therefore <e>switch off</e> automatically once contact is broken, and
+the AI's attention shifts entirely to the race: bearing checkers off and, when it is hopelessly behind, rushing
+its stragglers home to avoid the extra loss of a gammon or backgammon.
+
+<p> A couple of small adjustments are made only when the AI actually <e>chooses</e> its move, and are not part of
+a position's stored value: a <i>disengagement</i> nudge (DE) that encourages breaking contact and racing when
+ahead, and, once disengaged, a tiny tie-break that prefers advancing the rearmost checker when two moves would
+otherwise score identically.
+
+
+<H1>The Parameters</H1>
+
+<p> The features below are the ingredients of the static evaluation. Most are self-explanatory once named; the
+sign of a weight says whether more of that feature is good (positive) or bad (negative) for the side that has it.
+
+<H2>The Race</H2>
+<table class="desc">
+  <tr><td class="code">PC</td><td><i>Pip count.</i> How far each side still has to travel. Carries a negative weight, so being ahead in the race is good.</td></tr>
+  <tr><td class="code">BO</td><td><i>Borne off.</i> Checkers already taken off the board. Positive: bearing off is progress, and it distinguishes taking a checker off from merely stacking it deeper at home.</td></tr>
+</table>
+
+<H2>Mobility</H2>
+<table class="desc">
+  <tr><td class="code">EC1</td><td><i>Encumbrance, one move.</i> Of the 36 dice rolls, how many leave the side with only a single legal move. Negative: being cramped is bad.</td></tr>
+  <tr><td class="code">EC0</td><td><i>Encumbrance, no move.</i> Rolls that leave the side with no legal move at all (a "dance"). Negative.</td></tr>
+</table>
+
+<H2>Containment and Freedom (the primes)</H2>
+<p> Each checker is graded by its <i>escape count</i>: how many of the six die-values would let it get past the
+front of an opposing wall that contains it. The six buckets run from completely trapped to nearly free:
+<table class="desc">
+  <tr><td class="code">F0</td><td><i>Sealed</i> &mdash; entombed behind a full prime, or closed out on the bar. The worst place to be.</td></tr>
+  <tr><td class="code">F1&ndash;F5</td><td>Increasingly free: one, two, ... five of the six dice let the checker escape. (A fully free checker, "F6", carries no weight.)</td></tr>
+  <tr><td class="code">BE</td><td><i>Bar entombment.</i> An extra penalty for a checker stuck on the bar, priced by how many turns it is expected to stay frozen there, because it paralyses the whole army until it enters.</td></tr>
+</table>
+
+<H2>Made Points</H2>
+<table class="desc">
+  <tr><td class="code">HB</td><td><i>Home-board points.</i> Points made in one's own home board, excluding the golden 4- and 5-points (which have their own weights).</td></tr>
+  <tr><td class="code">G5</td><td><i>The golden point</i> &mdash; the 5-point, the single most valuable point to make.</td></tr>
+  <tr><td class="code">G7</td><td><i>The bar point</i> &mdash; the 7-point.</td></tr>
+  <tr><td class="code">G4</td><td>The 4-point.</td></tr>
+  <tr><td class="code">AN</td><td><i>Anchors.</i> Points held in the opponent's home board (excluding the golden anchor), counted only when behind in the race.</td></tr>
+  <tr><td class="code">GA</td><td><i>The golden anchor</i> &mdash; the opponent's 5-point, held from the back; also counted only when behind.</td></tr>
+</table>
+
+<H2>Blots (exposure and threats)</H2>
+<p> A <i>blot</i> is a lone checker that can be hit. The same event is an exposure for its owner and a threat for
+the other side, so four weights cover it: <e>D</e>irect versus <e>I</e>ndirect shots, and blots in the
+<e>O</e>uter (far) boards versus one's own near (<e>P</e>oint) boards.
+<table class="desc">
+  <tr><td class="code">DO / IO</td><td>Direct / indirect shots at a blot in the far part of the board.</td></tr>
+  <tr><td class="code">DP / IP</td><td>Direct / indirect shots at a blot in the near part of the board.</td></tr>
+</table>
+
+<H2>Move-selection heuristics</H2>
+<table class="desc">
+  <tr><td class="code">DE</td><td><i>Disengagement.</i> A bonus applied only when actually choosing a move: it rewards breaking all contact and racing when ahead (and discourages it when behind). It is not part of a stored position's value.</td></tr>
+</table>
+
+
+<H1>The Doubling Cube</H1>
+
+<p> Two further numbers govern the cube, in the same units as the score. Let <i>own&nbsp;score</i> be the static
+score seen from the side to move.
+<table class="desc">
+  <tr><td class="code">DT</td><td><i>Double threshold.</i> The side offers a double (or redouble) when its own score rises above DT.</td></tr>
+  <tr><td class="code">AT</td><td><i>Accept threshold.</i> The side accepts an offered double unless its own score has fallen below &minus;AT.</td></tr>
+</table>
+<p> A sensible take-window needs AT larger than DT; evolved brains vary, and a few even invert it &mdash; an
+aggressive doubler that is also a tight taker.
+
+
+<H1>The Current Brains</H1>
+
+<p> The site ships with eight named brains, kept in order of playing strength (Arwen strongest, Hamfast weakest),
+and re-sorted after each tournament, plus <i>Origin</i>, a fixed historic baseline that never changes and always
+finishes last. The table below lists every parameter of every brain. These values are a snapshot &mdash; they
+change as brains are evolved and the roster is re-sorted &mdash; and you can always see a brain's live values in
+the parameter grid of the control column, or export them from the Export menu.
+
+<div class="param-wrap">
+<table class="params">
+  <tr>
+    <th class="name">Brain</th>
+    <th>PC</th><th>BO</th><th>EC1</th><th>EC0</th><th>HB</th><th>AN</th><th>DO</th><th>IO</th><th>DP</th><th>IP</th><th>DE</th>
+    <th>F0</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>F5</th><th>BE</th><th>G5</th><th>G7</th><th>G4</th><th>GA</th><th>DT</th><th>AT</th>
+  </tr>
+  <tr><td class="name">Arwen</td><td>-412</td><td>738</td><td>-60</td><td>-1000</td><td>23</td><td>-41</td><td>6</td><td>10</td><td>168</td><td>58</td><td>3</td><td>-11</td><td>-12</td><td>-19</td><td>-8</td><td>-4</td><td>-1</td><td>7</td><td>190</td><td>6</td><td>25</td><td>-33</td><td>236</td><td>686</td></tr>
+  <tr><td class="name">Bilbo</td><td>-435</td><td>633</td><td>-62</td><td>-1000</td><td>28</td><td>-46</td><td>6</td><td>11</td><td>205</td><td>60</td><td>3</td><td>-13</td><td>-14</td><td>-21</td><td>-9</td><td>-5</td><td>-1</td><td>9</td><td>228</td><td>6</td><td>31</td><td>-41</td><td>241</td><td>836</td></tr>
+  <tr><td class="name">Celebrian</td><td>-778</td><td>834</td><td>-184</td><td>-1000</td><td>66</td><td>-32</td><td>18</td><td>9</td><td>373</td><td>22</td><td>4</td><td>-13</td><td>-13</td><td>-22</td><td>-3</td><td>-10</td><td>-2</td><td>10</td><td>382</td><td>17</td><td>26</td><td>-43</td><td>400</td><td>999</td></tr>
+  <tr><td class="name">Dwalin</td><td>-433</td><td>22</td><td>-140</td><td>-1000</td><td>66</td><td>-19</td><td>19</td><td>12</td><td>267</td><td>32</td><td>4</td><td>-8</td><td>-15</td><td>-22</td><td>-6</td><td>-8</td><td>-2</td><td>7</td><td>181</td><td>21</td><td>30</td><td>-80</td><td>330</td><td>588</td></tr>
+  <tr><td class="name">Eowyn</td><td>-903</td><td>32</td><td>-153</td><td>-1000</td><td>58</td><td>-47</td><td>18</td><td>13</td><td>469</td><td>46</td><td>6</td><td>-8</td><td>-16</td><td>-25</td><td>-12</td><td>-10</td><td>-6</td><td>16</td><td>281</td><td>18</td><td>44</td><td>-61</td><td>398</td><td>1009</td></tr>
+  <tr><td class="name">Frodo</td><td>-1000</td><td>492</td><td>-118</td><td>-771</td><td>27</td><td>-46</td><td>9</td><td>13</td><td>298</td><td>45</td><td>4</td><td>-7</td><td>-8</td><td>-25</td><td>-6</td><td>-9</td><td>-2</td><td>11</td><td>227</td><td>12</td><td>23</td><td>-52</td><td>322</td><td>716</td></tr>
+  <tr><td class="name">Galadriel</td><td>-978</td><td>351</td><td>-117</td><td>-1000</td><td>268</td><td>-3</td><td>9</td><td>4</td><td>347</td><td>25</td><td>67</td><td>-73</td><td>-57</td><td>-7</td><td>-20</td><td>-21</td><td>-4</td><td>14</td><td>277</td><td>105</td><td>39</td><td>-9</td><td>220</td><td>857</td></tr>
+  <tr><td class="name">Hamfast</td><td>-722</td><td>25</td><td>-148</td><td>-1000</td><td>102</td><td>-28</td><td>14</td><td>7</td><td>306</td><td>28</td><td>10</td><td>-13</td><td>-12</td><td>-20</td><td>-16</td><td>-9</td><td>-11</td><td>10</td><td>458</td><td>12</td><td>39</td><td>-38</td><td>334</td><td>754</td></tr>
+  <tr><td class="name">Origin</td><td>-80</td><td>500</td><td>-133</td><td>-400</td><td>133</td><td>200</td><td>1000</td><td>600</td><td>500</td><td>300</td><td>667</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>133</td><td>0</td><td>133</td><td>200</td><td>100</td><td>200</td></tr>
+</table>
+</div>
+
+<p> A glance down the table tells a story. <i>Origin</i>, the hand-tuned baseline, pours its weight into hitting
+(DO&nbsp;=&nbsp;1000) and ignores containment entirely. The evolved brains do the opposite: they hold hitting to
+almost nothing and instead prize the race (PC), bearing off (BO), and the golden 5-point (G5) &mdash; which is
+why they beat the original so decisively.
+
+<p style="margin-top:2em;"><a href="manual.html">&larr; Back to the User's Guide</a></p>
+
+</body>
+</html>

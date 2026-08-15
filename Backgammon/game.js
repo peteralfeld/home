@@ -28,17 +28,16 @@
 // here go with the /20 pip divisor in evaluate() (rescaled from the old /167 — same
 // play, just a saner band for the number).
 const AI_PERSONALITIES = {
-  // Re-sorted after the tournament so alphabetical name order = performance rank
-  // (Arwen strongest ... Hamfast weakest). All named brains share Hamfast's evolved
-  // F0-F5 (Celebrian-evo-g69: -120,-121,-98,-60,-30,-12); Origin stays F=0 (baseline).
-  Arwen: { PC: -412, BO: 738, EC1: -60, EC0: -1000, HB: 23, AN: -41, DO: 6, IO: 10, DP: 168, IP: 58, DE: 3, F0: -11, F1: -12, F2: -19, F3: -8, F4: -4, F5: -1, BE: 7, G5: 190, G7: 6, G4: 25, GA: -33, DT: 236, AT: 686 },  // = Arwen-evo-g210 (non-racer, G5 190) (1st)
-  Bilbo: { PC: -435, BO: 633, EC1: -62, EC0: -1000, HB: 28, AN: -46, DO: 6, IO: 11, DP: 205, IP: 60, DE: 3, F0: -13, F1: -14, F2: -21, F3: -9, F4: -5, F5: -1, BE: 9, G5: 228, G7: 6, G4: 31, GA: -41, DT: 241, AT: 836 },  // = Bilbo-evo-g211 (non-racer, G5 228) (2nd)
-  Celebrian: { PC: -778, BO: 834, EC1: -184, EC0: -1000, HB: 66, AN: -32, DO: 18, IO: 9, DP: 373, IP: 22, DE: 4, F0: -13, F1: -13, F2: -22, F3: -3, F4: -10, F5: -2, BE: 10, G5: 382, G7: 17, G4: 26, GA: -43, DT: 400, AT: 999 },  // = Arwen-evo-g147 (non-racer, G5 382) (3rd)
-  Dwalin: { PC: -433, BO: 22, EC1: -140, EC0: -1000, HB: 66, AN: -19, DO: 19, IO: 12, DP: 267, IP: 32, DE: 4, F0: -8, F1: -15, F2: -22, F3: -6, F4: -8, F5: -2, BE: 7, G5: 181, G7: 21, G4: 30, GA: -80, DT: 330, AT: 588 },  // = Celebrian-evo-g83 (non-racer, G5 181) (4th)
-  Eowyn: { PC: -1000, BO: 492, EC1: -118, EC0: -771, HB: 27, AN: -46, DO: 9, IO: 13, DP: 298, IP: 45, DE: 4, F0: -7, F1: -8, F2: -25, F3: -6, F4: -9, F5: -2, BE: 11, G5: 227, G7: 12, G4: 23, GA: -52, DT: 322, AT: 716 },  // = Bilbo-evo-g75 (racer/golden blend, G5 227) (5th)
-  Frodo: { PC: -903, BO: 32, EC1: -153, EC0: -1000, HB: 58, AN: -47, DO: 18, IO: 13, DP: 469, IP: 46, DE: 6, F0: -8, F1: -16, F2: -25, F3: -12, F4: -10, F5: -6, BE: 16, G5: 281, G7: 18, G4: 44, GA: -61, DT: 398, AT: 1009 },  // = Arwen-evo-g206 (non-racer, G5 281) (6th)
-  Galadriel: { PC: -978, BO: 351, EC1: -117, EC0: -1000, HB: 268, AN: -3, DO: 9, IO: 4, DP: 347, IP: 25, DE: 67, F0: -73, F1: -57, F2: -7, F3: -20, F4: -21, F5: -4, BE: 14, G5: 277, G7: 105, G4: 39, GA: -9, DT: 220, AT: 857 },  // = avg(Arwen g105 + Bilbo g343) (7th)
-  Hamfast: { PC: -722, BO: 25, EC1: -148, EC0: -1000, HB: 102, AN: -28, DO: 14, IO: 7, DP: 306, IP: 28, DE: 10, F0: -13, F1: -12, F2: -20, F3: -16, F4: -9, F5: -11, BE: 10, G5: 458, G7: 12, G4: 39, GA: -38, DT: 334, AT: 754 },  // = Arwen-evo-g147 (non-racer, G5 458) (8th)
+  // Named brains kept in performance order (Arwen strongest ... Hamfast weakest); re-sort
+  // after each tournament. Origin is the fixed historic baseline and never changes.
+  Arwen: { PC: -412, BO: 738, EC1: -60, EC0: -1000, HB: 23, AN: -41, DO: 6, IO: 10, DP: 168, IP: 58, DE: 3, F0: -11, F1: -12, F2: -19, F3: -8, F4: -4, F5: -1, BE: 7, G5: 190, G7: 6, G4: 25, GA: -33, DT: 236, AT: 686 },  // 1st
+  Bilbo: { PC: -435, BO: 633, EC1: -62, EC0: -1000, HB: 28, AN: -46, DO: 6, IO: 11, DP: 205, IP: 60, DE: 3, F0: -13, F1: -14, F2: -21, F3: -9, F4: -5, F5: -1, BE: 9, G5: 228, G7: 6, G4: 31, GA: -41, DT: 241, AT: 836 },  // 2nd
+  Celebrian: { PC: -778, BO: 834, EC1: -184, EC0: -1000, HB: 66, AN: -32, DO: 18, IO: 9, DP: 373, IP: 22, DE: 4, F0: -13, F1: -13, F2: -22, F3: -3, F4: -10, F5: -2, BE: 10, G5: 382, G7: 17, G4: 26, GA: -43, DT: 400, AT: 999 },  // 3rd
+  Dwalin: { PC: -433, BO: 22, EC1: -140, EC0: -1000, HB: 66, AN: -19, DO: 19, IO: 12, DP: 267, IP: 32, DE: 4, F0: -8, F1: -15, F2: -22, F3: -6, F4: -8, F5: -2, BE: 7, G5: 181, G7: 21, G4: 30, GA: -80, DT: 330, AT: 588 },  // 4th
+  Eowyn: { PC: -903, BO: 32, EC1: -153, EC0: -1000, HB: 58, AN: -47, DO: 18, IO: 13, DP: 469, IP: 46, DE: 6, F0: -8, F1: -16, F2: -25, F3: -12, F4: -10, F5: -6, BE: 16, G5: 281, G7: 18, G4: 44, GA: -61, DT: 398, AT: 1009 },  // 5th
+  Frodo: { PC: -1000, BO: 492, EC1: -118, EC0: -771, HB: 27, AN: -46, DO: 9, IO: 13, DP: 298, IP: 45, DE: 4, F0: -7, F1: -8, F2: -25, F3: -6, F4: -9, F5: -2, BE: 11, G5: 227, G7: 12, G4: 23, GA: -52, DT: 322, AT: 716 },  // 6th
+  Galadriel: { PC: -978, BO: 351, EC1: -117, EC0: -1000, HB: 268, AN: -3, DO: 9, IO: 4, DP: 347, IP: 25, DE: 67, F0: -73, F1: -57, F2: -7, F3: -20, F4: -21, F5: -4, BE: 14, G5: 277, G7: 105, G4: 39, GA: -9, DT: 220, AT: 857 },  // 7th
+  Hamfast: { PC: -722, BO: 25, EC1: -148, EC0: -1000, HB: 102, AN: -28, DO: 14, IO: 7, DP: 306, IP: 28, DE: 10, F0: -13, F1: -12, F2: -20, F3: -16, F4: -9, F5: -11, BE: 10, G5: 458, G7: 12, G4: 39, GA: -38, DT: 334, AT: 754 },  // 8th
   Origin:    { PC: -80,  BO: 500,  EC1: -133, EC0: -400, HB: 133, AN: 200, DO: 1000, IO: 600,  DP: 500,  IP: 300, DE: 667,  F0: 0,    F1: 0,    F2: 0,    F3: 0,    F4: 0,    F5: 0,    BE: 0,   G5: 133, G7: 0, G4: 133, GA: 200, DT: 100, AT: 200  }
 };
 
@@ -1074,6 +1073,22 @@ rollDice(d1 = null, d2 = null) {
     return s;
   }
 
+  // Crossover count for `me`: how many quadrant boundaries all of me's checkers must still cross
+  // to reach the home board (bar = 4 ... farthest quadrant = 3 ... home board = 0). Minimizing it
+  // means rushing every checker toward home; used as a disengaged-race move-selection tie-break
+  // (gammon/backgammon save), NOT part of the static score.
+  crossoverCount(points, bar, me) {
+    let c = 0;
+    if (me === 1) {                       // White home = 1-6
+      c += bar[1] * 4;
+      for (let p = 7; p <= 24; p++) if (points[p].player === 1) c += points[p].count * Math.ceil((p - 6) / 6);
+    } else {                              // Red home = 19-24
+      c += bar[2] * 4;
+      for (let p = 1; p <= 18; p++) if (points[p].player === 2) c += points[p].count * Math.ceil((19 - p) / 6);
+    }
+    return c;
+  }
+
   /** True while the two sides can still hit each other (contact); false in a pure race. */
   hasContact(points, bar) {
     let wmax = bar[1] > 0 ? 25 : -1;
@@ -1120,27 +1135,36 @@ rollDice(d1 = null, d2 = null) {
     // 4-point (G4) are the prime-building "golden" points; the golden ANCHOR (GA) is the
     // opponent's 5-point held from the back (owner-20). Each is a separate evolvable weight;
     // HB and AN cover the *remaining* points so nothing is double-counted.
-    const md = (n, p) => this.madeOwnerPoint(points, n, p);
+    // Point-structure terms (HB, golden points G5/G7/G4, anchors AN, golden anchor GA) are only
+    // meaningful while the two sides can still hit each other. Once DISENGAGED (a pure race) a made
+    // point blocks nobody and an anchor traps nobody, so these all drop to 0 — otherwise the AI
+    // would keep shuffling/holding home-board points instead of racing its back checkers home
+    // (which is what saves the gammon/backgammon). Blots and the F-prime terms already self-zero
+    // in a race; this makes the remaining positional terms do the same. Colour-antisymmetric,
+    // since hasContact() is a symmetric 0/1 scalar on antisymmetric difference terms.
+    if (this.hasContact(points, bar)) {
+      const md = (n, p) => this.madeOwnerPoint(points, n, p);
 
-    // HB — home-board points made, EXCLUDING the golden home points (4,5): owner {1,2,3,6}.
-    const hbW = this.homeBoardPoints(points, 1) - md(4, 1) - md(5, 1);
-    const hbR = this.homeBoardPoints(points, 2) - md(4, 2) - md(5, 2);
-    score += weights.HB * (hbW - hbR);
+      // HB — home-board points made, EXCLUDING the golden home points (4,5): owner {1,2,3,6}.
+      const hbW = this.homeBoardPoints(points, 1) - md(4, 1) - md(5, 1);
+      const hbR = this.homeBoardPoints(points, 2) - md(4, 2) - md(5, 2);
+      score += weights.HB * (hbW - hbR);
 
-    // Golden offensive points: 5-point, bar point (7), 4-point.
-    score += (weights.G5 || 0) * (md(5, 1) - md(5, 2));
-    score += (weights.G7 || 0) * (md(7, 1) - md(7, 2));
-    score += (weights.G4 || 0) * (md(4, 1) - md(4, 2));
+      // Golden offensive points: 5-point, bar point (7), 4-point.
+      score += (weights.G5 || 0) * (md(5, 1) - md(5, 2));
+      score += (weights.G7 || 0) * (md(7, 1) - md(7, 2));
+      score += (weights.G4 || 0) * (md(4, 1) - md(4, 2));
 
-    // AN — anchors (opponent's home), EXCLUDING the golden anchor (owner-20); gated behind.
-    const anW = pipW > pipR ? (this.anchorsP(points, 1) - md(20, 1)) : 0;
-    const anR = pipR > pipW ? (this.anchorsP(points, 2) - md(20, 2)) : 0;
-    score += weights.AN * (anW - anR);
+      // AN — anchors (opponent's home), EXCLUDING the golden anchor (owner-20); gated behind.
+      const anW = pipW > pipR ? (this.anchorsP(points, 1) - md(20, 1)) : 0;
+      const anR = pipR > pipW ? (this.anchorsP(points, 2) - md(20, 2)) : 0;
+      score += weights.AN * (anW - anR);
 
-    // GA — golden anchor (the opponent's 5-point, owner-20); same behind-gate as AN.
-    const gaW = pipW > pipR ? md(20, 1) : 0;
-    const gaR = pipR > pipW ? md(20, 2) : 0;
-    score += (weights.GA || 0) * (gaW - gaR);
+      // GA — golden anchor (the opponent's 5-point, owner-20); same behind-gate as AN.
+      const gaW = pipW > pipR ? md(20, 1) : 0;
+      const gaR = pipR > pipW ? md(20, 2) : 0;
+      score += (weights.GA || 0) * (gaW - gaR);
+    }
 
     // Blots — collapsed threat/exposure, already from White's view
     score += this.blotContribution(points, bar, weights);
@@ -1186,22 +1210,25 @@ rollDice(d1 = null, d2 = null) {
       rows.push({ code: 'F' + n, meaning: `Freedom bucket ${n} (checkers with ${n} escape rolls)`, white: fW[n], red: fR[n], v: (fW[n] - fR[n]), weight: (weights['F' + n] || 0) });
     }
 
+    // Point-structure terms drop to 0 once disengaged (see evaluate()): a symmetric 0/1 gate on
+    // their difference value, so the breakdown total keeps matching evaluate() in a pure race.
+    const cg = this.hasContact(points, bar) ? 1 : 0;
     const md = (n, p) => this.madeOwnerPoint(points, n, p);
     const hbW = this.homeBoardPoints(points, 1) - md(4, 1) - md(5, 1);
     const hbR = this.homeBoardPoints(points, 2) - md(4, 2) - md(5, 2);
-    rows.push({ code: 'HB', meaning: 'Home-board points (excl. 4,5)', white: hbW, red: hbR, v: (hbW - hbR), weight: weights.HB });
+    rows.push({ code: 'HB', meaning: 'Home-board points (excl. 4,5)', white: hbW, red: hbR, v: cg * (hbW - hbR), weight: weights.HB });
 
-    rows.push({ code: 'G5', meaning: 'Golden 5-point made', white: md(5, 1), red: md(5, 2), v: (md(5, 1) - md(5, 2)), weight: (weights.G5 || 0) });
-    rows.push({ code: 'G7', meaning: 'Bar point (7) made', white: md(7, 1), red: md(7, 2), v: (md(7, 1) - md(7, 2)), weight: (weights.G7 || 0) });
-    rows.push({ code: 'G4', meaning: 'Golden 4-point made', white: md(4, 1), red: md(4, 2), v: (md(4, 1) - md(4, 2)), weight: (weights.G4 || 0) });
+    rows.push({ code: 'G5', meaning: 'Golden 5-point made', white: md(5, 1), red: md(5, 2), v: cg * (md(5, 1) - md(5, 2)), weight: (weights.G5 || 0) });
+    rows.push({ code: 'G7', meaning: 'Bar point (7) made', white: md(7, 1), red: md(7, 2), v: cg * (md(7, 1) - md(7, 2)), weight: (weights.G7 || 0) });
+    rows.push({ code: 'G4', meaning: 'Golden 4-point made', white: md(4, 1), red: md(4, 2), v: cg * (md(4, 1) - md(4, 2)), weight: (weights.G4 || 0) });
 
     const anW = pipW > pipR ? (this.anchorsP(points, 1) - md(20, 1)) : 0;
     const anR = pipR > pipW ? (this.anchorsP(points, 2) - md(20, 2)) : 0;
-    rows.push({ code: 'AN', meaning: 'Anchors excl. golden (if behind)', white: anW, red: anR, v: (anW - anR), weight: weights.AN });
+    rows.push({ code: 'AN', meaning: 'Anchors excl. golden (if behind)', white: anW, red: anR, v: cg * (anW - anR), weight: weights.AN });
 
     const gaW = pipW > pipR ? md(20, 1) : 0;
     const gaR = pipR > pipW ? md(20, 2) : 0;
-    rows.push({ code: 'GA', meaning: 'Golden anchor (opp 5-pt, if behind)', white: gaW, red: gaR, v: (gaW - gaR), weight: (weights.GA || 0) });
+    rows.push({ code: 'GA', meaning: 'Golden anchor (opp 5-pt, if behind)', white: gaW, red: gaR, v: cg * (gaW - gaR), weight: (weights.GA || 0) });
 
     // Blots collapsed to DO/IO/DP/IP; white = White blots at risk, red = Red blots at risk.
     const blot = { DO: { w: 0, r: 0 }, IO: { w: 0, r: 0 }, DP: { w: 0, r: 0 }, IP: { w: 0, r: 0 } };
@@ -1532,7 +1559,21 @@ rollDice(d1 = null, d2 = null) {
       if (player === 1 && pipW < pipR) val += weights.DE;
       else if (player === 2 && pipR < pipW) val -= weights.DE;
     }
+    val += this._crossoverTieBreak(state, player);
     return val;
+  }
+
+  // Disengaged-race tie-break (move-selection only, like DE): once there's no contact PC can't tell
+  // which checker to advance, so nudge the mover toward fewer of its OWN crossovers (rush stragglers
+  // home → save gammon/backgammon). eps is tiny (max effect ≈ 0.06 « 1) so it only breaks ties in
+  // the integer static score, never overriding a real evaluation difference. Zero while in contact.
+  _crossoverTieBreak(state, player) {
+    if (state.borneOff[1] >= 15 || state.borneOff[2] >= 15) return 0;
+    if (this.hasContact(state.points, state.bar)) return 0;
+    const eps = 0.001;
+    return player === 1
+      ? -eps * this.crossoverCount(state.points, state.bar, 1)
+      : +eps * this.crossoverCount(state.points, state.bar, 2);
   }
 
   getBestAIMove(depth) {
@@ -1589,6 +1630,7 @@ rollDice(d1 = null, d2 = null) {
       if (player === 1 && pipW < pipR) val += weights.DE;
       else if (player === 2 && pipR < pipW) val -= weights.DE;
     }
+    val += this._crossoverTieBreak(state, player);
     return val;
   }
 
