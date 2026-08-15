@@ -236,17 +236,26 @@ Here you can select  the white player in the first menu in that row..  The optio
 <h2 id="CC10" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">10</a>Move List and Game Navigation</h2>
 <!-- Row 10: Move-history table -->
 
-<p> This field contains a scrollable list of the moves so far in the current game.  It lists the number of each move, the dice roll, and the resulting moves.   The score is assigned by the AI selected in Row 13.   Showing the score can be turned on and off in the Settings.  Positive scores are good for White and are shown in white print in a white font in the Table.   Similarly, negative scores are good for Red and are shown in red.  
+<p> This field contains a scrollable list of the moves so far in the current game.  It lists the number of each move, the dice roll, and the resulting moves.   For AI players, the score is assigned by the AI selected selected as the player, for human players the score is assigned by the AI specified in Row 13..   Showing the score can be turned on and off in the Settings.  Positive scores are good for White and are shown in white print in a white font in the Table.   Similarly, negative scores are good for Red and are shown in red.  
 
-  <p>   Clicking on any row in the table will take you back to the current move and reset the game board to the configuration after that move. The game can be resumed from that position  by clicking on the playing dice.   However, any dice rolls made earlier will be repeated.  Thus the Table can be used to explore alternatives to previous moves.
+  <p>   Clicking on any row in the table will take you back to the current move and reset the game board to the configuration after that move. The game can be resumed from that position  by clicking on the playing dice.   Any dice rolls made earlier will be repeated.  Thus the Table can be used to explore alternatives to previous moves.   However, you can start from an earlier position with fresh dice rolls by clicking <e>EX</e> in row 12, followed by clicking <e>START</e> in row 5. 
 
     <h2 id="CC11" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">11</a>Navigation Buttons</h2>
 
 <!-- Row 11: Time-travel navigation (<< < > >>) -->
 <p>    The buttons in this Table let you travel back and forth in the Move list.   <e><</e> and <e>></e> move you one move forward or backward, and <e><<</e> and <e>>></e> move you to the beginning or end of the table.   You can use these buttons to review a game.
 
-<h2 id="CC12" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">12</a></h2>
+<h2 id="CC12" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">12</a> Examination and Analysis</h2>
 <!-- Row 12: Examine row (EX / CL / IN / dice menus / MOV / PLAY) -->
+
+<p> The controls in this row let you set up a position and analyze it,  or start a game from it.  You can move checkers on the board , including the bar and the collection tray, by dragging or clicking on start and finish, without restriction.  The first three buttons set up an initial configuration.  Specifically, <e>EX</e> selects the position currently on the board, e.g., the position in an ongoing game.  <e>CL</e> starts a position with all checkers on the bar.  <e>IN</e> loads the regular starting position.  The red and white <e>menus</e> serve as <e>dice</e>.  You can select a roll using either the red dice or the white dice, but not both sets.   If you start an analysis or a game, and no dice have been set, the system will apply a random roll.  <e>MOV</e> lists available legal moves in the move list field, ranked by the AI selected in Row 13, and <e>PLAY</e> applies that move to the board.   The <e>START</e> button in Row 5 starts a game from the currently set up position, and the <e>RESTART</e> button in the same row restarts a game from the same position as the most recent game.  You can navigate in a set up game exactly as you would in a regular game.
+ By default, doubling is turned off min examination mode (to prevent immediate terminations in lopsided positions).  
+
+  <H2><a href="AIs.html">  <span class="cc-circle cc-badge">13</span> - <span class="cc-circle cc-badge">17</span>
+AI Processing </a></H2>
+
+The next five rows let you work with the AIs in various ways.   To use the controls effectively requires some familiarity with the way this site handles AI play.  <a href = "AIs.html">Click here</a> for a comprehensive explanation.
+  
 
 <h2 id="CC13" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">13</a></h2>
 <!-- Row 13: Brain selector, name field, EXPORT / IMPORT / DEF -->

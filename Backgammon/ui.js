@@ -193,6 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let setupOnRoll  = null;   // side to move next (1|2|null)
   let setupKind    = null;   // 'clear' | 'initial' | 'examine' (last entered)
   let setupBaseMsg = 'Examination Mode';   // idle instruction-line text while in setup
+  // When a game is launched from a hand-set-up position (START/PLAY in examination mode), we
+  // remember that position here so Restart restarts from IT rather than the standard opening.
+  // Null for ordinary games (cleared by startGame / performRestart / initNetworkGame).
+  let setupOriginBoard = null;
   let autoMoveOn  = false;
 
   // ── History Navigation state ────────────────────────────────────────
@@ -1417,6 +1421,10 @@ function handleRollClick() {
    */
   function handleDoubleOffer() {
     if (pendingDouble) return;
+    if (setupOriginBoard) {                                     // examination (set-up) game → no doubling
+      gameMessageEl.textContent = "Doubling is off for set-up (examination) games.";
+      return;
+    }
     if (!doublingOn) {                                          // doubling disabled in Settings
       gameMessageEl.textContent = "Enable doubling in the settings!";
       return;
@@ -1653,6 +1661,7 @@ function handleRollClick() {
     if (autoRollTimeout)  { clearTimeout(autoRollTimeout);  autoRollTimeout  = null; }
 
     gameStarted       = false;
+    setupOriginBoard  = null;   // full reset → back to the standard start for Restart too
     isAIPlaying       = false;
     selectedSource    = null;
     legalDestinations = [];
@@ -1683,6 +1692,13 @@ function handleRollClick() {
   function handleRestartClick() {
     // In a remote game the host is in control of restart; the guest's button does nothing.
     if (isNetworkGame && localPlayerRole !== 1) return;
+
+    // A game launched from a set-up position → replay the EXACT same start: same board (restored
+    // in applyRestartNewGame), same opening player, and same opening dice — NOT alternated.
+    if (setupOriginBoard && setupOriginBoard.starter) {
+      applyRestartNewGame(setupOriginBoard.starter);
+      return;
+    }
 
     // No game has been played yet this session -> behave like the Start button (a roll-off
     // decides the first opener). startGame() also notifies the guest in a network game.
@@ -1723,8 +1739,20 @@ function handleRollClick() {
     isProcessingQueue = false;
 
     game.restart();
+    if (setupOriginBoard) {   // game was launched from a set-up position → restart from THAT board
+      game.points   = JSON.parse(JSON.stringify(setupOriginBoard.points));
+      game.bar      = { ...setupOriginBoard.bar };
+      game.borneOff = { ...setupOriginBoard.borneOff };
+    }
     syncPlayersFromMenus();              // re-apply the White/Red menu picks after the reset
-    game.beginGameWithStarter(starter);  // forced opener, awaiting the first (normal) roll
+    game.beginGameWithStarter(starter);  // forced opener (records the "Start of Game" snapshot)
+    // For a set-up game, replay the SAME opening dice too (skip the random first roll).
+    if (setupOriginBoard && setupOriginBoard.dice) {
+      const dd = setupOriginBoard.dice;
+      game.dice = [dd[0], dd[1]];
+      game.movesLeft = (dd[0] === dd[1]) ? [dd[0], dd[0], dd[0], dd[0]] : [dd[0], dd[1]];
+      game.hasRolled = true;
+    }
     gameStarted      = true;
     lastStarter      = starter;
     gameScored       = false;   // new game to tally; scores themselves are preserved
@@ -3192,8 +3220,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (aiActionTimeout) clearTimeout(aiActionTimeout);
 
     if (!game.hasRolled) {
-      // Before rolling, decide whether to offer a double.
-      if (doublingOn && game.aiShouldDouble(game.currentPlayer)) {
+      // Before rolling, decide whether to offer a double. Doubling is disabled for games launched
+      // from a set-up position (examination) — otherwise a lopsided position ends instantly on a double.
+      if (doublingOn && !setupOriginBoard && game.aiShouldDouble(game.currentPlayer)) {
         sysLog(`[AI] Player ${game.currentPlayer} (AI) offers a double.`);
         aiActionTimeout = setTimeout(() => {
           aiActionTimeout = null;
@@ -3657,6 +3686,7 @@ function initNetworkGame(role) {
 
     // --- WIPE ANY PREVIOUS LOCAL STATE ---
     game.restart();
+    setupOriginBoard = null;   // network games always start from the standard position
     initialRollOff = true;
     isRolling = false;
     gameStarted = false;
@@ -4167,6 +4197,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     }
 
     gameStarted = true;
+    setupOriginBoard = null;    // ordinary game from the standard start → Restart uses the standard start
     initialRollOff = true;
     game.currentPlayer = 1;
     game.hasRolled = false;
@@ -4216,6 +4247,11 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
         game.rollForFirstTurn(d1, d2);
         initialRollOff = false;
         lastStarter = game.currentPlayer;   // remember the opener so Restart can alternate
+        // For an all-blank set-up launch, capture the roll-off so Restart can replay the same start.
+        if (setupOriginBoard && !setupOriginBoard.starter) {
+          setupOriginBoard.starter = game.currentPlayer;
+          setupOriginBoard.dice = [d1, d2];
+        }
 
         if (isNetworkGame && conn && conn.open) {
             conn.send({ type: 'roll_first', dice: [d1, d2] });
@@ -4479,6 +4515,16 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     const allBlank = setupAllBlank();
     setupMode = false;
     clearSetupHighlight();
+    // Remember this launch position so Restart replays THIS set-up position with the SAME opening
+    // player and the SAME opening dice (not alternated / re-rolled). starter/dice are filled just
+    // below for a resolved opening, or at the roll-off (handleRollClick) for an all-blank launch.
+    setupOriginBoard = {
+      points:   JSON.parse(JSON.stringify(game.points)),
+      bar:      { ...game.bar },
+      borneOff: { ...game.borneOff },
+      starter:  null,
+      dice:     null,
+    };
     // Fresh game from the current board: clear history + cube, keep the position.
     game.gameHistory = []; game.turnHistory = []; game.playedMovesThisTurn = [];
     game.turnCount = 0; game.futureRolls = []; game.futureRollIndex = 0;
@@ -4497,6 +4543,9 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       game.movesLeft = dice.slice();
       game.hasRolled = true;
       game.turnCount = 1;
+      lastStarter = player;                 // record the opener so Restart takes the replay path
+      setupOriginBoard.starter = player;    // replay the SAME opener + dice on Restart
+      setupOriginBoard.dice = [faces[0], faces[1]];
     }
     clearSetupDice();
     updateUI();   // normal pipeline resumes; checkAndTriggerAITurn drives any AI side
