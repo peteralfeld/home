@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${pts} | bar ${bar[1]}/${bar[2]} | off ${borneOff[1]}/${borneOff[2]}`;
   }
 
+  // 'Host' / 'Guest' for THIS machine in a network game, else null. Stamps downloads (move list,
+  // console log, screenshot filename) so a saved file says which side produced it.
+  function netRole() { return isNetworkGame ? (localPlayerRole === 1 ? 'Host' : 'Guest') : null; }
+
   function processNetworkQueue() {
     if (isProcessingQueue || networkQueue.length === 0) return;
     isProcessingQueue = true;
@@ -384,7 +388,7 @@ function sysLog(msg) {
         stream.getTracks().forEach(t => t.stop());
 
         const link = document.createElement('a');
-        link.download = `bg-screenshot-${Date.now()}.png`;
+        link.download = `bg-screenshot-${netRole() ? netRole() + '-' : ''}${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
 
@@ -460,7 +464,7 @@ function sysLog(msg) {
         stream.getTracks().forEach((t) => t.stop());
 
         const link = document.createElement('a');
-        link.download = `bg-board-${Date.now()}.png`;
+        link.download = `bg-board-${netRole() ? netRole() + '-' : ''}${Date.now()}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
 
@@ -488,6 +492,7 @@ function sysLog(msg) {
       let txt = 'Backgammon Game - Move History\n';
       txt += `BG v. ${bgVersion()}\n`;
       txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+      if (netRole()) txt += `Downloaded by: ${netRole()} (this machine)\n`;
       txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n`;
       // Describe the starting position: "Standard Start" for the ordinary opening, else the
       // actual board (from the initial time-travel snapshot).
@@ -579,7 +584,8 @@ function sysLog(msg) {
       if (consoleLog.length === 0) { alert('Console log is empty.'); return; }
       const link = document.createElement('a');
       link.download = `backgammon-console-${Date.now()}.txt`;
-      const header = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n\n`;
+      const who = netRole() ? `Downloaded by: ${netRole()} (this machine)\n` : '';
+      const header = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n${who}\n`;
       link.href = URL.createObjectURL(new Blob([header + consoleLog.join('\n')], { type: 'text/plain' }));
       link.click();
       sysLog('[System] Console log downloaded.');
@@ -3897,6 +3903,9 @@ function initNetworkGame(role) {
       // room-code field and update the status text.
       if (joinCodeInput) joinCodeInput.readOnly = false;
       if (connStatus) { connStatus.textContent = 'Not connected.'; connStatus.style.color = ''; }
+      // Restore the HOST/JOIN buttons (the HOST label reverted from its role-indicator state).
+      if (btnHost) { btnHost.textContent = 'HOST'; btnHost.disabled = false; btnHost.style.opacity = '1'; }
+      if (btnJoin) { btnJoin.disabled = false; btnJoin.style.opacity = '1'; }
 
       sysLog('[Network] Left the online game — connection severed.');
       updateUI();
@@ -3923,7 +3932,13 @@ function initNetworkGame(role) {
       sysLog(`[Network] SUCCESS! Data channel is open.`);
       connStatus.textContent = "Connected! Game Active.";
       connStatus.style.color = "#10b981";
-      
+
+      // Turn the HOST button into a disabled ROLE indicator for THIS machine — "HOST" on the host,
+      // "GUEST" on the guest — so the role is visible on screen (and in screenshots). Also disable
+      // JOIN, so nobody re-joins mid-game (that resets local state / replays history and wrecks it).
+      if (btnHost) { btnHost.textContent = localPlayerRole === 1 ? 'HOST' : 'GUEST'; btnHost.disabled = true; btnHost.style.opacity = '0.6'; }
+      if (btnJoin) { btnJoin.disabled = true; btnJoin.style.opacity = '0.6'; }
+
       if (localPlayerRole === 1) {
         connection.send({ 
             type: 'sync', 

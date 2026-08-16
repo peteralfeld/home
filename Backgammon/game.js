@@ -31,10 +31,10 @@ const AI_PERSONALITIES = {
   // Named brains kept in performance order (Arwen strongest ... Hamfast weakest); re-sort
   // after each tournament. Origin is the fixed historic baseline and never changes.
   Arwen: { PC: -603, BO: 1000, EC1: -70, EC0: -970, HB: 29, AN: -68, DO: 10, IO: 10, DP: 290, IP: 59, DE: 4, F0: -16, F1: -19, F2: -20, F3: -6, F4: -7, F5: -1, BE: 8, G5: 291, G7: 13, G4: 38, GA: -47, DT: 308, AT: 735 },  // 1st
-  Bilbo: { PC: -412, BO: 738, EC1: -60, EC0: -1000, HB: 23, AN: -41, DO: 6, IO: 10, DP: 168, IP: 58, DE: 3, F0: -11, F1: -12, F2: -19, F3: -8, F4: -4, F5: -1, BE: 7, G5: 190, G7: 6, G4: 25, GA: -33, DT: 236, AT: 686 },  // 2nd
-  Celebrian: { PC: -435, BO: 633, EC1: -62, EC0: -1000, HB: 28, AN: -46, DO: 6, IO: 11, DP: 205, IP: 60, DE: 3, F0: -13, F1: -14, F2: -21, F3: -9, F4: -5, F5: -1, BE: 9, G5: 228, G7: 6, G4: 31, GA: -41, DT: 241, AT: 836 },  // 3rd
-  Dwalin: { PC: -433, BO: 22, EC1: -140, EC0: -1000, HB: 66, AN: -19, DO: 19, IO: 12, DP: 267, IP: 32, DE: 4, F0: -8, F1: -15, F2: -22, F3: -6, F4: -8, F5: -2, BE: 7, G5: 181, G7: 21, G4: 30, GA: -80, DT: 330, AT: 588 },  // 4th
-  Eowyn: { PC: -778, BO: 834, EC1: -184, EC0: -1000, HB: 66, AN: -32, DO: 18, IO: 9, DP: 373, IP: 22, DE: 4, F0: -13, F1: -13, F2: -22, F3: -3, F4: -10, F5: -2, BE: 10, G5: 382, G7: 17, G4: 26, GA: -43, DT: 400, AT: 999 },  // 5th
+  Bilbo: { PC: -435, BO: 633, EC1: -62, EC0: -1000, HB: 28, AN: -46, DO: 6, IO: 11, DP: 205, IP: 60, DE: 3, F0: -13, F1: -14, F2: -21, F3: -9, F4: -5, F5: -1, BE: 9, G5: 228, G7: 6, G4: 31, GA: -41, DT: 241, AT: 836 },  // 2nd
+  Celebrian: { PC: -412, BO: 738, EC1: -60, EC0: -1000, HB: 23, AN: -41, DO: 6, IO: 10, DP: 168, IP: 58, DE: 3, F0: -11, F1: -12, F2: -19, F3: -8, F4: -4, F5: -1, BE: 7, G5: 190, G7: 6, G4: 25, GA: -33, DT: 236, AT: 686 },  // 3rd
+  Dwalin: { PC: -778, BO: 834, EC1: -184, EC0: -1000, HB: 66, AN: -32, DO: 18, IO: 9, DP: 373, IP: 22, DE: 4, F0: -13, F1: -13, F2: -22, F3: -3, F4: -10, F5: -2, BE: 10, G5: 382, G7: 17, G4: 26, GA: -43, DT: 400, AT: 999 },  // 4th
+  Eowyn: { PC: -433, BO: 22, EC1: -140, EC0: -1000, HB: 66, AN: -19, DO: 19, IO: 12, DP: 267, IP: 32, DE: 4, F0: -8, F1: -15, F2: -22, F3: -6, F4: -8, F5: -2, BE: 7, G5: 181, G7: 21, G4: 30, GA: -80, DT: 330, AT: 588 },  // 5th
   Frodo: { PC: -903, BO: 32, EC1: -153, EC0: -1000, HB: 58, AN: -47, DO: 18, IO: 13, DP: 469, IP: 46, DE: 6, F0: -8, F1: -16, F2: -25, F3: -12, F4: -10, F5: -6, BE: 16, G5: 281, G7: 18, G4: 44, GA: -61, DT: 398, AT: 1009 },  // 6th
   Galadriel: { PC: -1000, BO: 492, EC1: -118, EC0: -771, HB: 27, AN: -46, DO: 9, IO: 13, DP: 298, IP: 45, DE: 4, F0: -7, F1: -8, F2: -25, F3: -6, F4: -9, F5: -2, BE: 11, G5: 227, G7: 12, G4: 23, GA: -52, DT: 322, AT: 716 },  // 7th
   Hamfast: { PC: -978, BO: 351, EC1: -117, EC0: -1000, HB: 268, AN: -3, DO: 9, IO: 4, DP: 347, IP: 25, DE: 67, F0: -73, F1: -57, F2: -7, F3: -20, F4: -21, F5: -4, BE: 14, G5: 277, G7: 105, G4: 39, GA: -9, DT: 220, AT: 857 },  // 8th
