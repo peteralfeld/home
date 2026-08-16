@@ -34,6 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
   // console log, screenshot filename) so a saved file says which side produced it.
   function netRole() { return isNetworkGame ? (localPlayerRole === 1 ? 'Host' : 'Guest') : null; }
 
+  // True when THIS machine is the waiting side of a network game: an online game is under way
+  // and the player on roll is the OTHER machine's seat. Drives the two waiting-side cues --
+  // the "<X> is thinking" status line and the greyed-out dice (see CLAUDE.md). Deliberately
+  // false off-network, in examination mode, before the game starts and once there's a winner,
+  // so purely local play and the end-of-game message are untouched.
+  function waitingForOpponent() {
+    return isNetworkGame && gameStarted && !setupMode && !game.winner
+        && localPlayerRole !== null && game.currentPlayer !== null
+        && game.currentPlayer !== localPlayerRole;
+  }
+
+  // The waiting side's stand-in for the on-roll player's own instruction line.
+  function thinkingMessage() {
+    return `${game.currentPlayer === 1 ? 'White' : 'Red'} is thinking`;
+  }
+
   function processNetworkQueue() {
     if (isProcessingQueue || networkQueue.length === 0) return;
     isProcessingQueue = true;
@@ -1009,6 +1025,10 @@ renderBorneOff();
       diceContainerEl.classList.remove('rollable');
     }
 
+    // Waiting side of a network game: grey the dice (they're the opponent's roll, and this
+    // machine can't roll them). Styled in style.css as .dice-container.waiting-opponent.
+    diceContainerEl.classList.toggle('waiting-opponent', waitingForOpponent());
+
     // ADD THIS BLOCK: Toggle the red/white colors
     if (initialRollOff && !(isNetworkGame && localPlayerRole === 2 && !gameStarted)) {
       diceContainerEl.classList.add('initial-roll-off');
@@ -1074,9 +1094,13 @@ renderBorneOff();
       if (!gameScored) { addScore(winner, pts); gameScored = true; }
       btnUndo.disabled = true;
     } else if (!gameStarted) {
-      // UPDATE: Show waiting message for guest, standard message for host
+      // Three cases: the connected guest waits, the connected host gets the two-step
+      // instruction (Start, then roll off), and local play keeps the pick-your-players line
+      // (on the network the seats are already fixed by role, so there is nothing to select).
       if (isNetworkGame && localPlayerRole === 2) {
         gameMessageEl.textContent = "Wait for the host to start the game!";
+      } else if (isNetworkGame) {
+        gameMessageEl.textContent = "Click the Start button to start the game and the playing dice to determine who goes first.";
       } else {
         gameMessageEl.textContent = "Ready to go! To play, select players and click on Start";
       }
@@ -1085,7 +1109,9 @@ renderBorneOff();
         ? "Wait for the host to make the initial roll."
         : "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
-	gameMessageEl.textContent = `${game.currentPlayer === 1 ? 'White' : 'Red'}: Click the dice to roll.`;
+	gameMessageEl.textContent = waitingForOpponent()
+        ? thinkingMessage()
+        : `${game.currentPlayer === 1 ? 'White' : 'Red'}: Click the dice to roll.`;
 } else {
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
@@ -1129,7 +1155,9 @@ renderBorneOff();
           clearTimeout(turnEndTimer);
           turnEndTimer = null;
         }
-        gameMessageEl.textContent = game.currentPlayer === 1 ? 'White to move descending' : 'Red to move ascending';
+        gameMessageEl.textContent = waitingForOpponent()
+          ? thinkingMessage()
+          : (game.currentPlayer === 1 ? 'White to move descending' : 'Red to move ascending');
       }
     }
 

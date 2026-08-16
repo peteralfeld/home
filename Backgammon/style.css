@@ -825,6 +825,15 @@ body {
   box-shadow: 0 10px 20px rgba(229, 193, 88, 0.3);
 }
 
+/* Waiting side of a network game: the dice on screen are the opponent's roll and this
+   machine can't roll them, so drain the colour and fade them. One rule covers both the
+   white and the red die styling, and it pairs with the "<X> is thinking" status line. */
+.dice-container.waiting-opponent .die {
+  filter: grayscale(1);
+  opacity: 0.45;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
 /* Initial start of game roll-off dice styles (One white, one red) */
 .initial-roll-off #die-1 {
   background-color: #fcfbf7 !important;
@@ -979,11 +988,13 @@ body {
   font-size: 0.96rem !important;       /* ~20% larger than the previous 0.8rem */
   font-weight: 700 !important;         /* bold */
   margin-top: 0.2rem !important;
-  /* Fixed at exactly two lines (line-height 1.4 => 2.8em) plus vertical padding,
+  /* Fixed at exactly three lines (line-height 1.4 => 4.2em) plus vertical padding,
      so the box never resizes as the message changes. The height is in em, so it
-     grows automatically with the larger font. */
+     grows automatically with the larger font. Was two lines, but the longer
+     instruction lines (e.g. the host's pre-start Start/roll-off line) wrap to
+     three and had their last row clipped by the overflow:hidden. */
   box-sizing: border-box;
-  height: calc(2.8em + 0.6rem) !important;
+  height: calc(4.2em + 0.6rem) !important;
   min-height: 0 !important;
   overflow: hidden;
   align-items: center;
