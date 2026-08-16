@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // divergence warning each log once per distinct state, not on every render / heartbeat.
   let lastFpKey = null;
   let lastDivergenceKey = null;
+  // Auto-reconnect (recovers a one-directional inbound stall — the iPad-Safari failure mode).
+  let currentRoomCode  = null;       // room code of the active network game (for reconnect)
+  let lastInboundAt    = 0;          // Date.now() of the last received network message
+  let inboundWatchdog  = null;       // interval that reconnects when inbound goes silent
+  let reconnecting     = false;      // guard while an auto-reconnect is in flight
+  const INBOUND_SILENCE_MS = 10000;  // no inbound this long (heartbeats are 3s) → reconnect
 
   // Compact board signature (points + bar + off) for desync detection/logging.
   function boardSig(points, bar, borneOff) {
@@ -3797,6 +3803,51 @@ function initNetworkGame(role) {
     function startHeartbeat() { if (heartbeatTimer) clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS); }
     function stopHeartbeat()  { if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; } }
 
+    // --- Inbound watchdog + auto safe-reconnect ------------------------------------------------
+    // The heartbeat recovery only works if the BEHIND side can still RECEIVE. The real-world
+    // failure (iPad Safari, backgrounded/throttled) is a one-directional stall: our inbound Firebase
+    // listener goes dormant while our outbound keeps working, so we stop getting the peer's moves
+    // AND heartbeats and can never adopt. The watchdog notices the inbound silence and rebuilds the
+    // channel; the tab-foreground handler does the same the moment we come back on screen.
+    function startInboundWatchdog() {
+      stopInboundWatchdog();
+      inboundWatchdog = setInterval(() => {
+        if (!isNetworkGame || !gameStarted || game.winner || reconnecting) return;
+        if (!conn || !conn.open) return;                 // a real disconnect flips conn.open; skip
+        if (Date.now() - lastInboundAt > INBOUND_SILENCE_MS) {
+          reconnectNetwork(`no inbound for ${Math.round((Date.now() - lastInboundAt) / 1000)}s`);
+        }
+      }, 4000);
+    }
+    function stopInboundWatchdog() { if (inboundWatchdog) { clearInterval(inboundWatchdog); inboundWatchdog = null; } }
+
+    // Re-establish the network channel WITHOUT resetting the local game or flipping role. Backlog-
+    // skip means the fresh listener won't replay history; the peer's next heartbeat re-syncs the
+    // board, and adoptRemoteState then pulls the peer's full move history so the list stays intact.
+    function reconnectNetwork(reason) {
+      if (!isNetworkGame || !currentRoomCode || localPlayerRole == null || reconnecting) return;
+      reconnecting = true;
+      sysLog(`[Network] Auto-reconnect (${reason}) — re-establishing the channel.`);
+      try { if (conn) conn.close(); } catch (e) {}
+      if (NET_TRANSPORT === 'firebase' && fbDb) {
+        try { fbDb.goOffline(); fbDb.goOnline(); } catch (e) {}   // force a fresh websocket
+        conn = makeFirebaseConnection(currentRoomCode, localPlayerRole);
+      } else {
+        conn = makePhpConnection(currentRoomCode, localPlayerRole);
+      }
+      setupConnectionListeners(conn);
+      lastInboundAt = Date.now();                        // grace period before the watchdog re-fires
+      setTimeout(() => { reconnecting = false; }, 6000);
+    }
+
+    // iOS suspends a backgrounded tab's socket; on return to the foreground, resync if inbound is stale.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!isNetworkGame || !gameStarted || game.winner || reconnecting) return;
+      if (!conn || !conn.open) return;
+      if (Date.now() - lastInboundAt > 4000) reconnectNetwork('tab foregrounded');
+    });
+
     // Jump wholesale to the opponent's authoritative full state. We can't replay the missed
     // individual moves, but the ahead side's board IS the truth, so we adopt it and resume.
     function adoptRemoteState(s) {
@@ -3818,6 +3869,10 @@ function initNetworkGame(role) {
       isProcessingQueue = false;
       game.checkWinner();
       updateUI();
+      // We jumped the BOARD to the peer's authoritative state, but our move-history list may now
+      // have a gap for the turn(s) we missed. Ask the peer for its full history so the list is
+      // rebuilt intact (see the 'sync_request'/'sync_full' handlers).
+      if (conn && conn.open) { try { conn.send({ type: 'sync_request' }); } catch (e) {} }
     }
     function handleHeartbeat(s) {
       if (!isNetworkGame || !gameStarted) return;
@@ -3875,9 +3930,12 @@ function initNetworkGame(role) {
       if (!isNetworkGame) return;
       const wasGuest = (localPlayerRole === 2);
       stopHeartbeat();
+      stopInboundWatchdog();
       if (conn) { try { conn.close(); } catch (e) {} conn = null; }
       isNetworkGame  = false;
       localPlayerRole = null;
+      currentRoomCode = null;
+      reconnecting   = false;
       pendingDouble  = null;
       networkQueue   = [];
       isProcessingQueue = false;
@@ -3950,14 +4008,18 @@ function initNetworkGame(role) {
         document.getElementById('btn-start-game').style.opacity = '1';
       }
       startHeartbeat();   // begin periodic authoritative-state broadcasts (both sides)
+      lastInboundAt = Date.now();   // channel is live; reset the inbound watchdog clock
+      reconnecting = false;
+      startInboundWatchdog();       // auto-reconnect if inbound later goes silent
     };
 
     if (connection.open) handleOpen();
     else connection.on('open', handleOpen);
 
 connection.on('data', (data) => {
+      lastInboundAt = Date.now();   // watchdog: mark that inbound is alive
       sysLog(`[Network] Received: ${data.type}`);
-      
+
       if (data.type === 'sync') {
           game.points = data.points;
           game.bar = data.bar;
@@ -4057,6 +4119,21 @@ connection.on('data', (data) => {
       else if (data.type === 'heartbeat') {
           handleHeartbeat(data);
       }
+
+      // Move-list integrity: a side that just resynced its board (adoptRemoteState) asks the peer
+      // for its authoritative full move history so its list has no gap.
+      else if (data.type === 'sync_request') {
+          if (conn && conn.open) {
+            try { conn.send({ type: 'sync_full', history: game.gameHistory }); } catch (e) {}
+          }
+      }
+      else if (data.type === 'sync_full') {
+          if (Array.isArray(data.history) && data.history.length >= game.gameHistory.length) {
+            game.gameHistory = JSON.parse(JSON.stringify(data.history));
+            sysLog(`[Network] Move history rebuilt from peer (${game.gameHistory.length} entries).`);
+            renderHistoryList();
+          }
+      }
     });
 
     connection.on('close', () => {
@@ -4138,7 +4215,7 @@ connection.on('data', (data) => {
 
     // Fresh room (wipes any stale data at this code), then open our side.
     db.ref('rooms/' + roomCode).set({ createdAt: firebase.database.ServerValue.TIMESTAMP })
-      .then(() => { conn = makeFirebaseConnection(roomCode, 1); setupConnectionListeners(conn); })
+      .then(() => { currentRoomCode = roomCode; conn = makeFirebaseConnection(roomCode, 1); setupConnectionListeners(conn); })
       .catch((e) => { sysLog('[Network] Could not create room: ' + e.message); connStatus.textContent = "Could not create room."; connStatus.style.color = '#ef4444'; });
   });
 
@@ -4171,6 +4248,7 @@ connection.on('data', (data) => {
         sysLog(`[Network] No host present at code ${code}.`);
         return;
       }
+      currentRoomCode = code;
       conn = makeFirebaseConnection(code, 2);
       setupConnectionListeners(conn);
     }).catch((e) => { sysLog('[Network] Join failed: ' + e.message); connStatus.textContent = "Join failed."; connStatus.style.color = '#ef4444'; });
