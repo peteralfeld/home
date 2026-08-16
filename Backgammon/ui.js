@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- NEW NETWORK QUEUE SYSTEM ---
   let networkQueue = [];
   let isProcessingQueue = false;
+  // Diagnostics (network debugging): de-dup keys so a per-turn state fingerprint and a
+  // divergence warning each log once per distinct state, not on every render / heartbeat.
+  let lastFpKey = null;
+  let lastDivergenceKey = null;
 
   // Compact board signature (points + bar + off) for desync detection/logging.
   function boardSig(points, bar, borneOff) {
@@ -871,6 +875,17 @@ function sysLog(msg) {
   function updateUI() {
     sysLog("[Update] Board state logical: " + game.points.map((p, idx) => p.count > 0 ? `${idx}:${p.player}(${p.count})` : '').filter(Boolean).join(', '));
 
+    // Per-turn state fingerprint (network games only) for cross-machine post-mortem diffing.
+    // Logged once per distinct (turnCount, currentPlayer, hasRolled) — i.e. at each roll and each
+    // hand-off — so the two consoles line up turn-by-turn and the first mismatch is obvious.
+    if (isNetworkGame) {
+      const fpKey = `${game.turnCount}/${game.currentPlayer}/${game.hasRolled}`;
+      if (fpKey !== lastFpKey) {
+        lastFpKey = fpKey;
+        sysLog(`[State] t=${game.turnCount} p=${game.currentPlayer} rolled=${game.hasRolled} off=${game.borneOff[1]}/${game.borneOff[2]} | ${boardSig(game.points, game.bar, game.borneOff)}`);
+      }
+    }
+
     // Setup mode owns the board render and both text windows itself; skip the
     // normal dice/turn/history/message/AI pipeline entirely.
     if (setupMode) { renderPoints(); renderBar(); renderBorneOff(); return; }
@@ -1710,7 +1725,10 @@ function handleRollClick() {
     // A game has been played -> alternate the opener and launch the next game immediately.
     const newStarter = (lastStarter === 1) ? 2 : 1;
     if (isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
-      conn.send({ type: 'restart', starter: newStarter });
+      // Wipe the room's message backlog FIRST, then send restart as the first message of the
+      // fresh game — so the room never carries a stale multi-game history for a later reconnect.
+      const sendRestart = () => conn.send({ type: 'restart', starter: newStarter });
+      if (conn.clearQueues) conn.clearQueues().then(sendRestart); else sendRestart();
       sysLog(`[Network] Sent restart to guest (starter = player ${newStarter}).`);
     }
     applyRestartNewGame(newStarter);
@@ -3548,6 +3566,14 @@ if (view === 'white') {
       peerConnection: null,   // no WebRTC; the ICE-logging block below no-ops
       on(evt, cb) { if (handlers[evt]) handlers[evt].push(cb); },
       send(obj) { try { outRef.push(JSON.stringify(obj)); } catch (e) { sysLog('[Network] send failed: ' + e.message); } },
+      // Wipe both message queues (used by the host on restart) so the room never accumulates a
+      // stale multi-game backlog. Returns a promise so the caller can send the fresh message after.
+      clearQueues() {
+        return Promise.all([
+          roomRef.child('host2guest').set(null),
+          roomRef.child('guest2host').set(null),
+        ]).catch(() => {});
+      },
       close() {
         // Clear our presence (the opponent sees us leave) AND detach the inbound/presence
         // listeners, so a "Leave" that does NOT reload the page leaves nothing live behind.
@@ -3570,14 +3596,24 @@ if (view === 'white') {
       else if (!present && opened) { opened = false; conn.open = false; fire('close'); }
     });
 
-    // Deliver incoming messages in order (child_added also replays any already-queued
-    // ones, so nothing is missed by a listener attaching a beat late). The host clears
-    // the room on create and neither side sends before both are present, so there are
-    // no stale messages from a prior session.
-    inRef.on('child_added', (snap) => {
-      let msg = snap.val();
-      if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { return; } }
-      if (msg) fire('data', msg);
+    // Deliver only messages that arrive AFTER we attach. A (re)connect must NOT replay the
+    // room's whole history: Firebase's child_added fires once for every EXISTING child, so on a
+    // mid-game reconnect that would dump the entire game (every prior turn, plus old restart
+    // messages) in a single burst and corrupt the move history — exactly the failure we hit. So
+    // we first snapshot the keys already present, then deliver only genuinely new children; the
+    // heartbeat's full-state adopt handles catching the board up. (A fresh room has no backlog,
+    // so nothing is skipped and the normal handshake is unaffected — the host sends sync/start
+    // only after both sides are present, i.e. after this listener is live.)
+    inRef.once('value', (initSnap) => {
+      const seen = new Set();
+      initSnap.forEach((c) => { seen.add(c.key); });
+      inRef.on('child_added', (snap) => {
+        if (seen.has(snap.key)) return;   // pre-existing backlog → skip
+        seen.add(snap.key);
+        let msg = snap.val();
+        if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { return; } }
+        if (msg) fire('data', msg);
+      });
     });
 
     return conn;
@@ -3632,6 +3668,7 @@ if (view === 'white') {
         phpPost({ action: 'send', room: roomCode, role, msg: JSON.stringify(obj) })
           .catch((e) => sysLog('[Network] send failed: ' + e.message));
       },
+      clearQueues() { return Promise.resolve(); },   // PHP relay: no persistent backlog to wipe
       close() {
         stopped = true;
         if (pollTimer) clearInterval(pollTimer);
@@ -3793,6 +3830,25 @@ function initNetworkGame(role) {
       // Never overwrite MY own in-progress turn (I've rolled and it's my move to make).
       const myLiveTurn = game.hasRolled && game.currentPlayer === localPlayerRole && !game.winner;
       if (myLiveTurn) return;
+
+      // DIAGNOSTIC: at this stable boundary, log the FIRST moment the two sides disagree — before
+      // the adopt below papers over it — so a diff of the two consoles pinpoints where/when the
+      // game diverged. De-duped so a persistent divergence logs once, not every heartbeat.
+      {
+        const mineSig = boardSig(game.points, game.bar, game.borneOff);
+        const peerSig = boardSig(s.points, s.bar, s.borneOff);
+        if (s.turnCount !== game.turnCount || s.currentPlayer !== game.currentPlayer || mineSig !== peerSig) {
+          const key = `t${game.turnCount}/p${game.currentPlayer}|${mineSig}||t${s.turnCount}/p${s.currentPlayer}|${peerSig}`;
+          if (key !== lastDivergenceKey) {
+            lastDivergenceKey = key;
+            sysLog(`[DIVERGENCE] mine  t${game.turnCount} p${game.currentPlayer} rolled=${game.hasRolled} | ${mineSig}`);
+            sysLog(`[DIVERGENCE] peer  t${s.turnCount} p${s.currentPlayer} rolled=${!!s.hasRolled} | ${peerSig}`);
+          }
+        } else {
+          lastDivergenceKey = null;
+        }
+      }
+
       const behind = s.turnCount > game.turnCount;
       // Same turnCount but a divergent handoff (only the end_turn was lost → whose-turn differs,
       // or a board drift): the guest defers to the host (authoritative). Convergence is safe —
