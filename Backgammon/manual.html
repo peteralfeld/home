@@ -43,8 +43,6 @@
 
 <body>
 
-xx
-
     <A HREF="index.html"><H1> The Game of Backgammon </H1></a>
 
 
@@ -169,7 +167,7 @@ This line just provides a clickable link to this manual page.
 <h2 id="CC3" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">3</a> Playing Over the Network</h2>
 <!-- Row 3: HOST / CODE / JOIN / LEAVE (network play) -->
 
-These controls let you set up a match between two human players in two different locations. Both of you have to have an internet connection, and you also have to have an open communication channel to your opponent, by telephone, on screen, or by email. One of you serves as the <e>host</e>, the other as the <e>guest</e>.   To set up a match proceed as follows:
+<p> These controls let you set up a match between two human players in two different locations. Both of you have to have an internet connection, and you also have to have an open communication channel to your opponent, by telephone, on screen, or by email. One of you serves as the <e>host</e>, the other as the <e>guest</e>.   To set up a match proceed as follows:
 
 <OL>
   <LI>As host click on the button labeled <e>HOST</e>.    A code (usually a three digit integer) will appear in the text field labeled <e>CODE</e>.  Communicate that code to the Guest.</LI>
@@ -255,14 +253,30 @@ Here you can select  the white player in the first menu in that row..  The optio
 <p> The controls in this row let you set up a position and analyze it,  or start a game from it.  You can move checkers on the board , including the bar and the collection tray, by dragging or clicking on start and finish, without restriction.  The first three buttons set up an initial configuration.  Specifically, <e>EX</e> selects the position currently on the board, e.g., the position in an ongoing game.  <e>CL</e> starts a position with all checkers on the bar.  <e>IN</e> loads the regular starting position.  The red and white <e>menus</e> serve as <e>dice</e>.  You can select a roll using either the red dice or the white dice, but not both sets.   If you start an analysis or a game, and no dice have been set, the system will apply a random roll.  <e>MOV</e> lists available legal moves in the move list field, ranked by the AI selected in Row 13, and <e>PLAY</e> applies that move to the board.   The <e>START</e> button in Row 5 starts a game from the currently set up position, and the <e>RESTART</e> button in the same row restarts a game from the same position as the most recent game.  You can navigate in a set up game exactly as you would in a regular game.
  By default, doubling is turned off min examination mode (to prevent immediate terminations in lopsided positions).  
 
+
   <H2><a href="AIs.html">  <span class="cc-circle cc-badge">13</span> - <span class="cc-circle cc-badge">17</span>
 AI Processing </a></H2>
 
 The next five rows let you work with the AIs in various ways.   To use the controls effectively requires some familiarity with the way this site handles AI play.  <a href = "AIs.html">Click here</a> for a comprehensive explanation.
   
 
-<h2 id="CC13" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">13</a></h2>
+<h2 id="CC13" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">13</a>Importing and Exporting AIs</h2>
 <!-- Row 13: Brain selector, name field, EXPORT / IMPORT / DEF -->
+<p> The controls in this row let you import or export an AI.   You Can thus keep a set of AIs of your own, play against them, evolve them, or let them play a tournament against other AIs. From left to right,  the following controls are available:
+  <OL><li>
+
+      The <i>AI menu</i>, showing <e>Arwen</e> by default, lets you pick any of the currently active AIs.   This will update the parameter list in row 15 and you can then work with that AI.  If a game has been played by two humans, or is ongoing, and a move list is present, then changing the selection will also change the AI used for scoring the game positions,  and the scores in the moves list will update. By default, 9 AIs are available.   They are sorted alphabetically by decreasing performance (as determined by a long tournament).   I picked the parameters of  the bottom one, <e>Origin</e>, basically by guessing, when I first started developing the software. Quite a few of Origin's parameters are zero (they have no effect) since they did not yet exist when I constructed Origin.   The other AIs all were created in one way or other by mutating Origin and its successors, partly by changing individual parameters by hand, or applying the genetic algorithm available in the next row.  If you import a new AI it will be added to the bottom of the menu, and it will become eligible in row 16 for playing a tournament.</li>
+
+    <li>The textfield let's you specify the name of the currently selected AI for export.   The default name is <e>newAI</a>, but you can change it.    Your selection will be used as file name, and as the name of the exported AI.</li>
+
+<LI>The <i>EXPORT</i> button downloads a .js file that defines the new AI in a JavaScript code.   That same file is suitable for importing an AI, and you can edit it.</LI>
+
+<li>The <e>IMPORT</e>button let's you import a new AI, defined in the same format as any exported AI, adds it to the menu in row 13, selects it in that menu, and updates the parameters in row 15.  Clicking on the import button opens your browser's file picker.   However, you can also import an AI by dragging the file onto your control column.  The system will notify you in the status field whether the import was successful or not.
+</li> 
+
+<li>The <i>DEF</i> button resets the parameters in row 15 to their original values and thereby undoes any changes you may have applied in those textfields.</li>
+
+</OL>
 
 <h2 id="CC14" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">14</a></h2>
 <!-- Row 14: EVOLVE controls (depth, generations, matches, rate) -->

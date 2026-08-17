@@ -2309,7 +2309,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     AT:  'AT — accept threshold: accept a double unless own score is below −AT',
   };
 
-  function refreshBrainSelect() {
+  // `prefer` (optional): select this brain if it exists — used by Import so the brain you just
+  // brought in is the one showing in the editor menu and its weights fill the parameter fields.
+  // Otherwise keep whatever was selected, falling back to the first entry.
+  function refreshBrainSelect(prefer) {
     if (!editBrainSel) return;
     const prev = editBrainSel.value;
     editBrainSel.innerHTML = '';
@@ -2318,8 +2321,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       o.value = n; o.textContent = n;
       editBrainSel.appendChild(o);
     });
-    editBrainSel.value = [...editBrainSel.options].some((o) => o.value === prev)
-      ? prev : (editBrainSel.options[0] ? editBrainSel.options[0].value : '');
+    const has = (v) => [...editBrainSel.options].some((o) => o.value === v);
+    editBrainSel.value = (prefer && has(prefer)) ? prefer
+      : (has(prev) ? prev : (editBrainSel.options[0] ? editBrainSel.options[0].value : ''));
   }
 
   function buildBrainParams() {
@@ -2342,6 +2346,13 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         [1, 2].forEach((p) => {
           if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name);
         });
+        // The move list's Score column is memoized per snapshot (`_score`) and computed with
+        // `scoringWeights` — which, in a human-vs-human game, is THIS editor's brain. Editing a
+        // weight must therefore invalidate it, or the column keeps showing the pre-edit numbers.
+        // (MOV/PLAY/Move Table already read the fields live; this closes the same loop for the
+        // history list.)
+        clearHistoryScoreCache();
+        renderHistoryList();
       });
       wrap.appendChild(lab); wrap.appendChild(inp);
       brainParamsEl.appendChild(wrap);
@@ -2367,12 +2378,17 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   }
 
   // Rebuild every UI list that depends on the roster (after import / reset).
-  function refreshAllBrainUI() {
-    refreshBrainSelect();
+  function refreshAllBrainUI(prefer) {
+    refreshBrainSelect(prefer);
     loadBrainParams();
     buildTournamentToggles();
     populatePlayerMenus();
     syncPlayersFromMenus();
+    // A roster change (Import, Def) can alter which brain scores the move list OR the weights of
+    // the brain already doing it — either way the memoized snapshot scores are stale. Clearing
+    // here covers every caller, so no future entry point can forget.
+    clearHistoryScoreCache();
+    renderHistoryList();
   }
 
   if (editBrainSel) {
@@ -2408,33 +2424,144 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   brainFileInput.accept = '.js,.json';
   brainFileInput.style.display = 'none';
   document.body.appendChild(brainFileInput);
-  brainFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+  // Validate ONE parsed personality. Returns a human-readable reason it is unusable, or null if
+  // it is fine. The file is never executed (see installBrainsFromText), so this is the only thing
+  // standing between a malformed download and a brain full of NaNs — a bad weight would silently
+  // poison `evaluate` and every score derived from it, which is far harder to notice later than a
+  // refused import now.
+  function brainError(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return 'an entry is not an AI personality';
+    if (typeof p.name !== 'string' || !p.name.trim())    return 'an entry has no name';
+    const w = p.weights;
+    if (!w || typeof w !== 'object' || Array.isArray(w)) return `"${p.name}" has no weights`;
+    const have    = Object.keys(w);
+    const missing = BRAIN_KEYS.filter((k) => !(k in w));
+    const extra   = have.filter((k) => !BRAIN_KEYS.includes(k));
+    if (missing.length) {
+      return `"${p.name}" has ${have.length} of ${BRAIN_KEYS.length} weights — missing ${missing.join(' ')}`;
+    }
+    if (extra.length) {
+      return `"${p.name}" has unknown weight${extra.length === 1 ? '' : 's'} ${extra.join(' ')}`;
+    }
+    const bad = BRAIN_KEYS.filter((k) => typeof w[k] !== 'number' || !Number.isFinite(w[k]));
+    if (bad.length) {
+      return `"${p.name}": ${bad.join(' ')} ${bad.length === 1 ? 'is not a number' : 'are not numbers'}`;
+    }
+    return null;
+  }
+
+  // Parse + install one brain file's text. Shared by the IMPORT button and the sidebar drop
+  // zone, so the two paths can never drift apart.
+  //
+  // The file is read as TEXT and never compiled or evaluated — running a downloaded .js would be
+  // arbitrary code execution. Only the brace-delimited JSON span is used; the `const Name =`
+  // wrapper, the header comments and the semicolon in an exported file are decoration.
+  function installBrainsFromText(text) {
+    let brains;
+    try {
+      const arrM = text.match(/\[[\s\S]*\]/);          // array of personalities
+      if (arrM) {
+        brains = JSON.parse(arrM[0]);
+      } else {
+        const objM = text.match(/\{[\s\S]*\}/);        // or a single personality
+        brains = objM ? [JSON.parse(objM[0])] : [];
+      }
+    } catch (err) {
+      gameMessageEl.textContent = 'Could not read that personalities file.';
+      return;
+    }
+    if (!Array.isArray(brains) || !brains.length) {
+      gameMessageEl.textContent = 'No AI personality found in that file.';
+      return;
+    }
+
+    // ALL-OR-NOTHING: validate every entry BEFORE installing any of them, so a file with one bad
+    // brain can't leave the roster half-updated. The first reason goes to the status line (which
+    // holds three lines); every reason goes to the console log for a proper look.
+    const errs = brains.map(brainError).filter(Boolean);
+    if (errs.length) {
+      errs.forEach((e) => sysLog(`[Import] rejected — ${e}`));
+      gameMessageEl.textContent = `Import rejected — ${errs[0]}`
+        + (errs.length > 1 ? ` (and ${errs.length - 1} more; see the console log)` : '') + '.';
+      return;
+    }
+
+    game.importPersonalities(brains);
+    // Show the imported brain straight away: select it in the editor menu (row 13), which makes
+    // loadBrainParams fill the parameter fields (row 15) with ITS weights. With several in one
+    // file, the first wins. Tournament selections are untouched.
+    refreshAllBrainUI(brains[0].name);
+    const n = brains.length;   // every entry validated, so parsed == installed
+    gameMessageEl.textContent = `Imported ${n} AI personalit${n === 1 ? 'y' : 'ies'}: `
+      + brains.map((p) => p.name).join(', ') + '.';
+  }
+
+  function readBrainFile(file) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const text = String(evt.target.result);
-        let brains;
-        const arrM = text.match(/\[[\s\S]*\]/);          // array of personalities
-        if (arrM) {
-          brains = JSON.parse(arrM[0]);
-        } else {
-          const objM = text.match(/\{[\s\S]*\}/);        // or a single personality
-          brains = objM ? [JSON.parse(objM[0])] : [];
-        }
-        if (!brains.length) throw new Error('no brains');
-        game.importPersonalities(brains);
-        refreshAllBrainUI();
-        gameMessageEl.textContent = `Imported ${brains.length} AI personalit${brains.length === 1 ? 'y' : 'ies'}.`;
-      } catch (err) {
-        gameMessageEl.textContent = 'Could not read that personalities file.';
-      }
-    };
+    reader.onload = (evt) => installBrainsFromText(String(evt.target.result));
+    reader.onerror = () => { gameMessageEl.textContent = 'Could not read that file.'; };
     reader.readAsText(file);
+  }
+
+  brainFileInput.addEventListener('change', (e) => {
+    readBrainFile(e.target.files[0]);
     e.target.value = '';
   });
   document.getElementById('brain-import')?.addEventListener('click', () => brainFileInput.click());
+
+  // ── Drag-and-drop import (sidebar) ───────────────────────────
+  // Drop a champion file anywhere on the control column to import it — the fast path once you
+  // already have the folder open. The IMPORT button stays: it's the keyboard/tablet route (iPad
+  // has no drag-from-Finder gesture) and it's the visible affordance that hints dropping works.
+  // Both feed readBrainFile, so there is one parse path.
+  //
+  // Everything below is gated on the drag actually carrying FILES (`types` includes 'Files'), so
+  // the board's checker drag-and-drop — which carries text, not files — is never intercepted.
+  {
+    const dropZone = document.querySelector('.sidebar-panel');
+    const isFileDrag = (e) => {
+      const t = e.dataTransfer && e.dataTransfer.types;
+      return !!t && [...t].includes('Files');
+    };
+    let dragDepth = 0;   // dragenter/leave fire per child element; count instead of toggling.
+
+    if (dropZone) {
+      dropZone.addEventListener('dragenter', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        if (dragDepth++ === 0) dropZone.classList.add('brain-drop-active');
+      });
+      dropZone.addEventListener('dragover', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();                       // required, or 'drop' never fires
+        e.dataTransfer.dropEffect = 'copy';
+      });
+      dropZone.addEventListener('dragleave', (e) => {
+        if (!isFileDrag(e)) return;
+        if (--dragDepth <= 0) { dragDepth = 0; dropZone.classList.remove('brain-drop-active'); }
+      });
+      dropZone.addEventListener('drop', (e) => {
+        if (!isFileDrag(e)) return;
+        e.preventDefault();
+        dragDepth = 0;
+        dropZone.classList.remove('brain-drop-active');
+        const file = e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) readBrainFile(file);
+      });
+    }
+
+    // Safety net: dropping a file ANYWHERE else in the window makes the browser navigate to it,
+    // silently abandoning the game (and any live network match). Swallow file drops outside the
+    // drop zone. Checker drags are untouched — they carry no files.
+    window.addEventListener('dragover', (e) => { if (isFileDrag(e)) e.preventDefault(); });
+    window.addEventListener('drop', (e) => {
+      if (!isFileDrag(e)) return;
+      if (dropZone && dropZone.contains(e.target)) return;   // handled above
+      e.preventDefault();
+      gameMessageEl.textContent = 'Drop an AI file on the control column (right side) to import it.';
+    });
+  }
 
   document.getElementById('brain-def')?.addEventListener('click', () => {
     game.resetPersonalities();
@@ -2444,23 +2571,36 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // ── Tournament ────────────────────────────────────────────
   const tourneySelected  = new Set();
+  // Names present at the LAST toggle-row build. Lets a rebuild tell "this brain was already here
+  // and the user deselected it" from "this brain is new" — see buildTournamentToggles.
+  let tourneyKnown       = new Set();
   const tourneyTogglesEl = document.getElementById('tourney-toggles');
   let tournamentRunning  = false;
   let tournamentStop     = false;   // set by entering setup mode; halts a running tournament/compete
 
-  // One letter toggle per personality (first initial). Default: everyone except Origin.
+  // One letter toggle per personality (first initial). Everyone is selected by default.
   function buildTournamentToggles() {
     if (!tourneyTogglesEl) return;
     tourneyTogglesEl.innerHTML = '';
-    // Origin goes last; everyone is selected by default.
+    // Roster order, exactly as the brain-editor and player menus list it — NOT re-sorted here.
+    // Origin is already last in the AI_PERSONALITIES literal, and `importPersonalities` appends a
+    // new brain after it, so an imported AI's letter lands at the END of this row, matching where
+    // its name lands at the bottom of the menus. (This used to force Origin last, which pushed an
+    // imported brain's letter to second-to-last — the one place the two orders disagreed.)
     const names = game.aiPersonalityNames();
-    const ordered = [...names.filter((n) => n !== 'Origin'), ...names.filter((n) => n === 'Origin')];
-    ordered.forEach((n) => {
+    // Rebuilds (import, Def) must NOT silently re-select everyone — that would discard a field the
+    // user had narrowed by hand and quietly run the next tournament over the whole roster. Keep each
+    // existing brain's current state; a brain we've never seen before joins selected (so the first
+    // build, and a freshly imported champion, both default to in).
+    names.forEach((n) => { if (!tourneyKnown.has(n)) tourneySelected.add(n); });
+    // Drop brains that no longer exist (e.g. Def discarded the imports) so the set can't leak.
+    [...tourneySelected].forEach((n) => { if (!names.includes(n)) tourneySelected.delete(n); });
+    tourneyKnown = new Set(names);
+    names.forEach((n) => {
       const b = document.createElement('button');
-      b.className = 'tourney-toggle sel';
+      b.className = tourneySelected.has(n) ? 'tourney-toggle sel' : 'tourney-toggle';
       b.textContent = n.charAt(0).toUpperCase();
       b.title = n;
-      tourneySelected.add(n);
       b.addEventListener('click', () => {
         if (tourneySelected.has(n)) { tourneySelected.delete(n); b.classList.remove('sel'); }
         else { tourneySelected.add(n); b.classList.add('sel'); }

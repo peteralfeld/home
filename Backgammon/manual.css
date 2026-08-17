@@ -30,6 +30,20 @@ a:hover {
     cursor: pointer;
 }
 
+/* Lists — kept in step with the left-floating control-column figure.
+   By default the ::marker sits OUTSIDE the line box, and a float shifts line boxes but not the
+   list's own indent. So a list beside the figure had its numbers pushed out to the LEFT of the
+   surrounding paragraph, while an identical list clear of the figure showed them indented to the
+   right of it — same markup, opposite look, and the break point moved with the window width.
+   Putting the marker INSIDE the line box, with no list indent of its own, makes the number start
+   exactly where the paragraph text starts, in both cases. Text still flows under the figure, so
+   no space is wasted. (`display: flow-root` also equalises it, but strands the whole list in the
+   narrow column beside the figure and leaves a large blank block below it.) */
+ol, ul {
+    padding-inline-start: 0;
+    list-style-position: inside;
+}
+
 /* Emphasis tags used in the guide text */
 i {
     color: #FFD700;            /* Gold */

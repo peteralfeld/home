@@ -825,6 +825,35 @@ body {
   box-shadow: 0 10px 20px rgba(229, 193, 88, 0.3);
 }
 
+/* Drag-and-drop AI import: the control column lights up ONLY while a file is dragged over it
+   (class toggled in ui.js). Invisible the rest of the time, so it costs no sidebar space. The
+   outline is drawn inset because the panel scrolls; `position: relative` anchors the label. */
+.sidebar-panel.brain-drop-active {
+  position: relative;
+  outline: 3px dashed #e5c158;
+  outline-offset: -6px;
+  background: rgba(229, 193, 88, 0.10);
+  border-radius: 8px;
+}
+.sidebar-panel.brain-drop-active::after {
+  content: "Drop an AI file to import";
+  position: sticky;
+  top: 40%;
+  display: block;
+  margin: 0 auto;
+  width: fit-content;
+  padding: 0.5rem 0.9rem;
+  background: rgba(20, 83, 45, 0.95);
+  color: #e5c158;
+  border: 2px solid #e5c158;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  pointer-events: none;   /* never swallow the drop itself */
+  z-index: 50;
+}
+
 /* Waiting side of a network game: the dice on screen are the opponent's roll and this
    machine can't roll them, so drain the colour and fade them. One rule covers both the
    white and the red die styling, and it pairs with the "<X> is thinking" status line. */
