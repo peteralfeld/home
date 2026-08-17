@@ -904,10 +904,14 @@ function sysLog(msg) {
     sysLog("[Update] Board state logical: " + game.points.map((p, idx) => p.count > 0 ? `${idx}:${p.player}(${p.count})` : '').filter(Boolean).join(', '));
 
     // Per-turn state fingerprint (network games only) for cross-machine post-mortem diffing.
-    // Logged once per distinct (turnCount, currentPlayer, hasRolled) — i.e. at each roll and each
-    // hand-off — so the two consoles line up turn-by-turn and the first mismatch is obvious.
+    // Logged once per distinct (turnCount, currentPlayer, hasRolled, BOARD) — i.e. at each roll,
+    // each hand-off, and any checker change — so the two consoles line up and the first mismatch
+    // is obvious. The board belongs in the key: it used to be keyed on turn state alone, so a
+    // corruption that moved checkers WITHOUT touching turnCount/currentPlayer/hasRolled printed
+    // nothing at all (the 8/16 stale-`sync` revert was invisible in the guest log until the
+    // heartbeat caught it ~40 s later). Costs one extra line per sub-move; worth it.
     if (isNetworkGame) {
-      const fpKey = `${game.turnCount}/${game.currentPlayer}/${game.hasRolled}`;
+      const fpKey = `${game.turnCount}/${game.currentPlayer}/${game.hasRolled}/${boardSig(game.points, game.bar, game.borneOff)}`;
       if (fpKey !== lastFpKey) {
         lastFpKey = fpKey;
         sysLog(`[State] t=${game.turnCount} p=${game.currentPlayer} rolled=${game.hasRolled} off=${game.borneOff[1]}/${game.borneOff[2]} | ${boardSig(game.points, game.bar, game.borneOff)}`);
@@ -4026,12 +4030,23 @@ function initNetworkGame(role) {
       if (btnJoin) { btnJoin.disabled = true; btnJoin.style.opacity = '0.6'; }
 
       if (localPlayerRole === 1) {
-        connection.send({ 
-            type: 'sync', 
-            points: game.points, 
-            bar: game.bar, 
-            borneOff: game.borneOff 
-        });
+        // Pre-game handshake ONLY. `sync` is a blind, unconditional board overwrite on the
+        // receiving side, which is safe exactly once: before play starts, when the host's board
+        // is authoritative by construction. It is NOT safe on a mid-game re-open, because the
+        // watchdog reconnects precisely WHEN THIS MACHINE'S INBOUND HAS STALLED — i.e. when our
+        // board is most likely to be missing the guest's latest moves — so broadcasting it would
+        // rewind the guest's own checkers. (That is exactly the 8/16 19:01 desync: a stale sync
+        // at 19:01:58 reverted the guest's 19/24, silently, for ~40 s.) Mid-game reconciliation
+        // is the heartbeat's job — it has the guards `sync` lacks (turnCount comparison, stable
+        // boundary, queue check, never overwrite my own live turn).
+        if (!gameStarted) {
+          connection.send({
+            type: 'sync',
+            points: game.points,
+            bar: game.bar,
+            borneOff: game.borneOff
+          });
+        }
         document.getElementById('btn-start-game').disabled = false;
         document.getElementById('btn-start-game').style.opacity = '1';
       }
@@ -4049,10 +4064,18 @@ connection.on('data', (data) => {
       sysLog(`[Network] Received: ${data.type}`);
 
       if (data.type === 'sync') {
-          game.points = data.points;
-          game.bar = data.bar;
-          game.borneOff = data.borneOff;
-          updateUI();
+          // Pre-game only — see the send site in handleOpen. Once a game is under way the
+          // heartbeat is the authoritative reconciler, and a `sync` (which carries no turnCount
+          // and gets applied unconditionally) can only do harm: a reconnecting peer whose inbound
+          // stalled would rewind our board to its stale copy.
+          if (gameStarted) {
+            sysLog('[Network] Ignoring mid-game sync (heartbeat is authoritative).');
+          } else {
+            game.points = data.points;
+            game.bar = data.bar;
+            game.borneOff = data.borneOff;
+            updateUI();
+          }
       }
       
       else if (data.type === 'start') {
