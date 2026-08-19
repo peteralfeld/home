@@ -1089,6 +1089,27 @@ rollDice(d1 = null, d2 = null) {
     return c;
   }
 
+  // Pips still to travel before every checker is HOME, counted only for checkers OUTSIDE the home
+  // board: White  Σ_{p>6} count·(p−6),  Red  Σ_{p<19} count·(19−p), bar = 19 either way. This is the
+  // finer-grained successor to crossoverCount as the disengaged-race tie-break. crossoverCount is
+  // quantized to quadrants, so it is flat for any move that does not step across a 6-point boundary
+  // — e.g. 12/10 12/11 leaves three checkers in the 7-12 quadrant and scores the same as shuffling
+  // 2/1 3/1 inside the home board, which is exactly the gammon-losing behaviour the tie-break was
+  // meant to prevent. This measure moves on EVERY pip of real progress toward home and is unchanged
+  // by any move inside the home board, so "bear a checker in" always outranks "shuffle at home".
+  // 0 once all 15 are home. Max value 15·19 = 285, so eps·285 = 0.285 « 0.5 (see the tie-break).
+  homeDistancePips(points, bar, me) {
+    let d = 0;
+    if (me === 1) {                       // White home = 1-6; bar = 25, i.e. 19 pips from home
+      d += bar[1] * 19;
+      for (let p = 7; p <= 24; p++) if (points[p].player === 1) d += points[p].count * (p - 6);
+    } else {                              // Red home = 19-24; bar = 0, i.e. 19 pips from home
+      d += bar[2] * 19;
+      for (let p = 1; p <= 18; p++) if (points[p].player === 2) d += points[p].count * (19 - p);
+    }
+    return d;
+  }
+
   /** True while the two sides can still hit each other (contact); false in a pure race. */
   hasContact(points, bar) {
     let wmax = bar[1] > 0 ? 25 : -1;
@@ -1559,21 +1580,25 @@ rollDice(d1 = null, d2 = null) {
       if (player === 1 && pipW < pipR) val += weights.DE;
       else if (player === 2 && pipR < pipW) val -= weights.DE;
     }
-    val += this._crossoverTieBreak(state, player);
+    val += this._raceHomeTieBreak(state, player);
     return val;
   }
 
-  // Disengaged-race tie-break (move-selection only, like DE): once there's no contact PC can't tell
-  // which checker to advance, so nudge the mover toward fewer of its OWN crossovers (rush stragglers
-  // home → save gammon/backgammon). eps is tiny (max effect ≈ 0.06 « 1) so it only breaks ties in
-  // the integer static score, never overriding a real evaluation difference. Zero while in contact.
-  _crossoverTieBreak(state, player) {
+  // Disengaged-race tie-break (move-selection only, like DE): once there's no contact PC is constant
+  // across move choices (your own pip reduction is just the dice sum) and every positional term is
+  // gated off, so the integer static score TIES for every legal turn — leaving generation order, which
+  // favours the low-numbered home-board checkers, to decide. This nudges the mover toward the smaller
+  // OWN homeDistancePips instead (rush stragglers home → save gammon/backgammon). Was crossoverCount,
+  // which was quantized to quadrants and therefore blind to progress within one; see homeDistancePips.
+  // eps is tiny (max effect 0.285 « 0.5) so it only breaks ties in the integer static score, never
+  // overriding a real evaluation difference. Zero while in contact.
+  _raceHomeTieBreak(state, player) {
     if (state.borneOff[1] >= 15 || state.borneOff[2] >= 15) return 0;
     if (this.hasContact(state.points, state.bar)) return 0;
     const eps = 0.001;
     return player === 1
-      ? -eps * this.crossoverCount(state.points, state.bar, 1)
-      : +eps * this.crossoverCount(state.points, state.bar, 2);
+      ? -eps * this.homeDistancePips(state.points, state.bar, 1)
+      : +eps * this.homeDistancePips(state.points, state.bar, 2);
   }
 
   getBestAIMove(depth) {
@@ -1630,7 +1655,7 @@ rollDice(d1 = null, d2 = null) {
       if (player === 1 && pipW < pipR) val += weights.DE;
       else if (player === 2 && pipR < pipW) val -= weights.DE;
     }
-    val += this._crossoverTieBreak(state, player);
+    val += this._raceHomeTieBreak(state, player);
     return val;
   }
 

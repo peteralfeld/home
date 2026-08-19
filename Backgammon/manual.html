@@ -44,16 +44,16 @@
 <body>
 
     <A HREF="index.html"><H1> The Game of Backgammon </H1></a>
+ 
 
-
-    <P>    <e>Backgammon</e> is a popular board game, providing an intriguing combination of skill and luck. Its essentially modern  form first arose in Persia during the 6th century CE.  Its most recent innovation, the doubling cube, was introduced in the 1920s. However, its origins date back some 5,000 years.  
+    <P>    <e>Backgammon</e> is a popular and complex board game. Playing it requires an intriguing combination of skill and luck. The game is ancient. Its essentially modern  form first arose in Persia during the 6th century CE.   On the other hand,  its most recent innovation, the doubling cube, was introduced in the 1920s. However, its origins date back some 5,000 years.  
 
 <p>Using the software described here you can:
 
     <OL>
       <li>Play the game against another human being via the web.   The two of you may reside on different continents!</li>
       <li>Play the game against any of nine built-in AI brains.</li>
-      <li>Set up the board and analyze any position.</li>
+      <li>Set up and analyze any position.</li>
 <li>Design your own AI and evolve it via a genetic algorithm.</li>
       <li>Run a tournament among AIs you design or choose from the existing list.</li>
       </OL>
@@ -65,7 +65,7 @@
     </figure>
 </a>  
       
-<p> To play the game you can click on the top headline of this page or on the image in Figure 1.   You'll see a game board and a column of controls.   each control has a tooltip popup that you'll see if you hover over the control.    The second line of the control column is a link back to this page.     If you have not played Backgammon before, or this is the first time you see this website you may want to browse the information here before proceeding to the game itself.
+<p> You can get to the game page by  clicking on the top headline of this page, or anywhere in Figure 1.   You'll see a game board and a column of controls, as shown in the Figure.   Each control has a tooltip popup that you'll see if you hover over the control.    The second line of the control column is a link back to this page.  All the controls are also explained on this web page.   If you are new to Backgammon, or this is the first time you see this website, you may want to browse the information here before proceeding to the game itself.
       
 <p>
 
@@ -74,21 +74,22 @@
 
 <a href="rules.html"><H1>The Rules of the Game</h1></a>
 
-<p> There is a <a href="rules.html">  rules page </a> on this web site.   It is excellent.   However, I learned the rules from <a href="https://www.bkgm.com/rules.html"> another excellent site</a> which you too may find useful.   There are numerous books and web sites on Backgammon.   Considered by many to be the <e>Bible of Backgammon</e> is the classic (first published in 1976) book <e>Backgammon</e> by 1978 World Champion <e>Paul Magriel</e>.   It certainly provides a great starting point for the study of Backgammon.  On the remainder of this page I will assume that you are familiar with Backgammon Rules and Terminology.
+<p> There is a <a href="rules.html">  rules page </a> on this web site.   It is excellent.   However, I learned the rules from <a href="https://www.bkgm.com/rules.html"> another excellent site</a> which you too may find useful.   There are of course also numerous books and web sites on Backgammon.   Considered by many to be the <e>Bible of Backgammon</e> is the classic (first published in 1976) book <e>Backgammon</e> by 1978 World Champion <e>Paul Magriel</e>.   It certainly provides a great starting point for the study of Backgammon.  On the remainder of this page I will assume that you are familiar with Backgammon Rules and Terminology.
 
-<p> There are two parts to the <a href="index.html">playing page</a>, as shown in Figure 1: the <e>game board</e> on the left, and the <e>control column</e> on the right.  The layout should adjust to your window size.  A large Window in landscape mode works best.  The game board is always rendered as a square that is as large as possible.  The control column is to the right of the game board if it fits, otherwise is it below the game board.   Th control column becomes scrollable if it cannot show all of its contents on the screen.
+<p> There are two parts to the <a href="index.html">playing page</a>, as shown in Figure 1: the <e>game board</e> on the left, and the <e>control column</e> on the right.  The layout should adjust to your window size.  A large window in landscape mode works best.  The game board is always rendered as a square that is as large as possible.  The control column is to the right of the game board if it fits, otherwise is it below the game board.   Th control column becomes scrollable if the browser cannot show all of its contents on the screen.
 
   <H1>The Game Board</h1>
 
-<p> In the default view of the game board, as shown in Figure 1, the <e>home board</e> of White  is in the lower right quadrant, and White's <e>outer board</e> is in the lower left.   Similarly, Red's home and outer boards are on the top, on the right and left, respectively.   Red moves from the white home board to the red home board and White moves in the opposite direction. Both players move from their opponent's home board to their own home board, and from there to the <e>collecting tray</e> next to the home boards.     Red moves clockwise, and white moves counterclockwise.  The <e>bar</e> contains any checkers that have been forced off the board by the opponent, and the collection tray receives all checkers that have been born off. The points of the board are numbered from 1 to 24. It is sometimes convenient to think of the bar as point  25 for White and 0 for red,  and the collection tray as point 0 for white and 25 for Red.   With these conventions,  Red always moves from some point to a point with a <e>larger</e> index, and White moves to a point with a <e>smaller</e> index.   The default view is Red's view as it would be on a physical board.  That view is consistent with the diagrams shown in  this  <a href="https://www.bkgm.com/rules.html"> external rules page.</a>   You can change the view of the board, as described below.
+<p> In the default view of the game board, as shown in Figure 1, the <e>home board</e> of White  is in the lower right quadrant, and White's <e>outer board</e> is in the lower left.   Similarly, Red's home and outer boards are on the top, on the right and left, respectively.   Red moves from the white home board to the red home board and White moves in the opposite direction. Both players move from their opponent's home board to their own home board, and from there to the <e>collection tray</e> next to the home boards.     Red moves clockwise, and White moves counterclockwise.  The <e>bar</e> contains any checkers that have been forced off the board by the opponent, and the collection tray receives all checkers that have been born off. The points of the board are numbered from 1 to 24. It is sometimes convenient to think of the bar as point  25 for White and 0 for red,  and the collection tray as point 0 for White and 25 for Red.   With these conventions,  Red always moves from some point to a point with a <e>larger</e> index, and White moves to a point with a <e>smaller</e> index.   The default view is Red's view as it would be on a physical board.  That view is consistent with the diagrams shown in  this  external <a href="https://www.bkgm.com/rules.html"> Backgammon rules page.</a>   You can change the view of the board, as described below.
 
 <p>There are several ways to move a checker from point x to point y on the game board.  You can drag it from x to y or you can first click on x and then on y.   There is also a setting (see the description of row 18) that let's you move a checker with a single click if that click uniquely identifies the move.
 
-  <p> If the move is part of a game the system will only make legal moves.   However, there is also an examination mode, see the description of row 12, that let's you move checkers freely.
+  <p> If the move is part of a game the system will let you only make legal moves.   However, there is also an <e>examination mode</e>  that let's you move checkers freely and set up any position.   
+
 
   <H1>The Control Column</h1>
 
-Figure 2 shows an image of the control column.  Each row of that column is explained in this section.  Clicking on the row number in the Figure takes you to the relevant explanation on this page.   Clicking on the row number on the explanation takes you back to the Figure.
+Figure 2 shows an image of the control column.  Each row of that column is explained in this section.  Clicking on the row number in the Figure takes you to the relevant explanation on this page.   Clicking on the row number at the explanation takes you back to the Figure.
 
 
 <style>
@@ -127,24 +128,24 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
 <figure id="ccfig" class="cc-fig">
   <div class="cc-canvas">
     <img src="ControlColumnFig.png" alt="The control column, with clickable numbered rows">
-    <a class="cc-circle cc-hotspot" style="top:1.53%"  href="#CC1"  title="Row 1: Title bar &amp; Workers field">1</a>
-    <a class="cc-circle cc-hotspot" style="top:4.54%"  href="#CC2"  title="Row 2: Documentation link">2</a>
-    <a class="cc-circle cc-hotspot" style="top:7.50%"  href="#CC3"  title="Row 3: HOST / CODE / JOIN / LEAVE">3</a>
-    <a class="cc-circle cc-hotspot" style="top:10.31%" href="#CC4"  title="Row 4: Network status line">4</a>
-    <a class="cc-circle cc-hotspot" style="top:13.93%" href="#CC5"  title="Row 5: START / STOP / RESTART / RESET">5</a>
-    <a class="cc-circle cc-hotspot" style="top:18.62%" href="#CC6"  title="Row 6: White player (WP) setup">6</a>
-    <a class="cc-circle cc-hotspot" style="top:22.35%" href="#CC7"  title="Row 7: Red player (RP) setup">7</a>
-    <a class="cc-circle cc-hotspot" style="top:28.93%" href="#CC8"  title="Row 8: Message / instruction box">8</a>
-    <a class="cc-circle cc-hotspot" style="top:36.68%" href="#CC9"  title="Row 9: Dice, UNDO, doubling cube, VIEW">9</a>
-    <a class="cc-circle cc-hotspot" style="top:48.21%" href="#CC10" title="Row 10: Move-history table">10</a>
-    <a class="cc-circle cc-hotspot" style="top:57.50%" href="#CC11" title="Row 11: Time-travel navigation">11</a>
-    <a class="cc-circle cc-hotspot" style="top:62.09%" href="#CC12" title="Row 12: Examine row (EX/CL/IN/MOV/PLAY)">12</a>
-    <a class="cc-circle cc-hotspot" style="top:66.38%" href="#CC13" title="Row 13: Brain selector, name, EXPORT/IMPORT/DEF">13</a>
-    <a class="cc-circle cc-hotspot" style="top:70.46%" href="#CC14" title="Row 14: EVOLVE controls">14</a>
-    <a class="cc-circle cc-hotspot" style="top:77.45%" href="#CC15" title="Row 15: AI parameter grid">15</a>
-    <a class="cc-circle cc-hotspot" style="top:84.95%" href="#CC16" title="Row 16: Participant toggles (A-O / ALL / NONE)">16</a>
-    <a class="cc-circle cc-hotspot" style="top:88.83%" href="#CC17" title="Row 17: COMPETE / TOURNAMENT">17</a>
-    <a class="cc-circle cc-hotspot" style="top:94.74%" href="#CC18" title="Row 18: SETTINGS / EXPORT panels">18</a>
+    <a class="cc-circle cc-hotspot" style="top:2.42%"  href="#CC1"  title="Row 1: Title bar &amp; Workers field">1</a>
+    <a class="cc-circle cc-hotspot" style="top:5.49%"  href="#CC2"  title="Row 2: Documentation link">2</a>
+    <a class="cc-circle cc-hotspot" style="top:8.42%"  href="#CC3"  title="Row 3: HOST / CODE / JOIN / LEAVE">3</a>
+    <a class="cc-circle cc-hotspot" style="top:11.29%" href="#CC4"  title="Row 4: Network status line">4</a>
+    <a class="cc-circle cc-hotspot" style="top:14.77%" href="#CC5"  title="Row 5: START / STOP / RESTART / RESET">5</a>
+    <a class="cc-circle cc-hotspot" style="top:19.41%" href="#CC6"  title="Row 6: White player (WP) setup">6</a>
+    <a class="cc-circle cc-hotspot" style="top:23.08%" href="#CC7"  title="Row 7: Red player (RP) setup">7</a>
+    <a class="cc-circle cc-hotspot" style="top:30.85%" href="#CC8"  title="Row 8: Message / instruction box">8</a>
+    <a class="cc-circle cc-hotspot" style="top:39.87%" href="#CC9"  title="Row 9: Dice, UNDO, doubling cube, VIEW">9</a>
+    <a class="cc-circle cc-hotspot" style="top:51.16%" href="#CC10" title="Row 10: Move-history table">10</a>
+    <a class="cc-circle cc-hotspot" style="top:60.33%" href="#CC11" title="Row 11: Time-travel navigation">11</a>
+    <a class="cc-circle cc-hotspot" style="top:64.77%" href="#CC12" title="Row 12: Examine row (EX/CL/IN/MOV/PLAY)">12</a>
+    <a class="cc-circle cc-hotspot" style="top:69.10%" href="#CC13" title="Row 13: Brain selector, name, EXPORT/IMPORT/DEF">13</a>
+    <a class="cc-circle cc-hotspot" style="top:73.03%" href="#CC14" title="Row 14: EVOLVE controls">14</a>
+    <a class="cc-circle cc-hotspot" style="top:80.29%" href="#CC15" title="Row 15: AI parameter grid">15</a>
+    <a class="cc-circle cc-hotspot" style="top:87.40%" href="#CC16" title="Row 16: Participant toggles (A-O / ALL / NONE)">16</a>
+    <a class="cc-circle cc-hotspot" style="top:91.18%" href="#CC17" title="Row 17: COMPETE / TOURNAMENT">17</a>
+    <a class="cc-circle cc-hotspot" style="top:97.43%" href="#CC18" title="Row 18: SETTINGS / EXPORT panels">18</a>
   </div>
   <figcaption>Fig. 2: The Control Column (click a number for details)</figcaption>
 </figure>
@@ -159,7 +160,7 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
  <p> <e>Workers</e> are individual processes that your computer lets you run in parallel.  The software obtains the available number of workers from your computer and by default uses that number of workers to run tournaments and evolutions, or individual games against AIs that search more than one move ahead.   You can replace the default number by any other positive integer.   Using fewer workers than are available may slow down your computations, but it may be advantageous when you re running other CPU intensive processes on your system.   Specifying more than the available number of workers is possible, but not likely to be useful.  Many computers offer 8 processes, but you may have many more.
 
 
-<h2 id="CC2" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">2</a>Link to User's Guide</h2>
+<h2 id="CC2" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">2</a>Link to this User's Guide</h2>
 <!-- Row 2: "Documentation and User's Guide" link -->
 
 This line just provides a clickable link to this manual page.
@@ -170,15 +171,15 @@ This line just provides a clickable link to this manual page.
 <p> These controls let you set up a match between two human players in two different locations. Both of you have to have an internet connection, and you also have to have an open communication channel to your opponent, by telephone, on screen, or by email. One of you serves as the <e>host</e>, the other as the <e>guest</e>.   To set up a match proceed as follows:
 
 <OL>
-  <LI>As host click on the button labeled <e>HOST</e>.    A code (usually a three digit integer) will appear in the text field labeled <e>CODE</e>.  Communicate that code to the Guest.</LI>
-  <LI>As guest enter the code into your CODE text field, by clicking on the word CODE and typing the code for your game.   The word CODE will disappear in the process. Establish the connection by pressing the <e>enter</e> key, or by clicking on the button labeled <e>JOIN</e>.  Once the connection is established a notification will appear in Line 4.</LI>
+  <LI>As host click on the button labeled <e>HOST</e>.    A code (usually a three digit integer) will appear in the text field labeled <e>CODE</e>.  Communicate that code to the guest.</LI>
+  <LI>As guest enter the code into your CODE text field, by clicking on the word CODE and typing the code for your game session.   The word CODE will disappear in the process. Establish the connection by pressing the <e>enter</e> key, or by clicking on the button labeled <e>JOIN</e>.  Once the connection is established a notification will appear in Line 4.</LI>
   <LI>As host click on Start (in row 5) and then click on the playing dice in row 9 to determine who starts the game.  If you have already played a game, and you want to play another, as host click on <e>RESTART</e> in row 5.</LI>
-  <LI>The two of you can then play a game as described above in the section headed <e> The Game Board<e>.</LI>
-<LI> The <e>LEAVE</e> button severs the network connection.   It does not reload the page or reset the board; it simply disconnects you from your opponent and restores your local privileges (such as time travel and starting a local game), so either player can leave and continue on their own computer.
+  <LI>The two of you can then play a game as described below.</LI>
+<LI> The <e>LEAVE</e> button severs the network connection.   It does not reload the page or reset the board; it simply disconnects you from your opponent. Either player can leave and continue on their own computer.</LI>
   <h3>Notes:</h3>
   <LI> The host always plays as White, the guest as Red.  Either player may be the first to roll the dice.   In the first game, the first player to roll the dice is determined by random.   Thereafter the beginning player alternates.</lI>
   <LI>The Host's view by default is White, that of the guest is Red.</li>
-  <LI>Either of the two players can act as host, but the guest does not have all the privileges that the host has.   The main purpose of this restriction is to remove sources of confusion.  In particular the guest  cannot  restart a game, or navigate back and forth within the game (see the description of row 10).</LI>
+  <LI>Either of the two players can act as host, but the guest does not have all the privileges that the host has.  In particular the guest  cannot  restart a game, or navigate back and forth within the game (see the description of row 10).   The main purpose of this restriction is to remove sources of confusion.  </LI>
   </OL>
 
 
@@ -192,12 +193,12 @@ When this line is green you can play over the network.  It will also notify you 
 
 
 
-<p> These buttons let you start or stop and stop a game.   The start button also serves to continue a game after an interruption.   The Restart button stops a game and resets to the board to the initial configuration.   The reset button reloads the game page and thereby returns all settings to their default status.
+<p> These buttons let you <e>start</e> or  <e>stop</e> a game.   The start button also serves to <e>continue</e> a game after an interruption.   The Restart button stops a game and resets to the board to the initial configuration.   The reset button reloads the game page and thereby returns all settings to their default status.
 
 
 <h2 id="CC6" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">6</a>&nbsp;<a id="CC7" class="cc-circle cc-badge" href="#ccfig" title="Back to the figure" style="scroll-margin-top:12px">7</a>Player Selection</h2>
 <!-- Rows 6 & 7: WP (White player) and RP (Red player) setup — brain, score, Z reset, depth (described together) -->
-Here you can select  the white player in the first menu in that row..  The options are either Human (the default) or one of one of 9 AI players, ranked by decreasing performance.   The cyan text field keeps track of the score in a multi game match.   The button labeled Z resets the score field to zero.   The depth menu let's you select the search depth for AI players, measured in plies (half moves).   1 ply is the default, and overall by far the most useful setting. At  0 plies picks picks the first available legal move. You can use it if you are looking for an easy opponent.  1 ply applies a static evolution function to every board that can be obtained with a legal move.  It then picks the move that yields the best scoring board.  This is very fast, for human play as well as for tournaments or evolutions.  2 ply considers all possible dice rolls and moves after the first ply, and then computes an expected score for the board after the first ply.  A two ply search is a few percentage points better than one ply search, but it requires several seconds for each search. It is a reasonable choice for a human playing against an AI.  A 3 ply search goes one ply deeper, but it's utility is severely limited by the large amount of time it takes for the analysis of just one dice roll.
+Here you can select  the white player in the first menu in that row.  The options are either Human (the default) or one of one of 9 AI players, ranked by decreasing performance.   The cyan text field keeps track of the score in a multi game match.   The button labeled Z resets the score field to zero.   The depth menu let's you select the search depth for AI players, measured in plies (half moves).   1 ply is the default, and overall by far the most useful setting. At  0 plies picks picks the first available legal move. You can use it if you are looking for an easy opponent.  1 ply applies a static evolution function to every board that can be obtained with a legal move.  It then picks the move that yields the best scoring board.  This is very fast, for human play as well as for tournaments or evolutions.  2 ply considers all possible dice rolls and moves after the first ply, and then computes an expected score for the board after the first ply.  A two ply search is a few percentage points better than one ply search, but it requires several seconds for each search. It is a reasonable choice for a human playing against an AI.  A 3 ply search goes one ply deeper, but it's utility is severely limited by the large amount of time it takes for the analysis of just one dice roll.
 
 <p> There is a more detailed discussion of the AI players and algorithms below. 
 
@@ -221,7 +222,7 @@ Here you can select  the white player in the first menu in that row..  The optio
 <li><e>The Undo Button.</e>  If you have made a move but you still have moves available you Can undo a move using this button.   Thus you can always undo the first move, and when rolling a double you can undo the first three moves.   However, after you make the last move of your current toll the game automatically switches to the other player and the undo button is ineffective. </li>
 
     <li><e>The View Menu.</e>
-  This menu let's you choose the orientation of the playing board on your screen.   There are five options:
+  This menu let's you choose the orientation of the game board on your screen.   There are five options:
   <ol>
     <li><e>White.</e>  White's home board is on the bottom right.   This is the view shown in Figure 1, and the view White would have when viewing a physical board.</li>
     <li><e>Red</e>Similarly, the view Red would have.  Red's home board is in the bottom left quadrant. </li>
@@ -257,8 +258,11 @@ Here you can select  the white player in the first menu in that row..  The optio
   <H2><a href="AIs.html">  <span class="cc-circle cc-badge">13</span> - <span class="cc-circle cc-badge">17</span>
 AI Processing </a></H2>
 
-The next five rows let you work with the AIs in various ways.   To use the controls effectively requires some familiarity with the way this site handles AI play.  <a href = "AIs.html">Click here</a> for a comprehensive explanation.
+<p> The next five rows let you work with the AIs in various ways.   To use the controls effectively requires some familiarity with the way this site handles AI play.  <a href = "AIs.html">Click here</a> for a comprehensive explanation.
   
+<H2>Matches</H2>
+
+<p> In this context it is important to understand the concept of a <i>match</i>.  A match is a set of 1 or more games.  If  a match consisted of a single game with unlimited doubling it is possible that the point count in that game becomes astronomical by repeated doublings.  This has actually happened in earlier versions of this  software.  One game with millions of points can dominate all other games in a tournament of thousands of games.   Therefore a match is defined, in actual competitive pails, and in this software, in a way that prevents dominance by high point games.   The players play usually several , using the doubling cube freely, but only until they reach or exceed a specified point count.   That point count is set in the menu on row 17.   It is 11 by default. So a match can involve up to 11 games, or it could be determined in a single game that involves 20 doubles and that counts for \(2^20 = 1,048,576 points.   The winner still only receives 11 points.  To avoid certain artifacts of symmetry the value of the match is odd. Available choices are the odd numbers from 1 to 19.   Choosing 1 in particular creates matches that consist of a single game, with doubling, gammoning, and backgammoning having no effect on the match outcome.
 
 <h2 id="CC13" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">13</a>Importing and Exporting AIs</h2>
 <!-- Row 13: Brain selector, name field, EXPORT / IMPORT / DEF -->
@@ -267,7 +271,7 @@ The next five rows let you work with the AIs in various ways.   To use the contr
 
       The <i>AI menu</i>, showing <e>Arwen</e> by default, lets you pick any of the currently active AIs.   This will update the parameter list in row 15 and you can then work with that AI.  If a game has been played by two humans, or is ongoing, and a move list is present, then changing the selection will also change the AI used for scoring the game positions,  and the scores in the moves list will update. By default, 9 AIs are available.   They are sorted alphabetically by decreasing performance (as determined by a long tournament).   I picked the parameters of  the bottom one, <e>Origin</e>, basically by guessing, when I first started developing the software. Quite a few of Origin's parameters are zero (they have no effect) since they did not yet exist when I constructed Origin.   The other AIs all were created in one way or other by mutating Origin and its successors, partly by changing individual parameters by hand, or applying the genetic algorithm available in the next row.  If you import a new AI it will be added to the bottom of the menu, and it will become eligible in row 16 for playing a tournament.</li>
 
-    <li>The textfield let's you specify the name of the currently selected AI for export.   The default name is <e>newAI</a>, but you can change it.    Your selection will be used as file name, and as the name of the exported AI.</li>
+    <li>The textfield let's you specify the name of the currently selected AI for export.   The default name is <e>newAI</e>, but you can change it.    Your selection will be used as file name, and as the name of the exported AI.</li>
 
 <LI>The <i>EXPORT</i> button downloads a .js file that defines the new AI in a JavaScript code.   That same file is suitable for importing an AI, and you can edit it.</LI>
 
@@ -278,20 +282,70 @@ The next five rows let you work with the AIs in various ways.   To use the contr
 
 </OL>
 
-<h2 id="CC14" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">14</a></h2>
+<h2 id="CC14" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">14</a>AI Evolution</h2>
 <!-- Row 14: EVOLVE controls (depth, generations, matches, rate) -->
+<p> You can simulate an evolution that may create a more effective AI.  The algorithm itself is described on the <a href ="AIs.html">AI page.</a>  From left to the right, the controls in this row have the following effects:
+  <aOL>
+    <LI>The <e>EVOLVE</e> button starts the process.  Pressing the button again stops the process.  Any improved mutant that is found is downloaded immediately.</LI>
+    <LI>The menu labeled <e>D:</e> with a default of <e>1 ply</e> can be used to change the depth at which the AI considers each move.   However, depths 2 or 3 take much longer than depth 1 which is by far the most practical.</LI>
+<LI>he first of the three white text fields let's you specify the maximum numbers of generations that will be explored. However, this choice is not critical since improved mutants will be saved immediately. The default is <e>1000</e> </LI>
+<LI>In the second d textfield, with a default of <e>50</e>, you can set the maximum percentage of the mutation sat each stage.</LI>
+<LI>The last text field, with a default of <e>50</e>, let's you set the number of matches per tournament among the competing mutants. </LI>
 
-<h2 id="CC15" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">15</a></h2>
+  <OL>
+
+
+<h2 id="CC15" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">15</a>AI parameters</h2>
 <!-- Row 15: AI parameter grid (the evolvable weights) -->
+<p>This table of 24 text fields contains the values of the AI parameters of the AI chosen in row 13.   Changing that choice will change the values of those parameters and the scores of positions in the moves list obtained by a human.   You can also change the parameters yourself.   They will be effective for the remainder of the session but they are lost when you exit the software.
 
 <h2 id="CC16" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">16</a></h2>
 <!-- Row 16: Participant toggles (A-O / ALL / NONE) -->
 
-<h2 id="CC17" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">17</a></h2>
-<!-- Row 17: COMPETE / TOURNAMENT -->
+<p>The buttons in this row let you select the participants of a tournaments.   <e>ALL</e> selects all, and <e>NONE</e> removes all players from the tournament.   The buttons labeled with letters correspond to the currently available AIs.   The letter is the first letter of the AI's name, and the sequence of buttons corresponds to the sequence of items in the player selection menu in row 14.   Clicking on the button adds or removes the corresponding player from the tournament. 
 
-<h2 id="CC18" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">18</a></h2>
+  <h2 id="CC17" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">17</a>Running a Tournament</h2>
+<!-- Row 17: COMPETE / TOURNAMENT -->
+<p>  The  text field with default <e> 50 </e> determines the number of matches per pairing.   The menu on the right determines the point count per match, as described above.  Pressing the <e>TOURNAMENT</e> button starts the tournament among the players chosen in row 16.    The results of the tournament are uploaded in a spreadsheet at the conclusion of the tournament.
+
+<p> The <e>COMPETE</e> button starts a tournament among the two AI players selected in rows 6 and 7.  This makes it possible to run an AI at depth 1 against one at depth 2 or 3. Doing so will show that the benefit of going to depth 2 is disappointingly small.   Running at depth 3 is theoretically possible but requires too much time per move for practical purposes.   
+
+
+<h2 id="CC18" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">18</a> Settings and Data Export</h2>
 <!-- Row 18: SETTINGS / EXPORT panels -->
+
+<p> The two menus in this row let you change certain settings and upload some specific information.
+
+  <H3>Settings</H3>
+  The following settings are available:
+  <OL>
+    <LI><e>ANIMATION</e> Default: <e>ON</e>: The move of an AI, or a human opponent in a networked game is animated.</LI>
+    <LI><e>HIGHLIGHT</e> Default: <e>OFF</e>: When clicking on a checker the possible destinations of that checker according to the current dice roll are highlighted.</LI>
+    <LI><e>SHOW SCORE</e> Default: <e>ON</e> Determines whether the moves table in row 10 shows the AI computed scores of the positions after the moves. </LI>
+    <LI><e>SPEAK</e> Default: <e>ON</e>   When computer voices are available on your system then Doubles and Game endings are announced audibly (as well as in the status field in row 8).   The specific reason for adding this facility is that in a networked game between two humans it is easy to overlook the doubling message in the status field. </LI>
+
+  <LI><e>Auto Roll</e> Default: <e>OFF</e>  When it is a human's turn the dice are rolled automatically which makes it unnecessary to click on the playing dice at every turn.  Notice, however, that turning this feature on makes it impossible to double. </LI>
+  <LI><e>AUTO MOVE</e> Default: <e>OFF</e> A single click on a checker will move that checker if the move is unique.</LI>
+
+  <LI><e>DOUBLING</e> Default: <e>ON</e>  Turns Doubling on or off.   When OFF humans and AIs are unable to double.</LI>
+  <LI><e>AUTO START</e> Default: <e>OFF</e> When on the initial red and white dice are rolled automatically rather than manually.</LI>
+  <LI><e>STATISTICS</e> Default: <e>OFF</e>When on certain statistics are logged on the browser console.   This was useful during certain stages of the game development.</LI>
+  <LI><e>TIME TRAVEL</E> Default: <e>ON</e> Makes it possible to go back to previous moves in the moves table.</LI>
+  </OL>
+
+  <H3>Exporting Data</H3>
+  The following information can be downloaded:
+  <OL>
+    <LI><e>SCREEN IMAGE</e> You can download an image of the game window, including the control column, to show your friends.   When you do, for security reasons your browser has to ask you to confirm that you really want to do this.</LI>
+<LI><e>BOARD IMAGE</e> Similarly, downloads a screenshot of just the game board.</LI>
+<LI><e>MOVE LIST</e> Downloads a text file with the move list shown in row 10.</li>
+
+<LI><e>CONSOLE LOG</e> downloads a text file with the transcript of the console log.   The console is not used at all for game play, but this option proved extremely useful for debugging during game development.</LI>
+
+<LI><e>BOARD VALUE</e> downloads a detailed description of how the current position score is calculated.</LI>
+<LI><e>MOVE TABLE</E> downloads spreadsheet with a list of what the AI considers the best move for each possible dice roll.</LI>
+
+    </OL>
 
 
 </body>

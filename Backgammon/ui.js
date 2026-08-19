@@ -675,7 +675,9 @@ function sysLog(msg) {
       const brainName = setupMode
         ? ((editBrainSel && editBrainSel.value) || 'Arwen')
         : (game.playerTypes[player] === 'ai' ? game.aiNames[player] : 'Arwen');
-      const W = setupMode ? editorWeights() : sideWeights(player);
+      const W = setupMode
+        ? editorWeights()
+        : (game.playerTypes[player] === 'ai' ? game.aiWeights[player] : game.personalityWeights('Arwen'));
       const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };   // CURRENT position
       const rolls = [[2,1],[3,1],[3,2],[4,1],[4,2],[4,3],[5,1],[5,2],[5,3],[5,4],[6,1],[6,2],[6,3],[6,4],[6,5],
                      [1,1],[2,2],[3,3],[4,4],[5,5],[6,6]];
@@ -2210,7 +2212,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     btnStop.addEventListener('click', (e) => {
       if (setupMode) { exitSetup(); return; }
       stopAI();
-      if (gameStarted && !game.winner) gameMessageEl.textContent = "Game stopped.  Press START to resume!";
+      if (gameStarted && !game.winner) gameMessageEl.textContent = "Game Stopped.  Press the Start button to continue.";
       if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
         conn.send({ type: 'stop_ai' });
       }
@@ -2843,7 +2845,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         if (player === 1 && pipW < pipR) val += W.DE;
         else if (player === 2 && pipR < pipW) val -= W.DE;
       }
-      val += game._crossoverTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
+      val += game._raceHomeTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
       if (player === 1) { if (val > bestVal) { bestVal = val; bestState = st; } }
       else { if (val < bestVal) { bestVal = val; bestState = st; } }
     });
@@ -2866,7 +2868,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         if (player === 1 && pipW < pipR) val += W.DE;
         else if (player === 2 && pipR < pipW) val -= W.DE;
       }
-      return val + game._crossoverTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
+      return val + game._raceHomeTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
     };
 
     let scored;

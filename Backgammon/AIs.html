@@ -36,6 +36,10 @@
         table.desc { border-collapse: collapse; margin: 1em 0; }
         table.desc td { border: 1px solid #6495ED; padding: 3px 10px; vertical-align: top; }
         table.desc td.code { color: #FFD700; font-family: Consolas, monospace; font-weight: bold; white-space: nowrap; }
+        /* A paragraph nested inside a list item (a displayed formula, or a continuation of the
+           item's text) would otherwise sit at the item's content edge, i.e. to the LEFT of the
+           item's own text, because the marker is inline. Indent it to line up with the text. */
+        li > p { margin-left: 1.4em; }
     </style>
 </head>
 
@@ -212,6 +216,116 @@ the parameter grid of the control column, or export them from the Export menu.
 (DO&nbsp;=&nbsp;1000) and ignores containment entirely. The evolved brains do the opposite: they hold hitting to
 almost nothing and instead prize the race (PC), bearing off (BO), and the golden 5-point (G5) &mdash; which is
 why they beat the original so decisively.
+
+<H1>Evolution: Where the Numbers Come From</H1>
+
+<p> None of the parameter values in the table above were chosen by hand &mdash; except <i>Origin</i>'s, which were
+guessed at the start of the project and never touched since. All the others were <e>evolved</e>, by the
+<e>Evolve</e> button in row 14 of the control column. This section explains how that works.
+
+<p> The difficulty is that there is no formula telling us whether one set of 24 numbers is better than another.
+The only honest test is to let two brains play each other and see which wins more &mdash; and because backgammon
+is a dice game, even that answer is noisy: a weaker brain will win a short series often enough. So the search has
+to be driven entirely by match results, and it has to be sceptical of them. What follows is a <i>hill climber</i>:
+it keeps a single parent, tries a random variation, and promotes it only if it survives two increasingly
+demanding tests.
+
+<H2>What you control</H2>
+<table class="desc">
+  <tr><td class="code">Brain</td><td>The brain selected in the editor menu (row 13) is the starting parent. Evolution never modifies it &mdash; the results arrive as downloaded files.</td></tr>
+  <tr><td class="code">Generations</td><td>How many rounds to attempt before stopping. You can stop earlier at any time with the same button, which reads <e>Stop E</e> while a run is going.</td></tr>
+  <tr><td class="code">Matches</td><td>Matches per sample: how many matches each individual comparison is decided by. Larger is slower but less noisy.</td></tr>
+  <tr><td class="code">R&nbsp;%</td><td>The mutation rate: the largest random change, as a percentage, that any single weight may undergo in one step.</td></tr>
+  <tr><td class="code">Depth, x</td><td>The lookahead depth and match length used for every game played during the run, shared with the tournament controls.</td></tr>
+</table>
+
+<H2>One generation</H2>
+
+<OL>
+  <LI><i>Mutation.</i> Every one of the 24 numbers &mdash; the 22 evaluation weights plus the two cube thresholds
+      &mdash; is nudged independently by a random amount of up to R&nbsp;% of its own current value:
+      <p style="text-align:center;"> $ \delta_i = \operatorname{round}\!\left( w_i \cdot \frac{R}{100} \cdot u \right), \qquad u \ \text{uniform on}\ (-1,1). $
+      <p> Because the change is proportional to the weight itself, a single mutation can never flip a sign: a
+      weight that is negative stays negative this step. Large weights move in large absolute steps and small ones
+      in small steps, which is what we want when the weights span three orders of magnitude. (If by chance nothing
+      changed at all, one weight is nudged by 1 so that the generation is not wasted.)</LI>
+
+  <LI><i>Normalisation.</i> The mutant is rescaled so that its largest evaluation weight is again exactly 1000,
+      with the two cube thresholds scaled by the same factor so that doubling behaviour is unaffected. Only the
+      <e>proportions</e> between weights matter to play, so this keeps every brain on a common scale. A weight
+      that happens to land exactly on zero is set to &plusmn;1, so that no feature can vanish from the brain
+      altogether.</LI>
+
+
+
+  <LI><i>The scout.</i> The mutant plays the parent over the chosen number of matches, alternating colours so that
+      neither side keeps any advantage of moving first. If it does not come out ahead, it is discarded and the
+      generation ends here. Most generations end here, and that is the point: the scout is the cheap filter that
+      lets a bad idea die quickly.</LI>
+
+  <LI><i>The line search.</i> A promising mutation tells us not just that a point is better, but which
+      <e>direction</e> was better. So instead of accepting the mutant as it stands, the algorithm treats the
+      difference between mutant and parent as a direction vector and walks along it: it tries a step further on,
+      and a step back, keeps whichever wins, and <e>doubles</e> the step as long as it keeps improving. When a
+      step overshoots, or when neither direction is an improvement, the step is <e>halved</e> instead. Because the
+      weights are integers, repeated halving reaches zero exactly, so the walk always terminates &mdash; in a few
+      dozen matches it can travel far further than a single mutation ever could. This is also the only place a
+      weight can change sign, by being extrapolated straight through zero.</LI>
+
+  <LI><i>The gauntlet.</i> The survivor of the line search now faces a much longer series &mdash; ten times the
+      sample size &mdash; against a <e>fixed baseline</e> brain, and is crowned a champion only if it beats that
+      baseline by a wider margin than any previous candidate in this run. Testing against a fixed opponent rather
+      than against the current parent matters: it is a common yardstick, so successive champions are genuinely
+      measured against each other and not merely against whatever the parent happened to be at the time.</LI>
+
+  <LI><i>Sweeps.</i> If a champion beats the baseline in <e>every single match</e>, the baseline has become too
+      weak to distinguish candidates. The new champion replaces it, the record resets, and the gauntlet length
+      doubles &mdash; so the standard of proof rises as the brains improve.</LI>
+</OL>
+
+<p> <e>A caveat on granularity.</e> Because weights are whole numbers and the mutation is proportional, a
+weight can only move if $|w|\cdot R/100$ can reach one half &mdash; that is, if $|w| &gt; 50/R$. At the default
+R&nbsp;=&nbsp;50&nbsp;% a weight of &plusmn;1 is therefore <e>frozen</e>: every proposed change rounds back to
+zero. Lowering R to search more finely freezes more of them (at R&nbsp;=&nbsp;10&nbsp;%, everything up to
+&plusmn;5). Such a weight is not quite trapped forever &mdash; re-normalisation can lift it when some larger
+weight shrinks, which happens in a few percent of generations &mdash; but it escapes only slowly, and only upward
+in magnitude. Since a weight of 1 against a scale of 1000 has almost no effect on play this costs little
+strength, but it does mean a feature crushed to &plusmn;1 early in a lineage is hard to rediscover later.
+
+<H2>Matches, not points</H2>
+
+<p> Every comparison above is decided by <i>matches won</i>, never by points scored. This is deliberate, and it
+was a lesson learned the hard way: when brains were scored on total points, evolution discovered that it could
+inflate its score by escalating the doubling cube without limit, and it optimised for that instead of for playing
+well. Counting matches removes the incentive entirely &mdash; a match is a match however extravagantly it was
+won.
+
+<H2>Nothing is installed automatically</H2>
+
+<p> Each champion is downloaded as a small file the moment it is crowned, and the parameter grid updates to show
+it, but <e>the roster is never changed behind your back</e>. Evolution runs produce candidates; deciding which
+candidates deserve a place among the nine brains is a separate, human decision, made by importing a champion (row
+13) and then running a tournament to see where it really belongs. Since results over a few dozen matches are
+noisy, a tournament of several hundred matches per pair is worth the wait before trusting any re-ordering.
+
+<H2>What evolution has found</H2>
+
+<p> Three results are worth recording, because none of them was anticipated.
+
+<p> <e>Evolution beats hand-tuning, decisively.</e> Every evolved brain outplays the hand-tuned <i>Origin</i>, and
+by a wide margin. Hand-tuning two dozen interacting numbers turns out to be something humans are simply bad at.
+
+<p> <e>It compounds.</e> Evolving a brain that is itself the product of an earlier evolution keeps yielding
+improvements, several generations deep, although the margins do narrow.
+
+<p> <e>It found the racer &mdash; and then found its way past it.</e> For most of the project every run converged
+on nearly the same strategy: pour everything into the race and almost nothing into hitting. That is less strange
+than it sounds. Your own pip count falls by the dice total whatever you do with them, so the race term barely
+distinguishes one legal play from another &mdash; except through hits, which set the opponent back, and through
+efficient bearing off. A "pure racer" therefore still hits, and hits soundly, for reasons of the race; whereas an
+explicit hitting weight tempts a brain into hits its blunt evaluation cannot properly judge. Only after the
+golden-point weights were added, and the race terms deliberately reined in so that they no longer dominated the
+scale, did a genuinely positional brain &mdash; one that prizes the 5-point &mdash; finally win the roster.
 
 <p style="margin-top:2em;"><a href="manual.html">&larr; Back to the User's Guide</a></p>
 
