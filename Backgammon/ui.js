@@ -3112,9 +3112,42 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     URL.revokeObjectURL(link.href);
   }
 
+  // Throughput block for the exported CSVs — emitted ONLY when the Statistics setting
+  // is on, so an ordinary run costs nothing and the file stays short. The number that
+  // actually travels between machines is `ms per game x workers`: it is the per-worker
+  // cost of a game, so running the SAME job once at Workers = 1 and once at Workers = max
+  // gives (baseline ms/game) / (parallel ms/game) = the real parallel speedup, which is
+  // what separates "this CPU is faster" from "this CPU scales better".
+  // Snapshot of how the run was executed, for throughputCSV. Captured at the end of a
+  // run so it reflects the pool that actually did the work.
+  const perfBlock = (matches, games, ms) => ({
+    workers: workersAvailable ? numWorkers : 1,
+    workersAvailable,
+    cores: navigator.hardwareConcurrency || null,
+    matches, games, ms,
+  });
+
+  function throughputCSV(p) {
+    const ms = Math.max(0, p.ms || 0), games = p.games || 0, matches = p.matches || 0;
+    const per = (v, d) => (games ? v.toFixed(d) : '?');
+    let csv = '\nThroughput\n';
+    csv += 'Workers,' + csvNum(p.workers) + (p.workersAvailable ? '' : ' (no Web Workers — single-threaded fallback)') + '\n';
+    csv += 'Logical cores reported by the browser,' + (p.cores == null ? '?' : csvNum(p.cores)) + '\n';
+    csv += 'Total matches,' + csvNum(matches) + '\n';
+    csv += 'Total games,' + csvNum(games) + '\n';
+    csv += 'Games per match,' + (matches ? (games / matches).toFixed(2) : '?') + '\n';
+    csv += 'Wall-clock time (s),' + (ms / 1000).toFixed(1) + '\n';
+    csv += 'ms per game (wall),' + per(ms / games, 3) + '\n';
+    csv += 'ms per match (wall),' + (matches ? (ms / matches).toFixed(1) : '?') + '\n';
+    csv += 'Games per second,' + (ms ? (1000 * games / ms).toFixed(1) : '?') + '\n';
+    csv += 'ms per game x workers,' + per(p.workers * ms / games, 1) + '\n';
+    csv += '"(Re-run the identical job with the Workers field set to 1. Then baseline ms-per-game / this ms-per-game = parallel speedup; compare THAT across machines to separate core speed from scaling.)"\n';
+    return csv;
+  }
+
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escHist, depth) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escHist, depth, perf) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'BG v. ' + bgVersion() + '\n';
@@ -3151,10 +3184,12 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     // every checker, both sides, tallied once per ply by how many of the 6 die-values
     // give it an unblocked forward landing. 0 = sealed (entombment / closeout); 6 =
     // free. Tells us how often each containment level actually occurs in self-play.
+    if (escHist || perf) {
+      csv += '\nStatistics\n';
+    }
     if (escHist) {
       const hist = escHist.slice(0, 7);                       // [0..6] = escape-roll histogram
       const tot = hist.reduce((a, b) => a + b, 0) || 1;
-      csv += '\nStatistics\n';
       csv += 'Escape-roll distribution (checkers by number of open dice, both sides, every position)\n';
       csv += 'Open dice (escape rolls),' + [0, 1, 2, 3, 4, 5, 6].join(',') + '\n';
       csv += 'Count,' + hist.map(csvNum).join(',') + '\n';
@@ -3172,6 +3207,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         csv += '(no depth-1 decisions measured — BE bite is only tracked at depth 1)\n';
       }
     }
+    if (perf) csv += throughputCSV(perf);
     return csv;
   }
 
@@ -3249,6 +3285,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     downloadCSV('BGCompeteResults.csv', buildCompeteCSV({
       p1, p2, dWhite, dRed, winsWhite, winsRed, gptsWhite, gptsRed,
       totalGames, nMatches, X, tStart, tEnd,
+      perf: statsOn ? perfBlock(done, totalGames, tEnd - tStart) : null,
     }));
     gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
@@ -3291,6 +3328,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const wWP = game.personalityWeights(r.p1), wRP = game.personalityWeights(r.p2);
     csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => csvNum(wWP[k])).join(',') + '\n';
     csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => csvNum(wRP[k])).join(',') + '\n';
+    if (r.perf) csv += throughputCSV(r.perf);           // Statistics setting only
     return csv;
   }
 
@@ -3303,6 +3341,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const collectStats = statsOn;
     const escTotal = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape-roll histogram, [7] BE decisions, [8] BE bites
 
+    let totalGames = 0;                                  // individual games across the whole run
     const mWins = {}, mLoss = {}, gpts = {}, gplayed = {}, h2h = {};
     names.forEach((n) => {
       mWins[n] = 0; mLoss[n] = 0; gpts[n] = 0; gplayed[n] = 0; h2h[n] = {};
@@ -3328,7 +3367,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
       gpts[A] += aScore; gpts[B] += bScore;
       const nGames = res.games || 0;                      // both brains played every game of the match
-      gplayed[A] += nGames; gplayed[B] += nGames;
+      gplayed[A] += nGames; gplayed[B] += nGames; totalGames += nGames;
       if (escTotal && res.escHist) for (let i = 0; i < 9; i++) escTotal[i] += (res.escHist[i] || 0);
       done++;
       gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
@@ -3369,7 +3408,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (collectStats && escTotal && escTotal.reduce((a, b) => a + b, 0) === 0) {
       sysLog('[Statistics] No escape-roll data collected — the worker pool is likely running a cached game.js. Hard-refresh (Ctrl+Shift+R) to reload the workers, then re-run.');
     }
-    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escTotal, depth));
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escTotal, depth,
+      collectStats ? perfBlock(done, totalGames, tEnd - tStart) : null));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
