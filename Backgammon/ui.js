@@ -3015,7 +3015,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (tournamentRunning) { gameMessageEl.textContent = 'Wait for the tournament to finish.'; return; }
     const baseName = editBrainSel ? editBrainSel.value : 'Origin';
     const maxGens = Math.max(1, parseInt(document.getElementById('evo-gens').value, 10) || 1000);
-    const n = Math.max(1, parseInt(document.getElementById('evo-games').value, 10) || 50);
+    const n = Math.max(1, parseInt(document.getElementById('evo-games').value, 10) || 100);
     const R = Math.max(0, Math.min(100, parseInt(document.getElementById('evo-rate').value, 10) || 50));
 
     let parent = normalizeBrain({ ...game.personalityWeights(baseName) });
@@ -3084,6 +3084,14 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   const PARAM_ORDER = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA'];
   const numCommas = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  // CSV cell formatter: integers of 4+ digits get standard thousands commas, and are
+  // then QUOTED so the embedded comma cannot split the cell. Anything else (short
+  // numbers, decimals, strings) passes through untouched.
+  const csvNum = (v) => {
+    if (typeof v !== 'number' || !Number.isFinite(v) || !Number.isInteger(v)) return String(v);
+    const s = numCommas(v);
+    return s.indexOf(',') >= 0 ? '"' + s + '"' : s;
+  };
 
   // Version stamp for exported files — read live from the page's version label so it
   // always matches the current build (the snapshot ritual only edits index.html).
@@ -3106,7 +3114,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escHist, depth) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escHist, depth) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'BG v. ' + bgVersion() + '\n';
@@ -3114,18 +3122,21 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Ending Date:,' + tEnd.toLocaleString() + '\n';
     csv += 'Duration:,"' + numCommas(tEnd - tStart) + ' ms"\n';
     csv += 'Players:,' + names.length + '\n';
-    csv += 'Matches per Pair,' + matchesPer + '\n';
+    csv += 'Matches per Pair,' + csvNum(matchesPer) + '\n';
     csv += 'Match Length (play to),' + X + '\n';
     csv += 'Lookahead Depth (plies),' + (depth == null ? '?' : depth) + '\n\n';
 
-    csv += 'Standings\nRank,Name,Matches Won,Matches Lost,Game Points\n';
-    ranked.forEach((n, i) => { csv += `${i + 1},${n},${mWins[n]},${mLoss[n]},${gpts[n]}\n`; });
+    csv += 'Standings\nRank,Name,Matches Won,Matches Lost,Games Played,Game Points\n';
+    ranked.forEach((n, i) => {
+      const gp = gplayed ? (gplayed[n] || 0) : 0;   // individual GAMES played (a match is several games)
+      csv += `${i + 1},${n},${csvNum(mWins[n])},${csvNum(mLoss[n])},${csvNum(gp)},${csvNum(gpts[n])}\n`;
+    });
     csv += '\n';
 
     csv += 'Head-to-Head (net matches won, row minus column)\n';
     csv += 'Row vs Col,' + ranked.join(',') + '\n';
     ranked.forEach((r) => {
-      const row = ranked.map((c) => (r === c ? '' : (h2h[r][c] || 0) - (h2h[c][r] || 0)));
+      const row = ranked.map((c) => (r === c ? '' : csvNum((h2h[r][c] || 0) - (h2h[c][r] || 0))));
       csv += `${r},${row.join(',')}\n`;
     });
     csv += '\n';
@@ -3133,7 +3144,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Player Parameters:\nName,' + PARAM_ORDER.join(',') + '\n';
     ranked.forEach((n) => {
       const w = game.personalityWeights(n);
-      csv += n + ',' + PARAM_ORDER.map((k) => w[k]).join(',') + '\n';
+      csv += n + ',' + PARAM_ORDER.map((k) => csvNum(w[k])).join(',') + '\n';
     });
 
     // Statistics (only when the Statistics setting was on). Escape-roll distribution:
@@ -3146,7 +3157,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       csv += '\nStatistics\n';
       csv += 'Escape-roll distribution (checkers by number of open dice, both sides, every position)\n';
       csv += 'Open dice (escape rolls),' + [0, 1, 2, 3, 4, 5, 6].join(',') + '\n';
-      csv += 'Count,' + hist.join(',') + '\n';
+      csv += 'Count,' + hist.map(csvNum).join(',') + '\n';
       csv += 'Percent,' + hist.map((c) => (100 * c / tot).toFixed(3)).join(',') + '\n';
 
       // BE effectiveness — how often the bar-entombment weight actually changed the move
@@ -3156,7 +3167,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       csv += '\nBE effectiveness (depth-1 decisions where bar-entombment changed the chosen move)\n';
       if (decisions > 0) {
         csv += 'Decisions,Bites,Percent\n';
-        csv += `${decisions},${bites},${(100 * bites / decisions).toFixed(3)}\n`;
+        csv += `${csvNum(decisions)},${csvNum(bites)},${(100 * bites / decisions).toFixed(3)}\n`;
       } else {
         csv += '(no depth-1 decisions measured — BE bite is only tracked at depth 1)\n';
       }
@@ -3264,22 +3275,22 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Duration:,"' + numCommas(r.tEnd - r.tStart) + ' ms"\n';
     csv += 'White (WP):,' + r.p1 + ',depth,' + r.dWhite + '\n';
     csv += 'Red (RP):,' + r.p2 + ',depth,' + r.dRed + '\n';
-    csv += 'Matches:,' + r.nMatches + '\n';
+    csv += 'Matches:,' + csvNum(r.nMatches) + '\n';
     csv += 'Match Length (play to),' + r.X + '\n';
-    csv += 'Total Games:,' + r.totalGames + '\n\n';
+    csv += 'Total Games:,' + csvNum(r.totalGames) + '\n\n';
 
     csv += 'Standings\nRank,Role,Name,Depth,Matches Won,Matches Lost,Game Points\n';
     rows.forEach((row, i) => {
-      csv += `${i + 1},${row.role},${row.name},${row.depth},${row.won},${row.lost},${row.gpts}\n`;
+      csv += `${i + 1},${row.role},${row.name},${row.depth},${csvNum(row.won)},${csvNum(row.lost)},${csvNum(row.gpts)}\n`;
     });
     csv += '\nResult,' + (wpWins === rpWins
-      ? 'Tie ' + wpWins + '-' + rpWins
-      : (wpFirst ? `${r.p1} (WP, d${r.dWhite})` : `${r.p2} (RP, d${r.dRed})`) + ' wins ' + Math.max(wpWins, rpWins) + '-' + Math.min(wpWins, rpWins)) + '\n\n';
+      ? 'Tie ' + csvNum(wpWins) + '-' + csvNum(rpWins)
+      : (wpFirst ? `${r.p1} (WP, d${r.dWhite})` : `${r.p2} (RP, d${r.dRed})`) + ' wins ' + csvNum(Math.max(wpWins, rpWins)) + '-' + csvNum(Math.min(wpWins, rpWins))) + '\n\n';
 
     csv += 'Player Parameters:\nRole,Name,Depth,' + PARAM_ORDER.join(',') + '\n';
     const wWP = game.personalityWeights(r.p1), wRP = game.personalityWeights(r.p2);
-    csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => wWP[k]).join(',') + '\n';
-    csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => wRP[k]).join(',') + '\n';
+    csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => csvNum(wWP[k])).join(',') + '\n';
+    csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => csvNum(wRP[k])).join(',') + '\n';
     return csv;
   }
 
@@ -3292,9 +3303,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const collectStats = statsOn;
     const escTotal = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape-roll histogram, [7] BE decisions, [8] BE bites
 
-    const mWins = {}, mLoss = {}, gpts = {}, h2h = {};
+    const mWins = {}, mLoss = {}, gpts = {}, gplayed = {}, h2h = {};
     names.forEach((n) => {
-      mWins[n] = 0; mLoss[n] = 0; gpts[n] = 0; h2h[n] = {};
+      mWins[n] = 0; mLoss[n] = 0; gpts[n] = 0; gplayed[n] = 0; h2h[n] = {};
       names.forEach((m) => { if (m !== n) h2h[n][m] = 0; });
     });
 
@@ -3316,6 +3327,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
       mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
       gpts[A] += aScore; gpts[B] += bScore;
+      const nGames = res.games || 0;                      // both brains played every game of the match
+      gplayed[A] += nGames; gplayed[B] += nGames;
       if (escTotal && res.escHist) for (let i = 0; i < 9; i++) escTotal[i] += (res.escHist[i] || 0);
       done++;
       gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
@@ -3356,7 +3369,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (collectStats && escTotal && escTotal.reduce((a, b) => a + b, 0) === 0) {
       sysLog('[Statistics] No escape-roll data collected — the worker pool is likely running a cached game.js. Hard-refresh (Ctrl+Shift+R) to reload the workers, then re-run.');
     }
-    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, h2h, matchesPer, X, tStart, tEnd, escTotal, depth));
+    downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, escTotal, depth));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
