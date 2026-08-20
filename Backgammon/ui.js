@@ -3181,7 +3181,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const wWhite = game.personalityWeights(p1), wRed = game.personalityWeights(p2);
     const dWhite = playerDepth(1), dRed = playerDepth(2);
     const X = matchLength();
-    const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 50);
+    const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 1000);
 
     tournamentRunning = true; tournamentStop = false;
     const btn = document.getElementById('btn-compete');
@@ -3286,7 +3286,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
-    const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 10);
+    const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 1000);
     const X = matchLength();
     const depth = lookaheadDepth();
     const collectStats = statsOn;
