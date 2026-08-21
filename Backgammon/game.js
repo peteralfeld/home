@@ -1788,60 +1788,11 @@ function escapeBuckets(points, bar, me) {
 }
 
 /**
- * Escape-roll statistic (a diagnostic, opt-in via the tournament's Statistics setting).
- * Tallies every checker, both sides, once per ply into hist[0..6] by its escapeCount
- * (see escapeCountForChecker) — 0 = sealed (entombment / closeout), 6 = free. Uses the
- * SAME past-the-front-of-the-wall measure the F0-F5 eval features use, so the histogram
- * reports how often each F-bucket actually occurs in self-play.
- */
-function escapeCountsInto(points, bar, hist) {
-  const w = escapeBuckets(points, bar, 1), r = escapeBuckets(points, bar, 2);
-  for (let k = 0; k <= 6; k++) hist[k] += w[k] + r[k];
-}
-
-/**
- * BE-effectiveness diagnostic (opt-in via the Statistics setting) — "does BE bite?".
- * At the current decision, does the bar-entombment weight actually change which move the
- * AI picks? We re-rank the same candidates with BE zeroed and compare the top choice. A
- * static bar penalty can only bite through what it can SEE in the position it scores, and
- * at depth 1 that is the board AFTER the mover's own turn — where the mover's own bar
- * checker has already entered (or it danced, no choice) and the only bar checker present
- * is one it just hit (already priced by PC). So BE is expected to bite rarely at depth 1;
- * this counter measures exactly how rarely, per ply, across real self-play. It is only
- * meaningful (and only computed) at depth 1 — deeper searches bury BE inside the leaves,
- * where this cheap root subtraction doesn't apply. Accumulates into stats[7] (decisions
- * with a real choice) and stats[8] (of those, where the pick changed).
- */
-function beBiteInto(g, stats) {
-  const player = g.currentPlayer;
-  const perSide = g.searchDepths && g.searchDepths[player];
-  const depth = (perSide != null) ? perSide : (g.searchDepth != null ? g.searchDepth : 1);
-  const W = g.aiWeights[player];
-  if (depth !== 1 || !W || !W.BE) return;                 // depth-1 only; nothing to bite if BE=0
-  const states = g.generateAllCompleteTurnMoves(player, g.movesLeft);
-  if (states.length < 2) return;                          // forced move — no decision to influence
-  const ctx = { depth: 1, player, opp: player === 1 ? 2 : 1, states,
-    parentContact: g.hasContact(g.points, g.bar) };
-  const pick = (weights) => {
-    const c = { ...ctx, weights };
-    let best = null, bv = player === 1 ? -Infinity : Infinity;
-    for (const s of states) {
-      const v = g._scoreRootCandidate(s, c);
-      if (player === 1 ? v > bv : v < bv) { bv = v; best = s; }
-    }
-    return best;
-  };
-  stats[7]++;
-  if (pick(W) !== pick({ ...W, BE: 0 })) stats[8]++;       // did zeroing BE change the choice?
-}
-
-/**
  * Play one full AI-vs-AI game head-to-head (no UI, no doubling cube), returning
  * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
- * Used by the tournament runner. If `stats` (a 7-length array) is supplied, the
- * escape-count histogram is accumulated into it once per ply (both sides).
+ * Used by the tournament runner.
  */
-function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, stats = null) {
+function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1852,7 +1803,6 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
 
   let guard = 0;
   while (!g.winner && guard++ < 100000) {
-    if (stats) { escapeCountsInto(g.points, g.bar, stats); beBiteInto(g, stats); }
     const moves = g.getBestAIMove();
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);  // already a legal max-usage sequence
@@ -1909,7 +1859,7 @@ function scoreFinishedBGGame(g) {
  * `breathe` is optional; with none it behaves like the sync version (safe for Node).
  * MIRRORS simulateBGGame — keep the two in sync if the game/cube rules change.
  */
-async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null, stats = null) {
+async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null) {
   const g = new BackgammonGame();
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1920,7 +1870,6 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
 
   let guard = 0;
   while (!g.winner && guard++ < 100000) {
-    if (stats) { escapeCountsInto(g.points, g.bar, stats); beBiteInto(g, stats); }
     const moves = await g.getBestAIMoveYielding(breathe);
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);
@@ -1951,9 +1900,8 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
  *   - Crawford: the single game right after either side first reaches X-1 is played
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
-function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, collectStats = false) {
+function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
   let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
-  const stats = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape hist, [7] BE decisions, [8] BE bites
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1965,14 +1913,14 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, collectStats = 
     // game searches at its own depth. With depthA === depthB this is a no-op.
     const dWhite = aWhite ? depthA : depthB;
     const dRed   = aWhite ? depthB : depthA;
-    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, stats);
+    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed);
     // Map the game winner (White/Red) back to A/B and award points.
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
 
     if (crawford) crawfordDone = true;
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, escHist: stats };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
 }
 
 /**
@@ -1983,9 +1931,8 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, collectStats = 
  * is optional; with none it behaves exactly like the sync version (safe for Node).
  * MIRRORS simulateBGMatch — keep the two loops in sync if the match rules change.
  */
-async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null, collectStats = false) {
+async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null) {
   let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
-  const stats = collectStats ? new Array(9).fill(0) : null;   // [0..6] escape hist, [7] BE decisions, [8] BE bites
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1998,14 +1945,14 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
     // Use the yielding game runner so the thread also breathes WITHIN a move's
     // search (crucial at depth 3, where a single move can otherwise block for tens
     // of seconds and trip "Page unresponsive").
-    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe, stats);
+    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe);
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
 
     if (crawford) crawfordDone = true;
     if (breathe) await breathe();          // let the browser paint / stay responsive
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, escHist: stats };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
 }
 
 // Export class if running in Node environment for testing, otherwise leave global
@@ -2015,7 +1962,6 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports.simulateBGGameYielding = simulateBGGameYielding;
   module.exports.simulateBGMatch = simulateBGMatch;
   module.exports.simulateBGMatchYielding = simulateBGMatchYielding;
-  module.exports.escapeCountsInto = escapeCountsInto;
   module.exports.escapeCountForChecker = escapeCountForChecker;
   module.exports.escapeBuckets = escapeBuckets;
   module.exports.barFreezeTurns = barFreezeTurns;

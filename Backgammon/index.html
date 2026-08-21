@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 146</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 147</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -407,10 +407,6 @@
         <div class="settings-item" id="setting-autostart" data-setting="autostart">
           <span class="settings-item-label">Auto Start</span>
           <span class="settings-item-badge" id="badge-autostart">OFF</span>
-        </div>
-        <div class="settings-item" id="setting-stats" data-setting="stats" title="Collect the escape-roll distribution and the BE-bite rate during a Tournament or Compete run and append them to the results CSV. COSTS ABOUT 2.4x AT DEPTH 1 — the BE-bite probe re-ranks every decision — so leave it off for timing runs. The Throughput block is always written and is not affected by this setting.">
-          <span class="settings-item-label">Statistics</span>
-          <span class="settings-item-badge" id="badge-stats">OFF</span>
         </div>
         <div class="settings-item" id="setting-timetravel" data-setting="timetravel" title="Allow navigating the board through the move history (time travel). Turn OFF to prevent accidental move-list clicks from changing the board. Applies to local and remote games.">
           <span class="settings-item-label">Time Travel</span>

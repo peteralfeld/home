@@ -27,8 +27,8 @@ self.onmessage = function (e) {
   const d = e.data;
   try {
     if (d.cmd === 'play_match') {
-      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB, d.collectStats);
-      self.postMessage({ id: d.id, result });   // result.escHist rides back when collectStats
+      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB);
+      self.postMessage({ id: d.id, result });
       return;
     }
     if (d.cmd === 'search') {
