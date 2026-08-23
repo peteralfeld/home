@@ -23,7 +23,7 @@
 // Alphabetical names are kept in descending order of tournament performance:
 // Arwen = strongest ... Hamfast = weakest. Re-sorted after each evolution. Origin
 // is the fixed historic baseline and is listed last (bottom of the player menus).
-// Weights normalized to max|w| = 1000 over the 17 eval weights; DT/AT (doubling
+// Weights normalized to max|w| = 1000 over the 22 eval weights; DT/AT (doubling
 // thresholds, same score units) travel inline with each brain. NOTE: the PC weights
 // here go with the /20 pip divisor in evaluate() (rescaled from the old /167 — same
 // play, just a saner band for the number).
