@@ -141,6 +141,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // Whether the game-winning turn has been recorded in the move history (endTurn never runs
   // on the winning move); reset at the start of each game.
   let winTurnRecorded = false;
+  let gameRecorded    = false;   // Auto Record fired for this game (one file per game)
+
+  // ── Per-turn WALL CLOCK (for the recorded move list) ────────────────────────
+  // Time from a turn arriving at a seat until that turn ends. Deliberately wall clock,
+  // not AI search time: it is what the person at the board actually waited. For an AI
+  // seat that therefore includes the fixed 300 ms roll + 300 ms think delays and, with
+  // Animation ON, 1000 ms of travel + 500 ms of pause per checker sub-move — so a
+  // depth-1 AI turn reads ~3,600 ms of which well under a millisecond is the search.
+  // Paused while the AI is stopped, so a game left paused doesn't bank the wait.
+  let turnMs = 0;                    // ms already banked for the turn in progress
+  let turnMark = null;               // nowMs() when the clock last started; null = paused
+  const playerMs    = { 1: 0, 2: 0 };   // total wall clock per seat, this game
+  const playerTurns = { 1: 0, 2: 0 };   // turns completed per seat, this game
+  const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  const clockRun     = () => { if (turnMark == null) turnMark = nowMs(); };
+  const clockPause   = () => { if (turnMark != null) { turnMs += nowMs() - turnMark; turnMark = null; } };
+  const clockRead    = () => turnMs + (turnMark == null ? 0 : nowMs() - turnMark);
+  const clockRestart = () => { turnMs = 0; turnMark = nowMs(); };
+  // New game: zero the per-seat totals and start the first turn's clock.
+  function gameClockReset() { playerMs[1] = playerMs[2] = 0; playerTurns[1] = playerTurns[2] = 0; clockRestart(); }
+  // Bank a finished turn onto its history snapshot and the seat's running totals.
+  function bankTurn(player, snap) {
+    const ms = clockRead();
+    if (player === 1 || player === 2) { playerMs[player] += ms; playerTurns[player]++; }
+    if (snap) snap.elapsedMs = ms;
+    clockRestart();
+  }
 
   // Per-seat running score (game points). Kept in the p1/p2-score fields. Start zeros
   // both; Restart preserves them; the Z buttons zero one; a win adds the game's points.
@@ -496,101 +523,424 @@ function sysLog(msg) {
   }
 
   // Move List
+  // ── Recorded move list ──────────────────────────────────────────────────────
+  // ONE generator for both Export → Move List and Auto Record, so the two files can
+  // never drift apart. This is the DOWNLOADED list: it carries the running pip count for
+  // each side and the wall-clock time the mover spent, neither of which appears in the
+  // control column's history table (renderHistoryList) — that stays exactly as it was.
+  const msText = (ms) => numCommas(Math.round(ms));
+  function durText(ms) {
+    const sec = ms / 1000;
+    if (sec < 60) return sec.toFixed(1) + 's';
+    const m = Math.floor(sec / 60);
+    return m + 'm ' + (sec - m * 60).toFixed(1) + 's';
+  }
+
+  // A brain's 24 numbers, 12 per line, as an aligned key row over a value row.
+  function brainParamBlock(name, indent) {
+    const w = game.personalityWeights(name);
+    if (!w) return indent + '(parameters unavailable)\n';
+    let out = '';
+    for (let i = 0; i < BRAIN_KEYS.length; i += 12) {
+      const keys = BRAIN_KEYS.slice(i, i + 12);
+      out += indent + keys.map((k) => k.padStart(7, ' ')).join('') + '\n';
+      out += indent + keys.map((k) => String(w[k] == null ? '?' : w[k]).padStart(7, ' ')).join('') + '\n';
+    }
+    return out;
+  }
+
+  function buildMoveListText(auto) {
+    const now = new Date();
+    // Seat label: brain name for an AI, else "Human".
+    const seatLabel = (p) => game.playerTypes[p] === 'ai' ? `${game.aiNames[p]} (AI)` : 'Human';
+    const seatName  = (p) => (p === 1 ? 'White' : 'Red');
+    const withScore = showScoreOn;
+
+    let txt = 'Backgammon Game - Move History\n';
+    txt += `BG v. ${bgVersion()}\n`;
+    txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
+    if (auto) txt += 'Recorded automatically at game end (Auto Record).\n';
+    if (netRole()) txt += `Downloaded by: ${netRole()} (this machine)\n`;
+    txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n`;
+    // Describe the starting position: "Standard Start" for the ordinary opening, else the
+    // actual board (from the initial time-travel snapshot).
+    const initSnap = game.gameHistory.find((s) => s.isInitial) || game.gameHistory[0];
+    if (initSnap) {
+      txt += isStandardStart(initSnap.points, initSnap.bar, initSnap.borneOff)
+        ? 'Initial position: Standard Start\n'
+        : `Initial position: ${describeBoard(initSnap.points, initSnap.bar, initSnap.borneOff)}\n`;
+    }
+    txt += '\n';
+    // Pip counts are the position AFTER the turn; Time is the mover's wall clock for it.
+    txt += 'Turn  Player  Dice   ' + 'Moves'.padEnd(26) + ' ' + 'Pip W'.padStart(6)
+         + ' ' + 'Pip R'.padStart(6) + ' ' + 'Time ms'.padStart(10)
+         + (withScore ? '  Score (White view)' : '') + '\n\n';
+
+    // A doubling-accept snapshot carries no dice ([0,0]) and no checker moves — it just
+    // records the new cube value. It is NOT its own turn: fold "DC=N" into the Moves column
+    // of the proposer's actual roll (the very next real snapshot), so the doubling shows on
+    // the turn it happened and the turn numbering stays continuous.
+    let displayTurn = 0;
+    let pendingDC = null;
+    game.gameHistory.forEach((snap) => {
+      const isDouble = !snap.isInitial && !snap.dice[0] && !snap.dice[1];
+      if (isDouble) { pendingDC = snap.doublingCubeValue; return; }   // fold into the next row
+
+      const turnNum = String(displayTurn++).padStart(4, ' '); // idx 0 is initial → Turn 0
+      const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
+      const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
+
+      let movesText = '-';
+      if (snap.playedMoves?.length > 0) {
+        // Magriel notation with grouping
+        const groups = [];
+        for (const m of snap.playedMoves) {
+          const key  = `${m.from}/${m.to}${m.isHit ? '*' : ''}`;
+          const last = groups[groups.length - 1];
+          if (last && last.key === key) { last.count++; }
+          else { groups.push({ key, count: 1 }); }
+        }
+        movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
+      }
+      if (pendingDC != null) {   // proposer doubled before this roll → annotate the move
+        movesText = (movesText === '-' ? '' : movesText + ' ') + `DC=${pendingDC}`;
+        pendingDC = null;
+      }
+      // Pip counts for the position this snapshot holds, and the mover's wall clock.
+      const pipW = String(game.pipCountP(snap.points, snap.bar, 1)).padStart(6, ' ');
+      const pipR = String(game.pipCountP(snap.points, snap.bar, 2)).padStart(6, ' ');
+      const tStr = (snap.elapsedMs == null ? '-' : msText(snap.elapsedMs)).padStart(10, ' ');
+
+      txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText.padEnd(26, ' ')} ${pipW} ${pipR} ${tStr}`;
+      txt += withScore ? `  ${String(Math.round(snapshotScore(snap))).padStart(6, ' ')}\n` : '\n';
+    });
+    // Edge case: a double with no following roll (e.g. game ended on it) — show it on its own.
+    if (pendingDC != null) txt += `${String(displayTurn).padStart(4, ' ')}         -    DC=${pendingDC}\n`;
+
+    txt += '\n';
+    if (!game.winner) {
+      txt += 'Game in progress\n';
+    } else {
+      const winnerStr = game.winner === 1 ? 'White' : 'Red';
+      const loserStr  = game.winner === 1 ? 'Red'   : 'White';
+      const loserIdx  = game.winner === 1 ? 2 : 1;
+      let winType = 'defeated';
+      if (!game.winByDecline && game.borneOff[loserIdx] === 0) {
+        winType = 'gammoned';
+        let isBackgammon = game.bar[loserIdx] > 0;
+        if (!isBackgammon) {
+          const s = game.winner === 1 ? 1 : 19, e = game.winner === 1 ? 6 : 24;
+          for (let i = s; i <= e; i++) {
+            if (game.points[i].player === loserIdx) { isBackgammon = true; break; }
+          }
+        }
+        if (isBackgammon) winType = 'backgammoned';
+      }
+      txt += ` ${winnerStr} ${winType} ${loserStr}\n`;
+    }
+
+    // ── Who played, how long they took, and (for an AI) with what parameters ──
+    txt += '\nPlayers\n';
+    for (const p of [1, 2]) {
+      const dep = game.playerTypes[p] === 'ai' ? `   depth ${playerDepth(p)}` : '';
+      txt += `  ${seatName(p).padEnd(6, ' ')}${seatLabel(p)}${dep}\n`;
+    }
+
+    txt += '\nTime spent\n';
+    for (const p of [1, 2]) {
+      const n = playerTurns[p], ms = playerMs[p];
+      txt += n
+        ? `  ${seatName(p).padEnd(6, ' ')}${String(n).padStart(3, ' ')} moves   total ${durText(ms).padEnd(10, ' ')} average ${msText(ms / n)} ms/move\n`
+        : `  ${seatName(p).padEnd(6, ' ')}  0 moves\n`;
+    }
+
+    const aiSeats = [1, 2].filter((p) => game.playerTypes[p] === 'ai');
+    if (aiSeats.length) {
+      // One block per distinct brain — a brain playing both seats is printed once.
+      const bySeat = {};
+      for (const p of aiSeats) (bySeat[game.aiNames[p]] = bySeat[game.aiNames[p]] || []).push(seatName(p));
+      txt += '\nAI parameters\n';
+      for (const nm of Object.keys(bySeat)) {
+        txt += `  ${nm} (${bySeat[nm].join(', ')})\n`;
+        txt += brainParamBlock(nm, '  ');
+      }
+    }
+    return txt;
+  }
+
+  // Write the record to a file. `auto` marks the Auto Record copy (own filename + header
+  // line) so an auto-saved game is never confused with one you exported by hand.
+  function downloadMoveList(auto) {
+    const txt = buildMoveListText(auto);
+    const link = document.createElement('a');
+    link.download = `backgammon-${auto ? 'record' : 'moves'}-${Date.now()}.txt`;
+    link.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+    link.click();
+    sysLog(auto ? '[System] Auto Record — game record downloaded.' : '[System] Move list downloaded.');
+  }
+
+
+  // ── Loading a recorded game back in ─────────────────────────────────────────
+  // A downloaded record carries everything needed to replay the game exactly: the initial
+  // position (either "Standard Start" or the same describeBoard() string) and then, per
+  // turn, the mover, the dice and the moves in Magriel notation. Replay runs through
+  // makeMove(..., false) — the path network replay already uses — and endTurn(), so
+  // gameHistory is rebuilt exactly the way a live game builds it and the move list, time
+  // travel, MOV and Board Value all work with no extra plumbing.
+  //
+  // Validation is ALL-OR-NOTHING and happens during a replay onto a scratch board, so a
+  // bad file can never leave a half-loaded game behind. The recorded pip columns double as
+  // a checksum: if the replayed board disagrees with the file at any turn, the file is
+  // refused with the turn named, rather than silently loading a subtly wrong game.
+  const GAME_RECORD_TAG = 'Backgammon Game - Move History';
+  const looksLikeGameRecord = (text) => text.trimStart().startsWith(GAME_RECORD_TAG);
+
+  // Inverse of describeBoard(): "White: 24(2) 13(5) | Red: 1(2) | Bar W:0 R:0 | Off W:0 R:0"
+  function parseBoardDescription(str) {
+    const m = str.match(/White:\s*(.*?)\s*\|\s*Red:\s*(.*?)\s*\|\s*Bar\s*W:\s*(\d+)\s*R:\s*(\d+)\s*\|\s*Off\s*W:\s*(\d+)\s*R:\s*(\d+)/);
+    if (!m) return null;
+    const points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
+    const fill = (spec, pl) => {
+      if (spec === '-') return true;
+      for (const tok of spec.split(/\s+/).filter(Boolean)) {
+        const t = tok.match(/^(\d+)\((\d+)\)$/);
+        if (!t) return false;
+        const i = +t[1], c = +t[2];
+        if (i < 1 || i > 24 || c < 1 || points[i].player !== null) return false;
+        points[i] = { player: pl, count: c };
+      }
+      return true;
+    };
+    if (!fill(m[1], 1) || !fill(m[2], 2)) return null;
+    const board = { points, bar: { 1: +m[3], 2: +m[4] }, borneOff: { 1: +m[5], 2: +m[6] } };
+    // 15 checkers a side or it isn't a backgammon position.
+    for (const pl of [1, 2]) {
+      let n = board.bar[pl] + board.borneOff[pl];
+      for (let i = 1; i <= 24; i++) if (points[i].player === pl) n += points[i].count;
+      if (n !== 15) return null;
+    }
+    return board;
+  }
+
+  // "13/7", "6/3*", "bar/22", "24/off", "8/5(2)" → one entry per checker moved, or null.
+  // Destination types must match what getRawDestinations() produces, because makeMove
+  // compares them with === : a NUMBER for a point, the string "off" for a bear-off.
+  function parseMoveToken(tok) {
+    const m = tok.match(/^(bar|\d+)\/(off|\d+)\*?(?:\((\d+)\))?$/i);
+    if (!m) return null;
+    const from = /^bar$/i.test(m[1]) ? 'bar' : Number(m[1]);
+    const to   = /^off$/i.test(m[2]) ? 'off' : Number(m[2]);
+    const n = m[3] ? Number(m[3]) : 1;
+    if (!n || n > 4) return null;
+    return Array.from({ length: n }, () => ({ from, to }));
+  }
+
+  // Turn rows. The Moves cell can overflow its column, so the numeric tail is anchored to
+  // the end of the line and Moves is whatever is left. Magriel tokens always contain "/",
+  // which is what stops the non-greedy Moves group from eating a pip count.
+  const RECORD_ROW_RE = /^\s*(\d+)\s+(White|Red)\s+(\S+)\s+(.*?)\s+(\d+)\s+(\d+)\s+([\d,]+|-)(?:\s+(-?[\d,]+|WIN|LOSS))?\s*$/;
+
+  // Pull a record apart into { starter, initial, turns, win }. Returns { err } on the first
+  // thing that doesn't make sense, with a message worth showing the user.
+  function parseGameRecord(text) {
+    const lines = String(text).replace(/\r/g, '').split('\n');
+    let initial = null;
+    const initLine = lines.find((l) => l.startsWith('Initial position:'));
+    if (initLine) {
+      const spec = initLine.slice('Initial position:'.length).trim();
+      if (spec !== 'Standard Start') {
+        initial = parseBoardDescription(spec);
+        if (!initial) return { err: 'the "Initial position" line could not be read.' };
+      }
+    }
+
+    const turns = [];
+    let starter = null, expected = 0;
+    for (const line of lines) {
+      const m = line.match(RECORD_ROW_RE);
+      if (!m) continue;
+      const turn = Number(m[1]);
+      if (turn !== expected) return { err: `turn numbering jumps from ${expected - 1} to ${turn}.` };
+      expected++;
+      const player = m[2] === 'White' ? 1 : 2;
+      const pipW = Number(m[5]), pipR = Number(m[6]);
+      const ms = m[7] === '-' ? null : Number(m[7].replace(/,/g, ''));
+
+      if (turn === 0) { starter = player; continue; }   // the initial snapshot, not a played turn
+
+      const d = m[3].match(/^(\d)-(\d)$/);
+      if (!d) return { err: `turn ${turn}: "${m[3]}" is not a dice roll.` };
+
+      // Strip the folded cube annotation, then expand the Magriel tokens.
+      let movesText = m[4].trim(), dc = null;
+      const dcm = movesText.match(/\bDC=(\d+)\b/);
+      if (dcm) { dc = Number(dcm[1]); movesText = movesText.replace(dcm[0], '').trim(); }
+      const moves = [];
+      if (movesText && movesText !== '-') {
+        for (const tok of movesText.split(/\s+/)) {
+          const parsed = parseMoveToken(tok);
+          if (!parsed) return { err: `turn ${turn}: "${tok}" is not a move.` };
+          moves.push(...parsed);
+        }
+      }
+      turns.push({ turn, player, d1: Number(d[1]), d2: Number(d[2]), moves, dc, ms, pipW, pipR });
+    }
+
+    if (!turns.length) return { err: 'it contains no turns.' };
+    if (starter == null) starter = turns[0].player;
+
+    // The Players footer: who held each seat, and at what depth. Restoring these matters for
+    // more than tidiness — the move list's Score column is computed with the moving seat's
+    // brain (scoringWeights), so a game reloaded into two Human seats would re-score itself
+    // against the editor's brain and quietly disagree with the file it came from.
+    const seats = [];
+    for (const line of lines) {
+      const ai = line.match(/^  (White|Red)\s+(.+?)\s+\(AI\)(?:\s+depth\s+(\d+))?\s*$/);
+      if (ai) { seats.push({ player: ai[1] === 'White' ? 1 : 2, name: ai[2].trim(), depth: ai[3] ? Number(ai[3]) : null }); continue; }
+      const hu = line.match(/^  (White|Red)\s+Human\s*$/);
+      if (hu) seats.push({ player: hu[1] === 'White' ? 1 : 2, name: null, depth: null });
+    }
+
+    // The result line, for a game that ended on a declined double (no bear-off on the board).
+    let win = null;
+    for (const line of lines) {
+      const r = line.match(/^\s*(White|Red)\s+(defeated|gammoned|backgammoned)\s+(White|Red)\s*$/);
+      if (r) { win = r[1] === 'White' ? 1 : 2; break; }
+    }
+    return { starter, initial, turns, win, seats };
+  }
+
+  // Replay a record into the live game. Returns true on success; on failure nothing has
+  // been touched, because the replay runs on a scratch game first.
+  function loadGameRecord(text) {
+    const reject = (why) => {
+      gameMessageEl.textContent = 'Game record rejected — ' + why;
+      sysLog('[Import] Game record rejected — ' + why);
+      return false;
+    };
+    if (isNetworkGame) return reject('a network game is in progress.');
+
+    const rec = parseGameRecord(text);
+    if (rec.err) return reject(rec.err);
+
+    // Replay onto a scratch engine, so a file that fails halfway leaves the real game alone.
+    const g = new BackgammonGame();
+    g.restart();
+    if (rec.initial) {
+      g.points = JSON.parse(JSON.stringify(rec.initial.points));
+      g.bar = { ...rec.initial.bar };
+      g.borneOff = { ...rec.initial.borneOff };
+    }
+    g.doublingCubeValue = 1; g.doublingCubeOwner = null; g.winner = null; g.winByDecline = false;
+    g.beginGameWithStarter(rec.starter);
+    g.futureRolls = []; g.futureRollIndex = 0;
+
+    for (const t of rec.turns) {
+      if (g.winner) return reject(`turn ${t.turn} comes after the game was already won.`);
+      g.turnCount = t.turn;
+      g.currentPlayer = t.player;
+      g.playedMovesThisTurn = [];
+      g.turnHistory = [];
+
+      // A cube annotation in the file was folded in from a separate accept-snapshot — dice
+      // [0,0], no moves — that acceptDouble() pushes BEFORE the proposer rolls. Recreate that
+      // snapshot rather than just setting the cube value, or the reloaded list would lose the
+      // "DC=N" the renderer folds back in. Mirrors acceptDouble() exactly.
+      if (t.dc != null) {
+        g.doublingCubeValue = t.dc;
+        g.doublingCubeOwner = t.player === 1 ? 2 : 1;
+        g.dice = [0, 0]; g.movesLeft = []; g.hasRolled = false;
+        g.saveGameSnapshot(`${t.player === 1 ? 'White' : 'Red'} offered double. Accepted (${t.dc}x).`);
+      }
+
+      g.hasRolled = true;
+      g.dice = [t.d1, t.d2];
+      g.movesLeft = (t.d1 === t.d2) ? [t.d1, t.d1, t.d1, t.d1] : [t.d1, t.d2];
+
+      for (const mv of t.moves) {
+        if (!g.makeMove(mv.from, mv.to, false)) {
+          return reject(`turn ${t.turn}: ${mv.from}/${mv.to} is not legal in the replayed position.`);
+        }
+      }
+      // The file's own pip columns are the checksum on the replay.
+      const pw = g.pipCountP(g.points, g.bar, 1), pr = g.pipCountP(g.points, g.bar, 2);
+      if (pw !== t.pipW || pr !== t.pipR) {
+        return reject(`turn ${t.turn}: pip counts disagree (file ${t.pipW}/${t.pipR}, replay ${pw}/${pr}).`);
+      }
+      // A live game never calls endTurn on the winning move — the snapshot is taken directly —
+      // so mirror that here, or the loaded history would differ from a played one.
+      if (g.winner) {
+        g.saveGameSnapshot(`Turn ${t.turn} (${t.player === 1 ? 'White' : 'Red'}): Rolled ${t.d1}, ${t.d2}`);
+      } else {
+        BackgammonGame.prototype.endTurn.call(g);   // the raw engine method: no broadcast, no clock
+      }
+      const snap = g.gameHistory[g.gameHistory.length - 1];
+      if (snap) snap.elapsedMs = t.ms;
+    }
+    // A game that ended on a declined double leaves no bear-off win on the board.
+    if (!g.winner && rec.win) { g.winner = rec.win; g.winByDecline = true; }
+
+    // ── Commit: the replay succeeded, so adopt it. ──
+    haltEverything();
+    if (setupMode) exitSetup();
+    for (const k of ['points', 'bar', 'borneOff', 'currentPlayer', 'dice', 'movesLeft', 'hasRolled',
+                     'winner', 'winByDecline', 'doublingCubeValue', 'doublingCubeOwner',
+                     'turnCount', 'gameHistory', 'turnHistory', 'playedMovesThisTurn',
+                     'futureRolls', 'futureRollIndex']) game[k] = g[k];
+
+    // Put the seats back. A brain the record names but this roster doesn't have (an imported
+    // champion that was never re-imported) can't be restored — say so and leave that seat Human
+    // rather than scoring the game against the wrong weights.
+    const missing = [];
+    for (const seat of rec.seats) {
+      const typeEl  = document.getElementById(seat.player === 1 ? 'p1-type'  : 'p2-type');
+      const depthEl = document.getElementById(seat.player === 1 ? 'p1-depth' : 'p2-depth');
+      if (!typeEl) continue;
+      const known = seat.name && [...typeEl.options].some((o) => o.value === seat.name);
+      if (seat.name && !known) missing.push(seat.name);
+      typeEl.value = known ? seat.name : 'human';
+      if (depthEl && seat.depth != null && [...depthEl.options].some((o) => o.value === String(seat.depth))) {
+        depthEl.value = String(seat.depth);
+      }
+      syncDepthMenu(seat.player);
+    }
+    if (rec.seats.length) syncPlayersFromMenus();
+
+    gameStarted = true;          // so the list renders and the nav bar works
+    aiStopped = true;            // a loaded game never auto-plays; press START to take it on
+    isAIPlaying = false;
+    initialRollOff = false;
+    setupOriginBoard = null;
+    selectedSource = null; legalDestinations = [];
+    historyNavBuffer = []; historyNavIndex = null;
+    // A finished record has already been scored and already been written to disk — don't
+    // tally it again, and don't let Auto Record download a copy of the file we just read.
+    // An UNfinished one is genuinely resumable, so leave those guards open.
+    const finished = !!game.winner;
+    gameScored = finished; gameRecorded = finished; winTurnRecorded = finished;
+    // Show the times the record was made with, not the milliseconds the replay just took.
+    clockPause();
+    playerMs[1] = playerMs[2] = 0; playerTurns[1] = playerTurns[2] = 0;
+    for (const t of rec.turns) if (t.ms != null) { playerMs[t.player] += t.ms; playerTurns[t.player]++; }
+
+    const btnStart = document.getElementById('btn-start-game');
+    if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+    clearHistoryScoreCache();
+    renderHistoryList();
+    updateUI();
+    sysLog(`[Import] Game record loaded — ${rec.turns.length} turns.`);
+    if (missing.length) sysLog(`[Import] Not in this roster, seat left Human: ${missing.join(', ')}`);
+    gameMessageEl.textContent = missing.length
+      ? `Game record loaded — ${rec.turns.length} turns. Unknown AI: ${missing.join(', ')} — that seat is Human.`
+      : `Game record loaded — ${rec.turns.length} turns. Click a row to replay from it.`;
+    return true;
+  }
+
   const exportMovesEl = document.getElementById('export-moves');
   if (exportMovesEl) {
     exportMovesEl.addEventListener('click', () => {
       if (game.gameHistory.length === 0) { alert('No moves have been played yet!'); return; }
-
-      const now   = new Date();
-      // Header seat label: brain name for an AI, else "Human".
-      const seatLabel = (p) => game.playerTypes[p] === 'ai' ? `${game.aiNames[p]} (AI)` : 'Human';
-
-      const withScore = showScoreOn;
-      let txt = 'Backgammon Game - Move History\n';
-      txt += `BG v. ${bgVersion()}\n`;
-      txt += `Date: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}\n`;
-      if (netRole()) txt += `Downloaded by: ${netRole()} (this machine)\n`;
-      txt += `White: ${seatLabel(1)}, Red: ${seatLabel(2)}\n`;
-      // Describe the starting position: "Standard Start" for the ordinary opening, else the
-      // actual board (from the initial time-travel snapshot).
-      const initSnap = game.gameHistory.find((s) => s.isInitial) || game.gameHistory[0];
-      if (initSnap) {
-        txt += isStandardStart(initSnap.points, initSnap.bar, initSnap.borneOff)
-          ? 'Initial position: Standard Start\n'
-          : `Initial position: ${describeBoard(initSnap.points, initSnap.bar, initSnap.borneOff)}\n`;
-      }
-      txt += '\n';
-      txt += withScore
-        ? 'Turn  Player  Dice   ' + 'Moves'.padEnd(20) + ' Score (White view)\n\n'
-        : 'Turn  Player  Dice   Moves\n\n';
-
-      // A doubling-accept snapshot carries no dice ([0,0]) and no checker moves — it just
-      // records the new cube value. It is NOT its own turn: fold "DC=N" into the Moves column
-      // of the proposer's actual roll (the very next real snapshot), so the doubling shows on
-      // the turn it happened and the turn numbering stays continuous.
-      let displayTurn = 0;
-      let pendingDC = null;
-      game.gameHistory.forEach((snap) => {
-        const isDouble = !snap.isInitial && !snap.dice[0] && !snap.dice[1];
-        if (isDouble) { pendingDC = snap.doublingCubeValue; return; }   // fold into the next row
-
-        const turnNum = String(displayTurn++).padStart(4, ' '); // idx 0 is initial → Turn 0
-        const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
-        const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
-
-        let movesText = '-';
-        if (snap.playedMoves?.length > 0) {
-          // Magriel notation with grouping
-          const groups = [];
-          for (const m of snap.playedMoves) {
-            const key  = `${m.from}/${m.to}${m.isHit ? '*' : ''}`;
-            const last = groups[groups.length - 1];
-            if (last && last.key === key) { last.count++; }
-            else { groups.push({ key, count: 1 }); }
-          }
-          movesText = groups.map(g => g.count > 1 ? `${g.key}(${g.count})` : g.key).join(' ');
-        }
-        if (pendingDC != null) {   // proposer doubled before this roll → annotate the move
-          movesText = (movesText === '-' ? '' : movesText + ' ') + `DC=${pendingDC}`;
-          pendingDC = null;
-        }
-        if (withScore) {
-          const scoreStr = String(Math.round(snapshotScore(snap))).padStart(6, ' ');
-          txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText.padEnd(20, ' ')} ${scoreStr}\n`;
-        } else {
-          txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText}\n`;
-        }
-      });
-      // Edge case: a double with no following roll (e.g. game ended on it) — show it on its own.
-      if (pendingDC != null) txt += `${String(displayTurn).padStart(4, ' ')}         -    DC=${pendingDC}\n`;
-
-      txt += '\n';
-      if (!game.winner) {
-        txt += 'Game in progress\n';
-      } else {
-        const winnerStr = game.winner === 1 ? 'White' : 'Red';
-        const loserStr  = game.winner === 1 ? 'Red'   : 'White';
-        const loserIdx  = game.winner === 1 ? 2 : 1;
-        let winType = 'defeated';
-        if (!game.winByDecline && game.borneOff[loserIdx] === 0) {
-          winType = 'gammoned';
-          let isBackgammon = game.bar[loserIdx] > 0;
-          if (!isBackgammon) {
-            const s = game.winner === 1 ? 1 : 19, e = game.winner === 1 ? 6 : 24;
-            for (let i = s; i <= e; i++) {
-              if (game.points[i].player === loserIdx) { isBackgammon = true; break; }
-            }
-          }
-          if (isBackgammon) winType = 'backgammoned';
-        }
-        txt += ` ${winnerStr} ${winType} ${loserStr}\n`;
-      }
-
-      const link = document.createElement('a');
-      link.download = `backgammon-moves-${Date.now()}.txt`;
-      link.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
-      link.click();
-      sysLog('[System] Move list downloaded.');
+      downloadMoveList(false);
     });
   }
 
@@ -716,11 +1066,15 @@ function sysLog(msg) {
   // navigate the board (guards against accidental clicks). Host-driven remote nav still
   // applies. Applies to local and remote games.
   let timeTravelOn = true;
+  // Auto Record (default OFF). When on, a full game record downloads automatically the
+  // moment a game ends — the same file Export → Move List produces on demand.
+  let autoRecordOn = false;
 
   // Initialise badges to their defaults
   updateSettingBadge('badge-doubling', doublingOn);
   updateSettingBadge('badge-autostart', autoStartOn);
   updateSettingBadge('badge-timetravel', timeTravelOn);
+  updateSettingBadge('badge-autorecord', autoRecordOn);
   updateSettingBadge('badge-showscore', showScoreOn);
   updateSettingBadge('badge-speak', speakOn);
   updateSettingBadge('badge-animation', animationOn);
@@ -780,6 +1134,16 @@ function sysLog(msg) {
       autoMoveOn = !autoMoveOn;
       updateSettingBadge('badge-automove', autoMoveOn);
       sysLog(`[System] Auto Move toggled to ${autoMoveOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Auto Record row
+  const settingAutoRecordEl = document.getElementById('setting-autorecord');
+  if (settingAutoRecordEl) {
+    settingAutoRecordEl.addEventListener('click', () => {
+      autoRecordOn = !autoRecordOn;
+      updateSettingBadge('badge-autorecord', autoRecordOn);
+      sysLog(`[System] Auto Record toggled to ${autoRecordOn ? 'ON' : 'OFF'}`);
     });
   }
 
@@ -1057,7 +1421,9 @@ renderBorneOff();
         if (!already && game.currentPlayer !== null && game.playedMovesThisTurn.length) {
           const c = game.currentPlayer === 1 ? 'White' : 'Red';
           game.saveGameSnapshot(`Turn ${game.turnCount} (${c}): Rolled ${game.dice[0]}, ${game.dice[1]}`);
+          bankTurn(game.currentPlayer, game.gameHistory[game.gameHistory.length - 1]);
         }
+        clockPause();   // the game is over — stop banking wall clock
       }
       // Result multiplier: 1 = single, 2 = gammon, 3 = backgammon.
       // A declined double is always a plain single at the current cube value —
@@ -1082,6 +1448,9 @@ renderBorneOff();
         : `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
       // Tally the winner's game points once (this branch re-runs on every render).
       if (!gameScored) { addScore(winner, pts); gameScored = true; }
+      // Auto Record: one game record per completed game, written the moment the game ends.
+      // Guarded like gameScored, because this branch re-runs on every render.
+      if (autoRecordOn && !gameRecorded) { gameRecorded = true; downloadMoveList(true); }
       btnUndo.disabled = true;
     } else if (!gameStarted) {
       // Three cases: the connected guest waits, the connected host gets the two-step
@@ -1805,6 +2174,8 @@ function handleRollClick() {
     lastStarter      = starter;
     gameScored       = false;   // new game to tally; scores themselves are preserved
     winTurnRecorded  = false;
+    gameRecorded     = false;
+    gameClockReset();
 
     // No overlay / Start needed — the game is already running.
     const overlay = document.getElementById('start-menu-overlay');
@@ -2107,6 +2478,7 @@ function handleRollClick() {
     // Re-enable START so the player has a way to resume AI
     const btnStart = document.getElementById('btn-start-game');
     if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+    clockPause();      // don't bank the pause as time the player spent on this turn
     sysLog('[System] AI paused. Click START to resume.');
   }
 
@@ -2482,13 +2854,45 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       + brains.map((p) => p.name).join(', ') + '.';
   }
 
-  function readBrainFile(file) {
+  // Drag-and-drop has no label, so it can afford to take either kind of file and dispatch
+  // on what the file actually is. The two BUTTONS stay single-purpose, so neither lies.
+  function readImportFile(file) {
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => installBrainsFromText(String(evt.target.result));
+    reader.onload = (evt) => {
+      const text = String(evt.target.result);
+      if (looksLikeGameRecord(text)) loadGameRecord(text); else installBrainsFromText(text);
+    };
     reader.onerror = () => { gameMessageEl.textContent = 'Could not read that file.'; };
     reader.readAsText(file);
   }
+
+  // The AI editor's IMPORT does brains only — that row is about brains. Handed a game
+  // record it says where the right button is instead of quietly doing the other thing.
+  function readBrainFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = String(evt.target.result);
+      if (looksLikeGameRecord(text)) {
+        gameMessageEl.textContent = 'That is a game record — use the yellow IMPORT button under the move list.';
+        sysLog('[Import] A game record was handed to the AI importer; use the move-list IMPORT button.');
+        return;
+      }
+      installBrainsFromText(text);
+    };
+    reader.onerror = () => { gameMessageEl.textContent = 'Could not read that file.'; };
+    reader.readAsText(file);
+  }
+
+  // Hidden picker behind the move-list IMPORT button (the keyboard / iPad route).
+  const gameFileInput = document.createElement('input');
+  gameFileInput.type = 'file';
+  gameFileInput.accept = '.txt';
+  gameFileInput.style.display = 'none';
+  document.body.appendChild(gameFileInput);
+  gameFileInput.addEventListener('change', (e) => { readImportFile(e.target.files[0]); e.target.value = ''; });
+  document.getElementById('nav-import')?.addEventListener('click', () => gameFileInput.click());
 
   brainFileInput.addEventListener('change', (e) => {
     readBrainFile(e.target.files[0]);
@@ -2500,7 +2904,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Drop a champion file anywhere on the control column to import it — the fast path once you
   // already have the folder open. The IMPORT button stays: it's the keyboard/tablet route (iPad
   // has no drag-from-Finder gesture) and it's the visible affordance that hints dropping works.
-  // Both feed readBrainFile, so there is one parse path.
+  // The drop feeds readImportFile, which sniffs the text and hands a game record to
+  // loadGameRecord and anything else to installBrainsFromText — one parse path each.
   //
   // Everything below is gated on the drag actually carrying FILES (`types` includes 'Files'), so
   // the board's checker drag-and-drop — which carries text, not files — is never intercepted.
@@ -2533,7 +2938,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         dragDepth = 0;
         dropZone.classList.remove('brain-drop-active');
         const file = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (file) readBrainFile(file);
+        if (file) readImportFile(file);
       });
     }
 
@@ -2545,7 +2950,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       if (!isFileDrag(e)) return;
       if (dropZone && dropZone.contains(e.target)) return;   // handled above
       e.preventDefault();
-      gameMessageEl.textContent = 'Drop an AI file on the control column (right side) to import it.';
+      gameMessageEl.textContent = 'Drop an AI or game file on the control column (right side) to import it.';
     });
   }
 
@@ -3104,27 +3509,34 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // what separates "this CPU is faster" from "this CPU scales better".
   // Snapshot of how the run was executed, for throughputCSV. Captured at the end of a
   // run so it reflects the pool that actually did the work.
-  const perfBlock = (matches, games, ms) => ({
+  const perfBlock = (matches, games, ms, turns) => ({
     workers: workersAvailable ? numWorkers : 1,
     workersAvailable,
     cores: navigator.hardwareConcurrency || null,
-    matches, games, ms,
+    matches, games, ms, turns,
   });
 
   function throughputCSV(p) {
     const ms = Math.max(0, p.ms || 0), games = p.games || 0, matches = p.matches || 0;
+    const turns = p.turns || 0;               // AI decisions = "moves" (one per play of the dice)
     const per = (v, d) => (games ? v.toFixed(d) : '?');
+    const perMove = (v, d) => (turns ? v.toFixed(d) : '?');
     let csv = '\nThroughput\n';
     csv += 'Workers,' + csvNum(p.workers) + (p.workersAvailable ? '' : ' (no Web Workers — single-threaded fallback)') + '\n';
     csv += 'Logical cores reported by the browser,' + (p.cores == null ? '?' : csvNum(p.cores)) + '\n';
     csv += 'Total matches,' + csvNum(matches) + '\n';
     csv += 'Total games,' + csvNum(games) + '\n';
+    csv += 'Total moves (AI decisions),' + csvNum(turns) + '\n';
     csv += 'Games per match,' + (matches ? (games / matches).toFixed(2) : '?') + '\n';
+    csv += 'Moves per game,' + (games && turns ? (turns / games).toFixed(2) : '?') + '\n';
     csv += 'Wall-clock time (s),' + (ms / 1000).toFixed(1) + '\n';
     csv += 'ms per game (wall),' + per(ms / games, 3) + '\n';
+    csv += 'ms per move (wall),' + perMove(ms / turns, 4) + '\n';
     csv += 'ms per match (wall),' + (matches ? (ms / matches).toFixed(1) : '?') + '\n';
     csv += 'Games per second,' + (ms ? (1000 * games / ms).toFixed(1) : '?') + '\n';
+    csv += 'Moves per second,' + (ms && turns ? (1000 * turns / ms).toFixed(1) : '?') + '\n';
     csv += 'ms per game x workers,' + per(p.workers * ms / games, 1) + '\n';
+    csv += 'ms per move x workers,' + perMove(p.workers * ms / turns, 4) + '\n';
     return csv;
   }
 
@@ -3192,7 +3604,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const tStart = new Date();
     let winsWhite = 0, winsRed = 0;   // match wins for WP / RP
     let gptsWhite = 0, gptsRed = 0;   // total game points for WP / RP (tiebreak)
-    let totalGames = 0;
+    let totalGames = 0, totalTurns = 0;   // individual games / AI decisions across the run
 
     // Show status before work starts, and yield once so the browser paints it.
     gameMessageEl.textContent = `Compete starting… ${p1} d${dWhite} vs ${p2} d${dRed}, ${nMatches} matches to ${X}…`;
@@ -3206,6 +3618,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       gptsWhite += swap ? res.scoreB : res.scoreA;
       gptsRed   += swap ? res.scoreA : res.scoreB;
       totalGames += res.games;
+      totalTurns += res.turns || 0;
       done++;
       gameMessageEl.textContent = `Compete… ${done}/${nMatches} (to ${X}) — ${p1} d${dWhite}: ${winsWhite}  ${p2} d${dRed}: ${winsRed}`;
     };
@@ -3241,7 +3654,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     downloadCSV('BGCompeteResults.csv', buildCompeteCSV({
       p1, p2, dWhite, dRed, winsWhite, winsRed, gptsWhite, gptsRed,
       totalGames, nMatches, X, tStart, tEnd,
-      perf: perfBlock(done, totalGames, tEnd - tStart),
+      perf: perfBlock(done, totalGames, tEnd - tStart, totalTurns),
     }));
     gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
@@ -3295,7 +3708,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const X = matchLength();
     const depth = lookaheadDepth();
 
-    let totalGames = 0;                                  // individual games across the whole run
+    let totalGames = 0, totalTurns = 0;                  // individual games / AI decisions across the whole run
     const mWins = {}, mLoss = {}, gpts = {}, gplayed = {}, h2h = {};
     names.forEach((n) => {
       mWins[n] = 0; mLoss[n] = 0; gpts[n] = 0; gplayed[n] = 0; h2h[n] = {};
@@ -3311,6 +3724,13 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const runBtn = document.getElementById('btn-run-tournament');
     if (runBtn) runBtn.disabled = true;
     const tStart = new Date();
+
+    // Show status before work starts, and yield once so the browser paints it. At depth 2
+    // the first match can take many seconds, so without this the panel looks dead until the
+    // first result lands.
+    gameMessageEl.textContent = `Tournament starting… ${names.length} AIs, ${numCommas(total)} matches to ${X} at depth ${depth}…`;
+    await new Promise((r) => setTimeout(r, 0));
+
     let done = 0;
 
     // Tally one finished match given its pair/swap meta.
@@ -3322,6 +3742,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       gpts[A] += aScore; gpts[B] += bScore;
       const nGames = res.games || 0;                      // both brains played every game of the match
       gplayed[A] += nGames; gplayed[B] += nGames; totalGames += nGames;
+      totalTurns += res.turns || 0;
       done++;
       gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
     };
@@ -3356,7 +3777,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth,
-      perfBlock(done, totalGames, tEnd - tStart)));
+      perfBlock(done, totalGames, tEnd - tStart, totalTurns)));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
@@ -4503,7 +4924,16 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
   game.endTurn = function() {
     // Record who the active player was before the engine switches it
     const activeBefore = this.currentPlayer;
+    const snapsBefore  = this.gameHistory.length;
     const result = originalEndTurn.apply(this);
+
+    // Bank this turn's wall clock onto the snapshot the engine just pushed (it only
+    // pushes one when a player was actually on roll), then start the next seat's clock.
+    if (activeBefore !== null && this.gameHistory.length > snapsBefore) {
+      bankTurn(activeBefore, this.gameHistory[this.gameHistory.length - 1]);
+    } else {
+      clockRestart();
+    }
     
     // Broadcast the explicit end-turn signal if we were the active player, and
     // include an authoritative board snapshot so the opponent reconciles to it each
@@ -4527,6 +4957,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       // If AI was stopped, START re-enables it and triggers the AI turn
       if (aiStopped) {
         aiStopped = false;
+        clockRun();
         const btnStart = document.getElementById('btn-start-game');
         if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
         sysLog('[System] AI resumed by START.');
@@ -4547,6 +4978,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     resetBothScores();          // Start zeros the running score (Restart keeps it)
     gameScored = false;
     winTurnRecorded = false;
+    gameRecorded = false;
+    gameClockReset();
 
     const btnStart = document.getElementById('btn-start-game');
     btnStart.disabled = true;
@@ -4874,6 +5307,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     game.doublingCubeValue = 1; game.doublingCubeOwner = null; game.winner = null;
     historyNavBuffer = []; historyNavIndex = null;
     gameStarted = true; aiStopped = false;
+    gameScored = false; winTurnRecorded = false; gameRecorded = false;
+    gameClockReset();
     const btnStart = document.getElementById('btn-start-game');
     if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
     if (allBlank && !setupOnRoll) {

@@ -825,7 +825,8 @@ body {
   box-shadow: 0 10px 20px rgba(229, 193, 88, 0.3);
 }
 
-/* Drag-and-drop AI import: the control column lights up ONLY while a file is dragged over it
+/* Drag-and-drop import (an AI personality OR a recorded game): the control column lights up
+   ONLY while a file is dragged over it
    (class toggled in ui.js). Invisible the rest of the time, so it costs no sidebar space. The
    outline is drawn inset because the panel scrolls; `position: relative` anchors the label. */
 .sidebar-panel.brain-drop-active {
@@ -836,7 +837,7 @@ body {
   border-radius: 8px;
 }
 .sidebar-panel.brain-drop-active::after {
-  content: "Drop an AI file to import";
+  content: "Drop an AI or Game File!";
   position: sticky;
   top: 40%;
   display: block;
@@ -1532,6 +1533,19 @@ input[type="number"]::-webkit-outer-spin-button {
   user-select: none;
   transition: background 0.15s ease, box-shadow 0.15s ease;
   letter-spacing: 0.03em;
+}
+
+/* The move-list IMPORT button: loads a recorded game back into the list. Deliberately
+   red-on-yellow against the green nav buttons — it is the one control in that row that
+   does something other than navigate, so it should not blend in. */
+.nav-import-btn {
+  background: #facc15;
+  color: #dc2626;
+}
+
+.nav-import-btn:hover:not(:disabled) {
+  background: #eab308;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.7);
 }
 
 .history-nav-btn:hover:not(:disabled) {

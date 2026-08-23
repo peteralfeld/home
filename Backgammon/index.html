@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 147</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 148</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -285,6 +285,7 @@
       <button id="nav-back"  class="history-nav-btn" title="Previous turn">&lt;</button>
       <button id="nav-fwd"   class="history-nav-btn" title="Next turn">&gt;</button>
       <button id="nav-last"  class="history-nav-btn" title="Return to current state">&gt;&gt;</button>
+      <button id="nav-import" class="history-nav-btn nav-import-btn" title="Load a recorded game — a downloaded move list — into this move list for analysis. You can also just drag the file onto the control column.">IMPORT</button>
     </div>
   </div>
 
@@ -319,7 +320,7 @@
       <select id="edit-brain" class="brain-select" title="AI personality to edit"></select>
       <input type="text" id="brain-filename" class="brain-file" value="newAI" placeholder="file name" title="Export file name">
       <button id="brain-export" class="tourney-mini" title="Download the selected personality as a JS file">Export</button>
-      <button id="brain-import" class="tourney-mini" title="Import a personality from a JS/JSON file — or just drag the file onto this control column">Import</button>
+      <button id="brain-import" class="tourney-mini" title="Import an AI personality from a JS/JSON file — or just drag the file onto this control column. To load a recorded GAME, use the yellow IMPORT button under the move list (or drag that file here too).">Import</button>
       <button id="brain-def" class="tourney-mini" title="Reset all personalities to built-in values">Def</button>
     </div>
     <div class="brain-row" style="justify-content: space-between;">
@@ -407,6 +408,10 @@
         <div class="settings-item" id="setting-autostart" data-setting="autostart">
           <span class="settings-item-label">Auto Start</span>
           <span class="settings-item-badge" id="badge-autostart">OFF</span>
+        </div>
+        <div class="settings-item" id="setting-autorecord" data-setting="autorecord" title="Automatically download a full record of each game the moment it ends: the move list with pip counts and per-move wall-clock times, plus both players, their AI parameters, and each side's total and average time. Export &rarr; Move List produces the same file on demand.">
+          <span class="settings-item-label">Auto Record</span>
+          <span class="settings-item-badge" id="badge-autorecord">OFF</span>
         </div>
         <div class="settings-item" id="setting-timetravel" data-setting="timetravel" title="Allow navigating the board through the move history (time travel). Turn OFF to prevent accidental move-list clicks from changing the board. Applies to local and remote games.">
           <span class="settings-item-label">Time Travel</span>

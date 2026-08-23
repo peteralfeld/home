@@ -1801,8 +1801,9 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
   g.searchDepths = { 1: depthWhite, 2: depthRed };   // per-side lookahead plies
   g.rollForFirstTurn();
 
-  let guard = 0;
+  let guard = 0, turns = 0;               // turns = AI decisions taken (one per play of the dice)
   while (!g.winner && guard++ < 100000) {
+    turns++;
     const moves = g.getBestAIMove();
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);  // already a legal max-usage sequence
@@ -1820,19 +1821,19 @@ function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthR
         g.acceptDouble();                // cube doubles; the taker owns it
       } else {
         // Declined: the doubler wins the current stake, single, no gammon.
-        return { winner: g.currentPlayer, points: g.doublingCubeValue };
+        return { winner: g.currentPlayer, points: g.doublingCubeValue, turns };
       }
     }
     g.rollDice();
   }
 
-  return scoreFinishedBGGame(g);
+  return { ...scoreFinishedBGGame(g), turns };
 }
 
 /**
  * Score a game that ended by bearing off: { winner, points } where points is the
  * cube value × gammon multiplier (1 single, 2 gammon, 3 backgammon). Shared by the
- * sync and yielding game runners.
+ * sync and yielding game runners, which add their own `turns` count to the result.
  */
 function scoreFinishedBGGame(g) {
   let points = 0;
@@ -1868,8 +1869,9 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
   g.searchDepths = { 1: depthWhite, 2: depthRed };
   g.rollForFirstTurn();
 
-  let guard = 0;
+  let guard = 0, turns = 0;               // mirrors simulateBGGame
   while (!g.winner && guard++ < 100000) {
+    turns++;
     const moves = await g.getBestAIMoveYielding(breathe);
     if (moves && moves.length) {
       for (const m of moves) g.makeMove(m.from, m.to, false);
@@ -1880,18 +1882,20 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
     if (g.doublingCubeValue * 2 <= maxCube && g.aiShouldDouble(g.currentPlayer)) {
       const responder = g.currentPlayer === 1 ? 2 : 1;
       if (g.aiShouldAcceptDouble(responder)) g.acceptDouble();
-      else return { winner: g.currentPlayer, points: g.doublingCubeValue };
+      else return { winner: g.currentPlayer, points: g.doublingCubeValue, turns };
     }
     g.rollDice();
     if (breathe) await breathe();
   }
 
-  return scoreFinishedBGGame(g);
+  return { ...scoreFinishedBGGame(g), turns };
 }
 
 /**
  * Play one match to X points between two AI weight sets, returning
- * { winner, scoreA, scoreB, games }. winner is 'A' or 'B'.
+ * { winner, scoreA, scoreB, games, turns }. winner is 'A' or 'B'; `turns` is the
+ * total number of AI decisions (moves) played across the match — the denominator
+ * for "ms per move" in the throughput block.
  *   - Colours alternate each game (A is White on even games) to cancel side bias.
  *   - The cube resets to 1 each game and games award cube x gammon multiplier.
  *   - Dead-cube cap: doubling can't raise the stake past what the trailing player
@@ -1901,7 +1905,7 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
 function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
-  let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
+  let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1917,10 +1921,11 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
     // Map the game winner (White/Red) back to A/B and award points.
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
+    turns += res.turns || 0;
 
     if (crawford) crawfordDone = true;
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, turns };
 }
 
 /**
@@ -1932,7 +1937,7 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
  * MIRRORS simulateBGMatch — keep the two loops in sync if the match rules change.
  */
 async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null) {
-  let scoreA = 0, scoreB = 0, games = 0, crawfordDone = false;
+  let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
@@ -1948,11 +1953,12 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
     const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe);
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
+    turns += res.turns || 0;
 
     if (crawford) crawfordDone = true;
     if (breathe) await breathe();          // let the browser paint / stay responsive
   }
-  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games };
+  return { winner: scoreA >= X ? 'A' : 'B', scoreA, scoreB, games, turns };
 }
 
 // Export class if running in Node environment for testing, otherwise leave global
