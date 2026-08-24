@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 148</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 149</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -189,6 +189,8 @@
 
       <button id="btn-restart" title="Start the next game (alternates the opener)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
       
+      <button id="btn-duplo" title="DUPLO: replay the game just played with the SAME dice, but with the two players swapped between the White and Red seats. Duplicate-bridge style &mdash; whatever the dice did for one side, they now do for the other. Each player's score follows them to the new seat. Local games only." class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #dbeafe; color: #1e3a8a; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">DUPLO</button>
+
       <button id="btn-defaults" title="Reset everything and reload the page" class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #facc15; color: #dc2626; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">Reset</button>
     </div>
     
@@ -412,6 +414,10 @@
         <div class="settings-item" id="setting-autorecord" data-setting="autorecord" title="Automatically download a full record of each game the moment it ends: the move list with pip counts and per-move wall-clock times, plus both players, their AI parameters, and each side's total and average time. Export &rarr; Move List produces the same file on demand.">
           <span class="settings-item-label">Auto Record</span>
           <span class="settings-item-badge" id="badge-autorecord">OFF</span>
+        </div>
+        <div class="settings-item" id="setting-duplo" data-setting="duplo" title="Duplicate-bridge scoring for Tournament and Compete. Every match is played twice: the same dice, the seats swapped. Luck largely cancels between the two halves, so far fewer matches are needed to separate two AIs — and a brain played against itself scores an exact tie. Forces the match count to be even. Does not change how any single game is played.">
+          <span class="settings-item-label">DUPLO</span>
+          <span class="settings-item-badge" id="badge-duplo">ON</span>
         </div>
         <div class="settings-item" id="setting-timetravel" data-setting="timetravel" title="Allow navigating the board through the move history (time travel). Turn OFF to prevent accidental move-list clicks from changing the board. Applies to local and remote games.">
           <span class="settings-item-label">Time Travel</span>

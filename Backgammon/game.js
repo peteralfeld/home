@@ -67,6 +67,33 @@ const BG_DICE_DIST = (() => {
 // +BG_WIN if White has won, -BG_WIN if Red has won.
 const BG_WIN = 1e9;
 
+// --- Seeded dice (DUPLO) ------------------------------------------------------
+// Every die in a real game comes from game._die(). With `game.rng === null` (the
+// default) that is Math.random and nothing outside DUPLO changes; install a seeded
+// PRNG and the whole game replays exactly. mulberry32 is pure 32-bit integer work,
+// so it is bit-identical in Node, in the browser and inside a Web Worker — which is
+// what lets the mirror half of a DUPLO pair see the same dice.
+function makeBGRng(seed) {
+  let a = (seed >>> 0) || 0x9E3779B9;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Per-game seed from (match seed, game index), avalanche-mixed so consecutive games
+// are uncorrelated. Game k of BOTH halves of a DUPLO pair gets the same seed, which
+// is the whole duplicate-bridge trick: same dice, seats swapped.
+function bgGameSeed(matchSeed, gameIndex) {
+  let h = ((matchSeed >>> 0) ^ Math.imul(gameIndex + 1, 0x9E3779B1)) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 class BackgammonGame {
   constructor() {
     this.restart();
@@ -147,6 +174,10 @@ class BackgammonGame {
     // Populated by restoreGameSnapshot(); consumed one entry per rollDice() call.
     this.futureRolls = [];
     this.futureRollIndex = 0;
+
+    // DUPLO: when non-null, every die comes from this seeded PRNG instead of
+    // Math.random, so the game replays exactly. Null in ordinary play.
+    this.rng = null;
   }
 
   /**
@@ -223,12 +254,21 @@ class BackgammonGame {
    * If equal, roll again. Returns the starting player and the rolled dice.
    */
 
+  /**
+   * One die, 1..6. EVERY die in a real game must come through here — a stray
+   * Math.random anywhere in the dice path silently breaks DUPLO replay, which is
+   * exactly what duplo-selfplay-test.js is built to catch.
+   */
+  _die() {
+    return Math.floor((this.rng ? this.rng() : Math.random()) * 6) + 1;
+  }
+
   rollForFirstTurn(forceD1 = null, forceD2 = null) {
     let d1 = forceD1, d2 = forceD2;
     if (d1 === null || d2 === null) {
       do {
-        d1 = Math.floor(Math.random() * 6) + 1;
-        d2 = Math.floor(Math.random() * 6) + 1;
+        d1 = this._die();
+        d2 = this._die();
       } while (d1 === d2);
     }
 
@@ -305,8 +345,8 @@ rollDice(d1 = null, d2 = null) {
   if (this.hasRolled && d1 === null) return null;
 
   // 2. Determine dice values (either provided or random)
-  const roll1 = d1 !== null ? d1 : Math.floor(Math.random() * 6) + 1;
-  const roll2 = d2 !== null ? d2 : Math.floor(Math.random() * 6) + 1;
+  const roll1 = d1 !== null ? d1 : this._die();
+  const roll2 = d2 !== null ? d2 : this._die();
   
   // 3. Update game state
   this.dice = [roll1, roll2];
@@ -1792,8 +1832,9 @@ function escapeBuckets(points, bar, me) {
  * { winner, points } where points is 1 (single), 2 (gammon) or 3 (backgammon).
  * Used by the tournament runner.
  */
-function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite) {
+function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, seed = null) {
   const g = new BackgammonGame();
+  if (seed !== null) g.rng = makeBGRng(seed);   // DUPLO — must precede rollForFirstTurn()
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
   g.aiWeights[1] = wWhite;
@@ -1860,8 +1901,9 @@ function scoreFinishedBGGame(g) {
  * `breathe` is optional; with none it behaves like the sync version (safe for Node).
  * MIRRORS simulateBGGame — keep the two in sync if the game/cube rules change.
  */
-async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null) {
+async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null, seed = null) {
   const g = new BackgammonGame();
+  if (seed !== null) g.rng = makeBGRng(seed);   // DUPLO — must precede rollForFirstTurn()
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
   g.aiWeights[1] = wWhite;
@@ -1904,7 +1946,7 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
  *   - Crawford: the single game right after either side first reaches X-1 is played
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
-function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
+function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, seed = null) {
   let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
@@ -1917,7 +1959,8 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
     // game searches at its own depth. With depthA === depthB this is a no-op.
     const dWhite = aWhite ? depthA : depthB;
     const dRed   = aWhite ? depthB : depthA;
-    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed);
+    const res = simulateBGGame(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed,
+      seed === null ? null : bgGameSeed(seed, games));   // DUPLO: game k shares a seed across the pair
     // Map the game winner (White/Red) back to A/B and award points.
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
@@ -1936,7 +1979,7 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA) {
  * is optional; with none it behaves exactly like the sync version (safe for Node).
  * MIRRORS simulateBGMatch — keep the two loops in sync if the match rules change.
  */
-async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null) {
+async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null, seed = null) {
   let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
@@ -1950,7 +1993,8 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
     // Use the yielding game runner so the thread also breathes WITHIN a move's
     // search (crucial at depth 3, where a single move can otherwise block for tens
     // of seconds and trip "Page unresponsive").
-    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe);
+    const res = await simulateBGGameYielding(aWhite ? wA : wB, aWhite ? wB : wA, maxCube, dWhite, dRed, breathe,
+      seed === null ? null : bgGameSeed(seed, games));   // DUPLO
     const aWon = (res.winner === 1) === aWhite;
     if (aWon) scoreA += res.points; else scoreB += res.points;
     turns += res.turns || 0;
@@ -1971,4 +2015,6 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports.escapeCountForChecker = escapeCountForChecker;
   module.exports.escapeBuckets = escapeBuckets;
   module.exports.barFreezeTurns = barFreezeTurns;
+  module.exports.makeBGRng = makeBGRng;
+  module.exports.bgGameSeed = bgGameSeed;
 }

@@ -7,7 +7,7 @@
 // loaded from file://. Serve the folder over http (e.g. XAMPP: http://localhost/...).
 //
 // Two job types:
-//   { cmd:'play_match', id, wA, wB, X, depthA, depthB }
+//   { cmd:'play_match', id, wA, wB, X, depthA, depthB, seed }
 //       -> plays a whole match on this thread (sync; blocking here is fine, it's not
 //          the UI thread) and returns { id, result:{winner,scoreA,scoreB,games} }.
 //   { cmd:'search', id, board:{points,bar,borneOff}, player, dice, plies, weights }
@@ -27,7 +27,9 @@ self.onmessage = function (e) {
   const d = e.data;
   try {
     if (d.cmd === 'play_match') {
-      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB);
+      // d.seed is DUPLO's per-pair match seed; undefined on ordinary runs, in which
+      // case simulateBGMatch's own default (null = Math.random dice) applies.
+      const result = simulateBGMatch(d.wA, d.wB, d.X, d.depthA, d.depthB, d.seed);
       self.postMessage({ id: d.id, result });
       return;
     }

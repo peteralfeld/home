@@ -249,6 +249,67 @@ document.addEventListener('DOMContentLoaded', () => {
   // remember that position here so Restart restarts from IT rather than the standard opening.
   // Null for ordinary games (cleared by startGame / performRestart / initNetworkGame).
   let setupOriginBoard = null;
+
+  // ── DUPLO (interactive) ──────────────────────────────────────────────────────
+  // The dice of the current LOCAL game come from a seeded stream, and the seed is kept
+  // here so the DUPLO button can replay the very same rolls with the two participants
+  // swapped between the seats. `starter` records HOW the game began: null means a
+  // roll-off decided the opener — a replay re-runs that roll-off on the same stream, so
+  // the same opening dice come up and therefore the same COLOUR opens, which is now the
+  // OTHER participant. Otherwise it is the forced opener to reuse.
+  // Network games are deliberately left unseeded: the host rolls and broadcasts, and
+  // swapping seats across the wire is out of scope.
+  let liveGame = { seed: null, starter: null };
+  // The game DUPLO will replay. Frozen the moment a game ends, so the finished game stays
+  // the target while you look at the final position — pressing DUPLO then always mirrors the
+  // game you just played, never something else. Cleared by START and RESTART (you have
+  // explicitly moved on), but NOT by DUPLO itself, so pressing DUPLO twice returns you to
+  // the original orientation with the same dice.
+  let duploTarget = null;
+
+  function beginSeededGame(seed, starter) {
+    if (isNetworkGame) { liveGame = { seed: null, starter: null }; game.rng = null; return; }
+    const s = (seed == null) ? duploBaseSeed() : (seed >>> 0);
+    game.rng = makeBGRng(s);
+    liveGame = { seed: s, starter: (starter == null ? null : starter) };
+    sysLog('[DUPLO-diag] seed installed ' + s + (seed == null ? '  (NEW stream)' : '  (REPLAY of a recorded seed)')
+      + ', opener = ' + (starter == null ? 'roll-off' : 'forced ' + starter));
+  }
+
+  // Swap the two participants between the White and Red seats: who they are, their search
+  // depth, and their running score — the score belongs to the player, so it travels with
+  // them — then re-apply the menus to the engine.
+  function swapSeats() {
+    [['p1-type', 'p2-type'], ['p1-depth', 'p2-depth'], ['p1-score', 'p2-score']].forEach(([a, b]) => {
+      const ea = document.getElementById(a), eb = document.getElementById(b);
+      if (!ea || !eb) return;
+      const t = ea.value; ea.value = eb.value; eb.value = t;
+    });
+    syncPlayersFromMenus();
+    syncDepthMenu(1); syncDepthMenu(2);
+  }
+
+  // DUPLO button — replay the game just played: same dice, seats swapped.
+  function duploReplay() {
+    if (isNetworkGame) { gameMessageEl.textContent = 'DUPLO is not available in a network game.'; return; }
+    if ((duploTarget || liveGame).seed == null) { gameMessageEl.textContent = 'DUPLO: start a game first — DUPLO replays it with the players swapped.'; return; }
+    // Prefer the finished game; fall back to the one in progress if none has ended yet.
+    const src = duploTarget || liveGame;
+    const seed = src.seed, starter = src.starter;
+    sysLog('[DUPLO-diag] DUPLO pressed. replaying seed ' + seed + ', recorded opener '
+      + (starter == null ? 'roll-off' : starter) + ', source ' + (duploTarget ? 'FINISHED game' : 'game in progress')
+      + ', setupOrigin ' + (setupOriginBoard ? 'yes' : 'no'));
+    swapSeats();
+    const keep = duploTarget;                           // applyRestartNewGame re-seeds; keep the target
+    if (setupOriginBoard && setupOriginBoard.starter) applyRestartNewGame(setupOriginBoard.starter, seed);
+    else if (starter != null) applyRestartNewGame(starter, seed);
+    else applyRestartNewGame(null, seed, true);         // re-run the roll-off on the same stream
+    duploTarget = keep;
+    const w = document.getElementById('p1-type'), r = document.getElementById('p2-type');
+    gameMessageEl.textContent = 'DUPLO — same dice, seats swapped: ' + (w ? w.value : '?')
+      + ' now White, ' + (r ? r.value : '?') + ' now Red.';
+    sysLog('[DUPLO] Replaying the same dice with the seats swapped.');
+  }
   let autoMoveOn  = false;
 
   // ── History Navigation state ────────────────────────────────────────
@@ -364,6 +425,12 @@ function sysLog(msg) {
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
     btnRestart.addEventListener('click', () => handleRestartClick());
+  }
+
+  // DUPLO Button Listener — replay the same dice with the seats swapped.
+  const btnDuplo = document.getElementById('btn-duplo');
+  if (btnDuplo) {
+    btnDuplo.addEventListener('click', () => duploReplay());
   }
   // Per-seat score reset buttons (Z). Zero one seat's running score; local only.
   document.getElementById('p1-scorereset')?.addEventListener('click', () => resetScore(1));
@@ -1069,12 +1136,20 @@ function sysLog(msg) {
   // Auto Record (default OFF). When on, a full game record downloads automatically the
   // moment a game ends — the same file Export → Move List produces on demand.
   let autoRecordOn = false;
+  // DUPLO (default ON) — duplicate-bridge pairing for Tournament and Compete. Matches
+  // run in PAIRS: both halves get the SAME match seed (hence identical dice) with the
+  // seats swapped, so dice luck cancels between them. Both batch paths ALREADY swapped
+  // seats on alternate matches (`swap = k % 2 === 1`); DUPLO simply makes the two halves
+  // of a pair share a seed. A brain played against itself therefore nets EXACTLY zero
+  // (see duplo-selfplay-test.js). Does not affect how any single game is played.
+  let duploOn = true;
 
   // Initialise badges to their defaults
   updateSettingBadge('badge-doubling', doublingOn);
   updateSettingBadge('badge-autostart', autoStartOn);
   updateSettingBadge('badge-timetravel', timeTravelOn);
   updateSettingBadge('badge-autorecord', autoRecordOn);
+  updateSettingBadge('badge-duplo', duploOn);
   updateSettingBadge('badge-showscore', showScoreOn);
   updateSettingBadge('badge-speak', speakOn);
   updateSettingBadge('badge-animation', animationOn);
@@ -1144,6 +1219,16 @@ function sysLog(msg) {
       autoRecordOn = !autoRecordOn;
       updateSettingBadge('badge-autorecord', autoRecordOn);
       sysLog(`[System] Auto Record toggled to ${autoRecordOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // DUPLO row
+  const settingDuploEl = document.getElementById('setting-duplo');
+  if (settingDuploEl) {
+    settingDuploEl.addEventListener('click', () => {
+      duploOn = !duploOn;
+      updateSettingBadge('badge-duplo', duploOn);
+      sysLog('[System] DUPLO toggled to ' + (duploOn ? 'ON' : 'OFF'));
     });
   }
 
@@ -1447,7 +1532,11 @@ renderBorneOff();
         ? `Game over! ${loserName} declined the double. ${winnerName} wins ${pts} point${pts === 1 ? '' : 's'}.`
         : `Game over! ${winnerName} ${verb} ${loserName} and wins ${pts} point${pts === 1 ? '' : 's'}.`;
       // Tally the winner's game points once (this branch re-runs on every render).
-      if (!gameScored) { addScore(winner, pts); gameScored = true; }
+      if (!gameScored) {
+        addScore(winner, pts); gameScored = true;
+        // Freeze this finished game as DUPLO's target (see duploTarget).
+        if (!isNetworkGame && liveGame.seed != null) duploTarget = { seed: liveGame.seed, starter: liveGame.starter };
+      }
       // Auto Record: one game record per completed game, written the moment the game ends.
       // Guarded like gameScored, because this branch re-runs on every render.
       if (autoRecordOn && !gameRecorded) { gameRecorded = true; downloadMoveList(true); }
@@ -1804,29 +1893,13 @@ if (pointState.player === game.currentPlayer && game.hasRolled && game.movesLeft
   * Handle rolling logic.
 */
 
-function handleRollClick() {
-    if (isRolling) return;
-    if (pendingDouble) return;   // dice are locked until the double is resolved
-    isRolling = true;
-    updateUI(); // Locks the dice visually
-
-    // Wait 600ms for the CSS rolling animation to finish
-    setTimeout(() => {
-      if (initialRollOff) {
-        const result = game.rollForFirstTurn();
-        // If they didn't roll doubles, the game begins
-        if (result.dice[0] !== result.dice[1]) {
-          initialRollOff = false;
-        } else {
-          sysLog("[Roll] Tie! Rolling again...");
-        }
-      } else {
-        game.rollDice();
-      }
-      isRolling = false;
-      updateUI();
-    }, 600);
-  }
+// Forward declaration only. The REAL handleRollClick is assigned further down (search
+// "Define handleRollClick inside the DOMContentLoaded block") — that one is the only one that
+// ever runs. A stale duplicate BODY used to sit here, silently overwritten by that assignment;
+// a DUPLO diagnostic added to it on 8/24 never fired and cost a debugging round, so it was
+// deleted. Every caller runs from an event listener or a setTimeout, so the binding is always
+// assigned before it is used.
+let handleRollClick;
 
   /**
    * A player (on roll, owning or sharing the cube) offers a double by clicking the cube.
@@ -2076,6 +2149,8 @@ function handleRollClick() {
 
     gameStarted       = false;
     setupOriginBoard  = null;   // full reset → back to the standard start for Restart too
+    liveGame          = { seed: null, starter: null };   // DUPLO: nothing to replay after a full reset
+    duploTarget       = null;
     isAIPlaying       = false;
     selectedSource    = null;
     legalDestinations = [];
@@ -2104,6 +2179,7 @@ function handleRollClick() {
    * Handle restart click.
    */
   function handleRestartClick() {
+    duploTarget = null;   // RESTART explicitly begins the next game -> DUPLO follows it
     // In a remote game the host is in control of restart; the guest's button does nothing.
     if (isNetworkGame && localPlayerRole !== 1) return;
 
@@ -2140,7 +2216,7 @@ function handleRollClick() {
    * Used by Restart to alternate the opener each game, locally and (mirrored from the host)
    * over the network.
    */
-  function applyRestartNewGame(starter) {
+  function applyRestartNewGame(starter, seed = null, rollOff = false) {
     if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
     if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
     if (autoRollTimeout) { clearTimeout(autoRollTimeout); autoRollTimeout = null; }
@@ -2162,7 +2238,16 @@ function handleRollClick() {
       game.borneOff = { ...setupOriginBoard.borneOff };
     }
     syncPlayersFromMenus();              // re-apply the White/Red menu picks after the reset
-    game.beginGameWithStarter(starter);  // forced opener (records the "Start of Game" snapshot)
+    // DUPLO: install the dice stream BEFORE any roll is drawn. `seed` is null for an
+    // ordinary restart (fresh stream) and the recorded seed for a DUPLO replay.
+    beginSeededGame(seed, rollOff ? null : starter);
+    if (rollOff) {
+      game.rollForFirstTurn();           // same stream -> same opening dice -> same colour opens
+      starter = game.currentPlayer;
+      sysLog('[DUPLO-diag] replayed roll-off -> dice ' + game.dice[0] + '-' + game.dice[1] + ', opener player ' + starter);
+    } else {
+      game.beginGameWithStarter(starter);  // forced opener (records the "Start of Game" snapshot)
+    }
     // For a set-up game, replay the SAME opening dice too (skip the random first roll).
     if (setupOriginBoard && setupOriginBoard.dice) {
       const dd = setupOriginBoard.dice;
@@ -2183,8 +2268,10 @@ function handleRollClick() {
     const btnStart = document.getElementById('btn-start-game');
     if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
 
-    renderDie(die1El, 0);
-    renderDie(die2El, 0);
+    // Show the dice if this restart already rolled (DUPLO roll-off replay, or a set-up
+    // game replaying its forced opening); blank for a forced opener that has yet to roll.
+    renderDie(die1El, game.hasRolled ? game.dice[0] : 0);
+    renderDie(die2El, game.hasRolled ? game.dice[1] : 0);
     updateUI();   // -> checkAndTriggerAITurn (AI opener) / checkAndAutoRoll (human, if Auto Roll)
   }
 
@@ -3073,6 +3160,21 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return d;
   }
 
+  // Matches per pair (tournament) / matches in the run (Compete), from #tourney-games.
+  // With DUPLO on this is forced EVEN and the field is corrected in place — an odd
+  // match would have no mirror, so its dice luck would not cancel.
+  function batchMatches(deflt) {
+    const el = document.getElementById('tourney-games');
+    let n = Math.max(1, parseInt(el ? el.value : '', 10) || deflt);
+    if (duploOn && n % 2 === 1) { n += 1; if (el) el.value = n; }
+    return n;
+  }
+
+  // A fresh base seed per run, so two runs of the same job are not identical; pairs
+  // within a run are separated by the same avalanche mix game.js uses per game.
+  function duploBaseSeed() { return (Math.random() * 0x100000000) >>> 0; }
+  function duploPairSeed(base, pairIndex) { return bgGameSeed(base, pairIndex); }
+
   // Cooperative yield: hands control back to the browser (so it can paint and stay
   // responsive) but only if enough wall-clock time has passed since the last yield.
   // Time-slicing keeps fast depth-1 runs from drowning in setTimeout overhead while
@@ -3173,7 +3275,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function runMatchesParallel(specs, onResult) {
     return runJobsParallel(
       specs,
-      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB }),
+      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB, seed: s.seed }),
       (data, spec, i) => onResult(data.result, spec, i),
     );
   }
@@ -3329,9 +3431,20 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // wins, so a blown-up cube can never inflate the signal: a match win counts 1.
   // The A/B argument order is swapped on alternate matches to cancel any residual
   // first-game side bias (simulateBGMatch already alternates colours within a match).
+  // With DUPLO on, the two halves of each pair also share a match seed, so they see
+  // IDENTICAL dice with the seats swapped — luck cancels between them and a mutant
+  // that plays the same as its parent nets EXACTLY 0 instead of drifting on noise.
   async function evoMatch(A, B, nMatches, label) {
     const X = matchLength();
     const depth = lookaheadDepth();
+    // DUPLO: matches run as mirrored pairs sharing a seed, so nMatches is forced even.
+    // This is the GA's biggest win. A scout compares a parent against a MUTANT — two
+    // nearly identical POLICIES — which is exactly where pairing cancels most. Measured
+    // 8/24: ~10x effective sample at X=1 and ~2.9x at X=11 for a 4% mutant, against only
+    // ~1.06x for two roster brains, whose weight vectors genuinely differ. Closeness in
+    // STRENGTH is not closeness in policy; only the latter makes the halves correlate.
+    if (duploOn && nMatches % 2 === 1) nMatches += 1;
+    const duploBase = duploBaseSeed();
     let winsA = 0, winsB = 0, done = 0;
     const tally = (res, swap) => {
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
@@ -3345,13 +3458,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const specs = [];
       for (let i = 0; i < nMatches; i++) {
         const swap = (i % 2 === 1);
-        specs.push({ wA: swap ? B : A, wB: swap ? A : B, X, depthA: depth, depthB: depth, swap });
+        specs.push({ wA: swap ? B : A, wB: swap ? A : B, X, depthA: depth, depthB: depth, swap,
+          seed: duploOn ? duploPairSeed(duploBase, i >> 1) : null });
       }
       await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
     } else {
       for (let i = 0; i < nMatches && !evolveStop; i++) {
         const swap = (i % 2 === 1);
-        const res = await simulateBGMatchYielding(swap ? B : A, swap ? A : B, X, depth, depth, breathe);
+        const res = await simulateBGMatchYielding(swap ? B : A, swap ? A : B, X, depth, depth, breathe,
+          duploOn ? duploPairSeed(duploBase, i >> 1) : null);
         tally(res, swap);
         await new Promise((r) => setTimeout(r, 0));   // keep the UI alive between matches
       }
@@ -3404,7 +3519,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (tournamentRunning) { gameMessageEl.textContent = 'Wait for the tournament to finish.'; return; }
     const baseName = editBrainSel ? editBrainSel.value : 'Origin';
     const maxGens = Math.max(1, parseInt(document.getElementById('evo-gens').value, 10) || 1000);
-    const n = Math.max(1, parseInt(document.getElementById('evo-games').value, 10) || 100);
+    // Matches per sample. DUPLO pairs them, so this is forced even and the field is
+    // corrected in place — an odd match would have no mirror.
+    let n = Math.max(1, parseInt(document.getElementById('evo-games').value, 10) || 100);
+    if (duploOn && n % 2 === 1) { n += 1; const evoEl = document.getElementById('evo-games'); if (evoEl) evoEl.value = n; }
     const R = Math.max(0, Math.min(100, parseInt(document.getElementById('evo-rate').value, 10) || 50));
 
     let parent = normalizeBrain({ ...game.personalityWeights(baseName) });
@@ -3516,6 +3634,38 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     matches, games, ms, turns,
   });
 
+  // How often the SAME brain won BOTH halves of a mirrored pair. This is the whole
+  // story on DUPLO's precision: for independent (unpaired) matches between evenly
+  // matched brains it would be 0.5, so the effective sample multiplier against an
+  // unpaired run is 0.5 / sweepRate. Two identical brains never sweep — they net
+  // exactly zero — and the closer two brains are, the rarer a sweep becomes, which is
+  // why the gain is largest exactly where the roster is tightest.
+  function duploStats(wonFlags, n) {
+    if (!duploOn) return { on: false };
+    let pairs = 0, sweeps = 0;
+    for (let k = 0; 2 * k + 1 < n; k++) {
+      const a = wonFlags[2 * k], b = wonFlags[2 * k + 1];
+      if (a === undefined || b === undefined) continue;   // run stopped mid-pair
+      pairs++;
+      if (a === b) sweeps++;
+    }
+    return { on: true, pairs, sweeps, rate: pairs ? sweeps / pairs : null };
+  }
+
+  function duploCSV(d) {
+    if (!d) return '';
+    let csv = '\nDUPLO\n';
+    csv += 'DUPLO,' + (d.on ? 'ON' : 'OFF') + '\n';
+    if (!d.on) return csv;
+    csv += 'Mirrored pairs,' + csvNum(d.pairs) + '\n';
+    csv += 'Pair sweeps (same brain won both halves),' + csvNum(d.sweeps) + '\n';
+    csv += 'Sweep rate,' + (d.rate === null ? '?' : d.rate.toFixed(4)) + '\n';
+    csv += 'Unpaired sweep rate for reference,0.5000\n';
+    csv += 'Effective sample multiplier (0.5 / sweep rate),'
+        + (d.rate === null ? '?' : (d.sweeps === 0 ? '>' + (0.5 * d.pairs).toFixed(1) : (0.5 / d.rate).toFixed(1))) + '\n';
+    return csv;
+  }
+
   function throughputCSV(p) {
     const ms = Math.max(0, p.ms || 0), games = p.games || 0, matches = p.matches || 0;
     const turns = p.turns || 0;               // AI decisions = "moves" (one per play of the dice)
@@ -3542,7 +3692,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth, perf) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth, perf, duplo) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'BG v. ' + bgVersion() + '\n';
@@ -3575,6 +3725,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       csv += n + ',' + PARAM_ORDER.map((k) => csvNum(w[k])).join(',') + '\n';
     });
 
+    csv += duploCSV(duplo);
     if (perf) csv += throughputCSV(perf);
     return csv;
   }
@@ -3596,7 +3747,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const wWhite = game.personalityWeights(p1), wRed = game.personalityWeights(p2);
     const dWhite = playerDepth(1), dRed = playerDepth(2);
     const X = matchLength();
-    const nMatches = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 1000);
+    const nMatches = batchMatches(1000);            // DUPLO forces this even
 
     tournamentRunning = true; tournamentStop = false;
     const btn = document.getElementById('btn-compete');
@@ -3605,6 +3756,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     let winsWhite = 0, winsRed = 0;   // match wins for WP / RP
     let gptsWhite = 0, gptsRed = 0;   // total game points for WP / RP (tiebreak)
     let totalGames = 0, totalTurns = 0;   // individual games / AI decisions across the run
+    // DUPLO: matches run as mirrored pairs (2k, 2k+1) sharing one seed — same dice,
+    // seats swapped. wpWon[i] records who won match i so the sweep rate can be read off.
+    const duploBase = duploBaseSeed();
+    const wpWon = [];
 
     // Show status before work starts, and yield once so the browser paints it.
     gameMessageEl.textContent = `Compete starting… ${p1} d${dWhite} vs ${p2} d${dRed}, ${nMatches} matches to ${X}…`;
@@ -3612,8 +3767,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
     let done = 0;
     // Tally one finished match (A is WP when !swap, else RP).
-    const tally = (res, swap) => {
+    const tally = (res, swap, idx) => {
       const whiteWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+      if (idx !== undefined) wpWon[idx] = whiteWon;
       if (whiteWon) winsWhite++; else winsRed++;
       gptsWhite += swap ? res.scoreB : res.scoreA;
       gptsRed   += swap ? res.scoreA : res.scoreB;
@@ -3630,18 +3786,20 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const swap = (i % 2 === 1);
         specs.push({
           wA: swap ? wRed : wWhite, wB: swap ? wWhite : wRed,
-          X, depthA: swap ? dRed : dWhite, depthB: swap ? dWhite : dRed, swap,
+          X, depthA: swap ? dRed : dWhite, depthB: swap ? dWhite : dRed, swap, idx: i,
+          seed: duploOn ? duploPairSeed(duploBase, i >> 1) : null,   // both halves of pair i>>1 share it
         });
       }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
+      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap, spec.idx));
     } else {
       for (let i = 0; i < nMatches; i++) {
         if (tournamentStop) break;
         const swap = (i % 2 === 1);
         const res = await simulateBGMatchYielding(
           swap ? wRed : wWhite, swap ? wWhite : wRed, X,
-          swap ? dRed : dWhite, swap ? dWhite : dRed, breathe);
-        tally(res, swap);
+          swap ? dRed : dWhite, swap ? dWhite : dRed, breathe,
+          duploOn ? duploPairSeed(duploBase, i >> 1) : null);
+        tally(res, swap, i);
         await new Promise((r) => setTimeout(r, 0));
       }
     }
@@ -3655,6 +3813,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       p1, p2, dWhite, dRed, winsWhite, winsRed, gptsWhite, gptsRed,
       totalGames, nMatches, X, tStart, tEnd,
       perf: perfBlock(done, totalGames, tEnd - tStart, totalTurns),
+      duplo: duploStats(wpWon, nMatches),
     }));
     gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
@@ -3697,6 +3856,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const wWP = game.personalityWeights(r.p1), wRP = game.personalityWeights(r.p2);
     csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => csvNum(wWP[k])).join(',') + '\n';
     csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => csvNum(wRP[k])).join(',') + '\n';
+    csv += duploCSV(r.duplo);
     if (r.perf) csv += throughputCSV(r.perf);
     return csv;
   }
@@ -3704,7 +3864,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   async function runTournament() {
     const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
-    const matchesPer = Math.max(1, parseInt(document.getElementById('tourney-games').value, 10) || 1000);
+    const matchesPer = batchMatches(1000);          // DUPLO forces this even
     const X = matchLength();
     const depth = lookaheadDepth();
 
@@ -3733,9 +3893,17 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
     let done = 0;
 
+    // DUPLO: mirrored pairs sharing a seed. matchesPer is even, so every brain-pair
+    // block starts at an even flat index and the pairs are (2k, 2k+1) globally.
+    // aWonArr[i] records whether A won match i, for the sweep rate.
+    const duploBase = duploBaseSeed();
+    const aWonArr = [];
+    let flatIdx = 0;
+
     // Tally one finished match given its pair/swap meta.
-    const tally = (res, A, B, swap) => {
+    const tally = (res, A, B, swap, idx) => {
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
+      if (idx !== undefined) aWonArr[idx] = aWon;
       const winner = aWon ? A : B, loser = aWon ? B : A;
       const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
       mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
@@ -3754,10 +3922,12 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const wA = game.personalityWeights(A), wB = game.personalityWeights(B);
         for (let k = 0; k < matchesPer; k++) {
           const swap = (k % 2 === 1);
-          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap });
+          const fi = flatIdx++;
+          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap, idx: fi,
+            seed: duploOn ? duploPairSeed(duploBase, fi >> 1) : null });
         }
       }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap));
+      await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap, spec.idx));
     } else {
       for (const [A, B] of pairs) {
         if (tournamentStop) break;
@@ -3765,8 +3935,10 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         for (let k = 0; k < matchesPer; k++) {
           if (tournamentStop) break;
           const swap = (k % 2 === 1);                          // balance first-game side bias
-          const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe);
-          tally(res, A, B, swap);
+          const fi = flatIdx++;
+          const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe,
+            duploOn ? duploPairSeed(duploBase, fi >> 1) : null);
+          tally(res, A, B, swap, fi);
           await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
         }
       }
@@ -3777,7 +3949,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth,
-      perfBlock(done, totalGames, tEnd - tStart, totalTurns)));
+      perfBlock(done, totalGames, tEnd - tStart, totalTurns), duploStats(aWonArr, total)));
     gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
@@ -4917,7 +5089,6 @@ connection.on('data', (data) => {
     return success;
   };
 
-    const originalRollClick = handleRollClick;
     
 const originalEndTurn = BackgammonGame.prototype.endTurn;
   
@@ -4972,6 +5143,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
     gameStarted = true;
     setupOriginBoard = null;    // ordinary game from the standard start → Restart uses the standard start
+    beginSeededGame(null, null);   // DUPLO: fresh dice stream; the roll-off decides the opener
+    duploTarget = null;            // explicitly beginning a new game -> DUPLO follows it
     initialRollOff = true;
     game.currentPlayer = 1;
     game.hasRolled = false;
@@ -5010,16 +5183,22 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
         }
         return (array[0] % 6) + 1;
     }
+    // DUPLO: when a seeded dice stream is installed on the engine (every LOCAL game),
+    // every die must come from it or the game cannot be replayed. secureRoll() is the
+    // fallback for network games, where the engine is deliberately left unseeded.
+    // NB the engine's own reject-doubles loop in rollForFirstTurn() consumes draws in
+    // exactly this pattern, so the replay in applyRestartNewGame stays in lockstep.
+    const rollOne = () => (game.rng ? game._die() : secureRoll());
     // -------------------------
 
     let d1, d2;
 
     if (initialRollOff) {
         do {
-            d1 = secureRoll();
-            d2 = secureRoll();
+            d1 = rollOne();
+            d2 = rollOne();
         } while (d1 === d2);
-        
+        sysLog('[DUPLO-diag] live roll-off -> dice ' + d1 + '-' + d2 + ', seed in force ' + liveGame.seed);
         game.rollForFirstTurn(d1, d2);
         initialRollOff = false;
         lastStarter = game.currentPlayer;   // remember the opener so Restart can alternate
@@ -5049,8 +5228,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
                 game.futureRolls = [];
                 game.futureRollIndex = 0;
             }
-            d1 = secureRoll();
-            d2 = secureRoll();
+            d1 = rollOne();
+            d2 = rollOne();
         }
 
         const result = game.rollDice(d1, d2);
@@ -5307,6 +5486,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     game.doublingCubeValue = 1; game.doublingCubeOwner = null; game.winner = null;
     historyNavBuffer = []; historyNavIndex = null;
     gameStarted = true; aiStopped = false;
+    beginSeededGame(null, null);   // DUPLO: fresh dice stream for this set-up launch
     gameScored = false; winTurnRecorded = false; gameRecorded = false;
     gameClockReset();
     const btnStart = document.getElementById('btn-start-game');
