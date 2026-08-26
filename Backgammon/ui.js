@@ -23,6 +23,31 @@ document.addEventListener('DOMContentLoaded', () => {
   let inboundWatchdog  = null;       // interval that reconnects when inbound goes silent
   let reconnecting     = false;      // guard while an auto-reconnect is in flight
   const INBOUND_SILENCE_MS = 10000;  // no inbound this long (heartbeats are 3s) → reconnect
+  // Backlog-skip high-water mark (see makeFirebaseConnection). Firebase push() keys are
+  // chronologically ordered, so "already handled" is a COMPARISON that survives a reconnect,
+  // not a snapshot taken at attach time that swallows whatever arrived while we were rebuilding.
+  let inboundHighWater     = null;   // highest inbound key consumed on this room+role
+  let inboundHighWaterRoom = null;   // which room+role the mark belongs to
+
+  /**
+   * Send a game message to the peer.
+   *
+   * ⚠️ NEVER gate a game message on `conn.open`. BOTH transports write to a DURABLE queue
+   * (Firebase push / relay.php append), so a message handed over while `open` is momentarily
+   * false still reaches the peer — it waits in the room until the peer's listener picks it up.
+   * The old `if (conn && conn.open) conn.send(...)` guard protected nothing and silently DROPPED
+   * the message during the ~200ms window of a reconnect, while the caller went on to apply the
+   * action locally — so the two sides ended up permanently disagreeing with no error anywhere.
+   * That is how a cube ACCEPT was lost on 8/25 and froze the game (see the freeze-after-double
+   * note in CLAUDE.md). The heartbeat is the one exception and keeps its `open` check: it is a
+   * snapshot of NOW, and a stale one delivered late would be worse than a missed beat.
+   */
+  function netSend(obj) {
+    if (!isNetworkGame || !conn) return false;
+    if (!conn.open) sysLog(`[Network] Sending ${obj && obj.type} while the channel re-opens (it waits in the room).`);
+    try { conn.send(obj); } catch (e) { sysLog('[Network] send failed: ' + e.message); return false; }
+    return true;
+  }
 
   // Compact board signature (points + bar + off) for desync detection/logging.
   function boardSig(points, bar, borneOff) {
@@ -407,7 +432,7 @@ function sysLog(msg) {
     if (pendingDouble) {
       const responder = opponentOf(pendingDouble.by);
       if (isNetworkGame && localPlayerRole !== responder) return; // only the doubled player responds
-      if (isNetworkGame && conn && conn.open) conn.send({ type: 'accept' });
+      netSend({ type: 'accept' });
       applyAcceptDouble();
       return;
     }
@@ -1290,7 +1315,7 @@ function sysLog(msg) {
     if (pendingDouble) {
       const responder = opponentOf(pendingDouble.by);
       if (isNetworkGame && localPlayerRole !== responder) return; // only the doubled player responds
-      if (isNetworkGame && conn && conn.open) conn.send({ type: 'decline' });
+      netSend({ type: 'decline' });
       applyDeclineDouble();
       return;
     }
@@ -1925,7 +1950,7 @@ let handleRollClick;
     if (!game.canDouble(player)) return;
 
     pendingDouble = { by: player };
-    if (isNetworkGame && conn && conn.open) conn.send({ type: 'double' });
+    netSend({ type: 'double' });
     updateUI();
 
     // Local game vs an AI opponent: the AI answers immediately.
@@ -2199,7 +2224,7 @@ let handleRollClick;
 
     // A game has been played -> alternate the opener and launch the next game immediately.
     const newStarter = (lastStarter === 1) ? 2 : 1;
-    if (isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
+    if (isNetworkGame && localPlayerRole === 1 && conn) {
       // Wipe the room's message backlog FIRST, then send restart as the first message of the
       // fresh game — so the room never carries a stale multi-game history for a later reconnect.
       const sendRestart = () => conn.send({ type: 'restart', starter: newStarter });
@@ -2415,7 +2440,7 @@ let handleRollClick;
           ensureNavBuffer();
           navigateTo(idx);
           // Sync the host's jump to this stage over to the guest.
-          if (isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'goto', idx });
+          netSend({ type: 'nav', action: 'goto', idx });
         });
 
         const pCode = snapshot.currentPlayer === 1 ? 'W' : 'R';
@@ -2588,7 +2613,7 @@ let handleRollClick;
       if (e.isTrusted && !timeTravelOn) return;   // time travel off (setting-gated; guest defaults off)
       ensureNavBuffer();
       navigateTo(0);
-      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'first' });
+      if (e.isTrusted) netSend({ type: 'nav', action: 'first' });
     });
 
     if (btnBack) btnBack.addEventListener('click', (e) => {
@@ -2604,7 +2629,7 @@ let handleRollClick;
       } else if (historyNavIndex > 0) {
         navigateTo(historyNavIndex - 1);
       }
-      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'back' });
+      if (e.isTrusted) netSend({ type: 'nav', action: 'back' });
     });
 
     if (btnFwd) btnFwd.addEventListener('click', (e) => {
@@ -2619,7 +2644,7 @@ let handleRollClick;
         updateNavButtons();
         updateUI();
       }
-      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'fwd' });
+      if (e.isTrusted) netSend({ type: 'nav', action: 'fwd' });
     });
 
     if (btnLast) btnLast.addEventListener('click', (e) => {
@@ -2631,7 +2656,7 @@ let handleRollClick;
       historyNavBuffer = [];
       updateNavButtons();
       // updateUI already called by navigateTo
-      if (e.isTrusted && isNetworkGame && conn && conn.open) conn.send({ type: 'nav', action: 'last' });
+      if (e.isTrusted) netSend({ type: 'nav', action: 'last' });
     });
   })();
   // ─────────────────────────────────────────────────────────────────────
@@ -2656,8 +2681,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       if (setupMode) { exitSetup(); return; }
       stopAI();
       if (gameStarted && !game.winner) gameMessageEl.textContent = "Game Stopped.  Press the Start button to continue.";
-      if (e.isTrusted && isNetworkGame && localPlayerRole === 1 && conn && conn.open) {
-        conn.send({ type: 'stop_ai' });
+      if (e.isTrusted && localPlayerRole === 1) {
+        netSend({ type: 'stop_ai' });
       }
     });
   }
@@ -4383,12 +4408,27 @@ if (view === 'white') {
     // heartbeat's full-state adopt handles catching the board up. (A fresh room has no backlog,
     // so nothing is skipped and the normal handshake is unaffected — the host sends sync/start
     // only after both sides are present, i.e. after this listener is live.)
+    // ⚠️ The skip is ORDINAL, not a snapshot. Firebase push() keys are chronologically ordered,
+    // so the highest key we have consumed is a watermark that SURVIVES a reconnect: on re-attach
+    // child_added replays the queue and everything above the mark is delivered, including whatever
+    // the peer wrote while we were rebuilding. The old code re-snapshotted "what is here now" at
+    // every attach and filed all of it as history — so a message that landed 200ms earlier, during
+    // the teardown, was skipped forever. Combined with a watchdog that reconnects every 12s, that
+    // is a message shredder (8/25: the guest's cube ACCEPT went into it and never came out).
+    // The mark is per room+role and resets when either changes, so joining a NEW room still skips
+    // that room's prior history exactly as before.
+    const markKey = roomCode + '/' + role;
+    if (inboundHighWaterRoom !== markKey) { inboundHighWaterRoom = markKey; inboundHighWater = null; }
     inRef.once('value', (initSnap) => {
-      const seen = new Set();
-      initSnap.forEach((c) => { seen.add(c.key); });
+      if (inboundHighWater === null) {
+        // First attach to this room: everything already present predates us → skip it.
+        let hw = '';
+        initSnap.forEach((c) => { if (c.key > hw) hw = c.key; });
+        inboundHighWater = hw;
+      }
       inRef.on('child_added', (snap) => {
-        if (seen.has(snap.key)) return;   // pre-existing backlog → skip
-        seen.add(snap.key);
+        if (snap.key <= inboundHighWater) return;   // at or below the watermark → already handled
+        inboundHighWater = snap.key;
         let msg = snap.val();
         if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { return; } }
         if (msg) fire('data', msg);
@@ -4433,6 +4473,12 @@ if (view === 'white') {
     const handlers = { open: [], data: [], close: [] };
     const fire = (evt, arg) => (handlers[evt] || []).forEach((cb) => { try { cb(arg); } catch (e) { sysLog('[Network] handler error: ' + e.message); } });
 
+    // ⚠️ LATENT (dormant transport, NOT fixed — flagged 8/25): sinceIn restarts at 0 on every new
+    // shim, so an auto-reconnect over the PHP relay would re-deliver the room's WHOLE queue — the
+    // mirror image of the Firebase bug fixed above, and the history-corrupting replay the v140
+    // change was written to stop. If 'php' is ever brought back into service, persist this index
+    // across reconnects the way inboundHighWater does for Firebase. Left alone here because the
+    // path is dormant (NET_TRANSPORT = 'firebase') and cannot be tested from this side.
     let sinceIn = 0, opened = false, stopped = false, pollTimer = null;
 
     const onUnload = () => {
@@ -4558,13 +4604,22 @@ function initNetworkGame(role) {
         movesLeft: [...game.movesLeft],
         points: game.points, bar: game.bar, borneOff: game.borneOff,
         cubeValue: game.doublingCubeValue, cubeOwner: game.doublingCubeOwner,
+        // The pending offer travels too, so a peer whose accept/decline was lost can be
+        // reconciled from the beat itself (see handleHeartbeat's cube reconciliation).
+        pendingDouble: pendingDouble ? { by: pendingDouble.by } : null,
         winner: game.winner
       };
     }
     function sendHeartbeat() {
       if (!isNetworkGame || !gameStarted || game.winner) return;
       if (!conn || !conn.open) return;
-      if (isRolling || pendingDouble) return;     // transient; the next tick will advertise
+      // isRolling is genuinely transient (well under a second) — skipping one beat is harmless.
+      // pendingDouble is NOT: it lasts as long as a person takes to decide whether to take, which
+      // is routinely longer than INBOUND_SILENCE_MS. Suppressing the beat there starved BOTH
+      // watchdogs at the exact moment a cube decision was in flight, so both sides reconnected on
+      // the same 12s cadence and the guest's accept fell into the gap (8/25 freeze-after-double).
+      // The beat now keeps flowing through a pending double and advertises the offer.
+      if (isRolling) return;
       conn.send(heartbeatSnapshot());
     }
     function startHeartbeat() { if (heartbeatTimer) clearInterval(heartbeatTimer); heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS); }
@@ -4639,7 +4694,7 @@ function initNetworkGame(role) {
       // We jumped the BOARD to the peer's authoritative state, but our move-history list may now
       // have a gap for the turn(s) we missed. Ask the peer for its full history so the list is
       // rebuilt intact (see the 'sync_request'/'sync_full' handlers).
-      if (conn && conn.open) { try { conn.send({ type: 'sync_request' }); } catch (e) {} }
+      netSend({ type: 'sync_request' });
     }
     function handleHeartbeat(s) {
       if (!isNetworkGame || !gameStarted) return;
@@ -4665,15 +4720,38 @@ function initNetworkGame(role) {
       {
         const mineSig = boardSig(game.points, game.bar, game.borneOff);
         const peerSig = boardSig(s.points, s.bar, s.borneOff);
-        if (s.turnCount !== game.turnCount || s.currentPlayer !== game.currentPlayer || mineSig !== peerSig) {
-          const key = `t${game.turnCount}/p${game.currentPlayer}|${mineSig}||t${s.turnCount}/p${s.currentPlayer}|${peerSig}`;
+        // The cube is part of the state, so it belongs in the comparison. Leaving it out is why a
+        // pure cube divergence logged nothing at all on 8/25 while the two sides sat disagreeing.
+        const mineCube = `cube ${game.doublingCubeValue}/${game.doublingCubeOwner}${pendingDouble ? '+pending' : ''}`;
+        const peerCube = `cube ${s.cubeValue}/${s.cubeOwner}${s.pendingDouble ? '+pending' : ''}`;
+        if (s.turnCount !== game.turnCount || s.currentPlayer !== game.currentPlayer || mineSig !== peerSig || mineCube !== peerCube) {
+          const key = `t${game.turnCount}/p${game.currentPlayer}|${mineSig}|${mineCube}||t${s.turnCount}/p${s.currentPlayer}|${peerSig}|${peerCube}`;
           if (key !== lastDivergenceKey) {
             lastDivergenceKey = key;
-            sysLog(`[DIVERGENCE] mine  t${game.turnCount} p${game.currentPlayer} rolled=${game.hasRolled} | ${mineSig}`);
-            sysLog(`[DIVERGENCE] peer  t${s.turnCount} p${s.currentPlayer} rolled=${!!s.hasRolled} | ${peerSig}`);
+            sysLog(`[DIVERGENCE] mine  t${game.turnCount} p${game.currentPlayer} rolled=${game.hasRolled} | ${mineCube} | ${mineSig}`);
+            sysLog(`[DIVERGENCE] peer  t${s.turnCount} p${s.currentPlayer} rolled=${!!s.hasRolled} | ${peerCube} | ${peerSig}`);
           }
         } else {
           lastDivergenceKey = null;
+        }
+      }
+
+      // CUBE RECONCILIATION (8/25). A lost accept/decline leaves the two sides disagreeing about
+      // the CUBE ALONE — turnCount, on-roll player and board all still match, so neither `behind`
+      // nor `tieDeferToHost` fires and the old code sat next to the answer indefinitely (the host
+      // held pendingDouble forever while the guest told it three times a second that the cube was
+      // 2). The beat carries the peer's cube and, since Fix 1, its pending offer: if I am still
+      // waiting on an offer the peer has already resolved, resolve it here the same way.
+      if (pendingDouble && !s.pendingDouble) {
+        if ((s.cubeValue || 1) > game.doublingCubeValue) {
+          sysLog(`[Resync] Peer holds the cube at ${s.cubeValue} — its ACCEPT never arrived; applying it here.`);
+          applyAcceptDouble();
+          return;
+        }
+        if (s.winner && !game.winner) {
+          sysLog('[Resync] Peer shows the game over — its DECLINE never arrived; applying it here.');
+          applyDeclineDouble();
+          return;
         }
       }
 
@@ -4909,9 +4987,7 @@ connection.on('data', (data) => {
       // Move-list integrity: a side that just resynced its board (adoptRemoteState) asks the peer
       // for its authoritative full move history so its list has no gap.
       else if (data.type === 'sync_request') {
-          if (conn && conn.open) {
-            try { conn.send({ type: 'sync_full', history: game.gameHistory }); } catch (e) {}
-          }
+          netSend({ type: 'sync_full', history: game.gameHistory });
       }
       else if (data.type === 'sync_full') {
           if (Array.isArray(data.history) && data.history.length >= game.gameHistory.length) {
@@ -5073,7 +5149,7 @@ connection.on('data', (data) => {
     const success = originalMakeMove.apply(this, [from, to, validateMax]);
 
     if (success && isNetworkGame && this.currentPlayer === localPlayerRole) {
-       if (conn && conn.open) conn.send({ type: 'move', from, to });
+       netSend({ type: 'move', from, to });
     }
     return success;
   };
@@ -5084,7 +5160,7 @@ connection.on('data', (data) => {
     const success = originalUndo.apply(this);
     
     if (success && isNetworkGame && this.currentPlayer === localPlayerRole) {
-      if (conn && conn.open) conn.send({ type: 'undo' });
+      netSend({ type: 'undo' });
     }
     return success;
   };
@@ -5110,7 +5186,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     // include an authoritative board snapshot so the opponent reconciles to it each
     // turn (self-healing: corrects any drift from imperfect move replay).
     if (isNetworkGame && activeBefore === localPlayerRole) {
-      if (conn && conn.open) conn.send({
+      netSend({
         type: 'end_turn',
         points: this.points, bar: this.bar, borneOff: this.borneOff,
         cubeValue: this.doublingCubeValue, cubeOwner: this.doublingCubeOwner,
@@ -5137,8 +5213,8 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
       return;
     }
     
-    if (!isRemote && isNetworkGame && conn && conn.open) {
-        conn.send({ type: 'start' });
+    if (!isRemote) {
+        netSend({ type: 'start' });
     }
 
     gameStarted = true;
@@ -5208,9 +5284,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
           setupOriginBoard.dice = [d1, d2];
         }
 
-        if (isNetworkGame && conn && conn.open) {
-            conn.send({ type: 'roll_first', dice: [d1, d2] });
-        }
+        netSend({ type: 'roll_first', dice: [d1, d2] });
     } else {
         // Replay mode: reuse the pre-recorded dice for deterministic replay after
         // a time-travel restore. Falls back to secureRoll() once exhausted.
@@ -5233,10 +5307,10 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
         }
 
         const result = game.rollDice(d1, d2);
-        if (result && isNetworkGame && conn && conn.open) {
+        if (result) {
             // Tag with the post-roll turnCount + roller so the receiver keeps turnCount aligned
             // (the anchor the heartbeat uses to detect a missed turn).
-            conn.send({ type: 'roll', dice: [d1, d2], player: game.currentPlayer, turnCount: game.turnCount });
+            netSend({ type: 'roll', dice: [d1, d2], player: game.currentPlayer, turnCount: game.turnCount });
         }
     }
 
