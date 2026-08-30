@@ -1,0 +1,14 @@
+{
+  "comment": "The shipped neural-net roster. Names are alphabetical BY PERFORMANCE (Apollo strongest), the same convention the linear roster keeps by ordering. A listed file that is not present is shown dimmed and reported only when it is actually needed, so the page is complete on first load whether or not the nets have been built yet. Nets are loaded lazily, on first use.",
+  "nets": [
+    { "name": "Apollo",   "file": "apollo.json"   },
+    { "name": "Belona",   "file": "belona.json"   },
+    { "name": "Castor",   "file": "castor.json"   },
+    { "name": "Diana",    "file": "diana.json"    },
+    { "name": "Eros",     "file": "eros.json"     },
+    { "name": "Flora",    "file": "flora.json"    },
+    { "name": "Ganymede", "file": "ganymede.json" },
+    { "name": "Hera",     "file": "hera.json"     },
+    { "name": "Icarus",   "file": "icarus.json"   }
+  ]
+}

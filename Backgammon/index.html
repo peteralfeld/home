@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 150</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 151</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -348,6 +348,50 @@
       <button class="tourney-mini" id="tourney-all" title="Select all participants">all</button>
       <button class="tourney-mini" id="tourney-none" title="Deselect all participants">none</button>
     </div>
+    <!-- Row 17 — net-brain participants. Its own all/none, affecting only this row: a full
+         18-brain round robin is 153 pairs against 36, so the two rows are selected apart. -->
+    <div class="tourney-row nn-row">
+      <span class="tourney-toggles nn-toggles" id="nn-toggles"></span>
+      <button class="tourney-mini" id="nn-all" title="Select every net brain for the tournament">all</button>
+      <button class="tourney-mini" id="nn-none" title="Deselect every net brain">none</button>
+    </div>
+
+    <!-- Row 18 — the net brain the LEARN row acts on, and the way to import one. No Export
+         and no Def: a net is not editable here, and the shipped ones are files. -->
+    <div class="tourney-row">
+      <select id="nn-brain" class="brain-select" title="Neural-net AI — the one LEARN continues from"></select>
+      <button id="nn-import" class="tourney-mini" title="Import a neural-net AI from a .json file">Import</button>
+    </div>
+
+    <!-- Row 19 — LEARN. N games, W wide, L hidden layers, phi, lambda, from scratch or
+         continuing the AI selected above. The learning rate is deliberately NOT here: 0.01
+         is the only value with evidence behind it, and the progress line reports the two
+         diagnostics that catch a bad run instead. -->
+    <div class="tourney-row learn-row">
+      <button id="btn-learn" class="tourney-run" title="Train a neural-net AI by self-play">LEARN</button>
+      <select id="learn-from" class="match-len" title="Train a new AI from scratch, or continue training the AI selected above">
+        <option value="scratch" selected>new</option>
+        <option value="continue">cont</option>
+      </select>
+      <input type="number" id="learn-games" class="evo-field" value="100000" min="1" title="Self-play games to train on (N)">
+      <input type="number" id="learn-width" class="evo-field" value="80" min="1" title="Width of each hidden layer (W)">
+      <select id="learn-layers" class="match-len" title="Number of hidden layers (L)">
+        <option value="1" selected>1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+      </select>
+      <select id="learn-phi" class="match-len" title="Hidden-unit activation function (phi)">
+        <option value="lrelu" selected>lrelu</option>
+        <option value="relu">relu</option>
+        <option value="tanh">tanh</option>
+        <option value="sigmoid">sigmoid</option>
+        <option value="identity">ident</option>
+      </select>
+      <input type="number" id="learn-lambda" class="evo-field" value="0.7" min="0" max="1" step="0.05" title="Lambda: 1 = Monte-Carlo targets, 0 = TD(0). 0.7 is the measured best.">
+      <input type="text" id="learn-seed" class="evo-field" inputmode="numeric" placeholder="seed" title="Training seed (blank = a random one). The seed fixes BOTH the initial weights and the whole self-play dice sequence, so two runs with the same seed differ only in what else you changed. Reproduces only at the same Workers count: the round size is the staleness boundary.">
+    </div>
+
+    <!-- Row 20 -->
     <div class="tourney-row">
       <button id="btn-compete" class="tourney-run" title="Play the White (WP) and Red (RP) AIs against each other, each at its own depth from the player rows. Both sides must be AIs.">Compete</button>
       <button id="btn-run-tournament" title="Run a round-robin tournament among selected brains" class="tourney-run">Tournament</button>
@@ -468,7 +512,12 @@
     </main>
   </div>
 
+  <!-- net.js before game.js: the engine resolves BG_NET lazily, but a net brain needs it
+       present, and the worker loads the pair in the same order. -->
+  <script src="net.js"></script>
   <script src="game.js"></script>
+  <!-- after both: it resolves BackgammonGame and BG_NET lazily but needs them present. -->
+  <script src="net-selfplay.js"></script>
   <script src="ui.js"></script>
 </body>
 </html>

@@ -664,9 +664,16 @@ function sysLog(msg) {
     }
     txt += '\n';
     // Pip counts are the position AFTER the turn; Time is the mover's wall clock for it.
+    // The six probabilities are written out in full rather than three plus a subtraction:
+    // W's three and R's three are not recoverable from each other, only their totals are.
+    // All White-view, all with two decimals — a backgammon is often well under 1%, so
+    // whole percents would print 0 down the whole column.
     txt += 'Turn  Player  Dice   ' + 'Moves'.padEnd(26) + ' ' + 'Pip W'.padStart(6)
          + ' ' + 'Pip R'.padStart(6) + ' ' + 'Time ms'.padStart(10)
-         + (withScore ? '  Score (White view)' : '') + '\n\n';
+         + (withScore ? '  ' + 'Score'.padStart(6)
+             + ' ' + 'W win%'.padStart(7) + ' ' + 'W gam%'.padStart(7) + ' ' + 'W bg%'.padStart(7)
+             + ' ' + 'R win%'.padStart(7) + ' ' + 'R gam%'.padStart(7) + ' ' + 'R bg%'.padStart(7)
+             : '') + '\n\n';
 
     // A doubling-accept snapshot carries no dice ([0,0]) and no checker moves — it just
     // records the new cube value. It is NOT its own turn: fold "DC=N" into the Moves column
@@ -704,7 +711,16 @@ function sysLog(msg) {
       const tStr = (snap.elapsedMs == null ? '-' : msText(snap.elapsedMs)).padStart(10, ' ');
 
       txt += `${turnNum}  ${pCode}   ${diceStr}  ${movesText.padEnd(26, ' ')} ${pipW} ${pipR} ${tStr}`;
-      txt += withScore ? `  ${String(Math.round(snapshotScore(snap))).padStart(6, ' ')}\n` : '\n';
+      if (withScore) {
+        const pw = snapshotWhiteWin(snap);
+        const dist = snapshotNetDist(snap);
+        const scoreTxt = (pw === null) ? fmtBrainValue(snapshotScore(snap), false) : Math.round(100 * pw) + '%';
+        txt += '  ' + scoreTxt.padStart(6, ' ');
+        // A linear-scored row has no probabilities; leave the six blank rather than zero.
+        txt += dist ? dist.map((v) => (100 * v).toFixed(2).padStart(7, ' ')).join(' ')
+                    : '       '.repeat(6);
+        txt += '\n';
+      } else txt += '\n';
     });
     // Edge case: a double with no following roll (e.g. game ended on it) — show it on its own.
     if (pendingDC != null) txt += `${String(displayTurn).padStart(4, ' ')}         -    DC=${pendingDC}\n`;
@@ -830,7 +846,11 @@ function sysLog(msg) {
   // Turn rows. The Moves cell can overflow its column, so the numeric tail is anchored to
   // the end of the line and Moves is whatever is left. Magriel tokens always contain "/",
   // which is what stops the non-greedy Moves group from eating a pip count.
-  const RECORD_ROW_RE = /^\s*(\d+)\s+(White|Red)\s+(\S+)\s+(.*?)\s+(\d+)\s+(\d+)\s+([\d,]+|-)(?:\s+(-?[\d,]+|WIN|LOSS))?\s*$/;
+  // ⚠️ Everything after the Time column is DERIVED and must be ignored on the way back in:
+  // the Score cell (an integer for a linear brain, "62%" for a net) and, since 8/29, six
+  // probability columns. The file round-trips on mover / dice / moves / pips alone — the pip
+  // columns are the checksum — so the tail is deliberately swallowed rather than parsed.
+  const RECORD_ROW_RE = /^\s*(\d+)\s+(White|Red)\s+(\S+)\s+(.*?)\s+(\d+)\s+(\d+)\s+([\d,]+|-)(?:\s+(-?[\d,]+%?|WIN|LOSS))?(?:\s+[-\d.,%\s]*)?\s*$/;
 
   // Pull a record apart into { starter, initial, turns, win }. Returns { err } on the first
   // thing that doesn't make sense, with a message worth showing the user.
@@ -1057,6 +1077,14 @@ function sysLog(msg) {
     exportBoardEl.addEventListener('click', () => {
       const onRoll = game.currentPlayer || 1;
       const weights = scoringWeights(onRoll);
+      if (isNetScore(weights)) {
+        // Board Value is a per-feature breakdown of the 22 linear eval terms. A net has no
+        // features to break down — its 16k parameters are not a decomposition of the score.
+        const msg = scoringAIName(onRoll) + ' is a net brain — it has no per-feature breakdown to export.';
+        gameMessageEl.textContent = msg;
+        sysLog('[Export] Board Value refused — ' + msg);
+        return;
+      }
       const bd = game.evaluateBreakdown(game.points, game.bar, game.borneOff, weights);
       const onRollColor = onRoll === 1 ? 'White' : 'Red';
       const ownScore = onRoll === 1 ? bd.score : -bd.score;
@@ -1121,7 +1149,7 @@ function sysLog(msg) {
 
       let csv = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n`;
       csv += `Move table — ${brainName}, depth ${depth}, ${who} on roll\n`;
-      csv += `Position:,"${describeBoard()}"\nDice,Best move,Score (White view)\n`;
+      csv += `Position:,"${describeBoard()}"\nDice,Best move,${isNetScore(W) ? 'Equity (White view)' : 'Score (White view)'}\n`;
       try {
         for (let k = 0; k < rolls.length; k++) {
           const [d1, d2] = rolls[k];
@@ -1131,10 +1159,18 @@ function sysLog(msg) {
           const ranked = await rankMovesFor(board, player, dice, depth, W);
           const best = ranked[0];
           const mv = best ? best.moves.map((m) => `${m.from === 'bar' ? 'bar' : m.from}/${m.to === 'off' ? 'off' : m.to}`).join(', ') : '(none)';
-          csv += `${d1} ${d2},"${mv}",${best ? Math.round(best.value) : ''}\n`;
+          csv += `${d1} ${d2},"${mv}",${best ? fmtBrainValue(best.value, isNetScore(W)) : ''}\n`;
         }
-        csv += `\nParameters,${BRAIN_KEYS.join(',')}\n`;
-        csv += `${brainName},${BRAIN_KEYS.map((k) => (W[k] != null ? W[k] : 0)).join(',')}\n`;
+        if (isNetScore(W)) {
+          // A net has no parameter row to print: 16k floats are not a table, and the numbers
+          // in the Score column are equity, not the +-1000 band the linear brains use.
+          csv += `\nBrain,${brainName}\nKind,neural net (scores are EQUITY in points, not the +-1000 weight band)\n`;
+          csv += `Hidden,${(W.net.spec.hidden || []).join(' x ')}\nActivation,${W.net.spec.activation}\n`;
+          csv += `Trained games,${W.net.trainedGames || 0}\nParameters,${BG_NET.netParamCount(W.net)}\n`;
+        } else {
+          csv += `\nParameters,${BRAIN_KEYS.join(',')}\n`;
+          csv += `${brainName},${BRAIN_KEYS.map((k) => (W[k] != null ? W[k] : 0)).join(',')}\n`;
+        }
         downloadCSV(`movetable-${brainName}-d${depth}.csv`, csv);
         gameMessageEl.textContent = `Move table exported — ${brainName}, depth ${depth}, ${who} on roll.`;
         sysLog(`[System] Move table exported (${brainName}, depth ${depth}, ${who} on roll).`);
@@ -2321,18 +2357,42 @@ let handleRollClick;
   // consistently and a dance shows the same value twice instead of flipping sign.
   // The scoring AI is still the side on roll there (matters only for mixed brains).
   // Cached on the snapshot (evaluated once) until the scoring context changes.
+  // Who is on roll at a snapshot's position. One definition, because the VALUE and the two
+  // places that FORMAT it must agree on which brain (and therefore which units) apply.
+  function snapshotOnRoll(snapshot) {
+    return snapshot.isInitial ? snapshot.currentPlayer : (snapshot.currentPlayer === 1 ? 2 : 1);
+  }
+
+  // The six outcome probabilities for a snapshot, always in WHITE's view (White single /
+  // gammon / backgammon, then Red's three). One fixed frame, like the Score column, so a
+  // column means the same thing on every row instead of flipping with whoever is on roll.
+  // Null when a LINEAR brain scored that row — it has no probabilities at all.
+  function snapshotNetDist(snapshot) {
+    if (snapshot._dist !== undefined) return snapshot._dist;
+    const onRoll = snapshotOnRoll(snapshot);
+    const W = scoringWeights(onRoll);
+    if (!isNetScore(W) || !W.net) return (snapshot._dist = null);
+    const p = BG_NET.evaluatePosition(W.net, snapshot.points, snapshot.bar, snapshot.borneOff, onRoll).p;
+    snapshot._dist = (onRoll === 1) ? p : BG_NET.swapOutcomes(p);
+    return snapshot._dist;
+  }
+
+  /** P(White wins) for a snapshot, or null if a linear brain scored it. */
+  function snapshotWhiteWin(snapshot) {
+    const d = snapshotNetDist(snapshot);
+    return d ? d[0] + d[1] + d[2] : null;
+  }
+
   function snapshotScore(snapshot) {
     if (snapshot._score !== undefined) return snapshot._score;
-    const onRoll = snapshot.isInitial
-      ? snapshot.currentPlayer
-      : (snapshot.currentPlayer === 1 ? 2 : 1);
-    snapshot._score = game.evaluate(snapshot.points, snapshot.bar, snapshot.borneOff, scoringWeights(onRoll));
+    const onRoll = snapshotOnRoll(snapshot);
+    snapshot._score = game._leafValue(snapshot.points, snapshot.bar, snapshot.borneOff, scoringWeights(onRoll), onRoll);
     return snapshot._score;
   }
 
   // Drop cached history scores so they recompute (after a player or scoring-AI change).
   function clearHistoryScoreCache() {
-    game.gameHistory.forEach((s) => { delete s._score; });
+    game.gameHistory.forEach((s) => { delete s._score; delete s._dist; });
   }
 
   // Name of the AI whose weights score a given player (mirrors scoringWeights).
@@ -2471,10 +2531,16 @@ let handleRollClick;
 
         let scoreCell = '';
         if (showScore) {
-          const scoreVal = Math.round(snapshotScore(snapshot));
+          // A net's column is P(WHITE WINS) as a whole percent — the one number a person can
+          // read at a glance — not its equity. A linear brain keeps its own arbitrary score.
+          // Both are White-view, so the colour rule is the same either side of the middle.
+          const pw = snapshotWhiteWin(snapshot);
+          const scoreTxt = (pw === null) ? fmtBrainValue(snapshotScore(snapshot), false)
+                                         : Math.round(100 * pw) + '%';
+          const sign = (pw === null) ? snapshotScore(snapshot) : (pw - 0.5);
           // White view: positive (good for White) drawn white, negative (good for Red) red.
-          const scoreColor = scoreVal > 0 ? '#ffffff' : (scoreVal < 0 ? '#f87171' : '#9ca3af');
-          scoreCell = `<td style="padding: 2px 4px; font-family: monospace; font-weight: bold; color: ${scoreColor};">${scoreVal}</td>`;
+          const scoreColor = sign > 0 ? '#ffffff' : (sign < 0 ? '#f87171' : '#9ca3af');
+          scoreCell = `<td style="padding: 2px 4px; font-family: monospace; font-weight: bold; color: ${scoreColor};">${scoreTxt}</td>`;
         }
         row.innerHTML = `
           <td style="padding: 2px 4px; font-weight: bold;">${rowNum}</td>
@@ -2688,8 +2754,178 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   }
     
   // Build both player menus: "Human" at the top (default), then every AI personality.
+  // Nets on top (alphabetical, which is also their performance order by convention), then
+  // the linear roster in ITS order. The user's expectation is that the nets are the stronger
+  // class, so they are the ones you reach first.
+  function menuBrainNames() {
+    const all = game.aiPersonalityNames();
+    const nets = all.filter((n) => game.isNetPersonality(n));
+    const shipped = nnNames().filter((n) => nets.includes(n));
+    const other = nets.filter((n) => !shipped.includes(n)).sort();   // imported / freshly learned
+    return [...shipped, ...other, ...all.filter((n) => !game.isNetPersonality(n))];
+  }
+
+  // ---- The shipped net roster (NNs/manifest.json) ----------------------------
+  // The manifest drives the menus; the FILES load LAZILY, on first use. Nine nets is ~3 MB
+  // that most sessions never touch, the page has to look complete before any of them exist,
+  // and "is it actually there?" is then answered at the moment it matters — which is where
+  // the user asked for the message.
+  //
+  // ⚠️ The fetch carries the SAME cache-buster as game.js. Without it you replace a net file,
+  // reload, and get the previous net with nothing to say anything is wrong — the identical
+  // trap already recorded for the worker's importScripts.
+  // Lazy: WORKER_SRC is declared with the worker pool, well below this point.
+  const nnStamp = () => WORKER_SRC.slice(WORKER_SRC.indexOf(String.fromCharCode(63)));
+  let nnRoster = [];                                    // [{ name, file, state, why }]
+  const nnEntry   = (name) => nnRoster.find((e) => e.name === name);
+  const nnNames   = () => nnRoster.map((e) => e.name);
+  const nnMissing = (name) => { const e = nnEntry(name); return !!e && e.state === 'missing'; };
+
+  // Every listed net is registered at once as a brain with NO weights yet, so the menus, the
+  // toggle row and the player rows are complete from the first paint. Nothing may PLAY one
+  // until ensureNetLoaded has filled it in — every path that can reach the engine awaits it.
+  function registerNetRoster(list) {
+    nnRoster = list.map((e) => ({ name: e.name, file: e.file, state: 'unknown', why: '' }));
+    game.importPersonalities(nnRoster.map((e) => ({
+      name: e.name,
+      weights: { kind: 'net', name: e.name, netId: e.name + '@shipped', net: null },
+    })));
+  }
+
+  // The parameter label: the same fields as a trained net's FILE NAME
+  // (games-W-L-phi-lambda), so what the menu shows and what sits in NNs/ are visibly the
+  // same thing — plus the SEED, which the file name does not carry. The file name tells two
+  // runs apart by its timestamp; in the roster there was nothing at all, and two nets of the
+  // same recipe read as identical (they collided as "N80-L1-lrelu-100k-lam07" and were told
+  // apart only by an import's "#2"). The seed is the thing that actually differs, so it is
+  // the thing to show. An older file with no seed recorded prints no s-field rather than a 1.
+  function paramLabel(spec, games) {
+    if (!spec) return '';
+    const h = spec.hidden || [];
+    const ai = BG_NET.ACTIVATION_ORDER.indexOf(spec.activation) + 1;
+    const lam = (spec.lambda === undefined) ? '?' : String(spec.lambda).replace('.', '');
+    const sd = (spec.seed === undefined) ? '' : '-s' + spec.seed;
+    return (games || 0) + '-' + (h[0] || 0) + '-' + h.length + '-' + ai + '-' + lam + sd;
+  }
+
+  // Pull the label out of the first few hundred bytes of a net file. The JSON begins
+  //   {"kind":"bgnet","spec":{...},"trainedGames":N,"layers":[ ...
+  // so everything the menu needs is in the head; the 330 kB of weights is not touched.
+  function descFromHead(text) {
+    const m = text.match(/"spec"\s*:\s*\{[^}]*\}/);
+    if (!m) return '';
+    const g = text.match(/"trainedGames"\s*:\s*(\d+)/);
+    try { return paramLabel(JSON.parse('{' + m[0] + '}').spec, g ? +g[1] : 0); } catch (err) { return ''; }
+  }
+
+  // Find out whether a net file is there AND what it is, without downloading it. A ranged GET
+  // gives both; HEAD gives only the first. ⚠️ A server that ignores Range answers 200 with the
+  // WHOLE file, which for nine nets would be the 3 MB the lazy loading exists to avoid — so the
+  // range is tried on ONE file, and if it is not honoured the rest fall back to HEAD.
+  async function probeNet(e, useRange) {
+    try {
+      const res = await fetch('NNs/' + e.file + nnStamp(),
+                              useRange ? { headers: { Range: 'bytes=0-511' } } : { method: 'HEAD' });
+      if (!res.ok) { e.state = 'missing'; e.why = 'HTTP ' + res.status; return res.status; }
+      if (res.status === 206) { e.desc = descFromHead(await res.text()); return res.status; }
+      if (res.status === 200 && useRange) {
+        // The server ignored Range and sent the whole file. Keep it rather than throw it away:
+        // this becomes an eager load of exactly ONE net, and the label then comes from the real
+        // spec instead of a guess. (The other eight still fall back to HEAD — see the caller.)
+        try {
+          const net = BG_NET.loadNet(JSON.parse(await res.text()));
+          const w = game.personalityWeights(e.name);
+          if (w) { w.net = net; w.netId = e.name + '@' + (++netImportSeq); }
+          e.state = 'ready';
+          e.desc = paramLabel(net.spec, net.trainedGames);
+        } catch (err) { /* leave it unloaded; first use will fetch it properly */ }
+      }
+      return res.status;
+    } catch (err) {
+      if (location.protocol === 'file:') { e.state = 'missing'; e.why = 'file:// cannot read local files'; }
+      return 0;
+    }
+  }
+
+  /** Fetch one shipped net if it is not already in memory. True when it is ready to play. */
+  async function ensureNetLoaded(name) {
+    const e = nnEntry(name);
+    if (!e) return true;                       // an imported net is loaded by definition
+    if (e.state === 'ready') return true;
+    try {
+      const res = await fetch('NNs/' + e.file + nnStamp());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const net = BG_NET.loadNet(await res.json());
+      const w = game.personalityWeights(name);
+      w.net = net;
+      w.netId = name + '@' + (++netImportSeq);  // fresh id, so no worker can hold a stale one
+      e.state = 'ready';
+      e.desc = paramLabel(net.spec, net.trainedGames);   // the real thing, replacing any probe guess
+      // A seat may hold a COPY taken before the weights arrived (setPlayerAI spreads), so
+      // re-seat anyone already sitting on this name.
+      [1, 2].forEach((p) => { if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name); });
+      sysLog('[Nets] ' + name + ' loaded — ' + (net.spec.hidden || []).join('x') + ' ' + net.spec.activation
+             + ', ' + (net.trainedGames || 0).toLocaleString() + ' games, '
+             + BG_NET.netParamCount(net).toLocaleString() + ' parameters.');
+      buildNetToggles();
+      refreshNetSelect(nnBrainSel ? nnBrainSel.value : undefined);   // the label is known now
+      syncNetSelectTitle();
+      return true;
+    } catch (err) {
+      e.state = 'missing';
+      e.why = (err && err.message) || String(err);
+      buildNetToggles();
+      return false;
+    }
+  }
+
+  /** Load every net among `names` that a run needs. Returns the ones that could not load. */
+  async function ensureNetsLoaded(names) {
+    const bad = [];
+    for (const n of names) {
+      if (!game.isNetPersonality(n)) continue;
+      if (!(await ensureNetLoaded(n))) bad.push(n);
+    }
+    return bad;
+  }
+
+  /** Why a net is unavailable, in words that say what to do about it. */
+  function netMissingMessage(names) {
+    const is = names.length === 1 ? 'is' : 'are';
+    return names.join(', ') + ' ' + is + ' not installed — '
+      + (location.protocol === 'file:'
+          ? 'net files cannot be read from a file:// page; serve the app over http (XAMPP).'
+          : 'no such file in NNs/ yet.');
+  }
+
+  // Read the manifest, probe what is there, then rebuild everything that lists brains.
+  async function loadNetManifest() {
+    try {
+      const res = await fetch('NNs/manifest.json' + nnStamp());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      if (!data || !Array.isArray(data.nets) || !data.nets.length) throw new Error('no nets listed');
+      registerNetRoster(data.nets);
+      // One ranged probe first: if the server honours it (206) every net can be labelled for
+      // the price of a few hundred bytes each; if not, fall back to existence-only HEADs.
+      const first = await probeNet(nnRoster[0], true);
+      const ranged = (first === 206);
+      await Promise.all(nnRoster.slice(1).map((e) => probeNet(e, ranged)));
+      if (!ranged) sysLog('[Nets] the server did not honour a ranged request, so the menu can only '
+                          + 'label a net once it has been loaded.');
+      refreshAllBrainUI();
+      const ready = nnRoster.filter((e) => e.state !== 'missing').length;
+      sysLog('[Nets] roster: ' + nnNames().join(', ') + ' — ' + ready + ' of ' + nnRoster.length
+             + ' installed; files load on first use.');
+    } catch (err) {
+      sysLog('[Nets] no roster (' + ((err && err.message) || err) + '). The net rows stay empty; '
+             + 'imported nets still work.');
+    }
+  }
+
+
   function populatePlayerMenus() {
-    const names = game.aiPersonalityNames();
+    const names = menuBrainNames();
     ['p1-type', 'p2-type'].forEach((id) => {
       const sel = document.getElementById(id);
       if (!sel) return;
@@ -2702,7 +2938,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       names.forEach((n) => {
         const o = document.createElement('option');
         o.value = n;
-        o.textContent = n;
+        o.textContent = nnMissing(n) ? n + ' (not installed)' : n;
+        if (nnMissing(n)) o.className = 'nn-missing';
         sel.appendChild(o);
       });
       // Keep a still-valid previous choice; otherwise default to Human.
@@ -2728,29 +2965,72 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   syncDepthMenu(1);
   syncDepthMenu(2);
 
-  // Listen for live dropdown changes so players can swap Human/AI in/out mid-game
-  document.getElementById('p1-type').addEventListener('change', (e) => {
-    applyPlayerMenu(1);
-    syncDepthMenu(1);           // enable/disable White's depth menu for AI/Human
-    clearHistoryScoreCache();   // scoring AI may have changed
-    sysLog(`[System] White player set to ${e.target.value}`);
-    updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
-    checkAndTriggerAITurn();
-  });
+  // The last value each seat actually accepted, so a refused change can be PUT BACK. A menu
+  // naming a brain the game is not really using would be worse than the message.
+  const lastSeat = { 1: document.getElementById('p1-type').value, 2: document.getElementById('p2-type').value };
 
-  document.getElementById('p2-type').addEventListener('change', (e) => {
-    applyPlayerMenu(2);
-    syncDepthMenu(2);           // enable/disable Red's depth menu for AI/Human
+  // Listen for live dropdown changes so players can swap Human/AI in/out mid-game. A shipped
+  // net is fetched here, on the way in — this is the first moment its file is actually needed.
+  async function seatChanged(player, sel) {
+    const v = sel.value;
+    if (v !== 'human' && game.isNetPersonality(v) && !(await ensureNetLoaded(v))) {
+      const msg = netMissingMessage([v]);
+      gameMessageEl.textContent = msg;
+      sysLog('[Nets] seat refused — ' + msg);
+      populatePlayerMenus();               // repaint so the entry now reads "(not installed)"
+      sel.value = lastSeat[player];
+      applyPlayerMenu(player);
+      syncDepthMenu(player);
+      return;
+    }
+    lastSeat[player] = v;
+    applyPlayerMenu(player);
+    syncDepthMenu(player);      // enable/disable that side's depth menu for AI/Human
     clearHistoryScoreCache();   // scoring AI may have changed
-    sysLog(`[System] Red player set to ${e.target.value}`);
+    sysLog('[System] ' + (player === 1 ? 'White' : 'Red') + ' player set to ' + v);
     updateUI(); // Refresh board so checkers instantly become draggable/un-draggable
     checkAndTriggerAITurn();
-  });
+  }
+
+  document.getElementById('p1-type').addEventListener('change', (e) => seatChanged(1, e.target));
+  document.getElementById('p2-type').addEventListener('change', (e) => seatChanged(2, e.target));
 
   // ── AI parameter editor ───────────────────────────────────
   const editBrainSel  = document.getElementById('edit-brain');
   const brainParamsEl = document.getElementById('brain-params');
   const BRAIN_KEYS = ['PC', 'BO', 'EC1', 'EC0', 'HB', 'AN', 'DO', 'IO', 'DP', 'IP', 'DE', 'F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'BE', 'G5', 'G7', 'G4', 'GA', 'DT', 'AT'];
+
+  // ---- Net brains ------------------------------------------------------------
+  // A net brain carries NO cube thresholds. DT/AT exist because a heuristic score has no
+  // probabilistic meaning, so those had to be free parameters evolution could find; a net
+  // predicts the outcome distribution, so its take point and doubling point are COMPUTED
+  // from it (Janowski — see net.js and game.js's _netShouldDouble).
+  const isNetScore = (W) => !!(W && W.kind === 'net');
+
+  // A value from a brain, formatted in the brain's own units. The two are NEVER rescaled
+  // into each other (the user's decision, 8/28), so the FORMAT is the only thing on screen
+  // saying which you are reading: an integer in the +-1000 band from a linear brain, three
+  // decimals of signed equity from a net.
+  function fmtBrainValue(v, isNet) {
+    if (isNet) return (v >= 0 ? '+' : '') + v.toFixed(3);
+    if (v >= 1e8) return 'WIN';
+    if (v <= -1e8) return 'LOSS';
+    return String(Math.round(v));
+  }
+
+  // Turn a parsed net file into a brain the roster can hold. The name is SYSTEMATIC
+  // (N80-L1-lrelu-30k) because nets arrive in dozens and have to be told apart by what they
+  // are; the LOTR names belong to the small, ordered, hand-curated linear roster. netId is
+  // fresh on every import, so re-importing under a name a worker has already cached can
+  // never leave that worker searching with the previous net.
+  let netImportSeq = 0;
+  function netBrainFromFile(obj) {
+    const net = BG_NET.loadNet(obj);                 // throws with a reason a person can act on
+    let name = (obj.name && String(obj.name).trim()) || BG_NET.netName(net);
+    const taken = game.aiPersonalityNames();
+    if (taken.includes(name)) { let k = 2; while (taken.includes(name + '#' + k)) k++; name += '#' + k; }
+    return { name, weights: { kind: 'net', name, netId: name + '@' + (++netImportSeq), net } };
+  }
   // Short hover reminders of what each evolvable weight means (shown as the field's tooltip).
   const BRAIN_TITLES = {
     PC:  'PC — pip count (the race); negative weight, so ahead-in-the-race is good',
@@ -2786,7 +3066,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (!editBrainSel) return;
     const prev = editBrainSel.value;
     editBrainSel.innerHTML = '';
-    game.aiPersonalityNames().forEach((n) => {
+    // Linear brains only. A net has no 24 weights to edit, nothing to Export as a parameter
+    // set and nothing for Def to restore, so it belongs on its own row rather than here.
+    game.aiPersonalityNames().filter((n) => !game.isNetPersonality(n)).forEach((n) => {
       const o = document.createElement('option');
       o.value = n; o.textContent = n;
       editBrainSel.appendChild(o);
@@ -2811,6 +3093,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       inp.title = tip;
       inp.addEventListener('change', () => {
         const name = editBrainSel.value;
+        if (game.isNetPersonality(name)) return;   // a net has no linear weights to set
         game.setPersonalityWeight(name, k, parseInt(inp.value, 10) || 0);
         // If a seated player is this AI, refresh its live weights and M.
         [1, 2].forEach((p) => {
@@ -2830,8 +3113,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   }
 
   function loadBrainParams() {
-    if (!editBrainSel) return;
-    const w = game.personalityWeights(editBrainSel.value);
+    if (!editBrainSel || !brainParamsEl) return;
+    const name = editBrainSel.value;
+    const w = game.personalityWeights(name);
     BRAIN_KEYS.forEach((k) => {
       const inp = document.getElementById('bp-' + k);
       if (inp) inp.value = w[k];
@@ -2852,6 +3136,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     refreshBrainSelect(prefer);
     loadBrainParams();
     buildTournamentToggles();
+    buildNetToggles();
+    refreshNetSelect(prefer);
+    if (typeof syncNetSelectTitle === 'function') syncNetSelectTitle();
     populatePlayerMenus();
     syncPlayersFromMenus();
     // A roster change (Import, Def) can alter which brain scores the move list OR the weights of
@@ -2904,6 +3191,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (typeof p.name !== 'string' || !p.name.trim())    return 'an entry has no name';
     const w = p.weights;
     if (!w || typeof w !== 'object' || Array.isArray(w)) return `"${p.name}" has no weights`;
+    // A net brain has no 24 weights to check: net.js's loadNet already validated its shape,
+    // its layer dimensions and every float in it before it got this far.
+    if (w.kind === 'net') return null;
     const have    = Object.keys(w);
     const missing = BRAIN_KEYS.filter((k) => !(k in w));
     const extra   = have.filter((k) => !BRAIN_KEYS.includes(k));
@@ -2929,19 +3219,43 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   function installBrainsFromText(text) {
     let brains;
     try {
-      const arrM = text.match(/\[[\s\S]*\]/);          // array of personalities
-      if (arrM) {
-        brains = JSON.parse(arrM[0]);
-      } else {
-        const objM = text.match(/\{[\s\S]*\}/);        // or a single personality
-        brains = objM ? [JSON.parse(objM[0])] : [];
+      // A real .json file parses as itself. ⚠️ This MUST come before the span extraction
+      // below: a net file is full of "W":[ ... ] arrays, so the first-[-to-last-] match
+      // swallows the whole file and then fails to parse — which silently refused every net
+      // until a browser test caught it.
+      const direct = JSON.parse(text);
+      brains = Array.isArray(direct) ? direct : [direct];
+    } catch (notJson) {
+      // The WRAPPED form: an exported .js brain file is `const Name = { ... };` with header
+      // comments, so only the brace/bracket span is JSON. The file is never executed — see
+      // the comment above — so pulling the span out by hand is the whole parser.
+      try {
+        const arrM = text.match(/\[[\s\S]*\]/);          // array of personalities
+        if (arrM) {
+          brains = JSON.parse(arrM[0]);
+        } else {
+          const objM = text.match(/\{[\s\S]*\}/);        // or a single personality
+          brains = objM ? [JSON.parse(objM[0])] : [];
+        }
+      } catch (err) {
+        gameMessageEl.textContent = 'Could not read that personalities file.';
+        return;
       }
-    } catch (err) {
-      gameMessageEl.textContent = 'Could not read that personalities file.';
-      return;
     }
     if (!Array.isArray(brains) || !brains.length) {
       gameMessageEl.textContent = 'No AI personality found in that file.';
+      return;
+    }
+
+    // A net file is a different shape (kind:'bgnet') with a different validator, so it is
+    // converted to a brain here — one drop target takes either kind, the same principle as the
+    // sidebar drop zone taking a brain file or a game record.
+    try {
+      brains = brains.map((b) => ((b && b.kind === 'bgnet') ? netBrainFromFile(b) : b));
+    } catch (err) {
+      const why = (err && err.message) || String(err);
+      sysLog('[Import] rejected — ' + why);
+      gameMessageEl.textContent = 'Net import rejected — ' + why + '.';
       return;
     }
 
@@ -3077,6 +3391,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Names present at the LAST toggle-row build. Lets a rebuild tell "this brain was already here
   // and the user deselected it" from "this brain is new" — see buildTournamentToggles.
   let tourneyKnown       = new Set();
+  let tourneyBuilt       = false;   // the first build picks the default field; later ones preserve it
   const tourneyTogglesEl = document.getElementById('tourney-toggles');
   let tournamentRunning  = false;
   let tournamentStop     = false;   // set by entering setup mode; halts a running tournament/compete
@@ -3090,14 +3405,20 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     // new brain after it, so an imported AI's letter lands at the END of this row, matching where
     // its name lands at the bottom of the menus. (This used to force Origin last, which pushed an
     // imported brain's letter to second-to-last — the one place the two orders disagreed.)
-    const names = game.aiPersonalityNames();
+    const names = game.aiPersonalityNames().filter((n) => !game.isNetPersonality(n));
     // Rebuilds (import, Def) must NOT silently re-select everyone — that would discard a field the
     // user had narrowed by hand and quietly run the next tournament over the whole roster. Keep each
-    // existing brain's current state; a brain we've never seen before joins selected (so the first
-    // build, and a freshly imported champion, both default to in).
-    names.forEach((n) => { if (!tourneyKnown.has(n)) tourneySelected.add(n); });
+    // existing brain's current state; a brain we've never seen before joins selected (so a freshly
+    // imported champion defaults to in).
+    //
+    // THE FIRST BUILD IS DIFFERENT: the default field is the best of each class, not everybody —
+    // nine linear plus nine nets is 153 pairs against 36. "Best" is POSITIONAL, the first entry in
+    // the row, which stays correct through every re-sort; hard-coding "Arwen" would select nothing
+    // the day the roster is renamed.
+    if (!tourneyBuilt) { if (names.length) tourneySelected.add(names[0]); tourneyBuilt = true; }
+    else names.forEach((n) => { if (!tourneyKnown.has(n)) tourneySelected.add(n); });
     // Drop brains that no longer exist (e.g. Def discarded the imports) so the set can't leak.
-    [...tourneySelected].forEach((n) => { if (!names.includes(n)) tourneySelected.delete(n); });
+    [...tourneySelected].forEach((n) => { if (!game.isNetPersonality(n) && !names.includes(n)) tourneySelected.delete(n); });
     tourneyKnown = new Set(names);
     names.forEach((n) => {
       const b = document.createElement('button');
@@ -3113,20 +3434,407 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   }
   buildTournamentToggles();
 
+  // ---- Row 17: the net participants ------------------------------------------
+  // A separate row with its own all/none, because the two classes are selected apart: a
+  // full 18-brain round robin is 153 pairs against 36, i.e. days rather than hours. The
+  // letters are lower-cased in CSS rather than by the names, so an imported net still
+  // reads as lower case here.
+  const nnTogglesEl = document.getElementById('nn-toggles');
+  let nnKnown = new Set();
+  let nnBuilt = false;
+
+  function netRosterNames() { return menuBrainNames().filter((n) => game.isNetPersonality(n)); }
+
+  function buildNetToggles() {
+    if (!nnTogglesEl) return;
+    nnTogglesEl.innerHTML = '';
+    const names = netRosterNames();
+    if (!nnBuilt && names.length) {
+      // Default to the best INSTALLED net, so a copy with no net files yet simply runs the
+      // linear best alone instead of failing on the first press of Tournament.
+      const first = names.find((n) => !nnMissing(n));
+      if (first) tourneySelected.add(first);
+      nnBuilt = true;
+    } else {
+      names.forEach((n) => { if (!nnKnown.has(n)) tourneySelected.add(n); });
+    }
+    [...tourneySelected].forEach((n) => { if (game.isNetPersonality(n) && !names.includes(n)) tourneySelected.delete(n); });
+    nnKnown = new Set(names);
+    names.forEach((n) => {
+      const b = document.createElement('button');
+      b.className = 'tourney-toggle' + (tourneySelected.has(n) ? ' sel' : '') + (nnMissing(n) ? ' nn-missing' : '');
+      b.textContent = n.charAt(0);
+      b.title = nnMissing(n) ? n + ' — not installed' : n;
+      b.addEventListener('click', () => {
+        if (tourneySelected.has(n)) { tourneySelected.delete(n); b.classList.remove('sel'); }
+        else { tourneySelected.add(n); b.classList.add('sel'); }
+      });
+      nnTogglesEl.appendChild(b);
+    });
+  }
+  buildNetToggles();
+
+  // ---- Row 18: which net LEARN acts on, and importing one ---------------------
+  const nnBrainSel = document.getElementById('nn-brain');
+  // Roster entries know their label from the probe; an imported or freshly trained net is
+  // already in memory, so it can be asked directly.
+  //
+  // A net carrying its SYSTEMATIC name (N80-L1-lrelu-30k) already announces its architecture,
+  // so it gets no suffix — the label is for the curated mythological names, which say nothing
+  // about what is inside them. "N20-L1-lrelu-40-lam07  40-20-1-1-07" helps nobody.
+  function netParamLabel(name) {
+    const w = game.personalityWeights(name);
+    if (w && w.net && name.replace(/#\d+$/, '') === BG_NET.netName(w.net)) return '';
+    const e = nnEntry(name);
+    if (e && e.desc) return e.desc;
+    return (w && w.net) ? paramLabel(w.net.spec, w.net.trainedGames) : '';
+  }
+
+  function refreshNetSelect(prefer) {
+    if (!nnBrainSel) return;
+    const prev = nnBrainSel.value;
+    nnBrainSel.innerHTML = '';
+    netRosterNames().forEach((n) => {
+      const o = document.createElement('option');
+      o.value = n;
+      const lbl = netParamLabel(n);
+      o.textContent = nnMissing(n) ? n + ' (not installed)' : (lbl ? n + '  ' + lbl : n);
+      if (nnMissing(n)) o.className = 'nn-missing';
+      nnBrainSel.appendChild(o);
+    });
+    const has = (v) => [...nnBrainSel.options].some((o) => o.value === v);
+    nnBrainSel.value = (prefer && has(prefer)) ? prefer
+      : (has(prev) ? prev : (nnBrainSel.options[0] ? nnBrainSel.options[0].value : ''));
+  }
+  /** One line describing a net, for the row-18 tooltip and the status line. */
+  function netDescription(name) {
+    const w = game.personalityWeights(name);
+    if (!isNetScore(w)) return name;
+    const e = nnEntry(name);
+    if (e && e.state === 'missing') return name + ' — not installed (' + (e.why || 'no file') + ')';
+    if (!w.net) return name + ' — a net brain; its weights load on first use.';
+    const n = w.net;
+    return name + ' — ' + ((n.spec.hidden || []).join('x') || 'no') + ' hidden, ' + n.spec.activation
+      + (n.spec.lambda !== undefined ? ', lambda ' + n.spec.lambda : '')
+      + ', ' + (n.trainedGames || 0).toLocaleString() + ' self-play games, '
+      + BG_NET.netParamCount(n).toLocaleString() + ' parameters. Scores in equity; cube by Janowski.';
+  }
+
+  function syncNetSelectTitle() {
+    if (nnBrainSel && nnBrainSel.value) nnBrainSel.title = netDescription(nnBrainSel.value);
+  }
+
+  refreshNetSelect();
+  nnBrainSel?.addEventListener('change', async () => {
+    const name = nnBrainSel.value;
+    if (name && !nnMissing(name)) await ensureNetLoaded(name);   // so the description is real
+    syncNetSelectTitle();
+    gameMessageEl.textContent = netDescription(name);
+  });
+
+  // Import is brains-only on row 13 and nets-only here, so neither button can lie about
+  // what it does. Both land in installBrainsFromText, which dispatches on the file.
+  const netFileInput = document.createElement('input');
+  netFileInput.type = 'file';
+  netFileInput.accept = '.json';
+  netFileInput.style.display = 'none';
+  document.body.appendChild(netFileInput);
+  document.getElementById('nn-import')?.addEventListener('click', () => { netFileInput.value = ''; netFileInput.click(); });
+  netFileInput.addEventListener('change', () => {
+    const f = netFileInput.files && netFileInput.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => installBrainsFromText(String(evt.target.result));
+    reader.onerror = () => { gameMessageEl.textContent = 'Could not read that file.'; };
+    reader.readAsText(f);
+  });
+
+  document.getElementById('nn-all')?.addEventListener('click', () => {
+    netRosterNames().forEach((n) => tourneySelected.add(n));
+    [...nnTogglesEl.children].forEach((b) => b.classList.add('sel'));
+  });
+  document.getElementById('nn-none')?.addEventListener('click', () => {
+    netRosterNames().forEach((n) => tourneySelected.delete(n));
+    [...nnTogglesEl.children].forEach((b) => b.classList.remove('sel'));
+  });
+
+  // ---- Row 19: LEARN ---------------------------------------------------------
+  // Training in the browser, because a player of the deployed game has no command line.
+  // The generation runs on the same worker pool the search uses; the LEARNING stays on this
+  // thread, in game order, exactly as net-train.js does it — net-selfplay.js is the single
+  // copy of both, shared by this file, the Node trainer and the worker.
+  //
+  // ⚠️ THERE IS NO LEARNING-RATE CONTROL, deliberately. 0.01 is the only value with evidence
+  // behind it (0.05 was measured walking backwards), and an invisible knob cannot be
+  // misdiagnosed. What a bad run gets instead is the smoke alarm below: a loss TREND over
+  // twenty rounds and a collapse in output variance are the only two failure modes ever seen
+  // here, and both are visible in numbers the run already computes. Both thresholds are
+  // measured against real runs rather than chosen — see the alarm itself.
+  const LEARN_LR = 0.01;
+  let learnRunning = false, learnStop = false;
+
+  const learnEl = {
+    btn:    document.getElementById('btn-learn'),
+    from:   document.getElementById('learn-from'),
+    games:  document.getElementById('learn-games'),
+    width:  document.getElementById('learn-width'),
+    layers: document.getElementById('learn-layers'),
+    phi:    document.getElementById('learn-phi'),
+    lambda: document.getElementById('learn-lambda'),
+    seed:   document.getElementById('learn-seed'),
+  };
+
+  // In CONTINUE mode the architecture is fixed by the net being continued, so the controls
+  // that describe it are locked rather than left to imply otherwise. Lambda locks too (the
+  // user's call); Node keeps --lambda if that experiment is ever wanted.
+  function syncLearnControls() {
+    const cont = learnEl.from && learnEl.from.value === 'continue';
+    [learnEl.width, learnEl.layers, learnEl.phi, learnEl.lambda, learnEl.seed].forEach((el) => {
+      if (!el) return;
+      el.disabled = cont || learnRunning;
+      el.style.opacity = el.disabled ? '0.5' : '';
+    });
+    // Depth is meaningless for the identity activation: a composition of affine maps is
+    // affine, so an identity net of any depth IS one 196->6 linear map. Say so by dimming.
+    if (!cont && learnEl.phi && learnEl.layers && learnEl.phi.value === 'identity') {
+      learnEl.layers.disabled = true; learnEl.layers.style.opacity = '0.5';
+      learnEl.layers.title = 'Depth has no meaning with the identity activation: any number of '
+        + 'affine layers collapses to one linear map (this is the linear control, not a brain).';
+    } else if (learnEl.layers && !cont && !learnRunning) {
+      learnEl.layers.title = 'Number of hidden layers (L)';
+    }
+    if (learnEl.games) learnEl.games.disabled = learnRunning;
+    if (learnEl.from)  learnEl.from.disabled  = learnRunning;
+  }
+  learnEl.from?.addEventListener('change', syncLearnControls);
+  learnEl.phi?.addEventListener('change', syncLearnControls);
+  syncLearnControls();
+
+  /** Generate `seeds.length` games with a frozen net — on the pool if there is one. */
+  async function learnGenerate(net, seeds) {
+    if (!workersAvailable || numWorkers < 1) {
+      return seeds.map((s) => BG_SELFPLAY.playSelfPlayGame(net, s));
+    }
+    const share = Math.ceil(seeds.length / numWorkers);
+    const parts = [];
+    for (let i = 0; i < numWorkers; i++) {
+      const ss = seeds.slice(i * share, (i + 1) * share);
+      if (ss.length) parts.push(ss);
+    }
+    const payload = { spec: net.spec, layers: net.layers.map((L) => ({ nIn: L.nIn, nOut: L.nOut, W: L.W, b: L.b })) };
+    const out = new Array(parts.length);
+    await runJobsParallel(
+      parts,
+      (ss, i) => ({ cmd: 'selfplay', id: i, spec: payload.spec, layers: payload.layers, seeds: ss }),
+      (data, ss, i) => { out[i] = data.games; },
+    );
+    return out.flat();           // seed order, so the LEARNING order is unchanged
+  }
+
+  /** Put a freshly trained net into the roster and select it, ready to play at once. */
+  function installTrainedNet(net) {
+    let name = BG_NET.netName(net);
+    const taken = game.aiPersonalityNames();
+    if (taken.includes(name)) { let k = 2; while (taken.includes(name + '#' + k)) k++; name += '#' + k; }
+    game.importPersonalities([{ name, weights: { kind: 'net', name, netId: name + '@' + (++netImportSeq), net } }]);
+    refreshAllBrainUI();
+    refreshNetSelect(name);
+    syncNetSelectTitle();
+    return name;
+  }
+
+  /** The file name the user asked for: NN-<games>-<W>-<L>-<phi index>-<lambda>-<stamp>.json */
+  function learnFileName(net, games) {
+    const d = new Date(), p = (v) => String(v).padStart(2, '0');
+    const stamp = d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+    const ai = BG_NET.ACTIVATION_ORDER.indexOf(net.spec.activation) + 1;
+    const lam = String(net.spec.lambda === undefined ? '' : net.spec.lambda).replace('.', '');
+    // A timestamp, not a version number: a page cannot see the user's disk, so it cannot
+    // count existing files. This never collides and sorts chronologically.
+    return 'NN-' + games + '-' + (net.spec.hidden || [])[0] + '-' + (net.spec.hidden || []).length
+         + '-' + ai + '-' + lam + '-' + stamp + '.json';
+  }
+
+  function setLearnButton(running) {
+    if (!learnEl.btn) return;
+    learnEl.btn.textContent = running ? 'Stop L' : 'LEARN';
+    learnEl.btn.style.background = running ? '#991b1b' : '';
+  }
+
+  async function runLearn() {
+    if (tournamentRunning) { gameMessageEl.textContent = 'Wait for the tournament to finish.'; return; }
+    if (evolveRunning)     { gameMessageEl.textContent = 'Stop evolution before training.'; return; }
+
+    const GAMES = Math.max(1, parseInt(learnEl.games.value, 10) || 1);
+    const cont  = learnEl.from.value === 'continue';
+    let net, fromName = '';
+    if (cont) {
+      fromName = nnBrainSel ? nnBrainSel.value : '';
+      if (!fromName) { gameMessageEl.textContent = 'Select a net brain to continue training.'; return; }
+      if (!(await ensureNetLoaded(fromName))) { gameMessageEl.textContent = netMissingMessage([fromName]); return; }
+      const src = game.personalityWeights(fromName).net;
+      net = BG_NET.createNet(src.spec);
+      src.layers.forEach((L, i) => { net.layers[i].W.set(L.W); net.layers[i].b.set(L.b); });
+      net.trainedGames = src.trainedGames || 0;
+    } else {
+      const W = Math.max(1, parseInt(learnEl.width.value, 10) || 80);
+      const L = Math.max(1, parseInt(learnEl.layers.value, 10) || 1);
+      const lam = Math.min(1, Math.max(0, parseFloat(learnEl.lambda.value)));
+      if (!Number.isFinite(lam)) { gameMessageEl.textContent = 'Lambda must be a number between 0 and 1.'; return; }
+      // The seed is LEFT BLANK by default and generated, so an ordinary run still costs the
+      // user no decision, and it is recorded in the spec either way. Typing one buys the two
+      // things the browser could not do before: a run that can be reproduced exactly, and two
+      // runs that differ ONLY in the variable under test — the seed fixes both the initial
+      // weights and the entire self-play dice sequence, so holding it fixed across arms
+      // removes the largest nuisance term. (An 8/29 tournament put two nets of the SAME
+      // recipe, differing only in seed, three ranks apart.)
+      // ⚠️ It reproduces only at the same WORKERS COUNT: perRound = workers x 8 is the
+      // staleness boundary, so the same seed on 32 workers and on 16 is two different runs.
+      // An unreadable seed is REFUSED rather than quietly replaced by a random one — a knob
+      // that silently ignores you is the same failure mode as an invisible one.
+      const seedTxt = learnEl.seed ? String(learnEl.seed.value).trim() : '';
+      let useSeed;
+      if (seedTxt === '') {
+        useSeed = (Math.random() * 0x7fffffff) | 0;
+      } else {
+        const v = Number(seedTxt);
+        if (!Number.isInteger(v) || v < 0 || v > 0x7fffffff) {
+          gameMessageEl.textContent = 'Seed must be a whole number from 0 to 2147483647, or blank for a random one.';
+          return;
+        }
+        useSeed = v;
+      }
+      net = BG_NET.createNet({ hidden: new Array(L).fill(W), activation: learnEl.phi.value,
+                               seed: useSeed });
+      net.spec.lambda = lam;
+      net.spec.lr = LEARN_LR;
+    }
+    const LAM = net.spec.lambda === undefined ? 0.7 : net.spec.lambda;
+    const before = net.trainedGames || 0;
+    const runSeed = (net.spec.seed || 1) ^ before;
+
+    learnRunning = true; learnStop = false;
+    setLearnButton(true); syncLearnControls();
+    sysLog('[Learn] start — ' + (cont ? 'continuing ' + fromName + ' at ' + before.toLocaleString() + ' games' : 'new net')
+           + ', ' + GAMES.toLocaleString() + ' games, [' + (net.spec.hidden || []).join(',') + '] '
+           + net.spec.activation + ', lambda ' + LAM + ', lr ' + LEARN_LR + ', seed ' + net.spec.seed
+           + ', ' + (workersAvailable ? numWorkers + ' workers' : 'single thread') + '.');
+
+    const grads = BG_NET.createGrads(net);
+    // The round is sized by BANDWIDTH, not by any worry about staleness: the weights are
+    // broadcast to every worker each round, so one game per round would spend more time
+    // copying than playing. 8 per worker puts a round at a fraction of a percent of a real run.
+    const perRound = Math.max(1, (workersAvailable ? numWorkers : 1) * 8);
+    const t0 = Date.now();
+    let doneN = 0, lossSum = 0, lossN = 0, pwinSum = 0, pwinSq = 0, warned = '';
+    // The smoke alarm compares two consecutive blocks of rounds; see it below for why.
+    const LOSS_BLOCK = 10;
+    const lossHist = [];
+
+    try {
+      while (doneN < GAMES && !learnStop) {
+        const k = Math.min(perRound, GAMES - doneN);
+        const seeds = [];
+        for (let i = 0; i < k; i++) seeds.push(BG_SELFPLAY.gameSeed(runSeed, before + doneN + i));
+        const played = await learnGenerate(net, seeds);
+        for (const g of played) {
+          const st = BG_SELFPLAY.learnFromGame(net, grads, g, LAM, LEARN_LR);
+          lossSum += st.lossSum; lossN += st.n; pwinSum += st.pwinSum; pwinSq += st.pwinSq;
+          doneN++;
+          if ((doneN % 16) === 0) await breathe();     // keep the page alive during the learn pass
+        }
+        const mean = pwinSum / lossN, varP = pwinSq / lossN - mean * mean;
+        const loss = lossSum / lossN;
+        const secs = (Date.now() - t0) / 1000;
+        const rate = doneN / secs;
+        const eta = rate > 0 ? Math.round((GAMES - doneN) / rate) : 0;
+        // The smoke alarm. MEASURED 8/29 against two complete runs — a healthy 200,000-game
+        // run in this browser, and a deliberately diverging one (Monte-Carlo targets at
+        // lr 0.05, the documented failure) — because the rule it replaces was set by guess.
+        //  - THE OLD RULE (this round's loss above the previous round's by 5%) fired on
+        //    24.5% of the rounds of the HEALTHY run, evenly across every decile. A round is
+        //    only 256 games and the median round-to-round change in loss is 4.87%, so the
+        //    threshold sat almost exactly on the median of the noise it was measuring: a
+        //    coin flip, which taught the console to be ignored for 782 rounds.
+        //  - THE SIGNAL LIVES EARLY, which is the reverse of what the old note assumed.
+        //    Over the first 20 rounds the healthy run's loss FELL 8.5% block-on-block while
+        //    the diverging run's ROSE 22%. Past ~5,000 games the two are indistinguishable
+        //    on loss, so a late rise carries no information and the old 5,000-game gate was
+        //    suppressing the only window that did.
+        // Hence: the mean of the last 10 rounds against the mean of the 10 before, at +5%.
+        // Measured 5 false alarms in 762 healthy rounds (0.7%), and it fires on the diverging
+        // run at ~5,000 games — early enough to abandon it. Needing 20 rounds to arm IS the
+        // old 5,000-game gate at the default round size, so that gate is gone from here; it
+        // stays on the variance alarm, which is a level test and does need the net past its
+        // base-rate phase.
+        // ⚠️ Loss is a WEAK instrument even so. It is cross-entropy against a lambda-return
+        // the net generates itself, so its level is not comparable across lambda and its
+        // floor is the position's own outcome entropy — the healthy run flattened at ~0.94
+        // from 120,000 games while the net was still improving. Only a strength probe
+        // against a fixed baseline would be a real progress measure.
+        lossHist.push(loss);
+        if (lossHist.length > 2 * LOSS_BLOCK) lossHist.shift();
+        warned = '';
+        if (lossHist.length === 2 * LOSS_BLOCK) {
+          let prior = 0, recent = 0;
+          for (let i = 0; i < LOSS_BLOCK; i++) { prior += lossHist[i]; recent += lossHist[i + LOSS_BLOCK]; }
+          if (recent > prior * 1.05) warned = '  !! loss trending up over ' + (2 * LOSS_BLOCK) + ' rounds — lr may be too high';
+        }
+        if (!warned && varP < 0.01 && before + doneN >= 5000) warned = '  !! output variance collapsed';
+        gameMessageEl.textContent = 'LEARN ' + doneN.toLocaleString() + '/' + GAMES.toLocaleString()
+          + '  loss ' + loss.toFixed(4) + '  var ' + varP.toFixed(4)
+          + '  ' + rate.toFixed(0) + ' games/s  ~' + eta + 's left' + warned;
+        if (warned) sysLog('[Learn] ' + doneN + ' games —' + warned);
+        lossSum = 0; lossN = 0; pwinSum = 0; pwinSq = 0;
+      }
+    } catch (err) {
+      sysLog('[Learn] failed — ' + ((err && err.message) || err));
+      gameMessageEl.textContent = 'Training failed: ' + ((err && err.message) || err);
+      learnRunning = false; setLearnButton(false); syncLearnControls();
+      return;
+    }
+
+    net.trainedGames = before + doneN;
+    const name = installTrainedNet(net);
+    const file = learnFileName(net, net.trainedGames);
+    downloadText(file, JSON.stringify({ kind: 'bgnet', spec: net.spec, trainedGames: net.trainedGames,
+      layers: net.layers.map((L) => ({ nIn: L.nIn, nOut: L.nOut, W: Array.from(L.W), b: Array.from(L.b) })) }),
+      'application/json');
+    const secs = ((Date.now() - t0) / 1000).toFixed(0);
+    gameMessageEl.textContent = (learnStop ? 'LEARN stopped at ' : 'LEARN finished — ')
+      + doneN.toLocaleString() + ' games in ' + secs + 's. Saved ' + file
+      + ' and added ' + name + ' to the roster, ready to play.';
+    sysLog('[Learn] done — ' + name + ', ' + net.trainedGames.toLocaleString() + ' games total, ' + secs + 's; downloaded ' + file + '.');
+    learnRunning = false; setLearnButton(false); syncLearnControls();
+  }
+
+  learnEl.btn?.addEventListener('click', () => {
+    if (learnRunning) { learnStop = true; gameMessageEl.textContent = 'Stopping after this round...'; return; }
+    runLearn();
+  });
+
+  // Read the manifest once the WHOLE closure body has run. It needs WORKER_SRC for the
+  // cache-buster, and that is declared further down with the worker pool — calling it here
+  // directly puts WORKER_SRC in its temporal dead zone, which the try/catch then reports as
+  // "no roster" rather than as the load-order bug it is.
+  setTimeout(loadNetManifest, 0);
+
   document.getElementById('tourney-all')?.addEventListener('click', () => {
-    game.aiPersonalityNames().forEach((n) => tourneySelected.add(n));
+    game.aiPersonalityNames().filter((n) => !game.isNetPersonality(n)).forEach((n) => tourneySelected.add(n));
     [...tourneyTogglesEl.children].forEach((b) => b.classList.add('sel'));
   });
   document.getElementById('tourney-none')?.addEventListener('click', () => {
-    tourneySelected.clear();
+    game.aiPersonalityNames().filter((n) => !game.isNetPersonality(n)).forEach((n) => tourneySelected.delete(n));
     [...tourneyTogglesEl.children].forEach((b) => b.classList.remove('sel'));
   });
   document.getElementById('btn-run-tournament')?.addEventListener('click', () => {
     if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running a tournament.'; return; }
+    if (learnRunning)  { gameMessageEl.textContent = 'Stop training before running a tournament.'; return; }
     if (!tournamentRunning) runTournament();
   });
   document.getElementById('btn-compete')?.addEventListener('click', () => {
     if (evolveRunning) { gameMessageEl.textContent = 'Stop evolution before running Compete.'; return; }
+    if (learnRunning)  { gameMessageEl.textContent = 'Stop training before running Compete.'; return; }
     if (!tournamentRunning) runCompete();
   });
 
@@ -3247,6 +3955,32 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     workersAvailable = false;
     sysLog(`[Workers] unavailable (${e && e.message}); using single thread. Serve over http:// to enable.`);
   }
+  // ---- Net brains on the pool ------------------------------------------------
+  // A linear brain is 24 numbers and rides along with every job for free. A net is ~16k
+  // floats, and ONE interactive move at depth 2 farms out several hundred jobs — sending
+  // the net with each would clone tens of megabytes per move. So: install once per worker,
+  // then send only the id. (The worker's resolveBrain puts it back; see its header.)
+  const stripNet = (W) => (W && W.kind === 'net'
+    ? { kind: 'net', name: W.name, netId: W.netId }
+    : W);
+
+  // Build the `prime` callback for a run that may involve nets — null when none does,
+  // which is the overwhelmingly common case and costs nothing. postMessage is FIFO per
+  // worker, so an install posted here is in place before the job posted right after it.
+  function primeNets(brains) {
+    const byId = new Map();
+    brains.forEach((b) => { if (b && b.kind === 'net' && b.net && !byId.has(b.netId)) byId.set(b.netId, b); });
+    if (!byId.size) return null;
+    return (w) => {
+      if (!w._nets) w._nets = new Set();
+      byId.forEach((b, id) => {
+        if (w._nets.has(id)) return;
+        w.postMessage({ cmd: 'install_net', netId: id, net: b.net });
+        w._nets.add(id);
+      });
+    };
+  }
+
   function getWorker() { return workerPool.length ? workerPool.pop() : new Worker(WORKER_SRC); }
   function releaseWorker(w) { workerPool.push(w); }
   function terminateWorkers() { workerPool.forEach((w) => { try { w.terminate(); } catch (e) {} }); workerPool = []; }
@@ -3271,7 +4005,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Run a queue of jobs across up to numWorkers workers, keeping the pool busy.
   // makeMsg(job,i) builds the postMessage payload; onResult(data,job,i) consumes it.
-  function runJobsParallel(jobs, makeMsg, onResult) {
+  // prime(w), when given, is called with each worker before its first job of this run —
+  // it is how a net brain gets installed once instead of travelling with every message.
+  function runJobsParallel(jobs, makeMsg, onResult, prime) {
     return new Promise((resolve, reject) => {
       const total = jobs.length;
       if (total === 0) { resolve(); return; }
@@ -3279,6 +4015,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const pump = () => {
         while (active < numWorkers && next < total) {
           const i = next++, job = jobs[i], w = getWorker();
+          if (prime) prime(w);
           active++;
           w.onmessage = (e) => {
             active--; releaseWorker(w);
@@ -3298,17 +4035,22 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // Play a list of match specs in parallel (one match per worker). Each spec:
   // { wA, wB, X, depthA, depthB, ...meta }. onResult(res, spec, i) tallies live.
   function runMatchesParallel(specs, onResult) {
+    const brains = [];
+    specs.forEach((s) => { brains.push(s.wA, s.wB); });
     return runJobsParallel(
       specs,
-      (s) => ({ cmd: 'play_match', wA: s.wA, wB: s.wB, X: s.X, depthA: s.depthA, depthB: s.depthB, seed: s.seed }),
+      (s) => ({ cmd: 'play_match', wA: stripNet(s.wA), wB: stripNet(s.wB), X: s.X, depthA: s.depthA, depthB: s.depthB, seed: s.seed }),
       (data, spec, i) => onResult(data.result, spec, i),
+      primeNets(brains),
     );
   }
 
-  // Local copies of the dice distribution / win sentinel for combining worker
-  // results on the main thread (kept in lockstep with game.js's BG_DICE_DIST/BG_WIN).
+  // Local copy of the dice distribution for combining worker results on the main thread
+  // (kept in lockstep with game.js's BG_DICE_DIST). The win sentinel that used to live here
+  // is GONE: terminal values now differ by brain kind (+-BG_WIN for a linear brain, exact
+  // equity for a net), so the root combination asks the engine — game._terminalValue and
+  // game._rootBonus — instead of keeping a second copy of the rule.
   const UI_DICE_DIST = (() => { const r = []; for (let i = 1; i <= 6; i++) for (let j = i; j <= 6; j++) r.push([i, j, i === j ? 1 : 2]); return r; })();
-  const UI_BG_WIN = 1e9;
 
   // Compute the AI's move for `depth` >= 2 by farming each (my move × opponent dice
   // roll) out to the worker pool, then combining exactly as the sync search does:
@@ -3341,27 +4083,24 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const label = gameMessageEl.textContent;
     await runJobsParallel(
       tasks,
-      (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: W }),
+      (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: stripNet(W) }),
       (data, t) => { rollVals[t.si][t.ri] = data.val; if ((++done % 21) === 0) gameMessageEl.textContent = label; },
+      primeNets([W]),
     );
 
     let bestState = null, bestVal = player === 1 ? -Infinity : Infinity;
     states.forEach((st, si) => {
+      const term = game._terminalValue(st, W);
       let val;
-      const whiteWon = st.borneOff[1] >= 15, redWon = st.borneOff[2] >= 15;
-      if (whiteWon) val = UI_BG_WIN;
-      else if (redWon) val = -UI_BG_WIN;
+      if (term !== null) val = term;
       else {
         let acc = 0;
         UI_DICE_DIST.forEach(([, , wt], ri) => { acc += wt * rollVals[si][ri]; });
         val = acc / 36;
       }
-      if (!whiteWon && !redWon && parentContact && !game.hasContact(st.points, st.bar)) {
-        const pipW = game.pipCountP(st.points, st.bar, 1), pipR = game.pipCountP(st.points, st.bar, 2);
-        if (player === 1 && pipW < pipR) val += W.DE;
-        else if (player === 2 && pipR < pipW) val -= W.DE;
-      }
-      val += game._raceHomeTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
+      // DE + the disengaged-race tie-break, from the engine, so the parallel root cannot
+      // drift from _scoreRootCandidate (and is correctly zero for a net brain).
+      val += game._rootBonus(st, W, player, parentContact);
       if (player === 1) { if (val > bestVal) { bestVal = val; bestState = st; } }
       else { if (val < bestVal) { bestVal = val; bestState = st; } }
     });
@@ -3377,22 +4116,16 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const states = game._statesFrom(board, player, dice);
     if (!states.length) return [];
     const parentContact = game.hasContact(board.points, board.bar);
-    const withDE = (st, val) => {
-      const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
-      if (!wWon && !rWon && parentContact && !game.hasContact(st.points, st.bar)) {
-        const pipW = game.pipCountP(st.points, st.bar, 1), pipR = game.pipCountP(st.points, st.bar, 2);
-        if (player === 1 && pipW < pipR) val += W.DE;
-        else if (player === 2 && pipR < pipW) val -= W.DE;
-      }
-      return val + game._raceHomeTieBreak(st, player);   // disengaged-race tie-break (matches sync path)
-    };
+    // Root addends come from the engine (DE + the race tie-break, zero for a net), so this
+    // path and _scoreRootCandidate cannot drift.
+    const rootBonus = (st) => game._rootBonus(st, W, player, parentContact);
 
     let scored;
     if (depth <= 1) {
       scored = states.map((st) => {
-        const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
-        let val = wWon ? UI_BG_WIN : rWon ? -UI_BG_WIN : game.evaluate(st.points, st.bar, st.borneOff, W);
-        return { moves: st.moves, value: withDE(st, val) };
+        const term = game._terminalValue(st, W);
+        const val = term !== null ? term : game._leafValue(st.points, st.bar, st.borneOff, W, opp);
+        return { moves: st.moves, value: val + rootBonus(st) };
       });
     } else {
       const rollVals = states.map(() => new Array(UI_DICE_DIST.length).fill(0));
@@ -3406,15 +4139,16 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       });
       await runJobsParallel(
         tasks,
-        (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: W }),
+        (t) => ({ cmd: 'search', board: t.board, player: opp, dice: t.dice, plies: depth - 1, weights: stripNet(W) }),
         (data, t) => { rollVals[t.si][t.ri] = data.val; },
+        primeNets([W]),
       );
       scored = states.map((st, si) => {
-        const wWon = st.borneOff[1] >= 15, rWon = st.borneOff[2] >= 15;
+        const term = game._terminalValue(st, W);
         let val;
-        if (wWon) val = UI_BG_WIN; else if (rWon) val = -UI_BG_WIN;
+        if (term !== null) val = term;
         else { let acc = 0; UI_DICE_DIST.forEach(([, , wt], ri) => { acc += wt * rollVals[si][ri]; }); val = acc / 36; }
-        return { moves: st.moves, value: withDE(st, val) };
+        return { moves: st.moves, value: val + rootBonus(st) };
       });
     }
     scored.sort((a, b) => (player === 1 ? b.value - a.value : a.value - b.value));
@@ -3542,7 +4276,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   async function runEvolution() {
     if (tournamentRunning) { gameMessageEl.textContent = 'Wait for the tournament to finish.'; return; }
+    if (learnRunning) { gameMessageEl.textContent = 'Stop training before evolving.'; return; }
     const baseName = editBrainSel ? editBrainSel.value : 'Origin';
+    if (game.isNetPersonality(baseName)) {
+      // Not an oversight: the genetic algorithm mutates a 24-number vector, and a net has
+      // 16k parameters trained by self-play instead. See net.js decision 4.
+      gameMessageEl.textContent = baseName + ' is a net brain — nets learn by self-play training, not evolution.';
+      sysLog('[Evolve] refused — ' + baseName + ' is a net brain (no GA; it is trained by self-play).');
+      return;
+    }
     const maxGens = Math.max(1, parseInt(document.getElementById('evo-gens').value, 10) || 1000);
     // Matches per sample. DUPLO pairs them, so this is forced even and the field is
     // corrected in place — an odd match would have no mirror.
@@ -3633,6 +4375,18 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return m ? m[1] : '?';
   }
 
+  // Same mechanism, honest MIME: a trained net is JSON, not a spreadsheet.
+  function downloadText(filename, text, mime) {
+    const blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
+  }
+
   function downloadCSV(filename, text) {
     const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -3691,6 +4445,25 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return csv;
   }
 
+  // A net has no 24 weights, so writing it into the parameter table produced a row of
+  // "undefined" 22 times. It gets its own block instead, saying what it actually is.
+  function netParamsCSV(names, withRole) {
+    let csv = '\nNet Brains:\n' + (withRole ? 'Role,' : '') + 'Name,Hidden,Phi,Lambda,Trained games,Parameters,Cube\n';
+    names.forEach((entry) => {
+      const n = withRole ? entry.name : entry;
+      const w = game.personalityWeights(n), net = w && w.net;
+      csv += (withRole ? entry.role + ',' : '') + n + ','
+        + (net ? '"' + (net.spec.hidden || []).join(' x ') + '"' : '(not loaded)') + ','
+        + (net ? net.spec.activation : '') + ','
+        + (net && net.spec.lambda !== undefined ? net.spec.lambda : '') + ','
+        + (net ? (net.trainedGames || 0) : '') + ','
+        + (net ? BG_NET.netParamCount(net) : '') + ','
+        + 'Janowski x=' + BG_NET.CUBE_X_CONTACT + ' contact / ' + BG_NET.CUBE_X_RACE + ' race\n';
+    });
+    csv += 'NB a net scores in EQUITY (points), not the +-1000 weight band, and has no DT/AT.\n';
+    return csv;
+  }
+
   function throughputCSV(p) {
     const ms = Math.max(0, p.ms || 0), games = p.games || 0, matches = p.matches || 0;
     const turns = p.turns || 0;               // AI decisions = "moves" (one per play of the dice)
@@ -3744,11 +4517,16 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     });
     csv += '\n';
 
-    csv += 'Player Parameters:\nName,' + PARAM_ORDER.join(',') + '\n';
-    ranked.forEach((n) => {
-      const w = game.personalityWeights(n);
-      csv += n + ',' + PARAM_ORDER.map((k) => csvNum(w[k])).join(',') + '\n';
-    });
+    const linParams = ranked.filter((n) => !game.isNetPersonality(n));
+    const netParams = ranked.filter((n) => game.isNetPersonality(n));
+    if (linParams.length) {
+      csv += 'Player Parameters:\nName,' + PARAM_ORDER.join(',') + '\n';
+      linParams.forEach((n) => {
+        const w = game.personalityWeights(n);
+        csv += n + ',' + PARAM_ORDER.map((k) => csvNum(w[k])).join(',') + '\n';
+      });
+    }
+    if (netParams.length) csv += netParamsCSV(netParams, false);
 
     csv += duploCSV(duplo);
     if (perf) csv += throughputCSV(perf);
@@ -3768,6 +4546,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       gameMessageEl.textContent = 'Specify AI players to compete.';
       return;
     }
+
+    // Load any shipped net these seats name BEFORE the run — a batch cannot stop halfway to
+    // fetch a file, and the workers are handed the weights as they start.
+    const absent = await ensureNetsLoaded([p1, p2]);
+    if (absent.length) { gameMessageEl.textContent = 'Compete: ' + netMissingMessage(absent); return; }
 
     const wWhite = game.personalityWeights(p1), wRed = game.personalityWeights(p2);
     const dWhite = playerDepth(1), dRed = playerDepth(2);
@@ -3877,18 +4660,28 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       ? 'Tie ' + csvNum(wpWins) + '-' + csvNum(rpWins)
       : (wpFirst ? `${r.p1} (WP, d${r.dWhite})` : `${r.p2} (RP, d${r.dRed})`) + ' wins ' + csvNum(Math.max(wpWins, rpWins)) + '-' + csvNum(Math.min(wpWins, rpWins))) + '\n\n';
 
-    csv += 'Player Parameters:\nRole,Name,Depth,' + PARAM_ORDER.join(',') + '\n';
-    const wWP = game.personalityWeights(r.p1), wRP = game.personalityWeights(r.p2);
-    csv += 'WP (White),' + r.p1 + ',' + r.dWhite + ',' + PARAM_ORDER.map((k) => csvNum(wWP[k])).join(',') + '\n';
-    csv += 'RP (Red),'   + r.p2 + ',' + r.dRed   + ',' + PARAM_ORDER.map((k) => csvNum(wRP[k])).join(',') + '\n';
+    const seatsCSV = [{ role: 'WP (White)', name: r.p1, depth: r.dWhite },
+                      { role: 'RP (Red)',   name: r.p2, depth: r.dRed }];
+    const linSeats = seatsCSV.filter((s) => !game.isNetPersonality(s.name));
+    const netSeats = seatsCSV.filter((s) => game.isNetPersonality(s.name));
+    if (linSeats.length) {
+      csv += 'Player Parameters:\nRole,Name,Depth,' + PARAM_ORDER.join(',') + '\n';
+      linSeats.forEach((s) => {
+        const w = game.personalityWeights(s.name);
+        csv += s.role + ',' + s.name + ',' + s.depth + ',' + PARAM_ORDER.map((k) => csvNum(w[k])).join(',') + '\n';
+      });
+    }
+    if (netSeats.length) csv += netParamsCSV(netSeats, true);
     csv += duploCSV(r.duplo);
     if (r.perf) csv += throughputCSV(r.perf);
     return csv;
   }
 
   async function runTournament() {
-    const names = game.aiPersonalityNames().filter((n) => tourneySelected.has(n));
+    const names = menuBrainNames().filter((n) => tourneySelected.has(n));
     if (names.length < 2) { gameMessageEl.textContent = 'Tournament: select at least 2 players.'; return; }
+    const absent = await ensureNetsLoaded(names);
+    if (absent.length) { gameMessageEl.textContent = 'Tournament: ' + netMissingMessage(absent); return; }
     const matchesPer = batchMatches(1000);          // DUPLO forces this even
     const X = matchLength();
     const depth = lookaheadDepth();
@@ -5486,6 +6279,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
   // effect. Falls back to the selected personality for any missing field.
   function editorWeights() {
     const base = game.personalityWeights((editBrainSel && editBrainSel.value) || 'Arwen');
+    if (isNetScore(base)) return base;   // no editable fields to overlay
     const w = { ...base };
     BRAIN_KEYS.forEach((k) => {
       const inp = document.getElementById('bp-' + k);
@@ -5497,18 +6291,19 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     if (!moves || moves.length === 0) return '(no move)';
     return moves.map((m) => `${m.from === 'bar' ? 'bar' : m.from}/${m.to === 'off' ? 'off' : m.to}`).join(', ');
   }
-  function fmtScore(v) { if (v >= 1e8) return 'WIN'; if (v <= -1e8) return 'LOSS'; return String(Math.round(v)); }
+
   function facesText(faces) { return faces[0] === faces[1] ? `${faces[0]}-${faces[0]}` : `${faces[0]}-${faces[1]}`; }
 
-  function renderMoveList(ranked, player, faces) {
+  function renderMoveList(ranked, player, faces, isNet) {
     const who = player === 1 ? 'White' : 'Red';
-    let html = `<div style="font-size:0.72rem;font-weight:bold;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.25);flex:0 0 auto;">${who} ${facesText(faces)} — ${ranked.length} move${ranked.length === 1 ? '' : 's'} (best first)</div>`;
+    const units = isNet ? ' — equity' : '';
+    let html = `<div style="font-size:0.72rem;font-weight:bold;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.25);flex:0 0 auto;">${who} ${facesText(faces)} — ${ranked.length} move${ranked.length === 1 ? '' : 's'} (best first)${units}</div>`;
     if (ranked.length === 0) {
       html += `<div style="padding:6px 4px;font-size:0.72rem;">No legal moves — ${who} dances.</div>`;
     } else {
       html += `<div style="overflow-y:auto;flex:1 1 auto;">`;
       ranked.forEach((r, i) => {
-        html += `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 4px;font-size:0.72rem;${i === 0 ? 'background:rgba(255,255,255,0.14);' : ''}"><span>${moveText(r.moves)}</span><span style="font-variant-numeric:tabular-nums;opacity:0.9;">${fmtScore(r.value)}</span></div>`;
+        html += `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 4px;font-size:0.72rem;${i === 0 ? 'background:rgba(255,255,255,0.14);' : ''}"><span>${moveText(r.moves)}</span><span style="font-variant-numeric:tabular-nums;opacity:0.9;">${fmtBrainValue(r.value, isNet)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -5523,9 +6318,10 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     const depth = playerDepth(player);
     const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
     if (depth >= 2 && workersAvailable) gameMessageEl.textContent = 'Examination Mode — computing…';
-    const ranked = await rankMovesFor(board, player, dice, depth, editorWeights());
+    const W = editorWeights();
+    const ranked = await rankMovesFor(board, player, dice, depth, W);
     if (!setupMode) return;   // exited during the await
-    renderMoveList(ranked, player, faces);
+    renderMoveList(ranked, player, faces, isNetScore(W));
     gameMessageEl.textContent = setupBaseMsg;
   }
 

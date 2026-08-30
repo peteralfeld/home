@@ -67,6 +67,41 @@ const BG_DICE_DIST = (() => {
 // +BG_WIN if White has won, -BG_WIN if Red has won.
 const BG_WIN = 1e9;
 
+// -- Brains: linear weight vectors, and nets -----------------------------------
+// A "brain" is whatever the search carries as its evaluation currency. There are two
+// kinds, and a search never mixes them: every leaf of one search is scored by one brain,
+// so the two kinds only meet in a game, a tournament or a Compete run.
+//   linear -- the 24-key weight vector (no `kind` field): the historic brain.
+//   net    -- { kind:'net', name, netId, net, DT, AT }: net.js predicts the six-outcome
+//             distribution and equity is the fixed dot product with (1,2,3,-1,-2,-3).
+// Both are PLAIN DATA, deliberately: a brain travels to a Web Worker by structured clone,
+// so it cannot carry methods. The dispatch lives in the engine (_terminalValue/_leafValue),
+// not on the brain.
+//
+// Two consequences of the units, both settled with the user on 8/28:
+//  - A net's value is EQUITY IN POINTS (-3..+3); a linear brain's is an arbitrary score in
+//    the +-1000 band. They are NOT rescaled into each other; the display surfaces say which.
+//  - Terminal positions are therefore scored differently: +-BG_WIN for a linear brain (a
+//    certain win outranks any heuristic), and the EXACT equity of the actual result for a
+//    net (+-1 single, +-2 gammon, +-3 backgammon) -- which is how it was trained, and what
+//    lets the search prefer a gammon. Side effect, accepted deliberately: under a net a
+//    certain single win (+1) no longer dominates every estimate.
+const isNetBrain = (W) => !!(W && W.kind === 'net');
+
+// net.js, wherever we are: BG_NET is a global in the browser and the worker (net.js is a
+// classic script loaded before game.js), require() in Node. Resolved LAZILY so script load
+// order cannot bite, and null when net.js is absent -- linear brains then behave exactly as
+// they always did.
+let _netLib;
+function netLib() {
+  if (_netLib === undefined) {
+    _netLib = (typeof BG_NET !== 'undefined' && BG_NET) ? BG_NET
+            : (typeof require === 'function' ? require('./net.js') : null);
+  }
+  if (!_netLib) throw new Error('net.js is not loaded — a net brain cannot be evaluated');
+  return _netLib;
+}
+
 // --- Seeded dice (DUPLO) ------------------------------------------------------
 // Every die in a real game comes from game._die(). With `game.rng === null` (the
 // default) that is Math.random and nothing outside DUPLO changes; install a seeded
@@ -148,6 +183,11 @@ class BackgammonGame {
     // Doubling cube state
     this.doublingCubeValue = 1;
     this.doublingCubeOwner = null; // null means either player can double, 1 = P1, 2 = P2
+    // The match-play stake cap (X - min(scores)), set by simulateBGGame; Infinity for an
+    // ordinary interactive game. Recorded on the game — not just used at the call site —
+    // because the CUBE-LIFE INDEX needs it: once no redouble is possible the cube is dead,
+    // and a live-cube model applied to a dead cube doubles far too readily.
+    this.maxCube = Infinity;
 
     // Player types configuration (human or ai)
     this.playerTypes = {
@@ -897,6 +937,16 @@ rollDice(d1 = null, d2 = null) {
     return AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
   }
 
+  /** Is this brain (by name) a net rather than a linear weight vector? */
+  isNetPersonality(name) {
+    return isNetBrain(AI_PERSONALITIES[name]);
+  }
+
+  /** Is the brain seated at `player` a net? (The editor, the CSVs and Evolve all ask.) */
+  isNetSeat(player) {
+    return isNetBrain(this.aiWeights[player]);
+  }
+
   /** Set one weight of a personality (used by the parameter editor). */
   setPersonalityWeight(name, key, value) {
     if (AI_PERSONALITIES[name]) AI_PERSONALITIES[name][key] = value;
@@ -907,7 +957,12 @@ rollDice(d1 = null, d2 = null) {
   importPersonalities(arr) {
     if (!Array.isArray(arr)) return;
     arr.forEach((p) => {
-      if (p && p.name && p.weights) {
+      if (!p || !p.name) return;
+      if (isNetBrain(p.weights)) {
+        // A net brain is NOT merged over Origin: it has no linear weights, and filling in
+        // 24 of them would produce an object that answers "yes" to both kinds.
+        AI_PERSONALITIES[p.name] = p.weights;
+      } else if (p.weights) {
         // Merge over Origin so any missing keys still get sensible values.
         AI_PERSONALITIES[p.name] = { ...BUILTIN_PERSONALITIES.Origin, ...p.weights };
       }
@@ -923,6 +978,8 @@ rollDice(d1 = null, d2 = null) {
   /** Assign an AI personality (by name) to a player. */
   setPlayerAI(player, name) {
     const w = AI_PERSONALITIES[name] || AI_PERSONALITIES.Origin;
+    // The spread is shallow on purpose: a net brain's `net` (~16k floats) is SHARED, not
+    // copied, so seating one costs nothing. Nothing mutates a net in place.
     this.aiWeights[player] = { ...w };
     this.aiNames[player] = AI_PERSONALITIES[name] ? name : 'Origin';
     this.playerTypes[player] = 'ai';
@@ -1533,9 +1590,54 @@ rollDice(d1 = null, d2 = null) {
    * averages over the 21 dice rolls. Terminal positions (all 15 borne off) short-
    * circuit to ±BG_WIN so a certain win/loss always outranks any heuristic.
    */
+  /**
+   * White-view value of a FINISHED position, or null if the game is not over there.
+   * The one place the two brain kinds disagree about terminals -- see the note on
+   * isNetBrain above. terminalOutcome(..., 1) already answers in White's view.
+   */
+  _terminalValue(state, W) {
+    if (state.borneOff[1] < 15 && state.borneOff[2] < 15) return null;
+    if (!isNetBrain(W)) return state.borneOff[1] >= 15 ? BG_WIN : -BG_WIN;
+    const N = netLib();
+    return N.equityOf(N.terminalOutcome(state.points, state.bar, state.borneOff, 1));
+  }
+
+  /**
+   * White-view static value of a NON-terminal position with `mover` on roll. THE seam:
+   * the one question the search asks a brain. Linear brains fall through to evaluate();
+   * nets go to net.js, which answers from the MOVER's point of view, so Red's equity is
+   * negated into the White-view currency the whole search is denominated in.
+   */
+  _leafValue(points, bar, borneOff, W, mover) {
+    if (!isNetBrain(W)) return this.evaluate(points, bar, borneOff, W);
+    const eq = netLib().evaluatePosition(W.net, points, bar, borneOff, mover).equity;
+    return mover === 1 ? eq : -eq;
+  }
+
+  /**
+   * The root-only selection addends: the DE disengagement bonus and the disengaged-race
+   * tie-break. BOTH ARE LINEAR-BRAIN ONLY. DE is a weight a net does not have, and the
+   * tie-break's eps (0.001) is sized to split ties in an INTEGER static score -- against a
+   * net's equity, which is of order 1, it would be a real perturbation rather than a
+   * tie-break. A net needs neither: it does not tie, and it prices a race directly.
+   * Shared with ui.js's parallel root combination so the two cannot drift.
+   */
+  _rootBonus(state, W, player, parentContact) {
+    if (isNetBrain(W)) return 0;
+    let add = 0;
+    const over = state.borneOff[1] >= 15 || state.borneOff[2] >= 15;
+    if (!over && parentContact && !this.hasContact(state.points, state.bar)) {
+      const pipW = this.pipCountP(state.points, state.bar, 1);
+      const pipR = this.pipCountP(state.points, state.bar, 2);
+      if (player === 1 && pipW < pipR) add += W.DE;
+      else if (player === 2 && pipR < pipW) add -= W.DE;
+    }
+    return add + this._raceHomeTieBreak(state, player);
+  }
+
   _expecti(board, player, plies, W) {
-    if (board.borneOff[1] >= 15) return BG_WIN;
-    if (board.borneOff[2] >= 15) return -BG_WIN;
+    const term = this._terminalValue(board, W);
+    if (term !== null) return term;
 
     let acc = 0;
     for (const [d1, d2, weight] of BG_DICE_DIST) {
@@ -1559,9 +1661,9 @@ rollDice(d1 = null, d2 = null) {
     let best = player === 1 ? -Infinity : Infinity;   // White maximizes, Red minimizes
     for (const st of states) {
       let v;
-      if (st.borneOff[1] >= 15) v = BG_WIN;
-      else if (st.borneOff[2] >= 15) v = -BG_WIN;
-      else if (plies <= 1) v = this.evaluate(st.points, st.bar, st.borneOff, W);
+      const term = this._terminalValue(st, W);
+      if (term !== null) v = term;
+      else if (plies <= 1) v = this._leafValue(st.points, st.bar, st.borneOff, W, opp);
       else v = this._expecti(st, opp, plies - 1, W);
 
       if (player === 1) { if (v > best) best = v; }
@@ -1604,24 +1706,13 @@ rollDice(d1 = null, d2 = null) {
   // White-view value of one candidate complete turn, incl. the root-only DE bonus.
   _scoreRootCandidate(state, ctx) {
     const { depth, player, weights, opp, parentContact } = ctx;
-    const whiteWon = state.borneOff[1] >= 15;
-    const redWon = state.borneOff[2] >= 15;
+    const term = this._terminalValue(state, weights);
     let val;
-    if (whiteWon) val = BG_WIN;
-    else if (redWon) val = -BG_WIN;
-    else if (depth <= 1) val = this.evaluate(state.points, state.bar, state.borneOff, weights);
+    if (term !== null) val = term;
+    else if (depth <= 1) val = this._leafValue(state.points, state.bar, state.borneOff, weights, opp);
     else val = this._expecti(state, opp, depth - 1, weights);   // look ahead
-
-    // Disengagement bonus: one-time, on the move that turns contact into a pure race
-    // (selection heuristic, not part of the static score; root only, never terminal).
-    if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
-      const pipW = this.pipCountP(state.points, state.bar, 1);
-      const pipR = this.pipCountP(state.points, state.bar, 2);
-      if (player === 1 && pipW < pipR) val += weights.DE;
-      else if (player === 2 && pipR < pipW) val -= weights.DE;
-    }
-    val += this._raceHomeTieBreak(state, player);
-    return val;
+    // Root-only selection addends (DE + the race tie-break); zero for a net brain.
+    return val + this._rootBonus(state, weights, player, parentContact);
   }
 
   // Disengaged-race tie-break (move-selection only, like DE): once there's no contact PC is constant
@@ -1681,30 +1772,20 @@ rollDice(d1 = null, d2 = null) {
   // yields (deeper levels stay sync). Returns the same value as _scoreRootCandidate.
   async _scoreRootCandidateYielding(state, ctx, breathe) {
     const { depth, player, weights, opp, parentContact } = ctx;
-    const whiteWon = state.borneOff[1] >= 15;
-    const redWon = state.borneOff[2] >= 15;
+    const term = this._terminalValue(state, weights);
     let val;
-    if (whiteWon) val = BG_WIN;
-    else if (redWon) val = -BG_WIN;
-    else if (depth <= 1) val = this.evaluate(state.points, state.bar, state.borneOff, weights);
+    if (term !== null) val = term;
+    else if (depth <= 1) val = this._leafValue(state.points, state.bar, state.borneOff, weights, opp);
     else val = await this._expectiTopYielding(state, opp, depth - 1, weights, breathe);
-
-    if (!whiteWon && !redWon && parentContact && !this.hasContact(state.points, state.bar)) {
-      const pipW = this.pipCountP(state.points, state.bar, 1);
-      const pipR = this.pipCountP(state.points, state.bar, 2);
-      if (player === 1 && pipW < pipR) val += weights.DE;
-      else if (player === 2 && pipR < pipW) val -= weights.DE;
-    }
-    val += this._raceHomeTieBreak(state, player);
-    return val;
+    return val + this._rootBonus(state, weights, player, parentContact);
   }
 
   // Top-level expectimax chance node with a yield between the 21 dice outcomes; the
   // subtree below the top uses the sync _expecti. The summation is identical to
   // _expecti, so the value (and therefore the chosen move) is unchanged.
   async _expectiTopYielding(board, player, plies, W, breathe) {
-    if (board.borneOff[1] >= 15) return BG_WIN;
-    if (board.borneOff[2] >= 15) return -BG_WIN;
+    const term = this._terminalValue(board, W);
+    if (term !== null) return term;
     let acc = 0;
     for (const [d1, d2, weight] of BG_DICE_DIST) {
       const dice = d1 === d2 ? [d1, d1, d1, d1] : [d1, d2];
@@ -1718,20 +1799,80 @@ rollDice(d1 = null, d2 = null) {
    * The static score from `player`'s own perspective, using that player's own
    * weights. White uses the White-view score directly; Red uses its negation.
    */
-  ownScore(player) {
-    const score = this.evaluate(this.points, this.bar, this.borneOff, this.aiWeights[player]);
+  ownScore(player, onRoll = player) {
+    // Through the same seam as the search, so a net brain's DT/AT are compared against ITS
+    // currency (equity in points) and a linear brain's against its own. This is the whole of
+    // the net cube policy for now: real Janowski take/double points computed from the
+    // predicted distribution are their own step.
+    //
+    // `onRoll` is who is actually about to roll. It defaults to `player`, which is right for
+    // a DOUBLER (you double before your own roll) but wrong for the side deciding whether to
+    // TAKE: there the doubler rolls next. A linear eval has no notion of a side on roll, so
+    // this argument changes nothing for it — but a net is mover-relative, and being on roll
+    // is worth real equity, so evaluating a take as though the taker were on roll would
+    // overstate its position by exactly that much. See aiShouldAcceptDouble.
+    const score = this._leafValue(this.points, this.bar, this.borneOff, this.aiWeights[player], onRoll);
     return player === 1 ? score : -score;
   }
 
   /** AI decision: offer/redouble when the player's own score exceeds its DT threshold. */
   aiShouldDouble(player) {
     if (!this.canDouble(player)) return false;
+    // ONE SEAM for the cube: a brain's kind decides the policy here, so another policy
+    // (match-equity-aware, say) slots in rather than being grafted onto the call sites.
+    if (isNetBrain(this.aiWeights[player])) return this._netShouldDouble(player);
     return this.ownScore(player) > (this.aiWeights[player].DT || 0);
   }
 
   /** AI decision: accept an offered double unless the player's own score is below -AT. */
   aiShouldAcceptDouble(player) {
-    return this.ownScore(player) > -(this.aiWeights[player].AT || 0);
+    if (isNetBrain(this.aiWeights[player])) return this._netShouldAcceptDouble(player);
+    const doubler = player === 1 ? 2 : 1;   // the doubler rolls next, not the taker
+    return this.ownScore(player, doubler) > -(this.aiWeights[player].AT || 0);
+  }
+
+  /**
+   * Janowski's cube-life index for THIS position: 0 = dead cube, 1 = perfectly live.
+   * A redouble goes to four times the current value, so it needs 4*CV <= maxCube; when it
+   * does not, the cube is dead after the next take and x must be 0 or the model doubles
+   * into a stake that can never be raised again.
+   */
+  _cubeLifeIndex() {
+    if (this.doublingCubeValue * 4 > this.maxCube) return 0;
+    const N = netLib();
+    return this.hasContact(this.points, this.bar) ? N.CUBE_X_CONTACT : N.CUBE_X_RACE;
+  }
+
+  /**
+   * Offer / redouble, for a net brain. Everything is per unit of the CURRENT cube value,
+   * so the cube value cancels out of the comparison.
+   */
+  _netShouldDouble(player) {
+    const N = netLib(), brain = this.aiWeights[player];
+    // The doubler doubles BEFORE rolling, so the position is his to move.
+    const s = N.cubeStats(N.evaluatePosition(brain.net, this.points, this.bar, this.borneOff, player).p);
+    if (!s) return false;                       // certain win or loss: nothing to decide
+    const x = this._cubeLifeIndex();
+    const hold = N.cubefulEquity(s.p, s.W, s.L, x, this.doublingCubeOwner === player ? 'me' : 'centre');
+    // Doubling hands the cube to the opponent at twice the stake, and he takes only if
+    // that beats dropping — so my equity is the smaller of the two. This is also what
+    // makes "too good to double" fall out with NO separate rule: when gammons are heavy
+    // `hold` exceeds 1 by itself and the double is declined right here.
+    const doubled = Math.min(2 * N.cubefulEquity(s.p, s.W, s.L, x, 'opp'), 1);
+    return doubled > hold;
+  }
+
+  /** Take / drop, for a net brain: take at or above Janowski's take point. */
+  _netShouldAcceptDouble(player) {
+    const N = netLib(), brain = this.aiWeights[player];
+    const doubler = player === 1 ? 2 : 1;
+    // ⚠️ The DOUBLER is on roll, not the taker — he doubles, then rolls. Evaluating as
+    // though the taker were on roll overstates his position by the value of the roll.
+    const mine = N.swapOutcomes(
+      N.evaluatePosition(brain.net, this.points, this.bar, this.borneOff, doubler).p);
+    const s = N.cubeStats(mine);
+    if (!s) return (mine[0] + mine[1] + mine[2]) > 0;   // certain win -> take, certain loss -> drop
+    return s.p >= N.takePoint(s.W, s.L, this._cubeLifeIndex());
   }
 }
 
@@ -1834,6 +1975,7 @@ function escapeBuckets(points, bar, me) {
  */
 function simulateBGGame(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, seed = null) {
   const g = new BackgammonGame();
+  g.maxCube = maxCube;              // the cube-life index needs it (see _cubeLifeIndex)
   if (seed !== null) g.rng = makeBGRng(seed);   // DUPLO — must precede rollForFirstTurn()
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -1903,6 +2045,7 @@ function scoreFinishedBGGame(g) {
  */
 async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhite = 1, depthRed = depthWhite, breathe = null, seed = null) {
   const g = new BackgammonGame();
+  g.maxCube = maxCube;              // the cube-life index needs it (see _cubeLifeIndex)
   if (seed !== null) g.rng = makeBGRng(seed);   // DUPLO — must precede rollForFirstTurn()
   g.playerTypes[1] = 'ai';
   g.playerTypes[2] = 'ai';
@@ -2008,6 +2151,7 @@ async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, b
 // Export class if running in Node environment for testing, otherwise leave global
 if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = BackgammonGame;
+  module.exports.isNetBrain = isNetBrain;
   module.exports.simulateBGGame = simulateBGGame;
   module.exports.simulateBGGameYielding = simulateBGGameYielding;
   module.exports.simulateBGMatch = simulateBGMatch;

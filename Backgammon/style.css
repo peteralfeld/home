@@ -1,5 +1,15 @@
 /* Custom CSS Custom Properties for Pointworks Malachite Theme */
 :root {
+  /* The control column's width, in ONE place. .sidebar-panel consumes it directly and
+     .board-wrapper subtracts it, so the two numbers that used to encode this one fact
+     (384 and 420) can no longer drift apart. Widened 384 -> 440 on 8/29 to give row 19
+     room for the training-seed field. ⚠️ MEASURED, not estimated: the row needs 401px of
+     USABLE width, and usable is the variable minus ~24px — 6px of padding-right plus the
+     ~15-18px vertical scrollbar that .sidebar-panel's overflow-y:auto always shows here.
+     Overflow only clears at 425px; 440 leaves ~15px of real slack, enough to survive a
+     wider scrollbar on another platform. (This is the same scrollbar that once tipped the
+     dice station past 384px — see the CLAUDE.md note.) */
+  --sidebar-w: 440px;
   --bg-app: #060908;             /* Dark forest green-black canvas background */
   --bg-board-frame: #7d492a;     /* Saddle brown leather case frame */
   --bg-board-felt: #006c4b;      /* Deep rich forest green board field */
@@ -160,11 +170,13 @@ body {
      SMALLER than the space it sits in — otherwise sub-pixel/DPI rounding can make it
      ~1px too big and .game-layout's overflow:hidden shaves a border on some systems.
      Height budget: body has 0.5rem padding top+bottom (=1rem); we subtract 1.5rem to
-     leave ~8px slack. Width chrome is really 416px (sidebar 384 + gap 16 + body pad 16),
-     so we subtract 420px (a few px of buffer) rather than the old 404px. */
+     leave ~8px slack. Width chrome is the sidebar + gap 16 + body pad 16, so we subtract
+     var(--sidebar-w) + 36px: 32px of real chrome plus a few px of buffer. Deriving it from
+     the variable is the point — the old form hard-coded 420 against a 384px sidebar, and
+     widening one without the other lets .game-layout's overflow:hidden shave the border. */
   aspect-ratio: 1;
-  width: min(calc(100vh - 1.5rem), calc(100vw - 420px)); /* Largest square that safely fits */
-  width: min(calc(100dvh - 1.5rem), calc(100vw - 420px)); /* dvh override (iOS Safari toolbar) */
+  width: min(calc(100vh - 1.5rem), calc(100vw - var(--sidebar-w) - 36px)); /* Largest square that safely fits */
+  width: min(calc(100dvh - 1.5rem), calc(100vw - var(--sidebar-w) - 36px)); /* dvh override (iOS Safari toolbar) */
   max-width: 100%;
   max-height: calc(100vh - 1.5rem); /* Explicit viewport calc — percentage is unreliable in flex */
   max-height: calc(100dvh - 1.5rem);
@@ -177,7 +189,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  width: 384px;
+  width: var(--sidebar-w);
   flex-shrink: 0;
   height: 100%;
   overflow-y: auto;
@@ -1569,3 +1581,37 @@ input[type="number"]::-webkit-outer-spin-button {
 
 /* Setup/Analysis row: stretch controls to fill the column width */
 .setup-station .setup-btn, .setup-station .setup-die { flex: 1 1 0; min-width: 0; }
+
+
+/* Row 17 — the net-brain participant toggles. Lower-cased in CSS rather than by the
+   names, so an imported net (N80-...) still reads as lower case in this row while the
+   linear row above stays upper case. */
+/* Target the BUTTON, not the row: the UA stylesheet sets text-transform:none on form
+   controls, so a button does not inherit it from its container. */
+.nn-toggles .tourney-toggle { text-transform: lowercase; }
+
+/* A brain listed in NNs/manifest.json whose file is not there yet: shown, so the roster
+   looks complete on a fresh copy, but plainly not usable. */
+.nn-missing { opacity: 0.45; }
+
+/* A little air above the net block, so rows 17-19 read as their own group inside the
+   tournament card rather than as more tournament controls. */
+.nn-row { border-top: 1px solid rgba(255, 255, 255, 0.14); padding-top: 0.3rem; }
+
+/* Row 19 packs EIGHT controls into the column — two more than the Evolve row above, and
+   the current record. The seed field (8th, 8/29) is what the column was widened from 384
+   to 414px for; see --sidebar-w. Everything is still sized down to keep the row on ONE
+   line, because a second line would move every tick mark in ControlColumnFig.png. If a
+   control is ever added here, something has to give again. */
+.learn-row { gap: 0.2rem; flex-wrap: nowrap; }
+.learn-row .tourney-run { padding: 0.3rem 0.35rem; font-size: 0.72rem; flex: 0 0 auto; }
+.learn-row .evo-field { width: 40px; flex: 0 0 auto; }
+.learn-row #learn-games { width: 52px; }
+.learn-row .match-len { font-size: 0.62rem; padding: 0.15rem 0.1rem; flex: 0 0 auto; }
+.learn-row #learn-layers { width: 34px; }
+.learn-row #learn-from { width: 48px; }
+.learn-row #learn-phi { width: 58px; }
+.learn-row #learn-seed { width: 56px; }   /* wide enough for a 10-digit seed */
+
+/* Row 18: the net selector need not eat the whole row. */
+#nn-brain { flex: 1 1 auto; min-width: 0; }
