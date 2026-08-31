@@ -66,7 +66,7 @@
 <a href="index.html">
     <figure style="margin: 0 15px 15px 0; max-width: 100%;">
         <img src="GamePage.png" style="height: 450px; width: auto;" alt="The Game  Page">    
-        <figcaption style="text-align: left; font-size: 0.9em;">Fig. 1: The Game Page</figcaption>
+        <figcaption style="text-align: left; font-size: 0.9em;">Fig. 1: The Game Page, at the opening position</figcaption>
     </figure>
 </a>  
 
@@ -105,11 +105,14 @@
       <li><a href="#CC14">3.14. AI Evolution</a></li>
       <li><a href="#CC15">3.15. AI Parameters</a></li>
       <li><a href="#CC16">3.16. Tournament Participants</a></li>
-      <li><a href="#CC17">3.17. Running a Tournament</a></li>
-      <li><a href="#CC18">3.18. Settings and Data Export</a>
+      <li><a href="#CC17">3.17. Net Tournament Participants</a></li>
+      <li><a href="#CC18">3.18. Choosing and Importing a Net</a></li>
+      <li><a href="#CC19">3.19. LEARN &ndash; Training a Net</a></li>
+      <li><a href="#CC20">3.20. Running a Tournament</a></li>
+      <li><a href="#CC21">3.21. Settings and Data Export</a>
         <ul>
-          <li><a href="#sec-settings">3.18.1. Settings</a></li>
-          <li><a href="#sec-export">3.18.2. Exporting Data</a></li>
+          <li><a href="#sec-settings">3.21.1. Settings</a></li>
+          <li><a href="#sec-export">3.21.2. Exporting Data</a></li>
         </ul>
       </li>
     </ul>
@@ -126,7 +129,7 @@
 
 <p> In the default view of the game board, as shown in Figure 1, the <i>home board</i> of White  is in the lower right quadrant, and White's <i>outer board</i> is in the lower left.   Similarly, Red's home and outer boards are on the top, on the right and left, respectively.   Red moves from the white home board to the red home board and White moves in the opposite direction. Both players move from their opponent's home board to their own home board, and from there to the <i>collection tray</i> next to the home boards.     Red moves clockwise, and White moves counterclockwise.  The <i>bar</i> contains any checkers that have been forced off the board by the opponent, and the collection tray receives all checkers that have been borne off. The <i>points</i> of the board are numbered from 1 to 24. It is sometimes convenient to think of the bar as point  25 for White and 0 for red,  and the collection tray as point 0 for White and 25 for Red.   With these conventions,  Red always moves from its current point to a point with a <e>larger</e> index, and White moves to a point with a <e>smaller</e> index.   The <e>default view</e> is White's &mdash; the view White would have sitting at a physical board, and the one shown in Figure 1.  The <e>Red</e> view is the one that matches the diagrams on the external <a href="https://www.bkgm.com/rules.html">Backgammon rules page</a> linked above.  You can change the view at any time from the <e>V:</e> menu in row 9, as described below.
 
-<p>There are several ways to move a checker from point x to point y on the game board.  You can drag it from x to y or you can first click on x and then on y.   There is also a setting (see the description of row 18) that lets you move a checker with a single click if that click uniquely identifies the move.
+<p>There are several ways to move a checker from point x to point y on the game board.  You can drag it from x to y or you can first click on x and then on y.   There is also a setting (see the description of row 21) that lets you move a checker with a single click if that click uniquely identifies the move.
 
   <p> If the move is part of a game the system will let you only make legal moves.   However, there is also an <i>examination mode</i>  that lets you move checkers freely and set up any position.   
 
@@ -153,7 +156,7 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
   }
 
   /* The floating figure */
-  /* margin-top here, NOT padding on .cc-canvas: the 18 .cc-hotspot tops are percentages
+  /* margin-top here, NOT padding on .cc-canvas: the 21 .cc-hotspot tops are percentages
      of .cc-canvas, so padding it would silently shift every circle off its row. */
   .cc-fig { float: left; width: 470px; max-width: 55%; margin: 0.6em 22px 12px 0; }
   .cc-fig figcaption { text-align: center; font-size: 0.9em; margin-top: 4px; }
@@ -174,24 +177,27 @@ Figure 2 shows an image of the control column.  Each row of that column is expla
 <figure id="ccfig" class="cc-fig">
   <div class="cc-canvas">
     <img src="ControlColumnFig.png" alt="The control column, with clickable numbered rows">
-    <a class="cc-circle cc-hotspot" style="top:2.37%"  href="#CC1"  title="Row 1: Title bar &amp; Workers field">1</a>
-    <a class="cc-circle cc-hotspot" style="top:5.19%"  href="#CC2"  title="Row 2: Documentation link">2</a>
-    <a class="cc-circle cc-hotspot" style="top:8.27%"  href="#CC3"  title="Row 3: HOST / CODE / JOIN / LEAVE">3</a>
-    <a class="cc-circle cc-hotspot" style="top:10.84%" href="#CC4"  title="Row 4: Network status line">4</a>
-    <a class="cc-circle cc-hotspot" style="top:14.47%" href="#CC5"  title="Row 5: START / STOP / RESTART / RESET">5</a>
-    <a class="cc-circle cc-hotspot" style="top:19.00%" href="#CC6"  title="Row 6: White player (WP) setup">6</a>
-    <a class="cc-circle cc-hotspot" style="top:22.53%" href="#CC7"  title="Row 7: Red player (RP) setup">7</a>
-    <a class="cc-circle cc-hotspot" style="top:30.44%" href="#CC8"  title="Row 8: Message / instruction box">8</a>
-    <a class="cc-circle cc-hotspot" style="top:39.52%" href="#CC9"  title="Row 9: Dice, UNDO, doubling cube, VIEW">9</a>
-    <a class="cc-circle cc-hotspot" style="top:51.26%" href="#CC10" title="Row 10: Move-history table">10</a>
-    <a class="cc-circle cc-hotspot" style="top:60.48%" href="#CC11" title="Row 11: Time-travel navigation">11</a>
-    <a class="cc-circle cc-hotspot" style="top:64.97%" href="#CC12" title="Row 12: Examine row (EX/CL/IN/MOV/PLAY)">12</a>
-    <a class="cc-circle cc-hotspot" style="top:69.41%" href="#CC13" title="Row 13: Brain selector, name, EXPORT/IMPORT/DEF">13</a>
-    <a class="cc-circle cc-hotspot" style="top:73.24%" href="#CC14" title="Row 14: EVOLVE controls">14</a>
-    <a class="cc-circle cc-hotspot" style="top:80.29%" href="#CC15" title="Row 15: AI parameter grid">15</a>
-    <a class="cc-circle cc-hotspot" style="top:87.60%" href="#CC16" title="Row 16: Participant toggles (A-O / ALL / NONE)">16</a>
-    <a class="cc-circle cc-hotspot" style="top:91.23%" href="#CC17" title="Row 17: COMPETE / TOURNAMENT">17</a>
-    <a class="cc-circle cc-hotspot" style="top:97.33%" href="#CC18" title="Row 18: SETTINGS / EXPORT panels">18</a>
+    <a class="cc-circle cc-hotspot" style="top:1.74%  " href="#CC1"  title="Row 1: Title bar &amp; Workers field">1</a>
+    <a class="cc-circle cc-hotspot" style="top:4.57%  " href="#CC2"  title="Row 2: Documentation link">2</a>
+    <a class="cc-circle cc-hotspot" style="top:7.35%  " href="#CC3"  title="Row 3: HOST / CODE / JOIN / LEAVE">3</a>
+    <a class="cc-circle cc-hotspot" style="top:9.88%  " href="#CC4"  title="Row 4: Network status line">4</a>
+    <a class="cc-circle cc-hotspot" style="top:13.16% " href="#CC5"  title="Row 5: START / STOP / RESTART / DUPLO / RESET">5</a>
+    <a class="cc-circle cc-hotspot" style="top:17.35% " href="#CC6"  title="Row 6: White player (WP) setup">6</a>
+    <a class="cc-circle cc-hotspot" style="top:20.59% " href="#CC7"  title="Row 7: Red player (RP) setup">7</a>
+    <a class="cc-circle cc-hotspot" style="top:27.52% " href="#CC8"  title="Row 8: Message / instruction box">8</a>
+    <a class="cc-circle cc-hotspot" style="top:36.05% " href="#CC9"  title="Row 9: Dice, UNDO, doubling cube, VIEW">9</a>
+    <a class="cc-circle cc-hotspot" style="top:46.08% " href="#CC10" title="Row 10: Move-history table">10</a>
+    <a class="cc-circle cc-hotspot" style="top:54.42% " href="#CC11" title="Row 11: Time-travel navigation">11</a>
+    <a class="cc-circle cc-hotspot" style="top:58.44% " href="#CC12" title="Row 12: Examine row (EX/CL/IN/MOV/PLAY)">12</a>
+    <a class="cc-circle cc-hotspot" style="top:62.21% " href="#CC13" title="Row 13: Brain selector, name, EXPORT/IMPORT/DEF">13</a>
+    <a class="cc-circle cc-hotspot" style="top:65.75% " href="#CC14" title="Row 14: EVOLVE controls">14</a>
+    <a class="cc-circle cc-hotspot" style="top:72.39% " href="#CC15" title="Row 15: AI parameter grid">15</a>
+    <a class="cc-circle cc-hotspot" style="top:78.76% " href="#CC16" title="Row 16: Participant toggles (A-O / ALL / NONE)">16</a>
+    <a class="cc-circle cc-hotspot" style="top:82.33% " href="#CC17" title="Row 17: Net participant toggles (a-i / ALL / NONE)">17</a>
+    <a class="cc-circle cc-hotspot" style="top:85.34% " href="#CC18" title="Row 18: Net selector &amp; IMPORT">18</a>
+    <a class="cc-circle cc-hotspot" style="top:88.61% " href="#CC19" title="Row 19: LEARN &mdash; train a net">19</a>
+    <a class="cc-circle cc-hotspot" style="top:92.30% " href="#CC20" title="Row 20: COMPETE / TOURNAMENT">20</a>
+    <a class="cc-circle cc-hotspot" style="top:97.94% " href="#CC21" title="Row 21: SETTINGS / EXPORT panels">21</a>
   </div>
   <figcaption>Fig. 2: The Control Column (click a number for details)</figcaption>
 </figure>
@@ -235,7 +241,7 @@ When this line is green you can play over the network.  It will also notify you 
 <!-- Row 4: Network status line -->
 
 <h2 id="CC5" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">5</a>3.5. Game Control</h2>
-<!-- Row 5: START / STOP / RESTART / RESET -->
+<!-- Row 5: START / STOP / RESTART / DUPLO / RESET -->
 
 
 
@@ -243,6 +249,8 @@ When this line is green you can play over the network.  It will also notify you 
 
 
 <p> These buttons control the flow of a game.  <e>START</e> begins a game, and also <e>resumes</e> one that has been paused.  <e>STOP</e> pauses a game in progress at the position currently on the board; it resets nothing, and START picks up from there.  <e>RESTART</e> ends the current game and immediately begins a new one: the board returns to the starting position and the player who did <e>not</e> open the previous game opens this one.  The scores in rows 6 and 7 are carried over rather than cleared &mdash; use <e>Z</e> or <e>START</e> to zero them.  (If the previous game was launched from a position you set up by hand in examination mode, RESTART instead reproduces that same position, the same opening player and the same opening dice.)  <e>RESET</e> reloads the game page and thereby returns all settings to their defaults.
+
+<p> <e>DUPLO</e> replays the game that has just ended, with the <e>same</e> dice and the two participants exchanged between the seats.   This is <i>duplicate play</i>, borrowed from duplicate bridge, where the same deal is played at more than one table so that the luck of the cards cancels and only the difference in play remains.   Here the same rolls come up in the same order, so a run of doubles that fell to White in the first game falls to whoever sits in the White seat in the second, and what separates the two games is what the players did with the same luck.   Pressing <e>DUPLO</e> again returns to the original seating, once more with the same dice.   There is nothing to replay until a game has ended, and the button declines in a networked game, where the seats belong to the two machines rather than to you.   The same idea is applied wholesale to tournaments and competitions by the <e>DUPLO</e> setting described in row 21.
 
 
 <h2 id="CC6" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">6</a>&nbsp;<a id="CC7" class="cc-circle cc-badge" href="#ccfig" title="Back to the figure" style="scroll-margin-top:12px">7</a>3.6 &ndash; 3.7. Player Selection</h2>
@@ -265,8 +273,8 @@ Here you can select  the white player in the first menu in that row.  The option
 <p> You use the controls in this row during a game against a human or an AI.  Specifically, there are:
 
   <OL>
-    <LI><e>The Playing Dice.</e>  Initially one of the dice is white, and the other is red.  Clicking on them will constitute the first roll.   The player whose die shows the higher number makes the first move.  Subsequently the first move alternates between White and Red.  Otherwise,  the color of the dice indicates the player whose turn it is.  As the game proceeds the color of the dice will change and match the player who is making the current turn. When the dice are blank the corresponding player can roll the dice by clicking on them.
- For example, in Figure 2 it is Red's turn to roll the dice. As you make your moves the dice turn blank.  For example, if you roll 5-3 and move one checker 5 spots forward then the die showing the 5 will turn blank and the other die will continue to show 3.   After you make the second move of 3 spots forward the dice will turn white, and it will be the other player's turn.  Thus the dice always show what  moves you can still make.  If you roll a double both dice will continue to show the pips after your first two partial moves, and then will turn blank one at a time. </li>
+    <LI><e>The Playing Dice.</e>  Initially one of the dice is white, and the other is red, as in Figure 1.  Clicking on them will constitute the first roll.   The player whose die shows the higher number makes the first move.  Subsequently the first move alternates between White and Red.  Otherwise,  the color of the dice indicates the player whose turn it is.  As the game proceeds the color of the dice will change and match the player who is making the current turn. When the dice are blank the corresponding player can roll the dice by clicking on them.
+ For example, in Figure 2 the dice are red, so it is Red's turn, and they show the 5 and 6 that Red has rolled and not yet played. As you make your moves the dice turn blank.  For example, if you roll 5-3 and move one checker 5 spots forward then the die showing the 5 will turn blank and the other die will continue to show 3.   After you make the second move of 3 spots forward the dice will turn white, and it will be the other player's turn.  Thus the dice always show what  moves you can still make.  If you roll a double both dice will continue to show the pips after your first two partial moves, and then will turn blank one at a time. </li>
 
     <li><e>The Doubling Cube.</e>  You offer a Double by clicking on the Doubling Cube.  Your opponent is notified of your offer and can accept it by clicking on the playing dice, or reject it and resign by clicking on the doubling cube.   The color of the Doubling cube indicates the current owner of the cube.  Initially it is gray, indicating that either player may offer a Double.</li>
     
@@ -299,12 +307,12 @@ Here you can select  the white player in the first menu in that row.  The option
 <!-- Row 11: Time-travel navigation (<< < > >>) -->
 <p>    The four green buttons in this row let you travel back and forth in the Move list.   <e><</e> and <e>></e> move you one move forward or backward, and <e><<</e> and <e>>></e> move you to the beginning or end of the table.   You can use these buttons to review a game.
 
-<p> The yellow <e>IMPORT</e> button at the right of the row reads a <i>game record</i> back into the move list.   A game record is the text file that <e>MOVE LIST</e> in row 18 downloads, and that <e>AUTO RECORD</e> writes by itself at the end of every game.   Loading one refills the move list with that game, so you can step through it, click any row to return to that position, and examine it just as if you had played it.   You can also simply drag the file onto the control column.   The record is checked against itself as it is read: every position is recomputed and compared with the pip counts stored in the file, and if anything disagrees the file is refused and the status field says at which move.   Loading a game replaces whatever is on the board, and it also restores the two players, so a game between two AIs is scored with the same AIs it was played with.
+<p> The yellow <e>IMPORT</e> button at the right of the row reads a <i>game record</i> back into the move list.   A game record is the text file that <e>MOVE LIST</e> in row 21 downloads, and that <e>AUTO RECORD</e> writes by itself at the end of every game.   Loading one refills the move list with that game, so you can step through it, click any row to return to that position, and examine it just as if you had played it.   You can also simply drag the file onto the control column.   The record is checked against itself as it is read: every position is recomputed and compared with the pip counts stored in the file, and if anything disagrees the file is refused and the status field says at which move.   Loading a game replaces whatever is on the board, and it also restores the two players, so a game between two AIs is scored with the same AIs it was played with.
 
 <h2 id="CC12" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">12</a>3.12. Examination and Analysis</h2>
 <!-- Row 12: Examine row (EX / CL / IN / dice menus / MOV / PLAY) -->
 
-<p> The controls in this row let you set up a position and analyze it,  or start a game from it.  You can move checkers on the board , including the bar and the collection tray, by dragging or clicking on start and finish, without restriction.  The first three buttons set up an initial configuration.  Specifically, <e>EX</e> selects the position currently on the board, e.g., the position in an ongoing game.  <e>CL</e> starts a position with all checkers on the bar.  <e>IN</e> loads the regular starting position.  The red and white <e>menus</e> serve as <e>dice</e>.  You can select a roll using either the red dice or the white dice, but not both sets.   If you start an analysis or a game, and no dice have been set, the system will apply a random roll.  <e>MOV</e> lists the legal moves in the move list field, best first, ranked by the AI selected in row 13 &mdash; and it reads that AI's parameters <e>live</e> from row 15, so you can change a weight and press MOV again to see the effect at once.  <e>PLAY</e> applies the top-ranked move to the board and hands the roll to the other side, leaving you in examination mode.   The <e>START</e> button in Row 5 starts a game from the currently set up position, and the <e>RESTART</e> button in the same row restarts a game from the same position as the most recent game.  You can navigate in a set up game exactly as you would in a regular game.
+<p> The controls in this row let you set up a position and analyze it,  or start a game from it.  You can move checkers on the board , including the bar and the collection tray, by dragging or clicking on start and finish, without restriction.  The first three buttons set up an initial configuration.  Specifically, <e>EX</e> selects the position currently on the board, e.g., the position in an ongoing game.  <e>CL</e> starts a position with all checkers on the bar.  <e>IN</e> loads the regular starting position.  The red and white <e>menus</e> serve as <e>dice</e>.  You can select a roll using either the red dice or the white dice, but not both sets.   If you start an analysis or a game, and no dice have been set, the system will apply a random roll.  <e>MOV</e> lists the legal moves in the move list field, best first, with two numbers against each: the probability that <e>White</e> wins the game if that move is made, and the <e>equity</e> the move is ranked by.   The probability is a percentage in White's view, so that a number below 50 means Red is ahead and is printed in red, while 50 or more is White's and printed in white; it is the same number, and the same convention, as the score column of row 10.   The equity is the expected number of points won, counting gammons and backgammons, and it is what decides the order &mdash; a play that wins less often but gammons more can be worth more points, which is why both numbers are shown rather than one.   The moves are ranked by the brain this row analyses with.   By default that is the neural net selected in row 18 &mdash; normally the strongest net of the distribution &mdash; and the moves are then scored in equity.   Turning the <e>NET ANALYSIS</e> setting of row 21 <e>OFF</e> hands the analysis back to the AI selected in row 13, and that AI's parameters are then read <e>live</e> from row 15, so you can change a weight and press MOV again to see the effect at once.   A net has no such parameters, which is why the two go together.  <e>PLAY</e> applies the top-ranked move &mdash; ranked by the same brain as <e>MOV</e> &mdash; to the board and hands the roll to the other side, leaving you in examination mode.   The <e>START</e> button in Row 5 starts a game from the currently set up position, and the <e>RESTART</e> button in the same row restarts a game from the same position as the most recent game.  You can navigate in a set up game exactly as you would in a regular game.
  By default, doubling is turned off in examination mode (to prevent immediate terminations in lopsided positions).
 
 
@@ -319,7 +327,7 @@ Here you can select  the white player in the first menu in that row.  The option
 
 <p> In this context it is important to understand the concept of a <i>match</i>.  A match is a set of one or more games.  If a match consisted of a single game with unlimited doubling, the point count in that game could become astronomical through repeated doubling.  This actually happened in earlier versions of this software: one game worth millions of points swamped all the other games in a tournament of thousands of games.   A match is therefore defined, both in actual competitive play and in this software, in a way that prevents any one game from dominating.   The two players play a series of games, using the doubling cube freely, until one of them reaches or exceeds an agreed point count.   Whoever gets there first wins the match, and a match win counts as exactly <e>one</e> win however lopsided the individual games were.   A game that involves 20 doubles and is worth \(2^{20} = 1{,}048{,}576\) points still decides no more than that one match.
 
-<p> The point count is set in the menu on row 17 and is <e>11</e> by default; the available choices are the odd numbers from 1 to 19. Even numbers are excluded because they might lead to a tie.  A match to 11 needs at least 11 games if every game is worth a single point, and can run to 21 games (10&ndash;10, then a decider), but in practice, because of doubling and gammons, the average is about <e>5</e> games.   Choosing <e>1</e> creates matches consisting of a single game, in which doubling, gammons and backgammons have no effect on the match outcome.
+<p> The point count is set in the menu on row 20 and is <e>11</e> by default; the available choices are the odd numbers from 1 to 19. Even numbers are excluded because they might lead to a tie.  A match to 11 needs at least 11 games if every game is worth a single point, and can run to 21 games (10&ndash;10, then a decider), but in practice, because of doubling and gammons, the average is about <e>5</e> games.   Choosing <e>1</e> creates matches consisting of a single game, in which doubling, gammons and backgammons have no effect on the match outcome.
 
 <p> Two standard match rules are built in.   Under the <i>Crawford rule</i>, the one game played immediately after either side first comes within a single point of winning the match is played <e>without</e> doubling &mdash; otherwise the trailing player would double at once, having nothing to lose.   And the cube is capped: it is never raised beyond the number of points the trailing player still needs, since anything above that cannot change who wins the match.   At a match length of 1 the cap makes the cube dead altogether, which is why that setting produces plain single games.
 
@@ -328,7 +336,7 @@ Here you can select  the white player in the first menu in that row.  The option
 <p> The controls in this row let you import or export an AI.   You can thus keep a set of AIs of your own, play against them, evolve them, or let them play a tournament against other AIs. From left to right,  the following controls are available:
   <OL><li>
 
-      The <i>AI menu</i>, showing <e>Arwen</e> by default, lets you pick any of the currently active AIs.   This will update the parameter list in row 15 and you can then work with that AI.  If a game has been played by two humans, or is ongoing, and a move list is present, then changing the selected AU will also change the AI used for scoring the game positions,  and the scores in the moves list will update. By default, 9 AIs are available.   They are sorted alphabetically by decreasing performance (as determined by a long tournament).   I picked the parameters of  the bottom one, <e>Origin</e>, basically by guessing, when I first started developing the software. Quite a few of Origin's parameters are zero (they have no effect) since they did not yet exist when I constructed Origin.   The other AIs all were created in one way or other by mutating Origin and its successors, partly by changing individual parameters by hand, or applying the genetic algorithm available in the next row.  If you import a new AI it will be added to the bottom of the menu, and it will become eligible in row 16 for playing a tournament.</li>
+      The <i>AI menu</i>, showing <e>Arwen</e> by default, lets you pick any of the currently active AIs.   This will update the parameter list in row 15 and you can then work with that AI.  If a game has been played by two humans, or is ongoing, and a move list is present, then changing the selected AI will also change the AI used for scoring the game positions, and the scores in the moves list will update &mdash; provided the <e>NET ANALYSIS</e> setting of row 21 is <e>OFF</e>.   With that setting <e>ON</e>, which is the default, a human's play is scored by the neural net chosen in row 18 instead, and this menu only selects the AI whose parameters are shown in row 15. By default, 9 AIs are available.   They are sorted alphabetically by decreasing performance (as determined by a long tournament).   I picked the parameters of  the bottom one, <e>Origin</e>, basically by guessing, when I first started developing the software. Quite a few of Origin's parameters are zero (they have no effect) since they did not yet exist when I constructed Origin.   The other AIs all were created in one way or other by mutating Origin and its successors, partly by changing individual parameters by hand, or applying the genetic algorithm available in the next row.  If you import a new AI it will be added to the bottom of the menu, and it will become eligible in row 16 for playing a tournament.</li>
 
     <li>The textfield lets you specify the name of the currently selected AI for export.   The default name is <e>newAI</e>, but you can change it.    Your selection will be used as the file name, and also as the name of the exported AI.</li>
 
@@ -360,11 +368,51 @@ Here you can select  the white player in the first menu in that row.  The option
 <h2 id="CC16" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">16</a>3.16. Tournament Participants</h2>
 <!-- Row 16: Participant toggles (A-O / ALL / NONE) -->
 
-<p>The buttons in this row let you select the participants of a tournament.   <e>ALL</e> selects all, and <e>NONE</e> removes all players from the tournament.   The buttons labeled with letters correspond to the currently available AIs.   The letter is the first letter of the AI's name, and the sequence of buttons corresponds to the sequence of items in the AI menu in row 13.   Clicking on the button adds or removes the corresponding player from the tournament. 
+<p>The buttons in this row let you select the participants of a tournament.   <e>ALL</e> selects all, and <e>NONE</e> removes all players from the tournament.   The buttons labeled with capital letters correspond to the AIs of the kind described in row 15, the ones whose play is governed by twenty-two adjustable parameters.   The letter is the first letter of the AI's name, and the sequence of buttons corresponds to the sequence of items in the AI menu in row 13.   Clicking on the button adds or removes the corresponding player from the tournament.
 
-  <h2 id="CC17" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">17</a>3.17. Running a Tournament</h2>
-<!-- Row 17: COMPETE / TOURNAMENT -->
-<p>  The  text field with default <e> 1000 </e> determines the number of matches per pairing.   The menu on the right determines the point count per match, as described above.  Pressing the <e>TOURNAMENT</e> button starts the tournament among the players chosen in row 16.    The results are downloaded as a spreadsheet when the tournament finishes.
+<p> The AIs of the other kind, the nets, have a strip of their own in row 17 with its own <e>ALL</e> and <e>NONE</e>, so that the two kinds are chosen independently.   By default just <e>A</e> is selected here and just <e>a</e> in row 17, which is a two-player tournament rather than a long one.   That is deliberate: a round robin over every AI of both kinds is 153 pairings against 36 for this row alone, and at a thousand matches each that is a run of days rather than of hours.   Turn on only as many as you mean to wait for. 
+
+<h2 id="CC17" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">17</a>3.17. Net Tournament Participants</h2>
+<!-- Row 17: Net participant toggles (a-i / ALL / NONE) -->
+
+<p> This row chooses the tournament participants of the second kind.   A <i>net</i> is an AI that judges a position with a neural network which taught itself to play, rather than with the twenty-two weighted features of row 15.   It has no parameters you can read or edit, it cannot be evolved, and what it knows is spread over some sixteen thousand numbers; it can only be judged by how it plays.   The buttons behave exactly as in row 16 and the letters are again the initials of the names, but they are drawn in lower case so that the two rows cannot be mistaken for one another at a glance, and this row's <e>ALL</e> and <e>NONE</e> touch only this row.
+
+<p> The nets carry mythological names, chosen so that their initials run from <e>a</e> to <e>i</e>, and like the AIs of row 16 they are kept in order of strength, so <e>a</e> is the strongest.   A net that is listed but has not been installed cannot take part; its button is there so that the row looks the same whether or not every net has been built, and row 18 says which ones are missing.
+
+
+<h2 id="CC18" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">18</a>3.18. Choosing and Importing a Net</h2>
+<!-- Row 18: Net selector & IMPORT -->
+
+<p> The menu lists every net: the ones that come with the game and any you have imported or trained yourself.   It holds nothing but the name.   A net you have just trained has no name of its own, only a systematic one built from its own parameters, and since those parameters are now written out in full beside the menu it appears simply as <e>NN</e> &mdash; and as <e>NN-2</e>, <e>NN-3</e> and so on if there is more than one, so that no two entries read alike.   A net that is listed but not present on the server is dimmed and marked <e>(not installed)</e>; choosing it is refused and the menu returns to what it was, since a menu naming an AI the game is not using would be worse than a refusal.
+
+<p> The field beside the menu describes the selected net, and it is there to be read rather than written to.   It says:
+
+<blockquote><code>N=800,000 &nbsp; H=80+80 &nbsp; &phi;=sigmoid &nbsp; &lambda;=0.7 &nbsp; lr=0.01 &nbsp; s=1 &nbsp; W=32</code></blockquote>
+
+<p> <e>N</e> is the number of self-play games the net was trained on.   <e>H</e> describes the hidden layers: <e>80</e> is one layer of eighty units, <e>80+80</e> is two such layers stacked one on the other.   <e>&phi;</e> is the activation function, <e>&lambda;</e> the trace decay of the learning rule, and <e>lr</e> its learning rate.   <e>s</e> is the training seed, which fixes both the starting weights and the entire sequence of dice the net taught itself on: two nets built to the same recipe are otherwise indistinguishable, and it is the seed that tells them apart.   <e>W</e> is the number of workers the training ran on, and it belongs here for the same reason the seed does &mdash; the round size is the number of workers times eight, so the same seed on thirty-two workers and on sixteen produces two different nets.   It has only been recorded since the 31st of August 2026, so the nets that came before honestly say <e>W=?</e> rather than guess.   A star on the seed, <e>s=1*</e>, marks a net whose training was <e>continued</e> rather than done in one run: the seed then describes only the first stretch, since each continuation starts its dice from the count of games already trained.
+
+<p> A net is a large thing, about a third of a megabyte, so the nets are fetched only when they are first wanted.   The page is therefore complete before any of them has been downloaded, and choosing one for the first time takes a moment while it arrives.   The status field in row 8 describes whichever net is selected.
+
+<p> <e>IMPORT</e> reads a net from a file &mdash; the file that <e>LEARN</e> in the next row writes at the end of a run &mdash; and dragging that file onto the control column does the same thing.   There is deliberately no <e>EXPORT</e> and no <e>DEF</e> here, unlike row 13: a net is not something you can edit, and the ones that come with the game are already files.   The net selected in this row is also the one that row 19 goes on training when it is set to <e>cont</e>.
+
+
+<h2 id="CC19" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">19</a>3.19. LEARN &ndash; Training a Net</h2>
+<!-- Row 19: LEARN - train a net -->
+
+<p> This row builds a net, in your own browser, using every processor core you have given the game in row 1.   <e>LEARN</e> starts a run and becomes <e>Stop L</e>, which ends it cleanly after the batch in progress.   While it runs, the status field in row 8 reports how many games have been played, how well the net is currently predicting, how fast the run is going and how long it has left.   Training, a tournament, a competition and an evolution run all want the same processors, so any one of them refuses to start while another is under way.
+
+<p> The training is <i>self-play</i>: the net plays complete games against itself, and after each one its numbers are nudged in the direction that would have predicted that game's course a little better.   Nothing is fed to it except the rules and the outcome; it is never shown a human game and never told what a prime or an anchor is.   A hundred thousand games is a few minutes on a machine with many cores, and is enough to produce a net that beats every parameter AI in the roster.
+
+<p> The remaining controls say what is to be built, and they start out holding the recipe of the net selected in row 18 &mdash; the same numbers the field beside that menu displays &mdash; and follow it whenever that selection changes.   That makes the ordinary way of building a variant a short one: select the net you want to vary, change the single field you want changed, and press <e>LEARN</e>.   What comes out is that net with one thing different, which is exactly what a comparison between two nets needs and is otherwise easy to get wrong.   A number you type yourself stays as you typed it until you select a different net.   The first menu chooses between a <e>new</e> net and <e>cont</e>, which goes on training the net selected in row 18; when continuing, everything that describes the shape of the net is locked, because it belongs to the net being continued.   <e>N</e> is the number of games to play.   <e>W</e> is the width of each hidden layer and <e>L</e> the number of such layers.   The menu after them is the <i>activation function</i>, the small nonlinear function each unit applies; the choice matters more than either the width or the depth.   Choosing <e>ident</e> dims the layer menu, and rightly so: without a nonlinearity any number of layers collapses into a single linear one, which makes that setting a useful control rather than a serious player.   The number after it is <i>lambda</i>, which governs how far back through a game its final result is allowed to reach: at 1 every position in the game is credited with the outcome, at 0 only the last, and <e>0.7</e> is the value that has measured best.
+
+<p> The last field is the <i>seed</i>.   Left blank, one is chosen at random, which is what you want most of the time.   Type a number and the run becomes repeatable, because the seed fixes both the net's random starting numbers and the entire sequence of dice it will see.   That is what makes an honest comparison possible: two runs sharing a seed differ only in whatever else you changed, whereas two runs of the <e>same</e> settings with different seeds can differ by more than you might expect.   A run repeats exactly only at the same number of <e>WORKERS</e>, since the work is divided among them in batches.   There is deliberately no control for the rate at which the net learns; the one value with evidence behind it is built in.
+
+<p> When the run ends the net is saved to your download folder <e>and</e> added to the menus at once, under a name that spells out what it is, so you can play or enter it in a tournament without importing anything.
+
+
+  <h2 id="CC20" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">20</a>3.20. Running a Tournament</h2>
+<!-- Row 20: COMPETE / TOURNAMENT -->
+<p>  The  text field with default <e> 1000 </e> determines the number of matches per pairing; with <e>DUPLO</e> on it is made even, since matches are then played in pairs.   The menu on the right determines the point count per match, as described above.  Pressing the <e>TOURNAMENT</e> button starts the tournament among the players chosen in row 16.    The results are downloaded as a spreadsheet when the tournament finishes.
 
 <p> The <e>COMPETE</e> button plays the two AI players selected in rows 6 and 7 head to head, over the same number of matches as a tournament.  This makes it possible to run an AI at depth 1 against one at depth 2 or 3. Doing so will show that the benefit of going to depth 2 is disappointingly small.   Running at depth 3 is theoretically possible but requires too much time per move for practical purposes.   
 
@@ -373,17 +421,17 @@ Here you can select  the white player in the first menu in that row.  The option
 <p> Each additional ply of lookahead multiplies the work by roughly a factor of four hundred, because the AI must weigh all twenty-one distinct dice rolls and, for each, some eighteen possible replies.   A move at depth 2 therefore takes about four hundred times as long as the same move at depth 1, and one at depth 3 another four hundred times longer again.   That is why depth 3 belongs to examining a single position, as in row 12, and not to a tournament.
 
 
-<h2 id="CC18" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">18</a>3.18. Settings and Data Export</h2>
-<!-- Row 18: SETTINGS / EXPORT panels -->
+<h2 id="CC21" class="cc-target"><a class="cc-circle cc-badge" href="#ccfig" title="Back to the figure">21</a>3.21. Settings and Data Export</h2>
+<!-- Row 21: SETTINGS / EXPORT panels -->
 
 <p> The two menus in this row let you change certain settings and download some specific information.
 
-  <H3 id="sec-settings">3.18.1. Settings</H3>
+  <H3 id="sec-settings">3.21.1. Settings</H3>
   The following settings are available:
   <OL>
     <LI><e>ANIMATION</e> Default: <e>ON</e>: The move of an AI, or a human opponent in a networked game is animated.</LI>
     <LI><e>HIGHLIGHT</e> Default: <e>OFF</e>: When clicking on a checker the possible destinations of that checker according to the current dice roll are highlighted.</LI>
-    <LI><e>SHOW SCORE</e> Default: <e>ON</e> Determines whether the moves table in row 10 shows the AI computed scores of the positions after the moves. </LI>
+    <LI><e>SHOW SCORE</e> Default: <e>ON</e> Determines whether the moves table in row 10 shows the AI computed scores of the positions after the moves.   Which AI does the computing is described under <e>NET ANALYSIS</e> below. </LI>
     <LI><e>SPEAK</e> Default: <e>ON</e>   When computer voices are available on your system then Doubles and Game endings are announced audibly (as well as in the status field in row 8).   The specific reason for adding this facility is that in a networked game between two humans it is easy to overlook the doubling message in the status field. </LI>
 
   <LI><e>AUTO ROLL</e> Default: <e>OFF</e>  When it is a human's turn the dice are rolled automatically which makes it unnecessary to click on the playing dice at every turn.  Notice, however, that turning this feature on makes it impossible to double. </LI>
@@ -393,9 +441,11 @@ Here you can select  the white player in the first menu in that row.  The option
   <LI><e>AUTO START</e> Default: <e>OFF</e> When on the initial red and white dice are rolled automatically rather than manually.</LI>
   <LI><e>TIME TRAVEL</E> Default: <e>ON</e> Makes it possible to go back to previous moves in the moves table.</LI>
   <LI><e>AUTO RECORD</e> Default: <e>OFF</e> When on, a game record is downloaded by itself the moment a game ends, so that no game is lost by forgetting to save it.   The file is exactly the one <e>MOVE LIST</e> below produces, and it can be read back into the move list with the <e>IMPORT</e> button in row 11.</LI>
+  <LI><e>DUPLO</e> Default: <e>ON</e> Every match of a tournament, a competition or an evolution run is played twice: once as drawn, and once with the same dice and the two AIs exchanged between the seats.   Neither side can then be favoured by the dice, since each receives in the second half exactly what the other received in the first, and a pair of matches between two AIs that play identically is bound to end level rather than merely likely to.   Because the matches are played in pairs, the number of matches per pairing is made even.   The gain is greatest when the two AIs play very similarly, which is why it earns its keep during evolution, where a mutant is measured against its parent; between AIs that play quite differently the two halves part company after a few moves and the shared dice then arrive at different positions, so the benefit is slight.</LI>
+  <LI><e>NET ANALYSIS</e> Default: <e>ON</e> Decides which AI does the analysing when no AI of its own is on the spot: the play of a <i>human</i> in the moves table of row 10 and in the exported move list, and the examination of a position with <e>MOV</e> and <e>PLAY</e> in row 12.   An AI's own moves are always scored by the AI that made them, and a human playing against an AI is scored by that opponent, since it is that AI's judgement of the position that matters.   What is left is a human whose play no AI is currently judging: a human against a human, or a position being examined.   With this setting <e>ON</e> those positions are scored by the neural net selected in row 18, which by default is the strongest net of the distribution; with it <e>OFF</e> they are scored by the AI selected in the menu of row 13, which is where this task used to fall by default, and in row 12 that AI's parameters are read live from row 15.   The two kinds of brain do not report in the same units: a net gives a probability of winning, a linear AI a score in its own band, so the column changes its appearance when you switch.   Nothing else changes &mdash; in particular no AI plays differently.</LI>
   </OL>
 
-  <H3 id="sec-export">3.18.2. Exporting Data</H3>
+  <H3 id="sec-export">3.21.2. Exporting Data</H3>
   The following information can be downloaded:
   <OL>
     <LI><e>SCREEN IMAGE</e> You can download an image of the game window, including the control column, to show your friends.   When you do, for security reasons your browser has to ask you to confirm that you really want to do this.</LI>

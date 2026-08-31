@@ -223,6 +223,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Declared early because renderHistoryList() reads it during the first render.
   let showScoreOn = true;
 
+  // Net Analysis (default ON): when a HUMAN seat's play is being scored, use the net
+  // selected in the NN row (row 18) rather than the brain menu in the AI row (row 13).
+  // Turning it OFF restores the row-13 menu. Declared early for the same reason as
+  // showScoreOn — renderHistoryList() reads it during the first render.
+  let netAnalysisOn = true;
+
   // Speak (default ON): read important instruction lines aloud (doubling offer, game over).
   let speakOn = true;
   let lastSpoken = '';
@@ -1136,20 +1142,21 @@ function sysLog(msg) {
       const player = setupMode ? (setupOnRoll || 1) : (game.currentPlayer || 1);
       const who = player === 1 ? 'White' : 'Red';
       const depth = playerDepth(player);   // the on-roll side's Depth menu (White = p1, Red = p2)
-      // Examination mode → live editor fields; play mode → the on-roll seat's brain (Arwen if human).
+      // Examination mode → whatever row 12 analyses with; play mode → the on-roll seat's
+      // brain, or the analysis brain if that seat is human (see analysisBrainName).
       const brainName = setupMode
-        ? ((editBrainSel && editBrainSel.value) || 'Arwen')
-        : (game.playerTypes[player] === 'ai' ? game.aiNames[player] : 'Arwen');
+        ? setupAnalysisName()
+        : (game.playerTypes[player] === 'ai' ? game.aiNames[player] : analysisBrainName());
       const W = setupMode
-        ? editorWeights()
-        : (game.playerTypes[player] === 'ai' ? game.aiWeights[player] : game.personalityWeights('Arwen'));
+        ? setupAnalysisWeights()
+        : (game.playerTypes[player] === 'ai' ? game.aiWeights[player] : game.personalityWeights(analysisBrainName()));
       const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };   // CURRENT position
       const rolls = [[2,1],[3,1],[3,2],[4,1],[4,2],[4,3],[5,1],[5,2],[5,3],[5,4],[6,1],[6,2],[6,3],[6,4],[6,5],
                      [1,1],[2,2],[3,3],[4,4],[5,5],[6,6]];
 
       let csv = `BG v. ${bgVersion()}  —  ${new Date().toLocaleString()}\n`;
       csv += `Move table — ${brainName}, depth ${depth}, ${who} on roll\n`;
-      csv += `Position:,"${describeBoard()}"\nDice,Best move,${isNetScore(W) ? 'Equity (White view)' : 'Score (White view)'}\n`;
+      csv += `Position:,"${describeBoard()}"\nDice,Best move,${isNetScore(W) ? 'Equity (White view),White win %' : 'Score (White view)'}\n`;
       try {
         for (let k = 0; k < rolls.length; k++) {
           const [d1, d2] = rolls[k];
@@ -1159,7 +1166,9 @@ function sysLog(msg) {
           const ranked = await rankMovesFor(board, player, dice, depth, W);
           const best = ranked[0];
           const mv = best ? best.moves.map((m) => `${m.from === 'bar' ? 'bar' : m.from}/${m.to === 'off' ? 'off' : m.to}`).join(', ') : '(none)';
-          csv += `${d1} ${d2},"${mv}",${best ? fmtBrainValue(best.value, isNetScore(W)) : ''}\n`;
+          const pct = best ? winPctByMove(W, board, player, dice).get(moveText(best.moves)) : null;
+          csv += `${d1} ${d2},"${mv}",${best ? fmtBrainValue(best.value, isNetScore(W)) : ''}`
+               + (isNetScore(W) ? ',' + (pct == null ? '' : pct) : '') + '\n';
         }
         if (isNetScore(W)) {
           // A net has no parameter row to print: 16k floats are not a table, and the numbers
@@ -1212,6 +1221,7 @@ function sysLog(msg) {
   updateSettingBadge('badge-autorecord', autoRecordOn);
   updateSettingBadge('badge-duplo', duploOn);
   updateSettingBadge('badge-showscore', showScoreOn);
+  updateSettingBadge('badge-netanalysis', netAnalysisOn);
   updateSettingBadge('badge-speak', speakOn);
   updateSettingBadge('badge-animation', animationOn);
   updateSettingBadge('badge-highlight',  highlightOn);
@@ -1330,6 +1340,21 @@ function sysLog(msg) {
       showScoreOn = !showScoreOn;
       updateSettingBadge('badge-showscore', showScoreOn);
       sysLog(`[System] Show Score toggled to ${showScoreOn ? 'ON' : 'OFF'}`);
+      renderHistoryList();
+    });
+  }
+
+  // Net Analysis row
+  const settingNetAnalysisEl = document.getElementById('setting-netanalysis');
+  if (settingNetAnalysisEl) {
+    settingNetAnalysisEl.addEventListener('click', async () => {
+      netAnalysisOn = !netAnalysisOn;
+      updateSettingBadge('badge-netanalysis', netAnalysisOn);
+      sysLog('[System] Net Analysis toggled to ' + (netAnalysisOn ? 'ON' : 'OFF'));
+      const sel = document.getElementById('nn-brain');
+      const name = sel && sel.value;
+      if (netAnalysisOn && name && !nnMissing(name)) await ensureNetLoaded(name);
+      clearHistoryScoreCache();
       renderHistoryList();
     });
   }
@@ -2340,16 +2365,33 @@ let handleRollClick;
    * Render history list for time travel replaying with a fixed header
    * and a constant-height scrollable body.
    */
+  // The brain that analyses a HUMAN's play. With Net Analysis ON (the default) that is
+  // the net chosen in the NN row (row 18) — normally the strongest net on the roster;
+  // with it OFF, the brain menu in the AI row (row 13). A listed net is registered as a
+  // brain BEFORE its weights arrive, so a net with no `net` yet falls through to row 13
+  // for this render; the row-18 and settings handlers load it and re-score.
+  // Reached through getElementById because this runs during the first render, before the
+  // late `nnBrainSel` / `editBrainSel` consts exist.
+  function analysisBrainName() {
+    if (netAnalysisOn) {
+      const el = document.getElementById('nn-brain');
+      const n = el && el.value;
+      const w = n ? game.personalityWeights(n) : null;
+      if (w && w.kind === 'net' && w.net) return n;
+    }
+    const ed = document.getElementById('edit-brain');
+    return (ed && ed.value) || 'Origin';
+  }
+
   // Which weights to score a given (on-roll) player's perspective with:
   //  - an AI seat uses its own weights;
   //  - a human facing an AI uses the AI opponent's weights;
-  //  - human vs human uses the AI picked in the editor menu (default Origin).
+  //  - human vs human uses the analysis brain (see analysisBrainName).
   function scoringWeights(player) {
     if (game.playerTypes[player] === 'ai') return game.aiWeights[player];
     const opp = player === 1 ? 2 : 1;
     if (game.playerTypes[opp] === 'ai') return game.aiWeights[opp];
-    const selEl = document.getElementById('edit-brain');
-    return game.personalityWeights((selEl && selEl.value) || 'Origin');
+    return game.personalityWeights(analysisBrainName());
   }
 
   // Score of a snapshot's (post-move) position, always in WHITE's view (positive =
@@ -2400,8 +2442,7 @@ let handleRollClick;
     if (game.playerTypes[player] === 'ai') return game.aiNames[player];
     const opp = player === 1 ? 2 : 1;
     if (game.playerTypes[opp] === 'ai') return game.aiNames[opp];
-    const selEl = document.getElementById('edit-brain');
-    return (selEl && selEl.value) || 'Origin';
+    return analysisBrainName();
   }
 
   // Compact text description of the current board.
@@ -2535,11 +2576,13 @@ let handleRollClick;
           // read at a glance — not its equity. A linear brain keeps its own arbitrary score.
           // Both are White-view, so the colour rule is the same either side of the middle.
           const pw = snapshotWhiteWin(snapshot);
-          const scoreTxt = (pw === null) ? fmtBrainValue(snapshotScore(snapshot), false)
-                                         : Math.round(100 * pw) + '%';
-          const sign = (pw === null) ? snapshotScore(snapshot) : (pw - 0.5);
-          // White view: positive (good for White) drawn white, negative (good for Red) red.
-          const scoreColor = sign > 0 ? '#ffffff' : (sign < 0 ? '#f87171' : '#9ca3af');
+          const pct = (pw === null) ? null : Math.round(100 * pw);
+          const scoreTxt = (pct === null) ? fmtBrainValue(snapshotScore(snapshot), false) : pct + '%';
+          // A percentage takes the house rule (winPctColor). A linear brain has no
+          // probability, so its band score goes by sign — same idea, its own zero point.
+          const lin = (pct === null) ? snapshotScore(snapshot) : 0;
+          const scoreColor = (pct !== null) ? winPctColor(pct)
+                                            : (lin > 0 ? '#ffffff' : (lin < 0 ? '#f87171' : '#9ca3af'));
           scoreCell = `<td style="padding: 2px 4px; font-family: monospace; font-weight: bold; color: ${scoreColor};">${scoreTxt}</td>`;
         }
         row.innerHTML = `
@@ -2799,23 +2842,37 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // same recipe read as identical (they collided as "N80-L1-lrelu-100k-lam07" and were told
   // apart only by an import's "#2"). The seed is the thing that actually differs, so it is
   // the thing to show. An older file with no seed recorded prints no s-field rather than a 1.
-  function paramLabel(spec, games) {
+  // Everything needed to reproduce a net, on one line, for the field beside the row-18 menu:
+  //   N=800,000  H=80+80  phi=sigmoid  lambda=0.7  lr=0.01  s=1  W=32
+  // H joins the hidden layers with + because they are STACKED, not multiplied: 80+80 is two
+  // layers of 80, and the old 80x80 read like a matrix shape. W is the worker count, which
+  // fixes perRound = workers x 8 and with it the whole self-play schedule — the same seed on
+  // 32 workers and on 16 are two different runs. It is recorded from 8/31 on, so every net
+  // trained before that honestly reads W=?. A star on the seed marks a net whose training was
+  // CONTINUED: runSeed = seed ^ gamesBefore, so 200k continued to 800k is a different dice
+  // stream from 800k in one go, and the bare seed would not say so.
+  function netParamText(spec, games) {
     if (!spec) return '';
     const h = spec.hidden || [];
-    const ai = BG_NET.ACTIVATION_ORDER.indexOf(spec.activation) + 1;
-    const lam = (spec.lambda === undefined) ? '?' : String(spec.lambda).replace('.', '');
-    const sd = (spec.seed === undefined) ? '' : '-s' + spec.seed;
-    return (games || 0) + '-' + (h[0] || 0) + '-' + h.length + '-' + ai + '-' + lam + sd;
+    return [
+      'N=' + (games || 0).toLocaleString(),
+      'H=' + (h.length ? h.join('+') : '0'),
+      'φ=' + (spec.activation || '?'),
+      'λ=' + (spec.lambda === undefined ? '?' : spec.lambda),
+      'lr=' + (spec.lr === undefined ? '?' : spec.lr),
+      's=' + (spec.seed === undefined ? '?' : spec.seed) + (spec.continued ? '*' : ''),
+      'W=' + (spec.workers === undefined ? '?' : spec.workers),
+    ].join(' ');
   }
 
-  // Pull the label out of the first few hundred bytes of a net file. The JSON begins
+  // Pull the spec out of the first few hundred bytes of a net file. The JSON begins
   //   {"kind":"bgnet","spec":{...},"trainedGames":N,"layers":[ ...
-  // so everything the menu needs is in the head; the 330 kB of weights is not touched.
-  function descFromHead(text) {
+  // so everything the row-18 field needs is in the head; the 330 kB of weights is not touched.
+  function headSpec(text) {
     const m = text.match(/"spec"\s*:\s*\{[^}]*\}/);
-    if (!m) return '';
+    if (!m) return null;
     const g = text.match(/"trainedGames"\s*:\s*(\d+)/);
-    try { return paramLabel(JSON.parse('{' + m[0] + '}').spec, g ? +g[1] : 0); } catch (err) { return ''; }
+    try { return { spec: JSON.parse('{' + m[0] + '}').spec, games: g ? +g[1] : 0 }; } catch (err) { return null; }
   }
 
   // Find out whether a net file is there AND what it is, without downloading it. A ranged GET
@@ -2827,7 +2884,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const res = await fetch('NNs/' + e.file + nnStamp(),
                               useRange ? { headers: { Range: 'bytes=0-511' } } : { method: 'HEAD' });
       if (!res.ok) { e.state = 'missing'; e.why = 'HTTP ' + res.status; return res.status; }
-      if (res.status === 206) { e.desc = descFromHead(await res.text()); return res.status; }
+      if (res.status === 206) { const hd = headSpec(await res.text()); if (hd) { e.spec = hd.spec; e.games = hd.games; } return res.status; }
       if (res.status === 200 && useRange) {
         // The server ignored Range and sent the whole file. Keep it rather than throw it away:
         // this becomes an eager load of exactly ONE net, and the label then comes from the real
@@ -2837,7 +2894,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
           const w = game.personalityWeights(e.name);
           if (w) { w.net = net; w.netId = e.name + '@' + (++netImportSeq); }
           e.state = 'ready';
-          e.desc = paramLabel(net.spec, net.trainedGames);
+          e.spec = net.spec; e.games = net.trainedGames;
         } catch (err) { /* leave it unloaded; first use will fetch it properly */ }
       }
       return res.status;
@@ -2860,7 +2917,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       w.net = net;
       w.netId = name + '@' + (++netImportSeq);  // fresh id, so no worker can hold a stale one
       e.state = 'ready';
-      e.desc = paramLabel(net.spec, net.trainedGames);   // the real thing, replacing any probe guess
+      e.spec = net.spec; e.games = net.trainedGames;     // the real thing, replacing the probe's head read
       // A seat may hold a COPY taken before the weights arrived (setPlayerAI spreads), so
       // re-seat anyone already sitting on this name.
       [1, 2].forEach((p) => { if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name); });
@@ -2914,6 +2971,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       if (!ranged) sysLog('[Nets] the server did not honour a ranged request, so the menu can only '
                           + 'label a net once it has been loaded.');
       refreshAllBrainUI();
+      preloadAnalysisNet();        // the analysis brain for a human seat — see Net Analysis
       const ready = nnRoster.filter((e) => e.state !== 'missing').length;
       sysLog('[Nets] roster: ' + nnNames().join(', ') + ' — ' + ready + ' of ' + nnRoster.length
              + ' installed; files load on first use.');
@@ -3017,6 +3075,22 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (v <= -1e8) return 'LOSS';
     return String(Math.round(v));
   }
+
+  // ONE convention for every probability the program shows: P(WHITE WINS), as a whole
+  // number from 0 to 100, in WHITE's view wherever it appears — so 40 always means Red is
+  // ahead, whoever happens to be on roll. Equity says by how much; this says how often.
+  // Null when the brain is linear, which has no probabilities at all.
+  function whiteWinPct(W, points, bar, borneOff, onRoll) {
+    if (!isNetScore(W) || !W.net) return null;
+    const p = BG_NET.evaluatePosition(W.net, points, bar, borneOff, onRoll).p;
+    const d = (onRoll === 1) ? p : BG_NET.swapOutcomes(p);
+    return Math.round(100 * (d[0] + d[1] + d[2]));
+  }
+
+  // The house colour rule for such a percentage: below 50 Red is ahead, so it is drawn red;
+  // 50 and above is White's, drawn white. Applied to the ROUNDED number that is actually on
+  // screen, so the colour and the digits can never contradict each other.
+  const winPctColor = (pct) => (pct < 50 ? '#f87171' : '#ffffff');
 
   // Turn a parsed net file into a brain the roster can hold. The name is SYSTEMATIC
   // (N80-L1-lrelu-30k) because nets arrive in dozens and have to be told apart by what they
@@ -3482,29 +3556,107 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // A net carrying its SYSTEMATIC name (N80-L1-lrelu-30k) already announces its architecture,
   // so it gets no suffix — the label is for the curated mythological names, which say nothing
   // about what is inside them. "N20-L1-lrelu-40-lam07  40-20-1-1-07" helps nobody.
-  function netParamLabel(name) {
+  // The parameter line for a net by NAME, from its loaded weights when they are here and
+  // from the probe's head read when they are not — so the field is filled before a net has
+  // been touched, exactly like the menu itself.
+  function netSpecAndGames(name) {
     const w = game.personalityWeights(name);
-    if (w && w.net && name.replace(/#\d+$/, '') === BG_NET.netName(w.net)) return '';
+    if (w && w.net) return { spec: w.net.spec, games: w.net.trainedGames || 0 };
     const e = nnEntry(name);
-    if (e && e.desc) return e.desc;
-    return (w && w.net) ? paramLabel(w.net.spec, w.net.trainedGames) : '';
+    return (e && e.spec) ? { spec: e.spec, games: e.games || 0 } : null;
+  }
+
+  function netParamTextFor(name) {
+    const sg = netSpecAndGames(name);
+    return sg ? netParamText(sg.spec, sg.games) : '';
+  }
+
+  // A net carrying a SYSTEMATIC name (N80x80-L2-sigmoid-800k-lam07 — what a freshly trained
+  // or imported net gets) now says the same thing as the field beside the menu, twice and
+  // less legibly. Such a net shows as NN, numbered from the second one on so that no two
+  // menu entries can read alike. A roster net keeps its own name.
+  function isSystematicNetName(name) {
+    const w = game.personalityWeights(name);
+    return !!(w && w.net && name.replace(/#\d+$/, '') === BG_NET.netName(w.net));
   }
 
   function refreshNetSelect(prefer) {
     if (!nnBrainSel) return;
     const prev = nnBrainSel.value;
     nnBrainSel.innerHTML = '';
+    let nnSeq = 0;
     netRosterNames().forEach((n) => {
       const o = document.createElement('option');
       o.value = n;
-      const lbl = netParamLabel(n);
-      o.textContent = nnMissing(n) ? n + ' (not installed)' : (lbl ? n + '  ' + lbl : n);
+      const label = isSystematicNetName(n) ? (++nnSeq === 1 ? 'NN' : 'NN-' + nnSeq) : n;
+      o.textContent = nnMissing(n) ? label + ' (not installed)' : label;
       if (nnMissing(n)) o.className = 'nn-missing';
       nnBrainSel.appendChild(o);
     });
     const has = (v) => [...nnBrainSel.options].some((o) => o.value === v);
     nnBrainSel.value = (prefer && has(prefer)) ? prefer
       : (has(prev) ? prev : (nnBrainSel.options[0] ? nnBrainSel.options[0].value : ''));
+    syncNetParams();
+  }
+
+  // Row 19's fields hold the RECIPE OF THE NET SELECTED IN ROW 18, and follow the selection:
+  // pick a net, change one field, press LEARN, and what comes out is that net with one thing
+  // different. Applied only when the SELECTION ITSELF changes, so a number typed by hand
+  // survives every other rebuild of this menu — and never during a run.
+  //   ⚠️ Reached through getElementById, not through `learnEl`: this runs during the FIRST
+  //   render and `learnEl` — like `learnRunning` — is declared several hundred lines further
+  //   down, inside its dead zone. "A run is going" is therefore read off the DOM (the games
+  //   field is disabled only while training) rather than from `learnRunning`. What makes the
+  //   tail of this function safe is that nothing below can be reached until a net SPEC exists,
+  //   and the roster is read by setTimeout(loadNetManifest, 0) — after the whole closure body.
+  let learnDefaultsFor = null;
+  function syncLearnDefaults() {
+    const name = nnBrainSel ? nnBrainSel.value : '';
+    if (!name || name === learnDefaultsFor) return;
+    const gamesEl = document.getElementById('learn-games');
+    if (!gamesEl || gamesEl.disabled) return;      // a run is in progress; leave its fields alone
+    const sg = netSpecAndGames(name);
+    if (!sg) return;                        // nothing known about it yet; a later call will
+    learnDefaultsFor = name;
+    const spec = sg.spec, h = spec.hidden || [];
+    const el = (id) => document.getElementById(id);
+    const put = (id, v) => { const x = el(id); if (x && v !== undefined && v !== null) x.value = String(v); };
+    // A menu can only offer what it lists. Say so rather than silently showing the wrong
+    // recipe for a net whose shape this row cannot express.
+    const putChoice = (id, v, what) => {
+      const x = el(id);
+      if (!x || v === undefined || v === null) return;
+      if ([...x.options].some((o) => o.value === String(v))) x.value = String(v);
+      else sysLog('[Learn] ' + name + ' has ' + what + ' ' + v + ', which this row cannot offer — left as '
+                  + x.value + '. Training from these fields will NOT reproduce it.');
+    };
+    put('learn-games', sg.games);
+    put('learn-width', h[0]);
+    putChoice('learn-layers', h.length, 'depth');
+    putChoice('learn-phi', spec.activation, 'activation');
+    put('learn-lambda', spec.lambda);
+    put('learn-seed', spec.seed);
+    if (h.length && !h.every((v) => v === h[0])) {
+      sysLog('[Learn] ' + name + ' has uneven hidden layers (' + h.join('+') + '); the width field says '
+             + h[0] + ' and one number cannot say more.');
+    }
+    syncLearnControls();                    // identity dims the depth menu; continue mode locks
+  }
+
+  // The read-only parameter field beside the menu. One writer, called from everywhere the
+  // selection or a net's contents can change, so the field cannot drift from the menu.
+  function syncNetParams() {
+    syncLearnDefaults();
+    const el = document.getElementById('nn-params');
+    if (!el) return;
+    const name = nnBrainSel ? nnBrainSel.value : '';
+    const txt = name ? netParamTextFor(name) : '';
+    el.value = txt;
+    el.title = txt ? name + ' — ' + txt
+                   + '\nN games, H hidden layers, φ activation, λ trace decay, lr learning rate, '
+                   + 's training seed, W workers (the seed reproduces a run only at the same worker count).'
+                   + (/\*/.test(txt) ? '\nThe star marks a net whose training was continued: the seed describes only its first run.' : '')
+                   : 'Parameters of the selected net.';
   }
   /** One line describing a net, for the row-18 tooltip and the status line. */
   function netDescription(name) {
@@ -3514,7 +3666,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (e && e.state === 'missing') return name + ' — not installed (' + (e.why || 'no file') + ')';
     if (!w.net) return name + ' — a net brain; its weights load on first use.';
     const n = w.net;
-    return name + ' — ' + ((n.spec.hidden || []).join('x') || 'no') + ' hidden, ' + n.spec.activation
+    return name + ' — ' + ((n.spec.hidden || []).join('+') || 'no') + ' hidden, ' + n.spec.activation
       + (n.spec.lambda !== undefined ? ', lambda ' + n.spec.lambda : '')
       + ', ' + (n.trainedGames || 0).toLocaleString() + ' self-play games, '
       + BG_NET.netParamCount(n).toLocaleString() + ' parameters. Scores in equity; cube by Janowski.';
@@ -3522,14 +3674,29 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   function syncNetSelectTitle() {
     if (nnBrainSel && nnBrainSel.value) nnBrainSel.title = netDescription(nnBrainSel.value);
+    syncNetParams();
   }
 
   refreshNetSelect();
+  // With Net Analysis ON the row-18 net scores a human's play, but a listed net's weights
+  // arrive lazily — fetch the selected one as soon as the roster is known, so the Score
+  // column is in equity from the first move instead of falling back to the row-13 brain
+  // (different units) until the menu is touched. Called from loadNetManifest, because
+  // before the manifest arrives there is no roster and this menu is still empty.
+  async function preloadAnalysisNet() {
+    const name = nnBrainSel && nnBrainSel.value;
+    if (!netAnalysisOn || !name || nnMissing(name)) return;
+    await ensureNetLoaded(name);
+    clearHistoryScoreCache();
+    renderHistoryList();
+  }
   nnBrainSel?.addEventListener('change', async () => {
     const name = nnBrainSel.value;
     if (name && !nnMissing(name)) await ensureNetLoaded(name);   // so the description is real
     syncNetSelectTitle();
     gameMessageEl.textContent = netDescription(name);
+    // This menu is also the analysis brain for a human seat, so the Score column moves with it.
+    if (netAnalysisOn) { clearHistoryScoreCache(); renderHistoryList(); }
   });
 
   // Import is brains-only on row 13 and nets-only here, so neither button can lie about
@@ -3674,6 +3841,12 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       if (!(await ensureNetLoaded(fromName))) { gameMessageEl.textContent = netMissingMessage([fromName]); return; }
       const src = game.personalityWeights(fromName).net;
       net = BG_NET.createNet(src.spec);
+      net.spec.lambda = src.spec.lambda; net.spec.lr = src.spec.lr;
+      net.spec.continued = true;
+      // Two legs run at different worker counts have no single W, and saying 32 would be a
+      // lie about half the games. Say so instead.
+      const wNow = workersAvailable ? numWorkers : 1;
+      net.spec.workers = (src.spec.workers === undefined || src.spec.workers === wNow) ? wNow : 'mixed';
       src.layers.forEach((L, i) => { net.layers[i].W.set(L.W); net.layers[i].b.set(L.b); });
       net.trainedGames = src.trainedGames || 0;
     } else {
@@ -3708,6 +3881,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
                                seed: useSeed });
       net.spec.lambda = lam;
       net.spec.lr = LEARN_LR;
+      net.spec.workers = workersAvailable ? numWorkers : 1;
     }
     const LAM = net.spec.lambda === undefined ? 0.7 : net.spec.lambda;
     const before = net.trainedGames || 0;
@@ -3910,15 +4084,32 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Cooperative yield: hands control back to the browser (so it can paint and stay
   // responsive) but only if enough wall-clock time has passed since the last yield.
-  // Time-slicing keeps fast depth-1 runs from drowning in setTimeout overhead while
-  // still guaranteeing the main thread breathes at least every ~sliceMs during slow
-  // depth-2+ matches — which is what prevents Chrome's "Page unresponsive" dialog.
+  // Time-slicing keeps fast depth-1 runs from drowning in yield overhead while still
+  // guaranteeing the main thread breathes at least every ~sliceMs during slow depth-2+
+  // matches — which is what prevents Chrome's "Page unresponsive" dialog.
+  //
+  // ⚠️ THE YIELD IS A MessageChannel AND NOT setTimeout, AND THAT IS THE WHOLE POINT
+  // (8/30). A HIDDEN TAB CLAMPS setTimeout TO >= 1000 ms, and after ~5 minutes hidden
+  // Chrome's *intensive throttling* cuts it to once per MINUTE. LEARN is the only
+  // worker-backed job that yields on this thread — runLearn's learning pass; Tournament
+  // and Compete never do while workers are live, which is why only training slowed down
+  // when the user switched desktops. And the loss was NOT the workers being throttled:
+  // all 32 sat idle waiting for the main thread to wake up and dispatch the next round,
+  // so a 0.65 s round became ~2 s, or ~60 s once intensive throttling kicked in. A
+  // message callback is exempt from that throttling, still returns to the event loop,
+  // and so still does the job setTimeout was here for. **Do not simplify it back.**
+  // The queue makes it safe if two async chains ever await it at once: one message is
+  // posted per waiter and they are resolved FIFO.
+  const _breathChan = (typeof MessageChannel !== 'undefined') ? new MessageChannel() : null;
+  const _breathQueue = [];
+  if (_breathChan) _breathChan.port1.onmessage = () => { const r = _breathQueue.shift(); if (r) r(); };
   let _lastBreath = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   function breathe(sliceMs = 50) {
     const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     if (now - _lastBreath < sliceMs) return Promise.resolve();
     _lastBreath = now;
-    return new Promise((r) => setTimeout(r, 0));
+    if (!_breathChan) return new Promise((r) => setTimeout(r, 0));   // no MessageChannel: as before
+    return new Promise((r) => { _breathQueue.push(r); _breathChan.port2.postMessage(0); });
   }
 
   // ---- Web Worker pool -------------------------------------------------------
@@ -4181,7 +4372,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const typeSel = document.getElementById(player === 1 ? 'p1-type' : 'p2-type');
     const depthSel = document.getElementById(player === 1 ? 'p1-depth' : 'p2-depth');
     if (!typeSel || !depthSel) return;
-    // A human seat still uses this depth in setup (Arwen at that depth), so keep it
+    // A human seat still uses this depth in setup (the analysis brain at that depth), so keep it
     // clearly readable — only a slight dim to hint it's inactive in ordinary play.
     depthSel.style.opacity = (typeSel.value === 'human') ? '0.85' : '1';
   }
@@ -6274,11 +6465,23 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     if (player === 1) { dieR1.value = String(faces[0]); dieR2.value = String(faces[1]); dieW1.value = ''; dieW2.value = ''; }
     else { dieW1.value = String(faces[0]); dieW2.value = String(faces[1]); dieR1.value = ''; dieR2.value = ''; }
   }
-  // Weights for MOV / PLAY come LIVE from the brain-editor parameter fields (the white
-  // number boxes), so editing a weight and pressing MOV again immediately shows its
-  // effect. Falls back to the selected personality for any missing field.
-  function editorWeights() {
-    const base = game.personalityWeights((editBrainSel && editBrainSel.value) || 'Arwen');
+  // The brain row 12 analyses with — MOV, PLAY, and the Move Table while in examination mode.
+  //  - Net Analysis ON (the default): the row-18 net, the same brain that scores a human's
+  //    play in the move list. A net has no editable parameters, so the row-15 fields do not
+  //    apply — which was already true whenever a net was picked in row 13.
+  //  - Net Analysis OFF: the row-13 personality with the row-15 parameter fields overlaid
+  //    LIVE, so that editing a weight and pressing MOV again shows its effect at once.
+  // Falls back to the row-13 brain for any render where the chosen net's weights have not
+  // arrived yet (see analysisBrainName).
+  function setupAnalysisName() {
+    if (netAnalysisOn) {
+      const n = analysisBrainName();
+      if (isNetScore(game.personalityWeights(n))) return n;
+    }
+    return (editBrainSel && editBrainSel.value) || 'Arwen';
+  }
+  function setupAnalysisWeights() {
+    const base = game.personalityWeights(setupAnalysisName());
     if (isNetScore(base)) return base;   // no editable fields to overlay
     const w = { ...base };
     BRAIN_KEYS.forEach((k) => {
@@ -6294,16 +6497,38 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
   function facesText(faces) { return faces[0] === faces[1] ? `${faces[0]}-${faces[0]}` : `${faces[0]}-${faces[1]}`; }
 
-  function renderMoveList(ranked, player, faces, isNet) {
+  // P(White wins) for every candidate move, keyed by the move text renderMoveList prints.
+  // The RANKING number is the search's equity, `depth` plies deep; this is the net's STATIC
+  // read of the position the move leads to — the very thing the move list's Score column
+  // shows once the move has been played, with the same convention (White's view, the
+  // opponent on roll there). At depth 2 or more the two therefore answer slightly different
+  // questions, and a move can win more often while being worth fewer points.
+  function winPctByMove(W, board, player, dice) {
+    const map = new Map();
+    if (!isNetScore(W) || !W.net) return map;
+    const opp = player === 1 ? 2 : 1;
+    const s = new game.constructor();
+    s.points = board.points; s.bar = board.bar; s.borneOff = board.borneOff;
+    s.generateAllCompleteTurnMoves(player, dice).forEach((st) => {
+      map.set(moveText(st.moves), whiteWinPct(W, st.points, st.bar, st.borneOff, opp));
+    });
+    return map;
+  }
+
+  function renderMoveList(ranked, player, faces, isNet, winPct) {
     const who = player === 1 ? 'White' : 'Red';
-    const units = isNet ? ' — equity' : '';
+    const units = isNet ? ' — White win % and equity' : '';
     let html = `<div style="font-size:0.72rem;font-weight:bold;padding:2px 4px;border-bottom:1px solid rgba(255,255,255,0.25);flex:0 0 auto;">${who} ${facesText(faces)} — ${ranked.length} move${ranked.length === 1 ? '' : 's'} (best first)${units}</div>`;
     if (ranked.length === 0) {
       html += `<div style="padding:6px 4px;font-size:0.72rem;">No legal moves — ${who} dances.</div>`;
     } else {
       html += `<div style="overflow-y:auto;flex:1 1 auto;">`;
       ranked.forEach((r, i) => {
-        html += `<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 4px;font-size:0.72rem;${i === 0 ? 'background:rgba(255,255,255,0.14);' : ''}"><span>${moveText(r.moves)}</span><span style="font-variant-numeric:tabular-nums;opacity:0.9;">${fmtBrainValue(r.value, isNet)}</span></div>`;
+        const txt = moveText(r.moves);
+        const pct = winPct ? winPct.get(txt) : null;
+        const pctCell = (pct == null) ? ''
+          : `<span style="font-variant-numeric:tabular-nums;font-weight:bold;color:${winPctColor(pct)};min-width:34px;text-align:right;">${pct}%</span>`;
+        html += `<div style="display:flex;align-items:baseline;gap:8px;padding:2px 4px;font-size:0.72rem;${i === 0 ? 'background:rgba(255,255,255,0.14);' : ''}"><span style="flex:1 1 auto;">${txt}</span>${pctCell}<span style="font-variant-numeric:tabular-nums;opacity:0.9;min-width:48px;text-align:right;">${fmtBrainValue(r.value, isNet)}</span></div>`;
       });
       html += `</div>`;
     }
@@ -6318,10 +6543,10 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     const depth = playerDepth(player);
     const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
     if (depth >= 2 && workersAvailable) gameMessageEl.textContent = 'Examination Mode — computing…';
-    const W = editorWeights();
+    const W = setupAnalysisWeights();
     const ranked = await rankMovesFor(board, player, dice, depth, W);
     if (!setupMode) return;   // exited during the await
-    renderMoveList(ranked, player, faces, isNetScore(W));
+    renderMoveList(ranked, player, faces, isNetScore(W), winPctByMove(W, board, player, dice));
     gameMessageEl.textContent = setupBaseMsg;
   }
 
@@ -6388,7 +6613,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     showDiceForSide(player, faces);
     const who = player === 1 ? 'White' : 'Red';
     const board = { points: game.points, bar: game.bar, borneOff: game.borneOff };
-    const ranked = await rankMovesFor(board, player, dice, playerDepth(player), editorWeights());
+    const ranked = await rankMovesFor(board, player, dice, playerDepth(player), setupAnalysisWeights());
     if (!setupMode) return;   // exited during the await
     if (ranked.length === 0) {
       gameMessageEl.textContent = `Examination Mode — ${who} dances on ${facesText(faces)}.`;

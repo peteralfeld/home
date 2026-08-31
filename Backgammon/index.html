@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 151</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 152</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -311,8 +311,8 @@
         <option value="">&nbsp;</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
       </select>
 
-      <button id="btn-mov" class="setup-btn" title="List legal moves for this roll with their scores, best first" style="padding: 0.4rem 0.3rem; background: #1d4ed8; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Mov</button>
-      <button id="btn-play" class="setup-btn" title="Play the next move with the on-roll side's AI (Arwen if that side is human)" style="padding: 0.4rem 0.3rem; background: #14532d; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Play</button>
+      <button id="btn-mov" class="setup-btn" title="List legal moves for this roll with their scores, best first, as judged by the brain row 12 analyses with: the neural net of row 18, or — with NET ANALYSIS off — the AI of row 13 with the row-15 parameter fields applied live." style="padding: 0.4rem 0.3rem; background: #1d4ed8; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Mov</button>
+      <button id="btn-play" class="setup-btn" title="Play the best move for the on-roll side, using the brain row 12 analyses with: the neural net of row 18, or — with NET ANALYSIS off — the AI of row 13 with the row-15 parameter fields applied live." style="padding: 0.4rem 0.3rem; background: #14532d; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Play</button>
     </div>
   </div>
 
@@ -360,6 +360,7 @@
          and no Def: a net is not editable here, and the shipped ones are files. -->
     <div class="tourney-row">
       <select id="nn-brain" class="brain-select" title="Neural-net AI — the one LEARN continues from"></select>
+      <input id="nn-params" class="nn-params" type="text" readonly title="Parameters of the selected net.">
       <button id="nn-import" class="tourney-mini" title="Import a neural-net AI from a .json file">Import</button>
     </div>
 
@@ -369,7 +370,7 @@
          diagnostics that catch a bad run instead. -->
     <div class="tourney-row learn-row">
       <button id="btn-learn" class="tourney-run" title="Train a neural-net AI by self-play">LEARN</button>
-      <select id="learn-from" class="match-len" title="Train a new AI from scratch, or continue training the AI selected above">
+      <select id="learn-from" class="match-len" title="Train a new AI from scratch, or continue training the AI selected above. The fields to the right start out holding that AI's own recipe and follow the selection, so changing one of them and pressing LEARN gives you that AI with one thing different.">
         <option value="scratch" selected>new</option>
         <option value="continue">cont</option>
       </select>
@@ -381,10 +382,10 @@
         <option value="3">3</option>
       </select>
       <select id="learn-phi" class="match-len" title="Hidden-unit activation function (phi)">
-        <option value="lrelu" selected>lrelu</option>
+        <option value="lrelu">lrelu</option>
         <option value="relu">relu</option>
         <option value="tanh">tanh</option>
-        <option value="sigmoid">sigmoid</option>
+        <option value="sigmoid" selected>sigmoid</option>
         <option value="identity">ident</option>
       </select>
       <input type="number" id="learn-lambda" class="evo-field" value="0.7" min="0" max="1" step="0.05" title="Lambda: 1 = Monte-Carlo targets, 0 = TD(0). 0.7 is the measured best.">
@@ -462,6 +463,10 @@
         <div class="settings-item" id="setting-duplo" data-setting="duplo" title="Duplicate-bridge scoring for Tournament and Compete. Every match is played twice: the same dice, the seats swapped. Luck largely cancels between the two halves, so far fewer matches are needed to separate two AIs — and a brain played against itself scores an exact tie. Forces the match count to be even. Does not change how any single game is played.">
           <span class="settings-item-label">DUPLO</span>
           <span class="settings-item-badge" id="badge-duplo">ON</span>
+        </div>
+        <div class="settings-item" id="setting-netanalysis" data-setting="netanalysis" title="Score a human player's moves with the neural net selected in the NN row (row 18) — normally the strongest net on the roster. Turn OFF to use the brain menu in the AI row (row 13) instead. Affects the Score column of the move list and the exported move list; it does not change how any AI plays.">
+          <span class="settings-item-label">Net Analysis</span>
+          <span class="settings-item-badge" id="badge-netanalysis">ON</span>
         </div>
         <div class="settings-item" id="setting-timetravel" data-setting="timetravel" title="Allow navigating the board through the move history (time travel). Turn OFF to prevent accidental move-list clicks from changing the board. Applies to local and remote games.">
           <span class="settings-item-label">Time Travel</span>

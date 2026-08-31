@@ -1417,6 +1417,26 @@ body {
   font-size: 0.75rem; font-weight: 700;
   cursor: pointer;
 }
+/* Row 18's menu now holds only a NAME, so it is pinned narrow and the space it used to
+   take goes to the parameter field beside it. */
+.tourney-row #nn-brain { flex: 0 0 92px; width: 92px; }
+
+/* Row 18's read-only parameter line. flex 1 1 0 with min-width 0 so it takes whatever the
+   row has left and SHRINKS rather than wrapping — .tourney-row wraps, and a wrap here would
+   add a line to the control column and move every hotspot in the manual's figure. */
+.nn-params {
+  flex: 1 1 0;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  padding: 0.2rem 0.3rem;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.58rem;
+  letter-spacing: -0.01em;
+  cursor: text;
+}
 .brain-file {
   flex: 1 1 64px;
   min-width: 56px;
