@@ -2083,20 +2083,24 @@ async function simulateBGGameYielding(wWhite, wRed, maxCube = Infinity, depthWhi
  * for "ms per move" in the throughput block.
  *   - Colours alternate each game (A is White on even games) to cancel side bias.
  *   - The cube resets to 1 each game and games award cube x gammon multiplier.
+ *   - cubeOff forces maxCube = 1 for EVERY game, so the cube is dead at any match
+ *     length. Deliberately separate from X: before it, the only route to cubeless
+ *     play was X = 1, which welded "no cube" to "single games" and made a cubeless
+ *     match to 11 impossible. The Doubling menu on the tournament row sets it.
  *   - Dead-cube cap: doubling can't raise the stake past what the trailing player
  *     needs to win the match (maxCube = X - min(scoreA, scoreB)). At X=1 this is 1,
  *     so the cube is dead and games are plain single games.
  *   - Crawford: the single game right after either side first reaches X-1 is played
  *     with no doubling (maxCube = 1), then doubling resumes.
  */
-function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, seed = null) {
+function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, seed = null, cubeOff = false) {
   let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
     const atMatchPoint = (scoreA === X - 1 || scoreB === X - 1);
     const crawford = atMatchPoint && !crawfordDone;   // the one no-double game
-    const maxCube = crawford ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
+    const maxCube = (cubeOff || crawford) ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
 
     // Depth follows the brain (A/B), not the colour: whichever of A/B is White this
     // game searches at its own depth. With depthA === depthB this is a no-op.
@@ -2122,14 +2126,14 @@ function simulateBGMatch(wA, wB, X, depthA = 1, depthB = depthA, seed = null) {
  * is optional; with none it behaves exactly like the sync version (safe for Node).
  * MIRRORS simulateBGMatch — keep the two loops in sync if the match rules change.
  */
-async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null, seed = null) {
+async function simulateBGMatchYielding(wA, wB, X, depthA = 1, depthB = depthA, breathe = null, seed = null, cubeOff = false) {
   let scoreA = 0, scoreB = 0, games = 0, turns = 0, crawfordDone = false;
   while (scoreA < X && scoreB < X && games < 100000) {
     games++;
     const aWhite = (games % 2 === 1);
     const atMatchPoint = (scoreA === X - 1 || scoreB === X - 1);
     const crawford = atMatchPoint && !crawfordDone;
-    const maxCube = crawford ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
+    const maxCube = (cubeOff || crawford) ? 1 : Math.max(1, X - Math.min(scoreA, scoreB));
 
     const dWhite = aWhite ? depthA : depthB;
     const dRed   = aWhite ? depthB : depthA;

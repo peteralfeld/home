@@ -2798,6 +2798,21 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   if (btnStop) {
     btnStop.addEventListener('click', (e) => {
       if (setupMode) { exitSetup(); return; }
+      // STOP also halts a running BATCH job. Its tooltip has always promised this
+      // ("Pause the AI (or stop a run)") but the handler only ever paused the interactive
+      // AI, so LEARN, Compete, Tournament and Evolve could not be stopped from the board —
+      // only by entering setup mode via EX/CL/IN, which happens to call haltEverything().
+      // Each of these stop paths preserves its output: LEARN installs and downloads the
+      // net, Evolve has already written a CSV per champion, and Tournament/Compete now
+      // write a CSV marked STOPPED EARLY.
+      let halting = null;
+      if (learnRunning)           { learnStop = true;      halting = 'LEARN'; }
+      else if (evolveRunning)     { evolveStop = true;     halting = 'evolution'; }
+      else if (tournamentRunning) { tournamentStop = true; halting = 'the run'; }
+      if (halting) {
+        gameMessageEl.textContent = 'Stopping ' + halting + ' — results will be saved.';
+        return;                       // there is no interactive game to pause underneath
+      }
       stopAI();
       if (gameStarted && !game.winner) gameMessageEl.textContent = "Game Stopped.  Press the Start button to continue.";
       if (e.isTrusted && localPlayerRole === 1) {
@@ -3956,7 +3971,6 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const loss = lossSum / lossN;
         const secs = (Date.now() - t0) / 1000;
         const rate = doneN / secs;
-        const eta = rate > 0 ? Math.round((GAMES - doneN) / rate) : 0;
         // The smoke alarm. MEASURED 8/29 against two complete runs — a healthy 200,000-game
         // run in this browser, and a deliberately diverging one (Monte-Carlo targets at
         // lr 0.05, the documented failure) — because the rule it replaces was set by guess.
@@ -3990,9 +4004,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
           if (recent > prior * 1.05) warned = '  !! loss trending up over ' + (2 * LOSS_BLOCK) + ' rounds — lr may be too high';
         }
         if (!warned && varP < 0.01 && before + doneN >= 5000) warned = '  !! output variance collapsed';
-        gameMessageEl.textContent = 'LEARN ' + doneN.toLocaleString() + '/' + GAMES.toLocaleString()
-          + '  loss ' + loss.toFixed(4) + '  var ' + varP.toFixed(4)
-          + '  ' + rate.toFixed(0) + ' games/s  ~' + eta + 's left' + warned;
+        gameMessageEl.textContent = 'Learn: ' + doneN.toLocaleString() + '/' + GAMES.toLocaleString() + ' games'
+          + ' · ' + rate.toFixed(0) + ' g/s · loss ' + loss.toFixed(4) + ' · var ' + varP.toFixed(4)
+          + etaSuffix(doneN, GAMES, Date.now() - t0) + warned;
         if (warned) sysLog('[Learn] ' + doneN + ' games —' + warned);
         lossSum = 0; lossN = 0; pwinSum = 0; pwinSq = 0;
       }
@@ -4092,8 +4106,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     return X;
   }
 
-  // AI lookahead depth in plies (expectimax over the dice) for BATCH runs —
-  // tournament and evolution — read from the batch-depth dropdown next to Evolve.
+  // AI lookahead depth for EVOLUTION, from the D menu on the Evolve row. The
+  // tournament used to share this control, which is why it sat on the wrong row;
+  // it now has its own (tournamentDepth below) and the two act independently.
   // 1 = one-ply static baseline.
   function lookaheadDepth() {
     const el = document.getElementById('batch-depth');
@@ -4101,6 +4116,49 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (isNaN(d) || d < 0) d = 1;          // 0 is valid (play first legal move)
     return d;
   }
+
+  // Lookahead depth for the TOURNAMENT, from its own row. Compete is deliberately not
+  // covered: it takes a depth per seat from the player rows, which is what lets one
+  // brain play itself at two depths.
+  function tournamentDepth() {
+    const el = document.getElementById('tourney-depth');
+    let d = el ? parseInt(el.value, 10) : 1;
+    if (isNaN(d) || d < 0) d = 1;
+    return d;
+  }
+
+  // Doubling for batch runs: 'none' | 'money' | 'match'. THE ROW MENU IS AUTHORITATIVE
+  // FOR BATCH; the Settings Doubling toggle governs interactive play only, so the two
+  // cannot contradict each other. 'none' kills the cube at ANY match length — before
+  // this the only route to cubeless play was X = 1, which welded the cube to the match
+  // length and made a cubeless match to 11 impossible.
+  function cubeMode() {
+    const el = document.getElementById('tourney-cube');
+    const v = el ? el.value : 'money';
+    return (v === 'none' || v === 'match') ? v : 'money';
+  }
+  function batchCubeOff() { return cubeMode() === 'none'; }
+
+  // ---- shared progress + ETA, so the four status lines cannot drift apart ----
+  // Coarse on purpose: never advertise precision the estimate does not have.
+  function coarseTime(ms) {
+    if (!isFinite(ms) || ms < 0) return '?';
+    const s = ms / 1000;            if (s < 90) return Math.round(s) + 's';
+    const m = s / 60;               if (m < 90) return Math.round(m) + ' min';
+    const h = m / 60;               if (h < 36) return h.toFixed(1) + ' h';
+    return (h / 24).toFixed(1) + ' days';
+  }
+  // Shown from the FIRST completed unit and deliberately NOT suppressed during warm-up:
+  // a wild number in the first seconds is exactly what tells you the run you just
+  // launched is days rather than minutes, which is while you can still stop it.
+  function etaSuffix(done, total, msElapsed) {
+    if (done <= 0 || total <= done) return '';
+    return ' · ETA ~' + coarseTime((msElapsed / done) * (total - done));
+  }
+  // For a job with no meaningful end. Evolve gets this instead of an ETA: its
+  // generation cap is a number you do not intend to reach, so "time to completion"
+  // would estimate the arrival of something nobody is waiting for.
+  function elapsedSuffix(msElapsed) { return ' · ' + coarseTime(msElapsed) + ' elapsed'; }
 
   // Matches per pair (tournament) / matches in the run (Compete), from #tourney-games.
   // With DUPLO on this is forced EVEN and the field is corrected in place — an odd
@@ -4233,12 +4291,19 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // makeMsg(job,i) builds the postMessage payload; onResult(data,job,i) consumes it.
   // prime(w), when given, is called with each worker before its first job of this run —
   // it is how a net brain gets installed once instead of travelling with every message.
-  function runJobsParallel(jobs, makeMsg, onResult, prime) {
+  // `shouldStop` (optional) is polled before dispatching: once it returns true no NEW
+  // jobs go out and the promise resolves as soon as the in-flight ones drain. Without
+  // it the Stop button did nothing to a worker-backed tournament or Compete — the flag
+  // was only ever checked in the no-workers fallback loop, so a long run could not be
+  // stopped at all short of reloading the page.
+  function runJobsParallel(jobs, makeMsg, onResult, prime, shouldStop) {
     return new Promise((resolve, reject) => {
       const total = jobs.length;
       if (total === 0) { resolve(); return; }
-      let next = 0, done = 0, active = 0;
+      let next = 0, done = 0, active = 0, halted = false;
       const pump = () => {
+        if (!halted && shouldStop && shouldStop()) halted = true;
+        if (halted) { if (active === 0) resolve(); return; }
         while (active < numWorkers && next < total) {
           const i = next++, job = jobs[i], w = getWorker();
           if (prime) prime(w);
@@ -4260,14 +4325,15 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Play a list of match specs in parallel (one match per worker). Each spec:
   // { wA, wB, X, depthA, depthB, ...meta }. onResult(res, spec, i) tallies live.
-  function runMatchesParallel(specs, onResult) {
+  function runMatchesParallel(specs, onResult, shouldStop) {
     const brains = [];
     specs.forEach((s) => { brains.push(s.wA, s.wB); });
     return runJobsParallel(
       specs,
-      (s) => ({ cmd: 'play_match', wA: stripNet(s.wA), wB: stripNet(s.wB), X: s.X, depthA: s.depthA, depthB: s.depthB, seed: s.seed }),
+      (s) => ({ cmd: 'play_match', wA: stripNet(s.wA), wB: stripNet(s.wB), X: s.X, depthA: s.depthA, depthB: s.depthB, seed: s.seed, cubeOff: s.cubeOff }),
       (data, spec, i) => onResult(data.result, spec, i),
       primeNets(brains),
+      shouldStop,
     );
   }
 
@@ -4422,6 +4488,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   async function evoMatch(A, B, nMatches, label) {
     const X = matchLength();
     const depth = lookaheadDepth();
+    const cubeOff = batchCubeOff();
     // DUPLO: matches run as mirrored pairs sharing a seed, so nMatches is forced even.
     // This is the GA's biggest win. A scout compares a parent against a MUTANT — two
     // nearly identical POLICIES — which is exactly where pairing cancels most. Measured
@@ -4443,7 +4510,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       const specs = [];
       for (let i = 0; i < nMatches; i++) {
         const swap = (i % 2 === 1);
-        specs.push({ wA: swap ? B : A, wB: swap ? A : B, X, depthA: depth, depthB: depth, swap,
+        specs.push({ wA: swap ? B : A, wB: swap ? A : B, X, depthA: depth, depthB: depth, swap, cubeOff,
           seed: duploOn ? duploPairSeed(duploBase, i >> 1) : null });
       }
       await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap));
@@ -4451,7 +4518,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       for (let i = 0; i < nMatches && !evolveStop; i++) {
         const swap = (i % 2 === 1);
         const res = await simulateBGMatchYielding(swap ? B : A, swap ? A : B, X, depth, depth, breathe,
-          duploOn ? duploPairSeed(duploBase, i >> 1) : null);
+          duploOn ? duploPairSeed(duploBase, i >> 1) : null, cubeOff);
         tally(res, swap);
         await new Promise((r) => setTimeout(r, 0));   // keep the UI alive between matches
       }
@@ -4521,6 +4588,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     let parent = normalizeBrain({ ...game.personalityWeights(baseName) });
     let baseline = { ...parent };
     let bestScore = 0, multiplier = 10, champions = 0, gen = 0;
+    const evoStart = Date.now();   // Evolve reports ELAPSED, never an ETA — see elapsedSuffix
 
     evolveRunning = true; evolveStop = false;
     const btn = document.getElementById('btn-evolve');
@@ -4567,7 +4635,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
           sysLog(`[Evolve] Gen ${gen}: gauntlet +${gaunt.net} did not beat best +${bestScore}.`);
         }
       }
-      gameMessageEl.textContent = `Evolving ${baseName}: gen ${gen}/${maxGens} · champions ${champions} · best +${bestScore}`;
+      gameMessageEl.textContent = `Evolve ${baseName}: generation ${gen} · ${champions} champions · best +${bestScore}`
+        + elapsedSuffix(Date.now() - evoStart);
       await new Promise((r) => setTimeout(r, 0));
     }
 
@@ -4716,7 +4785,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
   // Detailed CSV in the style of the Reversi tournament output. Standings are by
   // matches won; total game points are kept as a bounded secondary/tiebreak column.
-  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth, perf, duplo) {
+  function buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth, perf, duplo, opts) {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     let csv = 'Backgammon Tournament Results\n';
     csv += 'BG v. ' + bgVersion() + '\n';
@@ -4726,7 +4795,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Players:,' + names.length + '\n';
     csv += 'Matches per Pair,' + csvNum(matchesPer) + '\n';
     csv += 'Match Length (play to),' + X + '\n';
-    csv += 'Lookahead Depth (plies),' + (depth == null ? '?' : depth) + '\n\n';
+    csv += 'Lookahead Depth (plies),' + (depth == null ? '?' : depth) + '\n';
+    csv += 'Doubling:,' + (opts && opts.cubeOff ? 'none (cube dead at any match length)' : 'money (Janowski)') + '\n';
+    if (opts && opts.stopped) csv += 'STOPPED EARLY,' + opts.played + ' of ' + opts.planned
+      + ' matches played — "Matches per Pair" above is the SETTING, not what every pair actually got\n';
+    csv += '\n';
 
     csv += 'Standings\nRank,Name,Matches Won,Matches Lost,Games Played,Game Points\n';
     ranked.forEach((n, i) => {
@@ -4782,6 +4855,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const dWhite = playerDepth(1), dRed = playerDepth(2);
     const X = matchLength();
     const nMatches = batchMatches(1000);            // DUPLO forces this even
+    const cubeOff = batchCubeOff();                 // Doubling menu, independent of X
 
     tournamentRunning = true; tournamentStop = false;
     const btn = document.getElementById('btn-compete');
@@ -4810,7 +4884,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       totalGames += res.games;
       totalTurns += res.turns || 0;
       done++;
-      gameMessageEl.textContent = `Compete… ${done}/${nMatches} (to ${X}) — ${p1} d${dWhite}: ${winsWhite}  ${p2} d${dRed}: ${winsRed}`;
+      gameMessageEl.textContent = `Compete: ${p1} d${dWhite} ${winsWhite} – ${winsRed} ${p2} d${dRed} · ${done}/${nMatches} to ${X}`
+        + etaSuffix(done, nMatches, Date.now() - tStart.getTime());
     };
 
     if (workersAvailable) {
@@ -4820,11 +4895,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const swap = (i % 2 === 1);
         specs.push({
           wA: swap ? wRed : wWhite, wB: swap ? wWhite : wRed,
-          X, depthA: swap ? dRed : dWhite, depthB: swap ? dWhite : dRed, swap, idx: i,
+          X, depthA: swap ? dRed : dWhite, depthB: swap ? dWhite : dRed, swap, idx: i, cubeOff,
           seed: duploOn ? duploPairSeed(duploBase, i >> 1) : null,   // both halves of pair i>>1 share it
         });
       }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap, spec.idx));
+      await runMatchesParallel(specs, (res, spec) => tally(res, spec.swap, spec.idx), () => tournamentStop);
     } else {
       for (let i = 0; i < nMatches; i++) {
         if (tournamentStop) break;
@@ -4832,24 +4907,27 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         const res = await simulateBGMatchYielding(
           swap ? wRed : wWhite, swap ? wWhite : wRed, X,
           swap ? dRed : dWhite, swap ? dWhite : dRed, breathe,
-          duploOn ? duploPairSeed(duploBase, i >> 1) : null);
+          duploOn ? duploPairSeed(duploBase, i >> 1) : null, cubeOff);
         tally(res, swap, i);
         await new Promise((r) => setTimeout(r, 0));
       }
     }
 
-    if (tournamentStop) { tournamentRunning = false; if (btn) btn.disabled = false; return; }
+    // A stopped run still writes its CSV with whatever was played — the contract LEARN
+    // has always had (Stop there still installs and downloads the net). Counts come from
+    // `done`, never the planned total, so a partial file cannot overstate its sample.
+    const stopped = tournamentStop;
     const tEnd = new Date();
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     const lead = winsWhite === winsRed ? 'tie'
       : (winsWhite > winsRed ? `${p1} (WP, d${dWhite}) wins` : `${p2} (RP, d${dRed}) wins`);
     downloadCSV('BGCompeteResults.csv', buildCompeteCSV({
       p1, p2, dWhite, dRed, winsWhite, winsRed, gptsWhite, gptsRed,
-      totalGames, nMatches, X, tStart, tEnd,
+      totalGames, nMatches: done, planned: nMatches, stopped, cubeOff, X, tStart, tEnd,
       perf: perfBlock(done, totalGames, tEnd - tStart, totalTurns),
-      duplo: duploStats(wpWon, nMatches),
+      duplo: duploStats(wpWon, done),
     }));
-    gameMessageEl.textContent = `Compete done — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${nMatches} matches to ${X} in ${secs}s. Results saved.`;
+    gameMessageEl.textContent = `Compete ${stopped ? 'STOPPED' : 'done'} — ${lead}: ${p1} d${dWhite} ${winsWhite} — ${winsRed} ${p2} d${dRed}. ${done}${stopped ? ' of ' + nMatches : ''} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Compete] ${p1}(d${dWhite}) ${winsWhite} vs ${p2}(d${dRed}) ${winsRed}, ${nMatches} matches to ${X} in ${secs}s.`);
 
     if (btn) btn.disabled = false;
@@ -4875,6 +4953,9 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'White (WP):,' + r.p1 + ',depth,' + r.dWhite + '\n';
     csv += 'Red (RP):,' + r.p2 + ',depth,' + r.dRed + '\n';
     csv += 'Matches:,' + csvNum(r.nMatches) + '\n';
+    if (r.stopped) csv += 'STOPPED EARLY,' + r.nMatches + ' of ' + r.planned
+      + ' matches played — every block below is from the matches actually completed\n';
+    csv += 'Doubling:,' + (r.cubeOff ? 'none (cube dead at any match length)' : 'money (Janowski)') + '\n';
     csv += 'Match Length (play to),' + r.X + '\n';
     csv += 'Total Games:,' + csvNum(r.totalGames) + '\n\n';
 
@@ -4910,7 +4991,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     if (absent.length) { gameMessageEl.textContent = 'Tournament: ' + netMissingMessage(absent); return; }
     const matchesPer = batchMatches(1000);          // DUPLO forces this even
     const X = matchLength();
-    const depth = lookaheadDepth();
+    const depth = tournamentDepth();                // its own menu now, not Evolve's
+    const cubeOff = batchCubeOff();
 
     let totalGames = 0, totalTurns = 0;                  // individual games / AI decisions across the whole run
     const mWins = {}, mLoss = {}, gpts = {}, gplayed = {}, h2h = {};
@@ -4956,7 +5038,8 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
       gplayed[A] += nGames; gplayed[B] += nGames; totalGames += nGames;
       totalTurns += res.turns || 0;
       done++;
-      gameMessageEl.textContent = `Tournament running… ${done}/${total} matches to ${X} (${A} vs ${B})`;
+      gameMessageEl.textContent = `Tournament: ${done}/${total} matches to ${X}`
+        + etaSuffix(done, total, Date.now() - tStart.getTime());
     };
 
     if (workersAvailable) {
@@ -4967,11 +5050,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         for (let k = 0; k < matchesPer; k++) {
           const swap = (k % 2 === 1);
           const fi = flatIdx++;
-          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap, idx: fi,
+          specs.push({ wA: swap ? wB : wA, wB: swap ? wA : wB, X, depthA: depth, depthB: depth, A, B, swap, idx: fi, cubeOff,
             seed: duploOn ? duploPairSeed(duploBase, fi >> 1) : null });
         }
       }
-      await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap, spec.idx));
+      await runMatchesParallel(specs, (res, spec) => tally(res, spec.A, spec.B, spec.swap, spec.idx), () => tournamentStop);
     } else {
       for (const [A, B] of pairs) {
         if (tournamentStop) break;
@@ -4981,21 +5064,22 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
           const swap = (k % 2 === 1);                          // balance first-game side bias
           const fi = flatIdx++;
           const res = await simulateBGMatchYielding(swap ? wB : wA, swap ? wA : wB, X, depth, depth, breathe,
-            duploOn ? duploPairSeed(duploBase, fi >> 1) : null);
+            duploOn ? duploPairSeed(duploBase, fi >> 1) : null, cubeOff);
           tally(res, A, B, swap, fi);
           await new Promise((r) => setTimeout(r, 0));          // yield so the UI stays responsive
         }
       }
     }
 
-    if (tournamentStop) { tournamentRunning = false; if (runBtn) runBtn.disabled = false; return; }
+    const stopped = tournamentStop;                 // still write the CSV — see runCompete
     const tEnd = new Date();
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth,
-      perfBlock(done, totalGames, tEnd - tStart, totalTurns), duploStats(aWonArr, total)));
-    gameMessageEl.textContent = `Tournament done — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${total} matches to ${X} in ${secs}s. Results saved.`;
-    sysLog(`[Tournament] ${total} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
+      perfBlock(done, totalGames, tEnd - tStart, totalTurns), duploStats(aWonArr, done),
+      { stopped, played: done, planned: total, cubeOff }));
+    gameMessageEl.textContent = `Tournament ${stopped ? 'STOPPED' : 'done'} — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${done}${stopped ? ' of ' + total : ''} matches to ${X} in ${secs}s. Results saved.`;
+    sysLog(`[Tournament] ${done}${stopped ? ' of ' + total : ''} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
 
     if (runBtn) runBtn.disabled = false;
     tournamentRunning = false;

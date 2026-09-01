@@ -1623,7 +1623,7 @@ input[type="number"]::-webkit-outer-spin-button {
    to 414px for; see --sidebar-w. Everything is still sized down to keep the row on ONE
    line, because a second line would move every tick mark in ControlColumnFig.png. If a
    control is ever added here, something has to give again. */
-.learn-row { gap: 0.2rem; flex-wrap: nowrap; }
+.learn-row { gap: 0.2rem; flex-wrap: nowrap; justify-content: space-between; }
 .learn-row .tourney-run { padding: 0.3rem 0.35rem; font-size: 0.72rem; flex: 0 0 auto; }
 .learn-row .evo-field { width: 40px; flex: 0 0 auto; }
 .learn-row #learn-games { width: 52px; }
@@ -1632,6 +1632,18 @@ input[type="number"]::-webkit-outer-spin-button {
 .learn-row #learn-from { width: 48px; }
 .learn-row #learn-phi { width: 58px; }
 .learn-row #learn-seed { width: 56px; }   /* wide enough for a 10-digit seed */
+
+/* The tournament row carries SEVEN controls since the Doubling and ply menus joined it,
+   and at the inherited sizes they need ~485px against ~463 available — it wrapped to two
+   lines, which makes the control column taller and moves every tick mark in
+   ControlColumnFig.png. Same treatment as .learn-row: size the children down and forbid
+   wrapping outright, so the failure would be a visible overflow rather than a silent
+   re-layout of the manual's figure. MEASURE against the row's clientWidth after any
+   further addition — never against --sidebar-w, because of the scrollbar. */
+.batch-row { gap: 0.2rem; flex-wrap: nowrap; justify-content: space-between; }
+.batch-row .tourney-run { padding: 0.3rem 0.35rem; font-size: 0.72rem; flex: 0 0 auto; }
+.batch-row .match-len   { font-size: 0.62rem; padding: 0.15rem 0.1rem; flex: 0 0 auto; }
+.batch-row #tourney-games { width: 40px; flex: 0 0 auto; }
 
 /* Row 18: the net selector need not eat the whole row. */
 #nn-brain { flex: 1 1 auto; min-width: 0; }

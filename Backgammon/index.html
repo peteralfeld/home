@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 152</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 153</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -328,7 +328,7 @@
     <div class="brain-row" style="justify-content: space-between;">
       <button id="btn-evolve" class="tourney-run" title="Evolve the selected AI">Evolve</button>
       <span class="tourney-label">D:</span>
-      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for tournaments and evolution. 0 = play the first legal move (no evaluation); 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower." style="background: #1e3a8a; color: #86efac;">
+      <select id="batch-depth" class="match-len" title="AI search depth in plies (expectimax over the dice) for EVOLUTION only — the tournament has its own ply menu on its own row. 0 = play the first legal move (no evaluation); 1 = one-ply static eval (baseline); 2 and 3 look ahead further — stronger but slower." style="background: #1e3a8a; color: #86efac;">
         <option value="0">0 ply</option>
         <option value="1" selected>1 ply</option>
         <option value="2">2 ply</option>
@@ -393,7 +393,7 @@
     </div>
 
     <!-- Row 20 -->
-    <div class="tourney-row">
+    <div class="tourney-row batch-row">
       <button id="btn-compete" class="tourney-run" title="Play the White (WP) and Red (RP) AIs against each other, each at its own depth from the player rows. Both sides must be AIs.">Compete</button>
       <button id="btn-run-tournament" title="Run a round-robin tournament among selected brains" class="tourney-run">Tournament</button>
       <input type="number" id="tourney-games" value="1000" min="1" title="Number of matches per pair (also the number of matches for Compete)">
@@ -409,6 +409,17 @@
         <option value="15">15</option>
         <option value="17">17</option>
         <option value="19">19</option>
+      </select>
+      <select id="tourney-cube" class="match-len" title="Doubling for BATCH runs (Tournament, Compete, Evolve). None = cube dead at any match length, so a cubeless match to 11 is possible; Money = Janowski's formula from the net's own distribution (the current behaviour); Match play needs a match-equity table and is not built yet. The Settings Doubling toggle governs interactive play only.">
+        <option value="none">No cube</option>
+        <option value="money" selected>Money</option>
+        <option value="match" disabled>Match play</option>
+      </select>
+      <select id="tourney-depth" class="match-len" title="AI search depth in plies for the TOURNAMENT only. Compete takes its depths from the two player rows; Evolve has its own D menu. 0 = first legal move, 1 = one-ply static eval, 2 and 3 look further ahead — each ply is roughly 400x slower, so watch the ETA." style="background: #1e3a8a; color: #86efac;">
+        <option value="0">0 ply</option>
+        <option value="1" selected>1 ply</option>
+        <option value="2">2 ply</option>
+        <option value="3">3 ply</option>
       </select>
     </div>
   </div>

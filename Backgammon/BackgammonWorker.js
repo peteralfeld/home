@@ -14,7 +14,7 @@
 //       -> caches one net under netId. FIRE AND FORGET: it sends no reply, so it never
 //          disturbs runJobsParallel's one-response-per-job accounting. See below for why
 //          this exists at all.
-//   { cmd:'play_match', id, wA, wB, X, depthA, depthB, seed }
+//   { cmd:'play_match', id, wA, wB, X, depthA, depthB, seed, cubeOff }
 //       -> plays a whole match on this thread (sync; blocking here is fine, it's not
 //          the UI thread) and returns { id, result:{winner,scoreA,scoreB,games} }.
 //   { cmd:'search', id, board:{points,bar,borneOff}, player, dice, plies, weights }
@@ -68,7 +68,7 @@ self.onmessage = function (e) {
     if (d.cmd === 'play_match') {
       // d.seed is DUPLO's per-pair match seed; undefined on ordinary runs, in which
       // case simulateBGMatch's own default (null = Math.random dice) applies.
-      const result = simulateBGMatch(resolveBrain(d.wA), resolveBrain(d.wB), d.X, d.depthA, d.depthB, d.seed);
+      const result = simulateBGMatch(resolveBrain(d.wA), resolveBrain(d.wB), d.X, d.depthA, d.depthB, d.seed, d.cubeOff);
       self.postMessage({ id: d.id, result });
       return;
     }
