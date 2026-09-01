@@ -2377,7 +2377,17 @@ let handleRollClick;
       const el = document.getElementById('nn-brain');
       const n = el && el.value;
       const w = n ? game.personalityWeights(n) : null;
-      if (w && w.kind === 'net' && w.net) return n;
+      if (w && w.kind === 'net' && w.net) { analysisBrainName.noted = ''; return n; }
+      // Falling through here silently changes the Score column from a win % to the ±1000
+      // band, which is exactly how a net that failed to load went unnoticed on the deployed
+      // site. Say it once: this runs for every row of every render, so it is de-duped on the
+      // net's name, and the flag lives on the function itself -- a `let` out here would be in
+      // its temporal dead zone at the first render, this file's recurring bug.
+      if (n && analysisBrainName.noted !== n) {
+        analysisBrainName.noted = n;
+        sysLog('[Nets] ' + n + ' is not loaded, so a human seat is analysed by the AI-row brain '
+               + 'and the Score column is in band units, not win %.');
+      }
     }
     const ed = document.getElementById('edit-brain');
     return (ed && ed.value) || 'Origin';
@@ -2881,7 +2891,14 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   // range is tried on ONE file, and if it is not honoured the rest fall back to HEAD.
   async function probeNet(e, useRange) {
     try {
-      const res = await fetch('NNs/' + e.file + nnStamp(),
+      // ⚠ The ranged probe MUST NOT share a cache key with ensureNetLoaded's full GET.
+      // Measured 8/31 on the deployed site: after a 206 for this URL, GitHub Pages (Fastly)
+      // answers the plain GET with status 200, the file's real Content-Length, and only the
+      // 512 probed bytes of body -- so JSON.parse throws and a perfectly good net is marked
+      // "not installed". Apache in front of XAMPP does not do it, which is why this only ever
+      // bit on GitHub and never on localhost. HEAD does not poison a later GET (tested), so
+      // only the ranged branch needs the extra key.
+      const res = await fetch('NNs/' + e.file + nnStamp() + (useRange ? '&probe=1' : ''),
                               useRange ? { headers: { Range: 'bytes=0-511' } } : { method: 'HEAD' });
       if (!res.ok) { e.state = 'missing'; e.why = 'HTTP ' + res.status; return res.status; }
       if (res.status === 206) { const hd = headSpec(await res.text()); if (hd) { e.spec = hd.spec; e.games = hd.games; } return res.status; }
@@ -2909,31 +2926,49 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const e = nnEntry(name);
     if (!e) return true;                       // an imported net is loaded by definition
     if (e.state === 'ready') return true;
-    try {
-      const res = await fetch('NNs/' + e.file + nnStamp());
+    // Two attempts, and the retry is not paranoia: a CDN that has answered a ranged probe for
+    // this file can serve the plain GET out of that partial entry (see probeNet), so the parse
+    // fails on a file that is perfectly good. The probe now carries its own cache key, and
+    // `cache: 'reload'` is the belt to that brace -- it bypasses the HTTP cache outright.
+    const attempt = async (opts) => {
+      const res = await fetch('NNs/' + e.file + nnStamp(), opts);
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const net = BG_NET.loadNet(await res.json());
-      const w = game.personalityWeights(name);
-      w.net = net;
-      w.netId = name + '@' + (++netImportSeq);  // fresh id, so no worker can hold a stale one
-      e.state = 'ready';
-      e.spec = net.spec; e.games = net.trainedGames;     // the real thing, replacing the probe's head read
-      // A seat may hold a COPY taken before the weights arrived (setPlayerAI spreads), so
-      // re-seat anyone already sitting on this name.
-      [1, 2].forEach((p) => { if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name); });
-      sysLog('[Nets] ' + name + ' loaded — ' + (net.spec.hidden || []).join('x') + ' ' + net.spec.activation
-             + ', ' + (net.trainedGames || 0).toLocaleString() + ' games, '
-             + BG_NET.netParamCount(net).toLocaleString() + ' parameters.');
-      buildNetToggles();
-      refreshNetSelect(nnBrainSel ? nnBrainSel.value : undefined);   // the label is known now
-      syncNetSelectTitle();
-      return true;
-    } catch (err) {
-      e.state = 'missing';
-      e.why = (err && err.message) || String(err);
-      buildNetToggles();
-      return false;
+      return BG_NET.loadNet(await res.json());
+    };
+    let net;
+    try {
+      net = await attempt(undefined);
+    } catch (first) {
+      try {
+        net = await attempt({ cache: 'reload' });
+        sysLog('[Nets] ' + name + ' failed once (' + ((first && first.message) || first)
+               + ') and loaded on a cache-bypassing retry.');
+      } catch (err) {
+        e.state = 'missing';
+        e.why = (err && err.message) || String(err);
+        // Say so. A silent catch here reads on screen as "the file is not on the server", and
+        // it also changes the Score column's units (see analysisBrainName).
+        sysLog('[Nets] ' + name + ' could NOT be loaded — ' + e.why + '. It is shown as not '
+               + 'installed; a human seat falls back to the AI-row brain for analysis.');
+        buildNetToggles();
+        return false;
+      }
     }
+    const w = game.personalityWeights(name);
+    w.net = net;
+    w.netId = name + '@' + (++netImportSeq);  // fresh id, so no worker can hold a stale one
+    e.state = 'ready';
+    e.spec = net.spec; e.games = net.trainedGames;     // the real thing, replacing the probe's head read
+    // A seat may hold a COPY taken before the weights arrived (setPlayerAI spreads), so
+    // re-seat anyone already sitting on this name.
+    [1, 2].forEach((p) => { if (game.playerTypes[p] === 'ai' && game.aiNames[p] === name) game.setPlayerAI(p, name); });
+    sysLog('[Nets] ' + name + ' loaded — ' + (net.spec.hidden || []).join('x') + ' ' + net.spec.activation
+           + ', ' + (net.trainedGames || 0).toLocaleString() + ' games, '
+           + BG_NET.netParamCount(net).toLocaleString() + ' parameters.');
+    buildNetToggles();
+    refreshNetSelect(nnBrainSel ? nnBrainSel.value : undefined);   // the label is known now
+    syncNetSelectTitle();
+    return true;
   }
 
   /** Load every net among `names` that a run needs. Returns the ones that could not load. */
