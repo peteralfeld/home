@@ -84,9 +84,8 @@
 
     <a href="manual.html"><H1> Backgammon AI Play </H1></a>
 
-<p> This page explains how the artificial players on this site decide their moves, in enough detail that you
-could write them yourself.   It is the technical companion to the <a href="manual.html">User's Guide</a>, which
-describes the controls; several of those controls &mdash; the <e>depth menus</e>, the <e>brain editor</e>,
+<p>  This page was mostly written by CLAUDE AI, with the instructions to be technical and include all information required to program this software yourself.   It is the technical companion to the <a href="manual.html">User's Guide</a>, which
+describes the controls. Several of those controls &mdash; the <e>depth menus</e>, the <e>brain editor</e>,
 <e>EVOLVE</e>, <e>LEARN</e>, <e>COMPETE</e> and <e>TOURNAMENT</e> &mdash; only make sense once you know what is
 behind them.   Where an algorithm is easier to state as a program than as prose it is given as pseudocode.
 
@@ -203,7 +202,7 @@ within one search there is only ever one brain's currency, because a search is o
   <tr><td class="code">Net</td><td>Judges a position with a neural network that predicts the <e>probability of each of the six ways the game can end</e>.   Its value is therefore an <i>equity</i>: the expected number of points, between &minus;3 and +3.   Its knowledge is spread over tens of thousands of numbers that mean nothing individually; it cannot be edited or evolved, only trained and measured.   Section <a href="#sec-net">5</a>.</td></tr>
 </table>
 
-<p> The consequence you see on screen is that the two report differently.   A parameter AI's judgement of a
+<p> The consequence you see on screen is that the two report differently.   A parameter AI's judgment of a
 position appears as a band number such as <e>332</e>; a net's appears as a probability, <e>55%</e>, or as an
 equity, <e>+0.298</e>.   They are deliberately <e>not</e> rescaled onto a common axis, because there is no
 honest conversion between them: one is a heuristic ordering and the other is a prediction.
@@ -231,9 +230,9 @@ unchanged as a single "turn", so a dance needs no special case anywhere in the s
 <i>ply</i> is one player's turn &mdash; a half move.
 
 <OL>
-  <LI><e>Depth 0</e> &mdash; no judgement at all: the first legal complete turn the generator produced is
+  <LI><e>Depth 0</e> &mdash; no judgment at all: the first legal complete turn the generator produced is
       played.   It is not a way to play; it exists as a floor to measure against.</LI>
-  <LI><e>Depth 1</e> &mdash; apply the static judgement to <e>every</e> position reachable with the current
+  <LI><e>Depth 1</e> &mdash; apply the static judgment to <e>every</e> position reachable with the current
       roll and take the best.   No future roll is considered.   This is the default and it is instant.</LI>
   <LI><e>Depth 2</e> &mdash; for each of my candidate turns, consider what the opponent would do with each of
       the 21 distinct rolls he might get, average those values, and choose the candidate with the best
@@ -421,7 +420,7 @@ $w_i$ for the weights and $f_i$ for the features,
 <p style="text-align:center;"> $ \displaystyle S \;=\; \sum_i w_i\,\bigl(f_i^{\,\text{White}} - f_i^{\,\text{Red}}\bigr). $
 
 <p> Writing it as a difference buys an exact property, and the property is worth more than the tidiness:
-the score is <e>anti-symmetric</e>.   Mirror a position &mdash; swap the colours, reflect point $i$ to
+the score is <e>anti-symmetric</e>.   Mirror a position &mdash; swap the colors, reflect point $i$ to
 $25-i$, swap the bars and the trays &mdash; and the score must come out exactly negated.   That is the
 strongest cheap correctness check available for an evaluation function, since a feature that scans the board
 in one direction for White and the other for Red is easy to get subtly wrong, and two real bugs were caught
@@ -595,7 +594,7 @@ that the largest evaluation weight in absolute value is exactly <e>1000</e>.
 <p> The rule has two details that matter.   The scale factor is chosen from the <e>22 evaluation weights
 only</e> &mdash; the two cube thresholds do not get a vote &mdash; but it is then applied to <e>all 24</e>,
 because DT and AT are compared against scores: if every score doubles, the thresholds must double too or the
-doubling behaviour changes.   And a weight that lands exactly on zero is set to $\pm 1$ rather than left at
+doubling behavior changes.   And a weight that lands exactly on zero is set to $\pm 1$ rather than left at
 zero, so that no feature can vanish from a brain irrecoverably.
 
 <H2 id="sec-dtat">3.10. The cube: DT and AT</H2>
@@ -656,7 +655,7 @@ button in row 14 of the control column.
 <p> The difficulty is that there is no formula telling us whether one set of 24 numbers is better than another.
 The only honest test is to let two brains play and see which wins more &mdash; and because backgammon is a dice
 game, even that answer is noisy: a weaker brain wins a short series often enough.   So the search has to be
-driven entirely by match results and has to be sceptical of them.   What follows is a <e>hill climber</e>: it
+driven entirely by match results and has to be skeptical of them.   What follows is a <e>hill climber</e>: it
 keeps a single parent, tries a random variation, and promotes it only if it survives two increasingly demanding
 tests.
 
@@ -683,7 +682,7 @@ tests.
   <LI><e>Normalization.</e> The mutant is rescaled as in section <a href="#sec-normal">3.9</a>, so that every
       candidate is measured on the same scale as its parent.</LI>
 
-  <LI><e>The scout.</e> The mutant plays the parent over the chosen number of matches, colours alternating so
+  <LI><e>The scout.</e> The mutant plays the parent over the chosen number of matches, colors alternating so
       that neither side keeps any advantage of moving first.   If it does not come out ahead it is discarded
       and the generation ends here.   Most generations end here, and that is the point: the scout is the cheap
       filter that lets a bad idea die quickly.</LI>
@@ -771,9 +770,9 @@ where they occur.
 
 <OL>
   <LI><e>The encoding is mover-relative.</e>   Every position is presented from the point of view of the side
-      on roll; if that is Red, the board is mirrored first.   Colour symmetry then becomes a property of the
+      on roll; if that is Red, the board is mirrored first.   Color symmetry then becomes a property of the
       <e>encoder</e>, exact to the last bit, instead of something the network has to learn &mdash; and every
-      training game teaches both colours at once.   One consequence: Tesauro's two turn-indicator inputs are
+      training game teaches both colors at once.   One consequence: Tesauro's two turn-indicator inputs are
       constant here and are omitted, so the input is <e>196</e> wide rather than 198.</LI>
   <LI><e>The output is a distribution over six outcomes</e>, not a score: my single, gammon and backgammon,
       and the opponent's three.   Six units rather than five, although one is redundant: softmax is invariant
@@ -839,13 +838,13 @@ outputs.   The width and the number of layers are the <e>W</e> and <e>L</e> fiel
 
 <table class="desc">
   <tr><td class="code">sigmoid</td><td>$1/(1+e^{-z})$.   What TD-Gammon used, and measurably the best of these on this encoding.</td></tr>
-  <tr><td class="code">tanh</td><td>$\tanh z$.   Note $\tanh z = 2\,\mathrm{sigmoid}(2z) - 1$, so a tanh net and a sigmoid net represent exactly the <e>same function class</e>; they differ only in parametrisation and in gradient scale.</td></tr>
+  <tr><td class="code">tanh</td><td>$\tanh z$.   Note $\tanh z = 2\,\mathrm{sigmoid}(2z) - 1$, so a tanh net and a sigmoid net represent exactly the <e>same function class</e>; they differ only in parameterization and in gradient scale.</td></tr>
   <tr><td class="code">lrelu / relu</td><td>$\max(z,0)$, with leaky ReLU passing $0.01z$ instead of 0 below zero.</td></tr>
   <tr><td class="code">arctan</td><td>$\arctan z$: the same odd saturating shape as tanh but with polynomial rather than exponential tails, so a hard-driven unit keeps passing a usable gradient.</td></tr>
   <tr><td class="code">ident</td><td>$z$ &mdash; a <e>control, not a brain</e>.   A composition of affine maps is affine, so an identity network of any depth collapses to a single $196 \to 6$ linear map with a softmax: multinomial logistic regression on this encoding.   It answers "how much of the net's strength is the nonlinearity rather than the representation?", and the layer menu is dimmed when it is chosen because depth is meaningless for it.</td></tr>
 </table>
 
-<p> Weights are initialised from a Gaussian with standard deviation $\sqrt{g/\mathrm{fan\_in}}$, where $g$ is
+<p> Weights are initialized from a Gaussian with standard deviation $\sqrt{g/\mathrm{fan\_in}}$, where $g$ is
 2 for the ReLU family and 1 otherwise, and biases at zero.
 
 <p> <e>&#9888; The first layer's fan-in is the number of ACTIVE inputs, not the input width.</e>   The textbook
@@ -935,7 +934,7 @@ the learning rule depends on position $t+1$ belonging to the other player.
 towards</e>.   Two extremes are obvious and both are bad.
 
 <table class="desc">
-  <tr><td class="code">&lambda;&nbsp;=&nbsp;1</td><td><e>Monte Carlo.</e>   Every position in the game is labelled with the outcome that actually happened.   Unbiased and simple &mdash; but one game then delivers some sixty <e>perfectly correlated</e> gradient steps, which forces the learning rate down and, at any rate high enough to learn quickly, walks backwards.</td></tr>
+  <tr><td class="code">&lambda;&nbsp;=&nbsp;1</td><td><e>Monte Carlo.</e>   Every position in the game is labeled with the outcome that actually happened.   Unbiased and simple &mdash; but one game then delivers some sixty <e>perfectly correlated</e> gradient steps, which forces the learning rate down and, at any rate high enough to learn quickly, walks backwards.</td></tr>
   <tr><td class="code">&lambda;&nbsp;=&nbsp;0</td><td><e>TD(0).</e>   A position is trained towards its successor's current estimate.   Only the last position of a game carries any truth, and the net collapses towards the base rate: near-uniform predictions and games that get longer rather than shorter.</td></tr>
 </table>
 
@@ -1000,7 +999,7 @@ the staleness boundary, is the worker count times eight.   The same seed on 32 a
 different training runs.   That is why the worker count is recorded in a net's file and displayed beside its
 name.
 
-<p> Generation is about seven-eighths of the work, so parallelising only the generation captures nearly all of
+<p> Generation is about seven-eighths of the work, so parallelizing only the generation captures nearly all of
 the available speedup.   Measured on a 32-thread desktop: about <e>390 games per second</e>, so a hundred
 thousand games is a few minutes and a million is under an hour.
 
@@ -1076,7 +1075,7 @@ by its recipe and seed, which is what the field beside the menu is for.
 <H2 id="sec-match">6.1. Matches, the Crawford rule and the dead cube</H2>
 
 <p> Everything the AIs do against one another is scored in <e>matches won</e>, for the reason given in section
-<a href="#sec-evo-matches">4.4</a>.   A <i>match</i> is a series of games, colours alternating, played until one
+<a href="#sec-evo-matches">4.4</a>.   A <i>match</i> is a series of games, colors alternating, played until one
 side reaches an agreed point total <e>X</e> &mdash; 11 by default, odd so that it cannot be tied.   A match win
 counts as one win however lopsided the games were.
 
@@ -1112,7 +1111,7 @@ the browser, in a worker and in Node), with each game's seed derived from the ma
 With equal weights the two halves are the same computation, so the same seat wins both, and since the brains
 change seats the pair cancels to zero.   Not approximately &mdash; zero.   That is what makes duplicate play
 valuable during evolution, where a mutant is compared with a parent it differs from barely at all: a
-behaviourally identical mutant nets 0 instead of a couple of matches of noise, and can no longer be crowned by
+behaviorally identical mutant nets 0 instead of a couple of matches of noise, and can no longer be crowned by
 luck.
 
 <p> <e>&#9888; Between brains that play differently the gain is slight, and the reason is worth understanding.</e>
