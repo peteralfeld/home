@@ -172,6 +172,13 @@ const ACTIVATIONS = {
   lrelu: { f: (z) => (z > 0 ? z : 0.01 * z), df: (z) => (z > 0 ? 1 : 0.01), heGain: 2 },
   relu:  { f: (z) => (z > 0 ? z : 0),        df: (z) => (z > 0 ? 1 : 0),    heGain: 2 },
   tanh:  { f: (z) => Math.tanh(z),           df: (z) => 1 - Math.tanh(z) ** 2, heGain: 1 },
+  // The same odd, saturating S as tanh, but with POLYNOMIAL tails instead of exponential ones,
+  // so it approaches its asymptotes far more slowly and a hard-driven unit keeps passing a
+  // usable gradient where tanh's has vanished. Range is (-pi/2, pi/2). phi'(0) = 1 as for tanh,
+  // hence the same heGain. Kept alongside tanh deliberately: tanh vs sigmoid is the SAME
+  // function class rescaled (see below), so that pair measures gradient scale, while tanh vs
+  // arctan holds the scale fixed and varies how the unit saturates.
+  arctan: { f: (z) => Math.atan(z),          df: (z) => 1 / (1 + z * z),      heGain: 1 },
   // Included for fidelity: TD-Gammon used a logistic sigmoid. NB tanh(z) = 2*sigmoid(2z) - 1,
   // so a sigmoid net and a tanh net represent the SAME function class — the difference is
   // only parametrisation and gradient scale (sigmoid' peaks at 1/4 against tanh's 1, so it
@@ -186,8 +193,13 @@ const ACTIVATIONS = {
   identity: { f: (z) => z, df: () => 1, heGain: 1 },
 };
 
-// Menu order, and the numeric code each activation gets in a trained net's file name.
-const ACTIVATION_ORDER = ['lrelu', 'relu', 'tanh', 'sigmoid', 'identity'];
+// The numeric code each activation gets in a trained net's file name (1-based, so lrelu = 1).
+// ⚠️ APPEND-ONLY. The index is baked into the name of every net ever trained, so inserting
+// anywhere but the end silently renames history: NN-800000-80-2-4-07 would stop meaning
+// sigmoid. arctan was appended in 2026-09 for exactly that reason, which is why it sits after
+// identity here while index.html lists it next to tanh — the menu's order is index.html's
+// business and nothing reads these two as the same list.
+const ACTIVATION_ORDER = ['lrelu', 'relu', 'tanh', 'sigmoid', 'identity', 'arctan'];
 
 // Self-contained PRNG (mulberry32), so net.js loads on its own in Node and in the
 // worker without depending on game.js having been pulled in first.
