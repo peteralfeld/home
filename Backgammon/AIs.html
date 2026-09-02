@@ -1,4 +1,4 @@
-<!DOCTYPE>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -17,6 +17,22 @@
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 
     <style>
+        /* The Table of Contents wants classic nested indentation, so it opts out of
+           manual.css's flush "list-style-position: inside" rule. */
+        #toc-list, #toc-list ul {
+            padding-inline-start: 40px;
+            list-style-position: outside;
+        }
+        #toc-list li { margin-bottom: 4px; }
+        h1[id], h2[id], h3[id] { scroll-margin-top: 12px; }
+        .to-top {
+            text-decoration: none;
+            font-size: 0.9em;
+            margin-left: 8px;
+            color: #6495ED;
+        }
+        .to-top:hover { text-decoration: none; color: #FFD700; }
+
         /* Wide parameter table: small type, its own horizontal scroll, striped rows. */
         .param-wrap { overflow-x: auto; margin: 1em 0; }
         table.params {
@@ -33,12 +49,33 @@
         table.params th { color: #FFD700; }
         table.params td.name, table.params th.name { text-align: left; color: rgb(200,255,200); font-weight: bold; }
         table.params tr:nth-child(even) td { background: rgba(255,255,255,0.06); }
+
         table.desc { border-collapse: collapse; margin: 1em 0; }
         table.desc td { border: 1px solid #6495ED; padding: 3px 10px; vertical-align: top; }
         table.desc td.code { color: #FFD700; font-family: Consolas, monospace; font-weight: bold; white-space: nowrap; }
-        /* A paragraph nested inside a list item (a displayed formula, or a continuation of the
-           item's text) would otherwise sit at the item's content edge, i.e. to the LEFT of the
-           item's own text, because the marker is inline. Indent it to line up with the text. */
+
+        /* Measurement tables: numbers in columns, header row in gold. */
+        table.meas { border-collapse: collapse; margin: 1em 0; font-size: 0.95em; }
+        table.meas th, table.meas td { border: 1px solid #6495ED; padding: 3px 10px; text-align: right; }
+        table.meas th { color: #FFD700; }
+        table.meas td.name, table.meas th.name { text-align: left; }
+
+        /* Pseudocode blocks. Deliberately plain: an algorithm, not a program. */
+        pre.algo {
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid #6495ED;
+            padding: 8px 14px;
+            overflow-x: auto;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 0.86em;
+            line-height: 1.35;
+        }
+        pre.algo .kw  { color: #FFD700; font-weight: bold; }
+        pre.algo .cmt { color: rgb(150,190,150); font-style: italic; }
+        .algo-title { color: rgb(200,255,200); font-weight: bold; margin-bottom: 0.2em; }
+
+        /* A paragraph nested inside a list item would otherwise sit to the LEFT of the
+           item's own text, because the marker is inline. Indent it to line up. */
         li > p { margin-left: 1.4em; }
     </style>
 </head>
@@ -47,293 +84,1163 @@
 
     <a href="manual.html"><H1> Backgammon AI Play </H1></a>
 
-<p> This page explains how the artificial players (<i>AIs</i>, or <i>brains</i>) on this site decide their moves.
- You may want to read this page before moving on to the description of the
-<e>control column</e> in the <a href="manual.html">User's Guide</a>., since several controls there (the <e>depth menus</e>, the <e>brain editor</e>,
-<e>EVOLVE</e>, <e>COMPETE</e> and <e>TOURNAMENT</e>) only make sense once you understand what a brain is.
+<p> This page explains how the artificial players on this site decide their moves, in enough detail that you
+could write them yourself.   It is the technical companion to the <a href="manual.html">User's Guide</a>, which
+describes the controls; several of those controls &mdash; the <e>depth menus</e>, the <e>brain editor</e>,
+<e>EVOLVE</e>, <e>LEARN</e>, <e>COMPETE</e> and <e>TOURNAMENT</e> &mdash; only make sense once you know what is
+behind them.   Where an algorithm is easier to state as a program than as prose it is given as pseudocode.
 
-<p> A <e>brain</e> is nothing more than a list of numbers, called <i>parameters</i> or <i>weights</i>. Those
-numbers tell the AI how much it should care about each of a couple of dozen features of a position &mdash; the
-race, blots, primes, the golden points, and so on. Two things then turn those numbers into actual play: a
-<i>static evaluation</i> function that scores any board position, and a look ahead <e>search</e> to a certain <i>depth</i> that uses that score to
-choose among the legal moves. We take them in that order, then list the parameters and give a table of the
-current values.
+<p> There are <e>two</e> kinds of artificial player here, developed one after the other and both still in use.
+The older kind judges a position by adding up a couple of dozen hand-chosen features with weights found by an
+evolutionary search; the newer kind judges it with a neural network that taught itself by playing against
+itself.   They share the same search, the same rules and the same tournament machinery, and they can play each
+other.   Sections <a href="#sec-search">2</a> to <a href="#sec-evolution">4</a> describe the first kind,
+section <a href="#sec-net">5</a> the second, and section <a href="#sec-measure">6</a> how either is measured.
 
+<p>The Table of Contents below takes you to any part of this page.   Clicking on a symbol like this
+&nbsp;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a>&nbsp; anywhere on the page
+brings you back here.
 
-<H1>Look ahead: How Deeply the AI Thinks</H1>
+<h2 id="toc">Table of Contents</h2>
+<ul id="toc-list">
+  <li><a href="#sec-brains">1. Two Kinds of Brain</a>
+    <ul>
+      <li><a href="#sec-common">1.1. What both kinds share</a></li>
+      <li><a href="#sec-differ">1.2. What tells them apart</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-search">2. Choosing a Move: the Search</a>
+    <ul>
+      <li><a href="#sec-turns">2.1. Legal complete turns</a></li>
+      <li><a href="#sec-depth">2.2. How deep: the depth menus</a></li>
+      <li><a href="#sec-expecti">2.3. Why expectimax and not minimax</a></li>
+      <li><a href="#sec-algo">2.4. The algorithm</a></li>
+      <li><a href="#sec-terminal">2.5. Positions that are already decided</a></li>
+      <li><a href="#sec-root">2.6. Two adjustments made only at the root</a></li>
+      <li><a href="#sec-cost">2.7. What a ply costs</a></li>
+      <li><a href="#sec-parallel">2.8. Running the search in parallel</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-linear">3. The Parameter AI</a>
+    <ul>
+      <li><a href="#sec-static">3.1. The static evaluation</a></li>
+      <li><a href="#sec-race">3.2. The race: PC and BO</a></li>
+      <li><a href="#sec-mobility">3.3. Mobility: EC1 and EC0</a></li>
+      <li><a href="#sec-containment">3.4. Containment: the escape count and F0&ndash;F5</a></li>
+      <li><a href="#sec-be">3.5. The bar: BE</a></li>
+      <li><a href="#sec-points">3.6. Made points: HB, G5, G7, G4, AN, GA</a></li>
+      <li><a href="#sec-blots">3.7. Blots: DO, IO, DP, IP</a></li>
+      <li><a href="#sec-contact">3.8. What switches off in a race</a></li>
+      <li><a href="#sec-normal">3.9. Normalization</a></li>
+      <li><a href="#sec-dtat">3.10. The cube: DT and AT</a></li>
+      <li><a href="#sec-roster">3.11. The current roster</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-evolution">4. Evolution: Where the Numbers Come From</a>
+    <ul>
+      <li><a href="#sec-evo-controls">4.1. What you control</a></li>
+      <li><a href="#sec-evo-gen">4.2. One generation</a></li>
+      <li><a href="#sec-evo-gran">4.3. A caveat on granularity</a></li>
+      <li><a href="#sec-evo-matches">4.4. Matches, not points</a></li>
+      <li><a href="#sec-evo-install">4.5. Nothing is installed automatically</a></li>
+      <li><a href="#sec-evo-found">4.6. What evolution has found</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-net">5. The Net</a>
+    <ul>
+      <li><a href="#sec-net-decisions">5.1. Four decisions taken before any code</a></li>
+      <li><a href="#sec-net-encode">5.2. The encoding</a></li>
+      <li><a href="#sec-net-shape">5.3. The shape of the network</a></li>
+      <li><a href="#sec-net-forward">5.4. The forward pass</a></li>
+      <li><a href="#sec-net-terminal">5.5. Positions the net is never asked about</a></li>
+      <li><a href="#sec-net-move">5.6. How a net chooses a move</a></li>
+      <li><a href="#sec-net-selfplay">5.7. Learning from self-play</a></li>
+      <li><a href="#sec-net-lambda">5.8. The &lambda;-return</a></li>
+      <li><a href="#sec-net-backprop">5.9. Backpropagation</a></li>
+      <li><a href="#sec-net-training">5.10. Training in parallel</a></li>
+      <li><a href="#sec-net-cube">5.11. The cube: Janowski's formula</a></li>
+      <li><a href="#sec-net-file">5.12. What is in a net file</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-measure">6. Playing and Measuring</a>
+    <ul>
+      <li><a href="#sec-match">6.1. Matches, the Crawford rule and the dead cube</a></li>
+      <li><a href="#sec-duplo">6.2. Duplicate play</a></li>
+      <li><a href="#sec-noise">6.3. How many matches are enough</a></li>
+      <li><a href="#sec-results">6.4. What has been measured</a></li>
+      <li><a href="#sec-gnubg">6.5. An outside yardstick</a></li>
+    </ul>
+  </li>
+</ul>
 
-<p> On its turn the AI looks at every legal way to play its dice roll and picks the one that leads to what it considers the best possible
-position. How far ahead it looks is set by the <e>Depth</e> menus in the control column (one per player, and one
-for batch runs), measured in <e>plies</e>. A <i>ply</i> is a single half-move &mdash; one player's turn. The depth is
-how many plies the AI reads before it falls back on the static evaluation to judge the resulting board.
+<H1 id="sec-brains">1. Two Kinds of Brain<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
 
-<p> Four depth settings are available in the Control column:
+<H2 id="sec-common">1.1. What both kinds share</H2>
+
+<p> A <i>brain</i> is whatever answers one question: <e>given a position, how good is it?</e>   Everything else
+&mdash; how the legal moves are generated, how far ahead the game is searched, how a match is scored, how a
+tournament is run &mdash; is the same for both kinds and is described in section <a href="#sec-search">2</a>.
+That is not a tidy coincidence but a deliberate design: the two kinds of brain meet the rest of the program
+through a single function, so a net can be dropped into any seat a parameter AI can occupy, and the two can
+play each other in the same match.
+
+<p> Both kinds work on the same board model.   The points are numbered <e>1</e> to <e>24</e> in a fixed
+absolute frame.   <e>White</e> moves from 24 towards 1 and bears off from points 1&ndash;6; <e>Red</e> moves
+from 1 towards 24 and bears off from 19&ndash;24.   The <e>bar</e> is treated as a virtual point one step
+behind each player's entry edge: point 25 for White, point 0 for Red.   A position is therefore three things:
+the 24 points, each holding a count and an owner; the two bar counts; and the two borne-off counts.
+
+<p> Both kinds also answer in a single <i>currency</i> and from a single point of view.   Every value in the
+search is stated <e>from White's point of view</e>: positive is good for White, negative is good for Red.
+White maximizes it and Red minimizes it.   The two kinds do not use the same <e>units</e> &mdash; that is the
+one place they differ visibly, and section <a href="#sec-differ">1.2</a> says what the units are &mdash; but
+within one search there is only ever one brain's currency, because a search is one player deciding.
+
+<H2 id="sec-differ">1.2. What tells them apart</H2>
+
+<table class="desc">
+  <tr><td class="code">Parameter&nbsp;AI</td><td>Judges a position by measuring about twenty features of it &mdash; the race, blots, primes, made points &mdash; and adding them up with <e>24</e> weights, of which 22 score the board and 2 govern the doubling cube.   The result is an <e>integer</e> in a band of roughly &plusmn;1000 with no probabilistic meaning: it is a comparison device, not a prediction.   You can read every weight, edit it, export it and evolve it.   Section <a href="#sec-linear">3</a>.</td></tr>
+  <tr><td class="code">Net</td><td>Judges a position with a neural network that predicts the <e>probability of each of the six ways the game can end</e>.   Its value is therefore an <i>equity</i>: the expected number of points, between &minus;3 and +3.   Its knowledge is spread over tens of thousands of numbers that mean nothing individually; it cannot be edited or evolved, only trained and measured.   Section <a href="#sec-net">5</a>.</td></tr>
+</table>
+
+<p> The consequence you see on screen is that the two report differently.   A parameter AI's judgement of a
+position appears as a band number such as <e>332</e>; a net's appears as a probability, <e>55%</e>, or as an
+equity, <e>+0.298</e>.   They are deliberately <e>not</e> rescaled onto a common axis, because there is no
+honest conversion between them: one is a heuristic ordering and the other is a prediction.
+
+<H1 id="sec-search">2. Choosing a Move: the Search<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<H2 id="sec-turns">2.1. Legal complete turns</H2>
+
+<p> A backgammon turn is not one move but a sequence: two moves for an ordinary roll, four for a double, and
+fewer only when the rules leave no choice.   The rules also require you to use as much of the roll as you can
+&mdash; both dice if any legal sequence plays both, the higher die if only one can be played, as many as
+possible for a double.   So the unit the AI chooses between is not a single checker move but a <i>complete
+turn</i>: an entire legal, maximum-usage sequence, together with the position it leads to.
+
+<p> The generator therefore produces every distinct complete turn from a position and a roll, de-duplicated by
+the <e>resulting position</e> rather than by the sequence of moves, since the same position can usually be
+reached by playing the dice in either order and there is no sense in evaluating it twice.   An opening
+position offers roughly 15 to 20 distinct complete turns for a typical roll; a double with the whole army in
+play can offer many more.   If a roll admits no legal play at all, the generator returns the position
+unchanged as a single "turn", so a dance needs no special case anywhere in the search.
+
+<H2 id="sec-depth">2.2. How deep: the depth menus</H2>
+
+<p> The <i>search depth</i>, set in the depth menus of the control column, is measured in <i>plies</i>.   A
+<i>ply</i> is one player's turn &mdash; a half move.
 
 <OL>
-  <LI><e>Depth 0</e> &mdash; no thinking at all: the AI simply plays the first legal complete turn it finds. This
-      setting is not useful for actual play, it is included for completeness, for comparisons, and for experiments.
-  <LI><e>Depth 1</e> (one ply) &mdash; the AI applies the static evaluation to <e>every</e> board it could reach
-      with a legal play of the current dice, and chooses the move that yields the best-scoring board. This is
-      very fast &mdash; instant for human play, and quick enough for whole tournaments and evolution runs &mdash;
-      and it is the default.</LI>
-  <LI><e>Depth 2</e> (two plies) &mdash; the AI looks one turn further. For each of its own candidate moves it
-      considers <e>all</e> of the opponent's possible replies. Because the reply depends on dice that have not
-      been rolled yet, it averages the value over all 21 distinct rolls, each weighted by how likely it is (a
-      double is half as likely as a given non-double). The move with the best <e>expected</e> value is chosen.
-      Two-ply play is a few percentage points stronger than one ply, but it takes a few seconds per move.</LI>
-  <LI><e>Depth 3</e> (three plies) &mdash; the same idea, one turn deeper than depth 2.  The cost grows very quickly:
-      a single three-ply decision can take tens of seconds, so it is practical only for the occasional analysis of a 
-      position, not for a full game.</LI>
+  <LI><e>Depth 0</e> &mdash; no judgement at all: the first legal complete turn the generator produced is
+      played.   It is not a way to play; it exists as a floor to measure against.</LI>
+  <LI><e>Depth 1</e> &mdash; apply the static judgement to <e>every</e> position reachable with the current
+      roll and take the best.   No future roll is considered.   This is the default and it is instant.</LI>
+  <LI><e>Depth 2</e> &mdash; for each of my candidate turns, consider what the opponent would do with each of
+      the 21 distinct rolls he might get, average those values, and choose the candidate with the best
+      average.</LI>
+  <LI><e>Depth 3</e> &mdash; the same, one turn deeper: my move, his roll and reply, my next roll and reply.</LI>
 </OL>
 
---- Insert Table of Actual CPU times ---
+<p> <e>&#9888; The numbering here is one higher than the literature's.</e>   What this page calls depth 1 &mdash;
+evaluate every legal turn, take the best, look no further &mdash; is what GNU Backgammon and the TD-Gammon
+papers call <e>0-ply</e>, because no future <e>roll</e> is averaged over.   So depth 2 here is 1-ply there, and
+depth 3 is 2-ply.   Depth 0 has no counterpart anywhere else.   When comparing figures on this page with
+published ones, line them up that way.
 
+<H2 id="sec-expecti">2.3. Why expectimax and not minimax</H2>
 
+<p> The <e>minimax</e> search used for chess, and for the <e>Mill</e> and <e>Reversi</e> games elsewhere on
+this site, assumes the opponent moves next and chooses.   In backgammon he does not: the dice choose first.
+The correct search alternates two kinds of node.
 
-<p> Because of the random nature of dice rolls the well-known <e>minimax</e> algorithm used universally for deterministic games, and for example in the <e>Mill</e> and <e>Reversi</e> games on this site, is not applicable to Backgammon.  
- The game tree alternates between <e>decision</e> nodes, where a player chooses the best move, and
-  <e>chance</e> nodes, where we average over the dice rolls and compute an <e>expected value</e> of the next board position.
- The game tree is scored with the deciding brain's own
-static evaluation, from White's point of view: White tries to <e>maximize</e> the score and Red tries to <e>minimize<E?
-it. A win or loss (all fifteen checkers borne off) is treated as a value so large that it always outranks any
-ordinary position.
-Depth 0 and depth 1 searches are carried out within the <e>main thread</e> of the code.   Depth 2 and 3 searches, as well as <e>tournaments</e> and </e>competitions</e>, take advantage of any parallel threads that are available on your computer.
+<table class="desc">
+  <tr><td class="code">decision</td><td>A player is on roll <e>with a known roll</e> and picks a complete turn.   White takes the maximum of the values below, Red the minimum &mdash; one currency, two directions.</td></tr>
+  <tr><td class="code">chance</td><td>A roll is about to happen.   The value is the <e>average</e> over the 21 distinct rolls, each weighted by how often it occurs: a non-double two ways out of 36, a double one way.   The weights sum to 36, so a chance node is $\left(\sum_r w_r\,V_r\right)/36$.</td></tr>
+</table>
 
+<p> This is <i>expectimax</i>.   Note that averaging happens over the <e>dice</e>, never over the opponent's
+choices: given his roll he is assumed to play his best, in the same currency, which is the usual zero-sum
+assumption.   It is an approximation whenever the two players are different brains, since the search models
+the opponent as a copy of the deciding brain &mdash; but it is the only assumption available, and the error is
+second order.
 
+<p> Alpha-beta pruning, which makes minimax practical in chess, helps very little here: a chance node has to
+inspect essentially all of its children to know their average, so the pruning that makes deep chess search
+possible has almost nothing to bite on.   Sharper methods exist for expectimax trees (the *-minimax family)
+and none is implemented; the cost figures in section <a href="#sec-cost">2.7</a> are therefore the cost of a
+full search.
 
+<H2 id="sec-algo">2.4. The algorithm</H2>
 
-<H1>The Static Evaluation</H1>
+<p> The whole search is three short functions.   <code>leafValue</code> is the seam described in section
+<a href="#sec-common">1.1</a>: it is the only place a brain is consulted, and it is where the two kinds of
+brain differ.
 
-<p> The static evaluation is the heart of a brain. It takes a single board position and returns a <e>score</e>, one number that provides a measure of how
-good that position is <e>for White</e>. Every feature of the position is measured for <e>both</e> sides and entered as a difference,
-  <e>White minus Red</E>, so the score is <e>anti-symmetric</e>: swapping  the colors of the markers wil simply change the sign of the score.
+<div class="algo-title">Choosing a move at the root</div>
+<pre class="algo">
+<span class="kw">function</span> bestTurn(position, player, roll, depth, brain):
+    turns = generateCompleteTurns(position, player, roll)
+    <span class="kw">if</span> turns is empty: <span class="kw">return</span> none
+    <span class="kw">if</span> depth == 0: <span class="kw">return</span> turns[0]                  <span class="cmt">// depth 0 plays the first one</span>
+    opponent = other(player)
+    best = none
+    bestValue = (player == White) ? -infinity : +infinity
+    <span class="kw">for</span> turn <span class="kw">in</span> turns:
+        v = terminalValue(turn, brain)                 <span class="cmt">// null unless the game just ended</span>
+        <span class="kw">if</span> v == null:
+            <span class="kw">if</span> depth == 1: v = leafValue(turn, brain, onRoll = opponent)
+            <span class="kw">else</span>:          v = expecti(turn, opponent, depth - 1, brain)
+        v = v + rootBonus(turn, brain, player)         <span class="cmt">// section 2.6; zero for a net</span>
+        <span class="kw">if</span> (player == White) ? (v &gt; bestValue) : (v &lt; bestValue):
+            bestValue = v; best = turn
+    <span class="kw">return</span> best
+</pre>
 
-<p>  Writing $w_i$ for the parameters and $f_i$ for the features, the score is
+<div class="algo-title">A chance node: average over the 21 rolls</div>
+<pre class="algo">
+<span class="kw">function</span> expecti(position, player, plies, brain):
+    v = terminalValue(position, brain)
+    <span class="kw">if</span> v != null: <span class="kw">return</span> v
+    total = 0
+    <span class="kw">for</span> (d1, d2, weight) <span class="kw">in</span> DICE:                   <span class="cmt">// 21 entries, weights sum to 36</span>
+        dice = (d1 == d2) ? [d1,d1,d1,d1] : [d1,d2]
+        total = total + weight * rollValue(position, player, dice, plies, brain)
+    <span class="kw">return</span> total / 36
+</pre>
+
+<div class="algo-title">A decision node: the best reply to one known roll</div>
+<pre class="algo">
+<span class="kw">function</span> rollValue(position, player, dice, plies, brain):
+    opponent = other(player)
+    best = (player == White) ? -infinity : +infinity
+    <span class="kw">for</span> turn <span class="kw">in</span> generateCompleteTurns(position, player, dice):
+        v = terminalValue(turn, brain)
+        <span class="kw">if</span> v == null:
+            <span class="kw">if</span> plies &lt;= 1: v = leafValue(turn, brain, onRoll = opponent)
+            <span class="kw">else</span>:         v = expecti(turn, opponent, plies - 1, brain)
+        best = (player == White) ? max(best, v) : min(best, v)
+    <span class="kw">return</span> best
+</pre>
+
+<p> Three details are worth keeping if you reimplement this.   The turn generator must accept an
+<e>arbitrary</e> position, not just the current one, since the search asks it about positions that were never
+played.   A roll with no legal play must yield one "turn" equal to the position itself, so that a dance costs
+no special case.   And <code>leafValue</code> is told <e>who is on roll</e> at the leaf: a parameter AI
+ignores that argument, but a net's answer depends on it entirely (section <a href="#sec-net-move">5.6</a>).
+
+<H2 id="sec-terminal">2.5. Positions that are already decided</H2>
+
+<p> A position in which one side has borne off all fifteen checkers is not judged, it is <e>known</e>, and the
+two kinds of brain express that differently.
+
+<p> A parameter AI uses a sentinel: a win is worth $10^9$ and a loss $-10^9$, so that a certain win outranks
+every heuristic score.   A net uses the <e>exact equity</e> of the finished game &mdash; &plusmn;1 for a
+single, &plusmn;2 for a gammon, &plusmn;3 for a backgammon &mdash; because that is the scale everything else
+it says is on.   The side effect was accepted deliberately: for a net, a certain single win (+1) does
+<e>not</e> outrank every alternative, so a position it reads at +1.4 can be preferred to winning at once.
+That is correct play, not a bug &mdash; it is the search declining to take a single when a gammon is nearly
+certain.
+
+<H2 id="sec-root">2.6. Two adjustments made only at the root</H2>
+
+<p> Two terms are added when the AI actually <e>chooses</e> a move, and are not part of any position's stored
+value.   Both apply to parameter AIs only.
+
+<OL>
+  <LI><e>The disengagement bonus, DE.</e>  One of the 22 weights.   It is added to a candidate turn that breaks
+      <e>all</e> contact while the mover is ahead in the race: $+\mathrm{DE}$ for White, $-\mathrm{DE}$ for Red.
+      A positive DE says "race away when you are ahead", a negative one says "keep the contact".   It is
+      deliberately excluded from the search interior: inside the tree it would be counted repeatedly for the
+      same disengagement.</LI>
+  <LI><e>The race tie-break.</e>  Once contact is broken the static score <e>ties for almost every legal turn</e>
+      &mdash; see section <a href="#sec-contact">3.8</a> for why &mdash; and something has to decide.   The tie-break
+      prefers the turn that leaves the mover with fewer pips still to travel <e>before every checker is home</e>:
+      $\sum_{p&gt;6}\,\mathrm{count}_p\cdot(p-6)$ for White, the mirror for Red, with a checker on the bar counted
+      as 19.   It is scaled by $\varepsilon = 0.001$, and its largest possible value is $15\cdot19\cdot\varepsilon
+      = 0.285$, safely under the half-unit that separates two different integer scores.   So it breaks ties and
+      can never overrule a real difference.</LI>
+</OL>
+
+<p> A net gets neither.   DE is a weight it does not have, and its equity is of order 1 rather than of order
+1000, so an $\varepsilon$ of 0.001 would be a real perturbation rather than a tie-break.   It needs neither:
+it does not tie, and it prices a race directly.
+
+<H2 id="sec-cost">2.7. What a ply costs</H2>
+
+<p> Each extra ply multiplies the work by the number of dice outcomes times the number of replies to each:
+21 rolls by about 18 to 20 complete turns, so roughly <e>400</e>.   That is not a rule of thumb, it is what
+the measurement says.   The figures below are single-threaded, on one core of a 32-thread desktop, and you can
+reproduce the ratio (though not the exact numbers, which are your machine's) by running <e>COMPETE</e> at two
+depths and comparing how long each takes.
+
+<table class="meas">
+  <tr><th class="name">depth</th><th>time per move, one core</th><th>times the previous ply</th></tr>
+  <tr><td class="name">0</td><td>0.14 ms</td><td>&mdash;</td></tr>
+  <tr><td class="name">1</td><td>0.58 ms</td><td>4</td></tr>
+  <tr><td class="name">2</td><td>245 ms</td><td>419</td></tr>
+  <tr><td class="name">3</td><td>~89 s</td><td>364</td></tr>
+</table>
+
+<p> Divide the two large factors by 21 and you get 20.0 and 17.3 &mdash; the average number of legal complete
+turns, exactly as the arithmetic predicts, with nothing unexplained hiding in the constant.   Depth 0 to
+1 is only a factor of 4 because depth 0 does no evaluation at all.
+
+<p> The practical consequences run through the whole design.   Depth 2 is comfortable for interactive play and
+affordable for a tournament.   Depth 3 is a fine setting for a person taking their time over one move, and it
+is <e>not</e> a tournament setting: a single depth-3 decision is tens of seconds, so one match is hours.
+
+<H2 id="sec-parallel">2.8. Running the search in parallel</H2>
+
+<p> The game uses as many <e>Workers</e> &mdash; independent processes in your browser &mdash; as row 1 of the
+control column allows, and it splits the work two different ways depending on what is being done.
+
+<table class="desc">
+  <tr><td class="code">batch</td><td>A tournament, a competition, an evolution run or a training run gives each worker <e>one whole match</e> (or one whole self-play game).   The jobs are independent and there is nothing to combine, so throughput is very nearly the number of workers.</td></tr>
+  <tr><td class="code">interactive</td><td>One move at depth 2 or more is split into one job per <e>(my candidate turn &times; opponent's roll)</e> pair &mdash; a few hundred jobs &mdash; and the results are recombined exactly as the serial search would: sum $w_r V_r/36$ within a candidate, then take the maximum for White or the minimum for Red.</td></tr>
+</table>
+
+<p> The parallel decomposition returns the <e>same move</e> as the serial search, not merely a similar one;
+that equality has been verified position by position, including at depth 3, against an independent serial
+implementation.   That matters because it means the depth menus mean the same thing whether or not your
+browser gave the game any workers.
+
+<p> Two consequences of the batch split are worth knowing when you time something.   A run of <e>one</e> match
+uses exactly one worker however many you have, because the unit of work is a whole match.   And a run of
+exactly as many matches as workers is the worst case for measuring speedup, since the wall clock then collapses
+to the single longest match: to see the real throughput, give the pool several times as many matches as it has
+workers.
+
+<H1 id="sec-linear">3. The Parameter AI<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<H2 id="sec-static">3.1. The static evaluation</H2>
+
+<p> The static evaluation takes a position and returns one number, the <e>score</e>, saying how good it is for
+White.   Every feature is measured for <e>both</e> sides and entered as a difference, White minus Red.   With
+$w_i$ for the weights and $f_i$ for the features,
 
 <p style="text-align:center;"> $ \displaystyle S \;=\; \sum_i w_i\,\bigl(f_i^{\,\text{White}} - f_i^{\,\text{Red}}\bigr). $
 
-<p> A positive score is good for White, a negative one good for Red. Each brain is <e>normalized</e> so that its
-largest weight (in absolute value) is exactly 1000; this lets brains be compared on a common scale and keeps the
-doubling thresholds meaningful. The score is rounded to a whole number, rounding halves away from zero so that
-the anti-symmetry is preserved.
+<p> Writing it as a difference buys an exact property, and the property is worth more than the tidiness:
+the score is <e>anti-symmetric</e>.   Mirror a position &mdash; swap the colours, reflect point $i$ to
+$25-i$, swap the bars and the trays &mdash; and the score must come out exactly negated.   That is the
+strongest cheap correctness check available for an evaluation function, since a feature that scans the board
+in one direction for White and the other for Red is easy to get subtly wrong, and two real bugs were caught
+this way.   It is tested by mirroring some twenty thousand positions from real games after every change.
 
-<p> Not every feature matters at every stage of the game. Once the two sides have passed each other and can no
-longer be hit &mdash; a pure <e>race</e> &mdash; blots cannot be hit, primes trap nobody, and made points and
-  anchors block nobody. All of those terms therefore switched off
-  automatically once contact is broken, and
-the AI's attention shifts entirely to the race: bearing checkers off and, when it is hopelessly behind, rushing
-its stragglers home to avoid the extra loss due to a <e>gammon</e> or <e>backgammon</e>.
+<p> The score is rounded to a whole number, rounding halves <e>away from zero</e> rather than JavaScript's
+default of rounding towards $+\infty$, since the default would break the anti-symmetry on positions landing
+exactly on a half.
 
-<p> A couple of small adjustments are made only when the AI actually <e>chooses</e> its move, and are not part of
-a position's stored value: a <e>disengagement</e> nudge (DE) that encourages breaking contact and racing when
-ahead, and, once disengaged, a tiny tie-break that prefers advancing the rearmost checker when two moves would
-otherwise score identically.
+<p> There are <e>22</e> such weights, plus 2 more for the cube (section <a href="#sec-dtat">3.10</a>), which is
+why the parameter grid in the control column has 24 fields.   Several of the features are divided by a
+constant before being weighted &mdash; the pip count by 20, borne-off checkers by 15, the encumbrance counts by
+36 &mdash; purely so that every weight lives in the same numeric band.   Those divisors are a representation
+choice and nothing else; when the pip divisor was changed from 167 to 20, every brain's PC weight was rescaled
+by the same factor and no brain's play changed at all.
 
+<H2 id="sec-race">3.2. The race: PC and BO</H2>
 
-<H1>The Parameters</H1>
-
-<p> The features below are the ingredients of the static evaluation. Most are self-explanatory once named; the
-sign of a weight says whether more of that feature is good (positive) or bad (negative) for the side that has it.
-
-<H2>The Race</H2>
 <table class="desc">
-  <tr><td class="code">PC</td><td><e>Pip count.</e> How far each side still has to travel. Carries a negative weight, so being ahead in the race is good.</td></tr>
-  <tr><td class="code">BO</td><td><e>Borne off.</e> Checkers already taken off the board. Positive: bearing off is progress, and it distinguishes taking a checker off from merely stacking it deeper at home.</td></tr>
+  <tr><td class="code">PC</td><td><e>Pip count.</e>  How far a side still has to travel: $\sum_p \mathrm{count}_p \cdot \mathrm{distance}_p$, with a checker on the bar counted from its entry edge.   Entered as $(\mathrm{pip}_W - \mathrm{pip}_R)/20$ and carried with a <e>negative</e> weight, so that having fewer pips left is good.</td></tr>
+  <tr><td class="code">BO</td><td><e>Borne off.</e>  $(\mathrm{off}_W - \mathrm{off}_R)/15$, positive weight.   It exists because the pip count cannot tell bearing a checker off from stacking it deeper in the home board &mdash; both reduce the pip count by the same amount &mdash; and without it brains piled checkers on the 1-point instead of taking them off.</td></tr>
 </table>
 
-<H2>Mobility</H2>
+<p> <e>&#9888; The pip count is nearly blind to move choice, and this shapes the whole roster.</e>   Whatever you
+do with a roll, your own pip count falls by exactly the dice total.   So PC does not distinguish one legal turn
+from another <e>except</e> through hits, which put the opponent back, and through the efficiency of a bear-off.
+Section <a href="#sec-evo-found">4.6</a> returns to this: it is the reason a "pure racer" still hits, and hits
+soundly.
+
+<H2 id="sec-mobility">3.3. Mobility: EC1 and EC0</H2>
+
+<p> Both count over the 36 ordered dice rolls, weighted by frequency, how badly a side would be stuck.   For
+each roll the generator is asked how many dice could be used at all.
+
 <table class="desc">
-  <tr><td class="code">EC1</td><td><e>Encumbrance, one move.</e> Of the 36 dice rolls, how many leave the side with only a single legal move. Negative: being cramped is bad.</td></tr>
-  <tr><td class="code">EC0</td><td><e>Encumbrance, no move.</e> Rolls that leave the side with no legal move at all. Negative.</td></tr>
+  <tr><td class="code">EC1</td><td><e>Encumbrance, one die.</e>  The number of the 36 rolls that would let the side use exactly <e>one</e> die.   Divided by 36, negative weight.</td></tr>
+  <tr><td class="code">EC0</td><td><e>Encumbrance, no die.</e>  The number of the 36 rolls that would let it use <e>none</e> &mdash; a dance.   Divided by 36, negative weight.</td></tr>
 </table>
 
-<H2>Containment and Freedom (the primes)</H2>
-<p> Each checker is graded by its <e>escape count</e>: how many of the six die-values would let it get past the
-front of an opposing wall that contains it. The six buckets run from completely trapped to nearly free:
+<p> These are expensive features: computing them means asking, 21 times per side, how much of a roll is
+playable.   They are also the two weights evolution has been most consistent about, with EC0 pinned near the
+bottom of the band in almost every brain in the roster.
+
+<H2 id="sec-containment">3.4. Containment: the escape count and F0&ndash;F5</H2>
+
+<p> Six weights grade how trapped a side's checkers are.   They rest on one primitive, the <i>escape count</i>
+of a single checker: <e>how many of the six die-values would take it past the front of the wall in front of
+it.</e>   The wall matters, not the next square: a checker with an open point immediately ahead but a five-prime
+beyond it is trapped, and the escape count says so.
+
+<div class="algo-title">The escape count of one checker (White; Red is the mirror)</div>
+<pre class="algo">
+<span class="kw">function</span> escapeCount(points, p, me):                <span class="cmt">// p = 25 means a checker on the bar</span>
+    opponent = other(me)
+    made(t) = (t is on the board) and points[t].owner == opponent and points[t].count &gt;= 2
+    <span class="cmt">// find the first opposing point ahead of us, and the far end of the block it belongs to</span>
+    back = the largest t &lt; p with made(t), or none
+    <span class="kw">if</span> back == none:                                <span class="cmt">// nothing ahead: count open landings</span>
+        <span class="kw">return</span> #{ d in 1..6 : p-d &lt; 1 or not made(p-d) }
+    front = back;  <span class="kw">while</span> made(front - 1): front = front - 1
+    <span class="kw">if</span> back - front + 1 == 1:                        <span class="cmt">// a LONE point: weave around it</span>
+        <span class="kw">return</span> #{ d in 1..6 : p-d &lt; 1 or not made(p-d) }
+    <span class="kw">return</span> #{ d in 1..6 : p-d &lt; 1 or (p-d &lt; front and not made(p-d)) }
+</pre>
+
+<p> Landing beyond the edge of the board &mdash; bearing off &mdash; counts as an escape.   The result is 0 for
+a checker that is sealed in and 6 for one that is free.
+
 <table class="desc">
-  <tr><td class="code">F0</td><td><e>Sealed</e> &mdash; entombed behind a full prime, or closed out on the bar. The worst place to be.</td></tr>
-  <tr><td class="code">F1&ndash;F5</td><td>Increasingly free: one, two, ... five of the six dice let the checker escape. (A fully free checker, "F6", carries no weight.)</td></tr>
-  <tr><td class="code">BE</td><td><e>Bar entombment.</e> An extra penalty for a checker stuck on the bar, priced by how many turns it is expected to stay frozen there, because it paralyses the whole army until it enters.</td></tr>
+  <tr><td class="code">F0</td><td><e>Sealed.</e>  No die frees the checker: entombed behind a full prime, or on the bar against a closed board.   The worst place a checker can be.</td></tr>
+  <tr><td class="code">F1&nbsp;&hellip;&nbsp;F5</td><td>One, two, &hellip; five of the six dice free it.</td></tr>
 </table>
 
-<H2>Made Points</H2>
-<table class="desc">
-  <tr><td class="code">HB</td><td><e>Home-board points.</e> Points made in one's own home board, excluding the golden 4- and 5-points (which have their own weights).</td></tr>
-  <tr><td class="code">G5</td><td><e>The golden point</e> &mdash; the 5-point, the single most valuable point to make.</td></tr>
-  <tr><td class="code">G7</td><td><e>The bar point</e> &mdash; the 7-point.</td></tr>
-  <tr><td class="code">G4</td><td>The 4-point.</td></tr>
-  <tr><td class="code">AN</td><td><e>Anchors.</e> Points held in the opponent's home board (excluding the golden anchor), counted only when behind in the race.</td></tr>
-  <tr><td class="code">GA</td><td><e>The golden anchor</e> &mdash; the opponent's 5-point, held from the back; also counted only when behind.</td></tr>
+<p> Each side's checkers are counted into these six buckets &mdash; a checker on the bar included, as a virtual
+checker at point 25 or 0 &mdash; and the term is $\sum_{n=0}^{5} w_{Fn}\,(\mathrm{White}_n - \mathrm{Red}_n)$.
+
+<p> <e>There is deliberately no F6.</e>  A completely free checker carries no information: the count of free
+checkers is 15 minus the others and minus those borne off, so a sixth weight would be a linear combination of
+the ones already there, and it would overlap with BO.
+
+<H2 id="sec-be">3.5. The bar: BE</H2>
+
+<p> A checker on the bar is worse than a checker on a point with the same escape count, because it freezes the
+<e>whole army</e>: nothing else may move until it enters.   BE prices that at one weight per expected
+<i>frozen turn</i>, added on top of the checker's ordinary F-term.
+
+<p> If a bar checker enters on $e$ of the six die-values, both dice miss with probability $\left(\frac{6-e}{6}
+\right)^{2}$, and the expected number of frozen turns is the geometric sum $\frac{q}{1-q}$ with that $q$:
+
+<table class="meas">
+  <tr><th class="name">escape count</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th></tr>
+  <tr><td class="name">expected frozen turns</td><td>2.27</td><td>0.80</td><td>0.33</td><td>0.125</td><td>0.029</td><td>0</td></tr>
 </table>
 
-<H2>Blots (exposure and threats)</H2>
-<p> A <i>blot</i> is a lone checker that can be hit. The same event is an exposure for its owner and a threat for
-the other side, so four weights cover it: <e>D</e>irect versus <e>I</e>ndirect shots, and blots in the
-<e>O</e>uter (far) boards versus one's own near (<e>P</e>oint) boards.
+<p> A <e>sealed</e> bar checker (escape count 0) is the interesting case, because how long it stays there is
+not a dice question but a question about the opponent: he must break his closed board when he runs out of spare
+pips.   A bare closed board is twelve checkers on six points, or 42 pips, and about 8 pips are played per turn,
+so the freeze is priced at $(\mathrm{opponent's\ pips} - 42)/8$, floored at 0 and capped at 8 turns.
+
+<p> The term is $\mathrm{BE}\cdot(\sum_{\text{Red}} \mathrm{freeze} - \sum_{\text{White}} \mathrm{freeze})$: a
+White checker on the bar hurts White, a Red one helps him.   Note that the sealed case reads the <e>opponent's</e>
+pip count, which makes this a direction-dependent feature and therefore one to re-check against the mirror test
+after any change.
+
+<H2 id="sec-points">3.6. Made points: HB, G5, G7, G4, AN, GA</H2>
+
+<p> A point is <i>made</i> when a side has two or more checkers on it.   Not all made points are worth the
+same, so the valuable ones carry their own weights and the rest are counted in bulk.   All of these are
+<e>owner-relative</e>: White's $n$-point is board point $n$, Red's is board point $25-n$, which is what keeps
+them anti-symmetric.
+
 <table class="desc">
-  <tr><td class="code">DO / IO</td><td>Direct / indirect shots at a blot in the far part of the board.</td></tr>
-  <tr><td class="code">DP / IP</td><td>Direct / indirect shots at a blot in the near part of the board.</td></tr>
+  <tr><td class="code">G5</td><td><e>The golden point</e> &mdash; the owner's 5-point.   The single most valuable point on the board.</td></tr>
+  <tr><td class="code">G7</td><td><e>The bar point</e> &mdash; the owner's 7-point.</td></tr>
+  <tr><td class="code">G4</td><td>The owner's 4-point.   With G5 and G7 it completes the prime-building trio.</td></tr>
+  <tr><td class="code">HB</td><td><e>Home-board points</e>, <e>excluding</e> the 4- and 5-points, which have their own weights above: so it counts the owner's 1-, 2-, 3- and 6-points.</td></tr>
+  <tr><td class="code">GA</td><td><e>The golden anchor</e> &mdash; the owner's 20-point, which is the opponent's 5-point, held from the back.   Counted only while the owner is <e>behind</e> in the race, since an anchor is a defensive asset.</td></tr>
+  <tr><td class="code">AN</td><td><e>Anchors</e>: points made in the opponent's home board, <e>excluding</e> the golden anchor.   Same behind-in-the-race gate.</td></tr>
 </table>
 
-<H2>Move-selection heuristics</H2>
+<p> The exclusions matter: HB and AN cover exactly the points the four golden weights do not, so nothing is
+counted twice.   The same board point can read as White's G5 and as Red's GA &mdash; point 5 is White's 5-point
+and Red's 20-point &mdash; but only one of them owns it, so there is no conflict.
+
+<p> These six weights were the change that broke a long-standing deadlock.   Before they existed, evolution
+converged on pure racing every time; with them, and with the race terms deliberately reined in so they no
+longer dominated the scale, a positional brain that prizes the 5-point finally won the roster.
+
+<H2 id="sec-blots">3.7. Blots: DO, IO, DP, IP</H2>
+
+<p> A <i>blot</i> is a lone checker, which may be hit.   For every blot on the board the evaluation asks
+whether the opponent can hit it with a single die (<e>direct</e>) or with a combination of dice landing
+somewhere legal on the way (<e>indirect</e>), and whether the blot stands in the near half of its owner's
+board or the far half.   That is four weights.
+
 <table class="desc">
-  <tr><td class="code">DE</td><td><e>Disengagement.</e> A bonus applied only when actually choosing a move: it rewards breaking all contact and racing when ahead (and discourages it when behind). It is not part of a stored position's value.</td></tr>
+  <tr><td class="code">DP / IP</td><td>Direct / indirect shot at a blot in the <e>near</e> half &mdash; points 1&ndash;12 for White, 13&ndash;24 for Red.</td></tr>
+  <tr><td class="code">DO / IO</td><td>Direct / indirect shot at a blot in the <e>far</e> half.</td></tr>
 </table>
 
+<p> Each threatened blot contributes its weight once, signed so that a blot belonging to Red is good for
+White.   The same number therefore describes both an exposure and a threat: they are the same event seen from
+two sides, which is why four weights suffice where an earlier version of the evaluation had eight.
 
-<H1>The Doubling Cube</H1>
+<p> One simplification is deliberate: when the hitter has a checker on the bar, only hits that enter from the
+bar &mdash; either directly, or entering and continuing with the other die &mdash; are counted.   That
+under-counts a few shots and never over-counts.
 
-<p> Two further numbers govern the cube, in the same units as the score. Let <e>own&nbsp;score</e> be the static
-score seen from the side to move.
+<H2 id="sec-contact">3.8. What switches off in a race</H2>
+
+<p> Two sides are in <i>contact</i> while the rearmost White checker is still behind the rearmost Red one, so
+that a hit is possible; a checker on the bar always counts as in contact.   Once contact is broken the game is
+a pure race, and most of the evaluation is then measuring things that cannot happen: a made point blocks
+nobody, an anchor traps nobody, a blot cannot be hit.   So <e>HB, G5, G7, G4, AN and GA are all switched off</e>
+when there is no contact, and the blot and containment terms fall to zero on their own.
+
+<p> This is a symmetric $0/1$ scalar multiplying anti-symmetric terms, so it leaves the mirror property intact.
+
+<p> <e>&#9888; It also leaves the evaluation with almost nothing to say.</e>   In a pure race PC is constant
+across move choices, BO is unchanged until you start bearing off, and everything else is gated off &mdash; so
+the integer score is frequently <e>identical for every legal turn</e>, and the tie-break of section
+<a href="#sec-root">2.6</a> decides.   That is a known weakness of this evaluation, not a subtlety: in the race
+the tie-break is effectively the whole policy.   The net has no such gap, which is one reason it is stronger.
+
+<H2 id="sec-normal">3.9. Normalization</H2>
+
+<p> Only the <e>proportions</e> between the weights affect play: multiplying every weight by a positive
+constant multiplies every score by it and changes no comparison.   Brains are therefore <e>normalized</e> so
+that the largest evaluation weight in absolute value is exactly <e>1000</e>.
+
+<p> The rule has two details that matter.   The scale factor is chosen from the <e>22 evaluation weights
+only</e> &mdash; the two cube thresholds do not get a vote &mdash; but it is then applied to <e>all 24</e>,
+because DT and AT are compared against scores: if every score doubles, the thresholds must double too or the
+doubling behaviour changes.   And a weight that lands exactly on zero is set to $\pm 1$ rather than left at
+zero, so that no feature can vanish from a brain irrecoverably.
+
+<H2 id="sec-dtat">3.10. The cube: DT and AT</H2>
+
+<p> A parameter AI's score has no probabilistic meaning &mdash; there is no way to derive a take point from
+"$-603$ times a pip difference" &mdash; so its cube policy is two more evolvable numbers, in the same units as
+the score.   Let the <e>own score</e> of a player be the static score seen from that player's side (the score
+for White, its negation for Red).
+
 <table class="desc">
-  <tr><td class="code">DT</td><td><e>Double threshold.</e> The side offers a double (or redouble) when its own score rises above DT.</td></tr>
-  <tr><td class="code">AT</td><td><e>Accept threshold.</e> The side accepts an offered double unless its own score has fallen below &minus;AT.</td></tr>
+  <tr><td class="code">DT</td><td><e>Double threshold.</e>  Offer a double, or redouble, when own score $&gt;$ DT.</td></tr>
+  <tr><td class="code">AT</td><td><e>Accept threshold.</e>  Accept an offered double unless own score $&lt; -$AT.</td></tr>
 </table>
-<p> A sensible take-window needs AT larger than DT; evolved brains vary, and a few even invert it &mdash; an
-aggressive doubler that is also a tight taker.
 
+<p> A sensible take window needs AT larger than DT.   Evolved brains vary, and a few invert it &mdash; an
+aggressive doubler that is also a tight taker.   Note that this rule has no upper end: there is no "too good to
+double", so a parameter AI will double away a position it should have played on for the gammon.   The net's
+cube (section <a href="#sec-net-cube">5.11</a>) does not have that defect, and gets it for free rather than
+by a special rule.
 
-<H1>The Current Brains</H1>
+<H2 id="sec-roster">3.11. The current roster</H2>
 
-<p> The site ships with eight named brains, kept in order of playing strength (Arwen strongest, Hamfast weakest),
-and re-sorted after each tournament, plus <e>Origin</e>, a fixed historic baseline that never changes and always
-finishes last. The table below lists every parameter of every brain. These values are a snapshot &mdash; they
-change as brains are evolved and the roster is re-sorted &mdash; and you can always see a brain's live values in
-the parameter grid of the control column, or export them from the Export menu.
+<p> The site ships with eight named brains kept in order of playing strength, Arwen strongest, and re-sorted
+after each tournament, plus <e>Origin</e>, the hand-guessed historic baseline, which never changes and is
+always listed last.   The table below is a snapshot; the live values are always in the parameter grid of the
+control column, and can be exported from there.
 
 <div class="param-wrap">
 <table class="params">
   <tr>
     <th class="name">Brain</th>
-    <th>PC</th><th>BO</th><th>EC1</th><th>EC0</th><th>HB</th><th>AN</th><th>DO</th><th>IO</th><th>DP</th><th>IP</th><th>DE</th>
-    <th>F0</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>F5</th><th>BE</th><th>G5</th><th>G7</th><th>G4</th><th>GA</th><th>DT</th><th>AT</th>
+    <th>PC</th><th>BO</th><th>EC1</th><th>EC0</th><th>F0</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>F5</th><th>BE</th><th>HB</th><th>G5</th><th>G7</th><th>G4</th><th>AN</th><th>GA</th><th>DO</th><th>IO</th><th>DP</th><th>IP</th><th>DE</th><th>DT</th><th>AT</th>
   </tr>
-  <tr><td class="name">Arwen</td><td>-412</td><td>738</td><td>-60</td><td>-1000</td><td>23</td><td>-41</td><td>6</td><td>10</td><td>168</td><td>58</td><td>3</td><td>-11</td><td>-12</td><td>-19</td><td>-8</td><td>-4</td><td>-1</td><td>7</td><td>190</td><td>6</td><td>25</td><td>-33</td><td>236</td><td>686</td></tr>
-  <tr><td class="name">Bilbo</td><td>-435</td><td>633</td><td>-62</td><td>-1000</td><td>28</td><td>-46</td><td>6</td><td>11</td><td>205</td><td>60</td><td>3</td><td>-13</td><td>-14</td><td>-21</td><td>-9</td><td>-5</td><td>-1</td><td>9</td><td>228</td><td>6</td><td>31</td><td>-41</td><td>241</td><td>836</td></tr>
-  <tr><td class="name">Celebrian</td><td>-778</td><td>834</td><td>-184</td><td>-1000</td><td>66</td><td>-32</td><td>18</td><td>9</td><td>373</td><td>22</td><td>4</td><td>-13</td><td>-13</td><td>-22</td><td>-3</td><td>-10</td><td>-2</td><td>10</td><td>382</td><td>17</td><td>26</td><td>-43</td><td>400</td><td>999</td></tr>
-  <tr><td class="name">Dwalin</td><td>-433</td><td>22</td><td>-140</td><td>-1000</td><td>66</td><td>-19</td><td>19</td><td>12</td><td>267</td><td>32</td><td>4</td><td>-8</td><td>-15</td><td>-22</td><td>-6</td><td>-8</td><td>-2</td><td>7</td><td>181</td><td>21</td><td>30</td><td>-80</td><td>330</td><td>588</td></tr>
-  <tr><td class="name">Eowyn</td><td>-903</td><td>32</td><td>-153</td><td>-1000</td><td>58</td><td>-47</td><td>18</td><td>13</td><td>469</td><td>46</td><td>6</td><td>-8</td><td>-16</td><td>-25</td><td>-12</td><td>-10</td><td>-6</td><td>16</td><td>281</td><td>18</td><td>44</td><td>-61</td><td>398</td><td>1009</td></tr>
-  <tr><td class="name">Frodo</td><td>-1000</td><td>492</td><td>-118</td><td>-771</td><td>27</td><td>-46</td><td>9</td><td>13</td><td>298</td><td>45</td><td>4</td><td>-7</td><td>-8</td><td>-25</td><td>-6</td><td>-9</td><td>-2</td><td>11</td><td>227</td><td>12</td><td>23</td><td>-52</td><td>322</td><td>716</td></tr>
-  <tr><td class="name">Galadriel</td><td>-978</td><td>351</td><td>-117</td><td>-1000</td><td>268</td><td>-3</td><td>9</td><td>4</td><td>347</td><td>25</td><td>67</td><td>-73</td><td>-57</td><td>-7</td><td>-20</td><td>-21</td><td>-4</td><td>14</td><td>277</td><td>105</td><td>39</td><td>-9</td><td>220</td><td>857</td></tr>
-  <tr><td class="name">Hamfast</td><td>-722</td><td>25</td><td>-148</td><td>-1000</td><td>102</td><td>-28</td><td>14</td><td>7</td><td>306</td><td>28</td><td>10</td><td>-13</td><td>-12</td><td>-20</td><td>-16</td><td>-9</td><td>-11</td><td>10</td><td>458</td><td>12</td><td>39</td><td>-38</td><td>334</td><td>754</td></tr>
-  <tr><td class="name">Origin</td><td>-80</td><td>500</td><td>-133</td><td>-400</td><td>133</td><td>200</td><td>1000</td><td>600</td><td>500</td><td>300</td><td>667</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>133</td><td>0</td><td>133</td><td>200</td><td>100</td><td>200</td></tr>
+  <tr><td class="name">Arwen</td><td>-603</td><td>1000</td><td>-70</td><td>-970</td><td>-16</td><td>-19</td><td>-20</td><td>-6</td><td>-7</td><td>-1</td><td>8</td><td>29</td><td>291</td><td>13</td><td>38</td><td>-68</td><td>-47</td><td>10</td><td>10</td><td>290</td><td>59</td><td>4</td><td>308</td><td>735</td></tr>
+  <tr><td class="name">Bilbo</td><td>-435</td><td>633</td><td>-62</td><td>-1000</td><td>-13</td><td>-14</td><td>-21</td><td>-9</td><td>-5</td><td>-1</td><td>9</td><td>28</td><td>228</td><td>6</td><td>31</td><td>-46</td><td>-41</td><td>6</td><td>11</td><td>205</td><td>60</td><td>3</td><td>241</td><td>836</td></tr>
+  <tr><td class="name">Celebrian</td><td>-412</td><td>738</td><td>-60</td><td>-1000</td><td>-11</td><td>-12</td><td>-19</td><td>-8</td><td>-4</td><td>-1</td><td>7</td><td>23</td><td>190</td><td>6</td><td>25</td><td>-41</td><td>-33</td><td>6</td><td>10</td><td>168</td><td>58</td><td>3</td><td>236</td><td>686</td></tr>
+  <tr><td class="name">Dwalin</td><td>-778</td><td>834</td><td>-184</td><td>-1000</td><td>-13</td><td>-13</td><td>-22</td><td>-3</td><td>-10</td><td>-2</td><td>10</td><td>66</td><td>382</td><td>17</td><td>26</td><td>-32</td><td>-43</td><td>18</td><td>9</td><td>373</td><td>22</td><td>4</td><td>400</td><td>999</td></tr>
+  <tr><td class="name">Eowyn</td><td>-433</td><td>22</td><td>-140</td><td>-1000</td><td>-8</td><td>-15</td><td>-22</td><td>-6</td><td>-8</td><td>-2</td><td>7</td><td>66</td><td>181</td><td>21</td><td>30</td><td>-19</td><td>-80</td><td>19</td><td>12</td><td>267</td><td>32</td><td>4</td><td>330</td><td>588</td></tr>
+  <tr><td class="name">Frodo</td><td>-903</td><td>32</td><td>-153</td><td>-1000</td><td>-8</td><td>-16</td><td>-25</td><td>-12</td><td>-10</td><td>-6</td><td>16</td><td>58</td><td>281</td><td>18</td><td>44</td><td>-47</td><td>-61</td><td>18</td><td>13</td><td>469</td><td>46</td><td>6</td><td>398</td><td>1009</td></tr>
+  <tr><td class="name">Galadriel</td><td>-1000</td><td>492</td><td>-118</td><td>-771</td><td>-7</td><td>-8</td><td>-25</td><td>-6</td><td>-9</td><td>-2</td><td>11</td><td>27</td><td>227</td><td>12</td><td>23</td><td>-46</td><td>-52</td><td>9</td><td>13</td><td>298</td><td>45</td><td>4</td><td>322</td><td>716</td></tr>
+  <tr><td class="name">Hamfast</td><td>-978</td><td>351</td><td>-117</td><td>-1000</td><td>-73</td><td>-57</td><td>-7</td><td>-20</td><td>-21</td><td>-4</td><td>14</td><td>268</td><td>277</td><td>105</td><td>39</td><td>-3</td><td>-9</td><td>9</td><td>4</td><td>347</td><td>25</td><td>67</td><td>220</td><td>857</td></tr>
+  <tr><td class="name">Origin</td><td>-80</td><td>500</td><td>-133</td><td>-400</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>133</td><td>133</td><td>0</td><td>133</td><td>200</td><td>200</td><td>1000</td><td>600</td><td>500</td><td>300</td><td>667</td><td>100</td><td>200</td></tr>
 </table>
 </div>
 
-<p> A glance down the table tells a story. <e>Origin</e>, the hand-tuned baseline, pours its weight into hitting
-(DO&nbsp;=&nbsp;1000) and ignores containment entirely. The evolved brains do the opposite: they hold hitting to
-almost nothing and instead prize the race (PC), bearing off (BO), and the golden 5-point (G5) &mdash; which is
-why they beat the original so decisively.
+<p> A glance down the table tells a story.   <e>Origin</e>, the hand-tuned baseline, pours its weight into
+hitting (DO = 1000), knows nothing of containment (F0&ndash;F5 and BE are all zero, since those features did
+not exist when it was written), and doubles on very little (DT = 100).   The evolved brains do the opposite:
+they hold hitting to almost nothing, prize the race (PC), bearing off (BO) and the golden 5-point, and double
+far later.   That is why they beat the original so decisively.
 
-<H1>Evolution: Where the Numbers Come From</H1>
+<H1 id="sec-evolution">4. Evolution: Where the Numbers Come From<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
 
-<p> None of the parameter values in the table above were chosen by hand &mdash; except <e>Origin</e>'s, which were
-guessed at the start of the project and never touched since. All the others were <e>evolved</e>, by the
-<e>Evolve</e> button in row 14 of the control column. This section explains how that works.
+<p> None of the values in the table above were chosen by hand &mdash; except <e>Origin</e>'s, which were guessed
+at the start of the project and never touched since.   All the others were <e>evolved</e>, by the <e>EVOLVE</e>
+button in row 14 of the control column.
 
 <p> The difficulty is that there is no formula telling us whether one set of 24 numbers is better than another.
-The only honest test is to let two brains play each other and see which wins more &mdash; and because backgammon
-is a dice game, even that answer is noisy: a weaker brain will win a short series often enough. So the search has
-to be driven entirely by match results, and it has to be skeptical of them. What follows is a <e>hill climber</e>:
-it keeps a single parent, tries a random variation, and promotes it only if it survives two increasingly
-demanding tests.
+The only honest test is to let two brains play and see which wins more &mdash; and because backgammon is a dice
+game, even that answer is noisy: a weaker brain wins a short series often enough.   So the search has to be
+driven entirely by match results and has to be sceptical of them.   What follows is a <e>hill climber</e>: it
+keeps a single parent, tries a random variation, and promotes it only if it survives two increasingly demanding
+tests.
 
-<H2>What you control</H2>
+<H2 id="sec-evo-controls">4.1. What you control</H2>
 <table class="desc">
-  <tr><td class="code">Brain</td><td>The brain selected in the editor menu (row 13) is the starting parent. Evolution never modifies it &mdash; the results arrive as downloaded files.</td></tr>
-  <tr><td class="code">Generations</td><td>How many rounds to attempt before stopping. You can stop earlier at any time with the same button, which reads <e>Stop E</e> while a run is going.</td></tr>
-  <tr><td class="code">Matches</td><td>Matches per sample: how many matches each individual comparison is decided by. Larger is slower but less noisy.</td></tr>
+  <tr><td class="code">Brain</td><td>The brain selected in the editor menu (row 13) is the starting parent.   Evolution never modifies it &mdash; results arrive as downloaded files.</td></tr>
+  <tr><td class="code">Generations</td><td>How many rounds to attempt before stopping.   You can stop earlier at any time with the same button, which reads <e>Stop E</e> while a run is going, or with <e>STOP</e> in row 5.</td></tr>
+  <tr><td class="code">Matches</td><td>Matches per sample: how many matches each individual comparison is decided by.   Larger is slower and less noisy.</td></tr>
   <tr><td class="code">R&nbsp;%</td><td>The mutation rate: the largest random change, as a percentage, that any single weight may undergo in one step.</td></tr>
-  <tr><td class="code">Depth, x</td><td>The look ahead depth and match length used for every game played during the run, shared with the tournament controls.</td></tr>
+  <tr><td class="code">D:</td><td>The look-ahead depth used for every game played during the run.   Depth 1 is the practical setting; see section <a href="#sec-cost">2.7</a>.</td></tr>
 </table>
 
-<H2>One generation</H2>
+<H2 id="sec-evo-gen">4.2. One generation</H2>
 
 <OL>
-  <LI><e>Mutation.</e> Every one of the 24 numbers &mdash; the 22 evaluation weights plus the two cube thresholds
-      &mdash; is nudged independently by a random amount of up to R&nbsp;% of its own current value:
+  <LI><e>Mutation.</e> Every one of the 24 numbers &mdash; the 22 evaluation weights plus the two cube
+      thresholds &mdash; is nudged independently by a random amount of up to R&nbsp;% of its own current value:
       <p style="text-align:center;"> $ \delta_i = \operatorname{round}\!\left( w_i \cdot \frac{R}{100} \cdot u \right), \qquad u \ \text{uniform on}\ (-1,1). $
-      <p> Because the change is proportional to the weight itself, a single mutation can never flip a sign: a
-      weight that is negative stays negative this step. Large weights move in large absolute steps and small ones
-      in small steps, which is what we want when the weights span three orders of magnitude. (If by chance nothing
-      changed at all, one weight is nudged by 1 so that the generation is not wasted.)</LI>
+      <p> Because the change is proportional to the weight itself, a single mutation can never flip a sign, and
+      large weights move in large absolute steps while small ones move in small steps &mdash; which is what you
+      want when the weights span three orders of magnitude.   (If by chance nothing changed at all, one weight
+      is nudged by 1 so the generation is not wasted.)</LI>
 
-  <LI><e>Normalization.</e> The mutant is rescaled so that its largest evaluation weight is again exactly 1000,
-      with the two cube thresholds scaled by the same factor so that doubling behavior is unaffected. Only the
-      <e>proportions</e> between weights matter to play, so this keeps every brain on a common scale. A weight
-      that happens to land exactly on zero is set to &plusmn;1, so that no feature can vanish from the brain
-      altogether.</LI>
+  <LI><e>Normalization.</e> The mutant is rescaled as in section <a href="#sec-normal">3.9</a>, so that every
+      candidate is measured on the same scale as its parent.</LI>
 
+  <LI><e>The scout.</e> The mutant plays the parent over the chosen number of matches, colours alternating so
+      that neither side keeps any advantage of moving first.   If it does not come out ahead it is discarded
+      and the generation ends here.   Most generations end here, and that is the point: the scout is the cheap
+      filter that lets a bad idea die quickly.</LI>
 
+  <LI><e>The line search.</e> A promising mutation tells us not only that a point is better but which
+      <e>direction</e> was better.   So instead of accepting the mutant as it stands, the algorithm treats the
+      difference between mutant and parent as a direction vector and walks along it: it tries a step further
+      on, and a step back, keeps whichever wins, and <e>doubles</e> the step while it keeps improving.   When a
+      step overshoots, the step is <e>halved</e> instead.   Because the weights are integers, repeated halving
+      reaches zero exactly, so the walk always terminates &mdash; and in a few dozen matches it can travel much
+      further than a single mutation ever could.   This is also the only place a weight can change sign, by
+      being extrapolated through zero.</LI>
 
-  <LI><e>The scout.</e> The mutant plays the parent over the chosen number of matches, alternating colors so that
-      neither side keeps any advantage of moving first. If it does not come out ahead, it is discarded and the
-      generation ends here. Most generations end here, and that is the point: the scout is the cheap filter that
-      lets a bad idea die quickly.</LI>
-
-  <LI><e>The line search.</e> A promising mutation tells us not just that a point is better, but which
-      <e>direction</e> was better. So instead of accepting the mutant as it stands, the algorithm treats the
-      difference between mutant and parent as a direction vector and walks along it: it tries a step further on,
-      and a step back, keeps whichever wins, and <e>doubles</e> the step as long as it keeps improving. When a
-      step overshoots, or when neither direction is an improvement, the step is <e>halved</e> instead. Because the
-      weights are integers, repeated halving reaches zero exactly, so the walk always terminates &mdash; in a few
-      dozen matches it can travel far further than a single mutation ever could. This is also the only place a
-      weight can change sign, by being extrapolated straight through zero.</LI>
-
-  <LI><e>The gauntlet.</e> The survivor of the line search now faces a much longer series &mdash; ten times the
-      sample size &mdash; against a <e>fixed baseline</e> brain, and is crowned a champion only if it beats that
-      baseline by a wider margin than any previous candidate in this run. Testing against a fixed opponent rather
-      than against the current parent matters: it is a common yardstick, so successive champions are genuinely
-      measured against each other and not merely against whatever the parent happened to be at the time.</LI>
+  <LI><e>The gauntlet.</e> The survivor faces a much longer series &mdash; ten times the sample size &mdash;
+      against a <e>fixed baseline</e> brain, and is crowned a champion only if it beats that baseline by a wider
+      margin than any previous candidate in this run.   Testing against a fixed opponent rather than against the
+      current parent matters: it is a common yardstick, so successive champions are measured against each other
+      and not merely against whatever the parent happened to be at the time.</LI>
 
   <LI><e>Sweeps.</e> If a champion beats the baseline in <e>every single match</e>, the baseline has become too
-      weak to distinguish candidates. The new champion replaces it, the record resets, and the gauntlet length
-      doubles &mdash; so the standard of proof rises as the brains improve.</LI>
+      weak to distinguish candidates.   The new champion replaces it, the record resets, and the gauntlet
+      length doubles &mdash; so the standard of proof rises as the brains improve.</LI>
 </OL>
 
-<p> <e>A caveat on granularity.</e> Because weights are whole numbers and the mutation is proportional, a
-weight can only move if $|w|\cdot R/100$ can reach one half &mdash; that is, if $|w| &gt; 50/R$. At the default
-R&nbsp;=&nbsp;50&nbsp;% a weight of &plusmn;1 is therefore <e>frozen</e>: every proposed change rounds back to
-zero. Lowering R to search more finely freezes more of them (at R&nbsp;=&nbsp;10&nbsp;%, everything up to
-&plusmn;5). Such a weight is not quite trapped forever &mdash; re-normalization can lift it when some larger
-weight shrinks, which happens in a few percent of generations &mdash; but it escapes only slowly, and only upward
-in magnitude. Since a weight of 1 against a scale of 1000 has almost no effect on play this costs little
-strength, but it does mean a feature crushed to &plusmn;1 early in a lineage is hard to rediscover later.
+<H2 id="sec-evo-gran">4.3. A caveat on granularity</H2>
 
-<H2>Matches, not points</H2>
+<p> Because weights are whole numbers and the mutation is proportional, a weight can only move if
+$|w|\cdot R/100$ can reach one half &mdash; that is, if $|w| &gt; 50/R$.   At the default R&nbsp;=&nbsp;50&nbsp;%
+a weight of &plusmn;1 is therefore <e>frozen</e>: every proposed change rounds back to zero.   Lowering R to
+search more finely freezes more of them (at R&nbsp;=&nbsp;10&nbsp;%, everything up to &plusmn;5).   Such a
+weight is not trapped forever &mdash; re-normalization can lift it when some larger weight shrinks &mdash; but
+it escapes only slowly, and only upward in magnitude.   Since a weight of 1 against a scale of 1000 has almost
+no effect on play this costs little strength, but it does mean a feature crushed to &plusmn;1 early in a
+lineage is hard to rediscover later.
 
-<p> Every comparison above is decided by <e>matches won</e>, never by points scored. This is deliberate, and it
-was a lesson learned the hard way: when brains were scored on total points, evolution discovered that it could
-inflate its score by escalating the doubling cube without limit, and it optimized for that instead of for playing
-well. Counting matches removes the incentive entirely &mdash; a match is a match however extravagantly it was
-won.
+<H2 id="sec-evo-matches">4.4. Matches, not points</H2>
 
-<H2>Nothing is installed automatically</H2>
+<p> Every comparison above is decided by <e>matches won</e>, never by points scored.   This is deliberate, and
+it was learned the hard way: when brains were scored on total points, evolution discovered it could inflate its
+score by escalating the doubling cube without limit, and optimized for that instead of for playing well.   One
+game worth a million points swamped a tournament of thousands of games.   Counting matches removes the
+incentive entirely &mdash; a match is a match however extravagantly it was won.   Section
+<a href="#sec-match">6.1</a> describes the match rules this rests on.
 
-<p> Each champion is downloaded as a small file the moment it is crowned, and the parameter grid updates to show
-it, but <e>the roster is never changed behind your back</e>. Evolution runs produce candidates; deciding which
-candidates deserve a place among the nine brains is a separate, human decision, made by importing a champion (row
-13) and then running a tournament to see where it really belongs. Since results over a few dozen matches are
-noisy, a tournament of several hundred matches per pair is worth the wait before trusting any re-ordering.
+<H2 id="sec-evo-install">4.5. Nothing is installed automatically</H2>
 
-<H2>What evolution has found</H2>
+<p> Each champion is downloaded as a small file the moment it is crowned, and the parameter grid updates to
+show it, but <e>the roster is never changed behind your back</e>.   Evolution runs produce candidates; deciding
+which candidates deserve a place among the nine brains is a separate, human decision, made by importing a
+champion (row 13) and running a tournament to see where it really belongs.   Since results over a few dozen
+matches are noisy, several hundred matches per pairing are worth the wait before trusting any re-ordering
+&mdash; see section <a href="#sec-noise">6.3</a>.
 
-<p> Three results are worth recording, because none of them was anticipated.
+<H2 id="sec-evo-found">4.6. What evolution has found</H2>
 
-<p> <e>Evolution beats hand-tuning, decisively.</e> Every evolved brain outplays the hand-tuned <e>Origin</e>, and
-by a wide margin. Hand-tuning two dozen interacting numbers turns out to be something humans are simply bad at.
+<p> <e>Evolution beats hand-tuning, decisively.</e>   Every evolved brain outplays the hand-tuned
+<e>Origin</e>, and by a wide margin.   Hand-tuning two dozen interacting numbers turns out to be something
+humans are simply bad at.
 
-<p> <e>It compounds.</e> Evolving a brain that is itself the product of an earlier evolution keeps yielding
-improvements, several generations deep, although the margins do narrow.
+<p> <e>It compounds.</e>   Evolving a brain that is itself the product of an earlier evolution keeps yielding
+improvements, several generations deep, although the margins narrow.
 
-<p> <e>It found the racer &mdash; and then found its way past it.</e> For most of the project every run converged
-on nearly the same strategy: pour everything into the race and almost nothing into hitting. That is less strange
-than it sounds. Your own pip count falls by the dice total whatever you do with them, so the race term barely
-distinguishes one legal play from another &mdash; except through hits, which set the opponent back, and through
-efficient bearing off. A "pure racer" therefore still hits, and hits soundly, for reasons of the race; whereas an
-explicit hitting weight tempts a brain into hits its blunt evaluation cannot properly judge. Only after the
-golden-point weights were added, and the race terms deliberately reined in so that they no longer dominated the
-scale, did a genuinely positional brain &mdash; one that prizes the 5-point &mdash; finally win the roster.
+<p> <e>It found the racer &mdash; and then found its way past it.</e>   For most of the project every run
+converged on nearly the same strategy: pour everything into the race and almost nothing into hitting.   That is
+less strange than it sounds, and section <a href="#sec-race">3.2</a> has the reason.   Your own pip count falls
+by the dice total whatever you do, so the race term barely distinguishes one legal play from another &mdash;
+except through hits, which set the opponent back, and through efficient bearing off.   A "pure racer"
+therefore still hits, and hits soundly, for reasons of the race; whereas an explicit hitting weight tempts a
+brain into hits its blunt evaluation cannot properly judge.   Only after the golden-point weights were added,
+and the race terms deliberately reined in so that they no longer dominated the scale, did a genuinely
+positional brain &mdash; one that prizes the 5-point &mdash; finally win the roster.
+
+<p> <e>And there is a ceiling.</e>   Gauntlet margins have been shrinking for some generations, and the whole
+of the parameter roster is now beaten comfortably by a net trained for a few minutes.   That is the honest
+summary of what a hand-designed feature set can reach here, and it is why the second kind of brain exists.
+
+<H1 id="sec-net">5. The Net<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<p> A <i>net</i> replaces the twenty-two hand-designed features with a neural network that is shown nothing but
+the raw position and taught by playing against itself.   It is never given a human game, and nobody ever tells
+it what a prime or an anchor is.   The design follows Gerald Tesauro's TD-Gammon, with the differences noted
+where they occur.
+
+<H2 id="sec-net-decisions">5.1. Four decisions taken before any code</H2>
+
+<OL>
+  <LI><e>The encoding is mover-relative.</e>   Every position is presented from the point of view of the side
+      on roll; if that is Red, the board is mirrored first.   Colour symmetry then becomes a property of the
+      <e>encoder</e>, exact to the last bit, instead of something the network has to learn &mdash; and every
+      training game teaches both colours at once.   One consequence: Tesauro's two turn-indicator inputs are
+      constant here and are omitted, so the input is <e>196</e> wide rather than 198.</LI>
+  <LI><e>The output is a distribution over six outcomes</e>, not a score: my single, gammon and backgammon,
+      and the opponent's three.   Six units rather than five, although one is redundant: softmax is invariant
+      to a constant shift, so the redundancy is harmless, and keeping all six is what makes the output layer
+      symmetric under the mirror.</LI>
+  <LI><e>The cube is not an input.</e>   The net predicts the <e>cubeless</e> outcome distribution, and every
+      doubling decision is computed from those probabilities afterwards (section
+      <a href="#sec-net-cube">5.11</a>).</LI>
+  <LI><e>No genetic algorithm.</e>   Self-play learning replaces it entirely.   A net cannot be evolved and the
+      EVOLVE button refuses one.</LI>
+</OL>
+
+<H2 id="sec-net-encode">5.2. The encoding</H2>
+
+<p> The 196 inputs are laid out as follows.   Remember that the position has already been mirrored if
+necessary, so the <e>mover</e> is always the first side.
+
+<table class="desc">
+  <tr><td class="code">0&ndash;95</td><td>The mover's 24 points, four units each.</td></tr>
+  <tr><td class="code">96&ndash;191</td><td>The opponent's 24 points, four units each.</td></tr>
+  <tr><td class="code">192, 193</td><td>The mover's and the opponent's checkers on the bar.</td></tr>
+  <tr><td class="code">194, 195</td><td>The mover's and the opponent's checkers borne off.</td></tr>
+</table>
+
+<p> The four units of a point encode how many checkers of that owner stand on it, in <i>truncated unary</i>:
+the first three are 1 when the count is at least 1, 2 and 3 respectively, and the fourth carries the excess,
+$(n-3)/2$.   So one checker reads $(1,0,0,0)$, three read $(1,1,1,0)$, and five read $(1,1,1,1)$ with the last
+unit at 1.   The point is that "a blot", "a made point" and "a stack" are distinct <e>features</e> the first
+layer can weight separately, rather than one number the network would have to learn to threshold.
+
+<p> Bar and borne-off counts are compressed as $\sqrt{n}$, which keeps them in the same band as the
+indicator units.   Tesauro's original is reported variously as $n/2$ and $\sqrt{n}$; the choice here is one
+line and has never been measured against the alternative.
+
+<p> The encoding is <e>sparse</e> by construction: at most thirty checkers are on the board, so at most about
+thirty of the 196 inputs are ever nonzero &mdash; the measured median is 28.   Both the forward pass and the
+first layer's gradient iterate over the nonzero entries only, which is roughly seven times less work than a
+dense pass and is the reason a wide input encoding costs memory rather than time.
+
+<div class="algo-title">Encoding a position</div>
+<pre class="algo">
+<span class="kw">function</span> encode(points, bar, off, mover):
+    <span class="kw">if</span> mover == Red: (points, bar, off) = mirror(points, bar, off)
+    x = 196 zeros
+    <span class="kw">for</span> side <span class="kw">in</span> {mover: 0, opponent: 96}:
+        <span class="kw">for</span> p <span class="kw">in</span> 1..24:
+            n = number of that side's checkers on point p
+            b = side_base + (p-1)*4
+            <span class="kw">if</span> n &gt;= 1: x[b]   = 1
+            <span class="kw">if</span> n &gt;= 2: x[b+1] = 1
+            <span class="kw">if</span> n &gt;= 3: x[b+2] = 1
+            <span class="kw">if</span> n &gt;  3: x[b+3] = (n-3)/2
+    x[192] = sqrt(bar[mover]);       x[193] = sqrt(bar[opponent])
+    x[194] = sqrt(off[mover]);       x[195] = sqrt(off[opponent])
+    <span class="kw">return</span> x
+</pre>
+
+<H2 id="sec-net-shape">5.3. The shape of the network</H2>
+
+<p> The network is a plain feed-forward stack: 196 inputs, one or more hidden layers of equal width, and six
+outputs.   The width and the number of layers are the <e>W</e> and <e>L</e> fields of the LEARN row; the
+<i>activation function</i> $\varphi$ applied at every hidden unit is the menu beside them.
+
+<table class="desc">
+  <tr><td class="code">sigmoid</td><td>$1/(1+e^{-z})$.   What TD-Gammon used, and measurably the best of these on this encoding.</td></tr>
+  <tr><td class="code">tanh</td><td>$\tanh z$.   Note $\tanh z = 2\,\mathrm{sigmoid}(2z) - 1$, so a tanh net and a sigmoid net represent exactly the <e>same function class</e>; they differ only in parametrisation and in gradient scale.</td></tr>
+  <tr><td class="code">lrelu / relu</td><td>$\max(z,0)$, with leaky ReLU passing $0.01z$ instead of 0 below zero.</td></tr>
+  <tr><td class="code">arctan</td><td>$\arctan z$: the same odd saturating shape as tanh but with polynomial rather than exponential tails, so a hard-driven unit keeps passing a usable gradient.</td></tr>
+  <tr><td class="code">ident</td><td>$z$ &mdash; a <e>control, not a brain</e>.   A composition of affine maps is affine, so an identity network of any depth collapses to a single $196 \to 6$ linear map with a softmax: multinomial logistic regression on this encoding.   It answers "how much of the net's strength is the nonlinearity rather than the representation?", and the layer menu is dimmed when it is chosen because depth is meaningless for it.</td></tr>
+</table>
+
+<p> Weights are initialised from a Gaussian with standard deviation $\sqrt{g/\mathrm{fan\_in}}$, where $g$ is
+2 for the ReLU family and 1 otherwise, and biases at zero.
+
+<p> <e>&#9888; The first layer's fan-in is the number of ACTIVE inputs, not the input width.</e>   The textbook
+rule uses $1/196$, which assumes every input carries signal; here about 86% of them are zero, so $1/196$ would
+start every hidden unit in the near-linear region doing nothing at all, and the net would crawl for thousands
+of games before anything happened.   The expected active count, <e>27</e>, is used instead.   The output
+layer's weights are additionally scaled by 0.1: large early logits saturate the softmax, and a net that starts
+out confident spends its first thousands of games unlearning a confidence it had no reason to have.
+
+<H2 id="sec-net-forward">5.4. The forward pass</H2>
+
+<p> Each layer computes $z = Wa + b$ and then $a = \varphi(z)$, except the last, which applies a
+<e>softmax</e>:
+
+<p style="text-align:center;"> $ \displaystyle p_k = \frac{e^{z_k}}{\sum_{j} e^{z_j}}, \qquad k = 1 \ldots 6. $
+
+<p> In practice the maximum $z$ is subtracted before exponentiating, which softmax is invariant to and which
+keeps the exponentials from overflowing.   The six outputs are then a probability distribution over the six
+ways the game can end, <e>from the mover's point of view</e>.
+
+<p> The <i>equity</i> &mdash; the expected number of points &mdash; is a fixed dot product with no free
+parameters at all:
+
+<p style="text-align:center;"> $ \displaystyle E \;=\; p_1 + 2p_2 + 3p_3 - p_4 - 2p_5 - 3p_6. $
+
+<p> That is the whole reason for predicting a distribution rather than a score.   The evaluation has to learn
+probabilities, which are meaningful and checkable; how much a gammon is worth is arithmetic, not a parameter
+somebody has to tune.   The same six numbers also carry the cube decision (section
+<a href="#sec-net-cube">5.11</a>) and the win probability shown in the move list.
+
+<p> One more operation is needed everywhere: the same distribution seen <e>from the other side of the table</e>
+is $(p_4,p_5,p_6,p_1,p_2,p_3)$.   The search needs it because a child position is the opponent's to move, and
+the learning rule needs it for the same reason.
+
+<H2 id="sec-net-terminal">5.5. Positions the net is never asked about</H2>
+
+<p> If the game is over, the answer is known exactly and the network is not consulted: a finished position is
+encoded directly as a one-hot outcome.   The loser's borne-off count decides between a single and a gammon; a
+gammon becomes a backgammon if the loser still has a checker on the bar or in the winner's home board.   Asking
+the network there would train it against its own noise on the one class of position where the truth is free.
+
+<H2 id="sec-net-move">5.6. How a net chooses a move</H2>
+
+<p> Exactly as in section <a href="#sec-search">2</a>: the search is the same code.   The only difference is
+what <code>leafValue</code> does, and it has one wrinkle worth stating carefully.
+
+<p> A net answers <e>from the point of view of the side on roll at that position</e>.   After I play a
+candidate turn it is the <e>opponent's</e> turn, so the equity the net reports for the resulting position is
+the opponent's, and mine is its negative.   Getting this wrong does not crash anything; it produces a net that
+plays plausibly and badly.   The same reasoning explains why the seam is told who is on roll: for a parameter
+AI that argument is ignored, and for a net it decides the sign.
+
+<pre class="algo">
+<span class="kw">function</span> leafValue(position, brain, onRoll):
+    <span class="kw">if</span> brain is a parameter AI: <span class="kw">return</span> evaluate(position, brain.weights)   <span class="cmt">// White's view already</span>
+    e = equity(net(position, mover = onRoll))                    <span class="cmt">// the ON-ROLL side's view</span>
+    <span class="kw">return</span> (onRoll == White) ? e : -e                            <span class="cmt">// into White's view</span>
+</pre>
+
+<H2 id="sec-net-selfplay">5.7. Learning from self-play</H2>
+
+<p> Training is a loop over complete games the net plays against itself, at depth 1, cubeless, with seeded
+dice.   Each game produces a <i>trace</i>: the sequence of positions at which a side was <e>about to roll</e>,
+which is exactly the situation the net is asked about when a search reaches a leaf.   The two sides alternate
+strictly &mdash; a turn with no legal move still ends the turn &mdash; and the trainer asserts that, because
+the learning rule depends on position $t+1$ belonging to the other player.
+
+<div class="algo-title">One self-play game</div>
+<pre class="algo">
+<span class="kw">function</span> selfPlayGame(net, seed):
+    g = new game with dice seeded from `seed`
+    g.rollForFirstTurn()
+    trace = [ (encode(g, mover = g.player), g.player) ]
+    <span class="kw">while</span> not g.over:
+        turn = argmax over legal complete turns of  -equity(net(result, mover = other))
+        play turn
+        <span class="kw">if</span> g.over: <span class="kw">break</span>
+        g.endTurn()
+        trace.append( (encode(g, mover = g.player), g.player) )
+        g.rollDice()
+    <span class="kw">return</span> trace, terminalOutcome(g)
+</pre>
+
+<H2 id="sec-net-lambda">5.8. The &lambda;-return</H2>
+
+<p> The question every learning rule has to answer is <e>what each position in the trace should be trained
+towards</e>.   Two extremes are obvious and both are bad.
+
+<table class="desc">
+  <tr><td class="code">&lambda;&nbsp;=&nbsp;1</td><td><e>Monte Carlo.</e>   Every position in the game is labelled with the outcome that actually happened.   Unbiased and simple &mdash; but one game then delivers some sixty <e>perfectly correlated</e> gradient steps, which forces the learning rate down and, at any rate high enough to learn quickly, walks backwards.</td></tr>
+  <tr><td class="code">&lambda;&nbsp;=&nbsp;0</td><td><e>TD(0).</e>   A position is trained towards its successor's current estimate.   Only the last position of a game carries any truth, and the net collapses towards the base rate: near-uniform predictions and games that get longer rather than shorter.</td></tr>
+</table>
+
+<p> The <i>lambda</i>-return interpolates between them.   Walking the trace <e>backwards</e>, with $V$ the
+network's own estimate and $\mathrm{swap}$ the outcome swap of section <a href="#sec-net-forward">5.4</a>:
+
+<p style="text-align:center;"> $ \displaystyle G_t \;=\; \operatorname{swap}\Bigl( (1-\lambda)\,V(s_{t+1}) \;+\; \lambda\,G_{t+1} \Bigr), \qquad G_{\text{last}} = \text{the actual outcome}. $
+
+<p> Both terms inside the swap are in the <e>successor's</e> frame, which is why they can be blended directly
+and the swap happens once, at the end.   Walking backwards propagates the outcome the whole length of the game
+in a single sweep rather than one step per visit.   At $\lambda = 1$ this reduces exactly to Monte Carlo and at
+$\lambda = 0$ exactly to TD(0), which is worth checking in an implementation because it is easy to get the
+frames wrong and hard to notice afterwards.
+
+<p> <e>&lambda; = 0.7 is the default and it is the largest single effect measured in this project</e> &mdash;
+larger than the width, the depth, or the choice of activation, by an order of magnitude.   Section
+<a href="#sec-results">6.4</a> has the numbers.
+
+<H2 id="sec-net-backprop">5.9. Backpropagation</H2>
+
+<p> The loss is cross-entropy between the target distribution and the network's output,
+$L = -\sum_k t_k \log p_k$.   Pairing a softmax output with cross-entropy has a convenient consequence: the
+gradient with respect to the output <e>logits</e> is exactly
+
+<p style="text-align:center;"> $ \delta^{\text{out}} = p - t, $
+
+<p> with no quotient rule and nothing that can blow up.   From there it is the ordinary chain rule: for each
+earlier layer, $\delta^{(l-1)} = \bigl(W^{(l)\top}\delta^{(l)}\bigr)\odot\varphi'(z^{(l-1)})$, the weight
+gradient of a layer is $\delta$ times the incoming activation, and the bias gradient is $\delta$ itself.   The
+first layer's weight gradient is nonzero only in the roughly thirty active input columns, so the backward pass
+through the largest matrix touches those and no others.
+
+<p> The update is plain gradient descent, $w \leftarrow w - \eta\,\partial L/\partial w$, applied once per
+position in game order.   There is no momentum, no weight decay and no adaptive rate.   The learning rate is
+fixed at $\eta = 0.01$ and there is deliberately no control for it: a wrong value ruins a run silently and
+cannot be told apart afterwards from a bad idea, whereas the value that is there has evidence behind it.
+
+<p> Two checks are worth building if you reimplement this, because between them they catch nearly every
+mistake.   Compare the analytic gradient against a central finite difference &mdash; but require agreement in
+<e>absolute or</e> relative terms, since wherever the true gradient is tiny the relative error is meaningless
+roundoff.   And overfit a single position: cross-entropy should fall to nearly zero.   That second test, not
+the gradient check, is what catches a sign error in the update.
+
+<H2 id="sec-net-training">5.10. Training in parallel</H2>
+
+<p> Self-play looks inherently serial &mdash; game $n+1$ is played by the net that game $n$ produced &mdash;
+but a single game barely moves the weights: about 78 positions at a rate of 0.01, and each move is an argmax
+over some twenty candidates.   The net that plays game 1001 is, for practical purposes, the net that played
+game 1000.
+
+<p> So training goes in <e>rounds</e>.   The weights are frozen, a round of games is generated in parallel
+across the workers, and then every update is applied on one thread <e>in game order, exactly as a serial
+trainer would</e>.   The learning code does not change at all; the only approximation is that a round's games
+were played by a net one round stale instead of one game stale.
+
+<p> The round size is set by <e>bandwidth</e>, not by staleness: broadcasting the weights costs about 130 kB
+per worker per round, so one game per round would spend more time copying than playing.   Eight games per
+worker puts a round at 256 games on 32 workers &mdash; a quarter of one percent of a 100,000-game run.
+
+<p> <e>&#9888; A seed reproduces a run only at the same number of workers</e>, since the round size, and with it
+the staleness boundary, is the worker count times eight.   The same seed on 32 and on 16 workers gives two
+different training runs.   That is why the worker count is recorded in a net's file and displayed beside its
+name.
+
+<p> Generation is about seven-eighths of the work, so parallelising only the generation captures nearly all of
+the available speedup.   Measured on a 32-thread desktop: about <e>390 games per second</e>, so a hundred
+thousand games is a few minutes and a million is under an hour.
+
+<p> <e>&#9888; A run is written out only when it finishes.</e>   There is no checkpointing, so closing the tab
+part-way through a long run loses all of it.
+
+<H2 id="sec-net-cube">5.11. The cube: Janowski's formula</H2>
+
+<p> Because a net predicts the whole outcome distribution, its cube decisions are <e>computed</e> rather than
+tuned: it has no DT and no AT.   The model is Rick Janowski's (1993).   Reduce the position, from the relevant
+side's point of view, to three numbers:
+
+<table class="desc">
+  <tr><td class="code">p</td><td>The probability of winning at all, $p_1+p_2+p_3$.</td></tr>
+  <tr><td class="code">W</td><td>The average value of the games won: $(p_1 + 2p_2 + 3p_3)/p$.</td></tr>
+  <tr><td class="code">L</td><td>The average value of the games lost: $(p_4 + 2p_5 + 3p_6)/(1-p)$.</td></tr>
+</table>
+
+<p> A dead cube (never usable again) and a perfectly live one (recubed at exactly the right moment) are both
+solvable, and real play lies between them.   One <i>cube-life index</i> $x \in [0,1]$ interpolates:
+
+<p style="text-align:center;">
+$ \displaystyle \mathrm{TP} = \frac{L - 0.5}{W + L + 0.5x}, \qquad
+  E_{\text{own}} = p\,(W + L + 0.5x) - L, $</p>
+<p style="text-align:center;">
+$ \displaystyle E_{\text{opp}} = E_{\text{own}} - 0.5x, \qquad
+  E_{\text{centre}} = \frac{4}{4-x}\Bigl( p\,(W+L+0.5x) - L - 0.25x \Bigr). $</p>
+
+<p> All four are per unit of the current cube value, so the cube value cancels out of every comparison.
+Owning the cube is worth exactly $0.5x$.   The take point TP is the classic 25% at $x = 0$ and 20% at $x = 1$
+when $W = L = 1$, which is the check to write first.
+
+<p> The decisions follow directly:
+
+<table class="desc">
+  <tr><td class="code">double</td><td>Offer or redouble when $\min(2E_{\text{opp}},\,1) &gt; E_{\text{hold}}$, where $E_{\text{hold}}$ is $E_{\text{own}}$ or $E_{\text{centre}}$ according to who holds the cube.   Doubling hands the cube to the opponent at twice the stake and he takes only if that beats dropping, so my equity is the smaller of the two.</td></tr>
+  <tr><td class="code">take</td><td>Take when $p \ge \mathrm{TP}$, with $p$, $W$ and $L$ read from the <e>taker's</e> side.</td></tr>
+</table>
+
+<p> <e>"Too good to double" needs no rule of its own.</e>   When gammons are heavy, $E_{\text{hold}}$ exceeds 1
+by itself and the comparison declines the double.   That falls out of the arithmetic, and it is exactly the
+case the two-threshold rule of section <a href="#sec-dtat">3.10</a> gets wrong.
+
+<p> Two details are easy to get wrong and both were.   <e>The take is priced with the DOUBLER on roll</e> &mdash;
+he doubles, then rolls &mdash; so the taker's distribution is the doubler's, swapped.   Evaluating as though the
+taker were on roll overstates his position by the value of a roll.   And $x$ is forced to <e>0</e> when a
+redouble is impossible, that is when four times the current cube value exceeds what the match still allows: a
+live-cube model on a dead cube doubles far too readily.   Otherwise $x$ is 0.7 in contact and 0.6 in a race.
+
+<p> <e>&#9888; This is money-game theory.</e>   It is a good approximation early in a match and wrong near the
+end, where the right answer needs a match-equity table.   That is a known and deliberate limitation.
+
+<H2 id="sec-net-file">5.12. What is in a net file</H2>
+
+<p> A net is a JSON file of about a third of a megabyte: a <e>spec</e> recording the recipe &mdash; hidden
+layer widths, activation, seed, $\lambda$, learning rate, worker count &mdash; the number of games it was
+trained on, and then the layers, each an array of weights and one of biases.   It is validated on import:
+shapes must agree with one another and with this build's 196 inputs and 6 outputs, and every number must be
+finite.   A malformed file is refused with a reason, since a brain full of NaNs would poison every score
+derived from it and be far harder to notice later.
+
+<p> A trained net's systematic name spells the recipe out: <e>N80-L2-sigmoid-800k-lam07</e> is two hidden
+layers of eighty units, sigmoid, 800,000 training games, $\lambda = 0.7$.   The nets that ship with the game
+carry mythological names instead, kept in order of strength; row 18 of the control column shows the recipe of
+whichever is selected.
+
+<p> <e>&#9888; A shipped net's NAME is a slot, not an identity.</e>   The roster has twice been rebuilt and the
+names reassigned wholesale, so a claim about "Apollo" is only meaningful with a date attached.   Identify a net
+by its recipe and seed, which is what the field beside the menu is for.
+
+<H1 id="sec-measure">6. Playing and Measuring<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<H2 id="sec-match">6.1. Matches, the Crawford rule and the dead cube</H2>
+
+<p> Everything the AIs do against one another is scored in <e>matches won</e>, for the reason given in section
+<a href="#sec-evo-matches">4.4</a>.   A <i>match</i> is a series of games, colours alternating, played until one
+side reaches an agreed point total <e>X</e> &mdash; 11 by default, odd so that it cannot be tied.   A match win
+counts as one win however lopsided the games were.
+
+<p> Two standard rules are implemented, and both matter to the AIs' cube decisions.
+
+<table class="desc">
+  <tr><td class="code">Crawford</td><td>The single game played immediately after either side first reaches $X-1$ is played <e>without</e> doubling.   Without it the trailing player would double at once, having nothing to lose.</td></tr>
+  <tr><td class="code">dead cube</td><td>The cube is never raised beyond the points the trailing player still needs: $\mathrm{maxCube} = X - \min(\mathrm{score}_A, \mathrm{score}_B)$.   Anything above that cannot change who wins the match.</td></tr>
+</table>
+
+<p> At $X = 1$ the cap makes the cube dead altogether, which is why a match length of 1 gives plain single
+games.   Since version 153 the cube can also be switched off <e>independently</e> of the match length, from the
+Doubling menu of row 20 &mdash; so a cubeless match to 11 is possible, which it was not before.   The
+difference is large: measured in the app, 13.6 games per match cubeless against 6.2 with the cube.
+
+<p> A match to 11 needs at least 11 games if every game is worth one point and can run to 21, but the measured
+average is about 5 to 6, because of gammons and the cube.
+
+<H2 id="sec-duplo">6.2. Duplicate play</H2>
+
+<p> Backgammon results are noisy, and most of the noise is the dice rather than the play.   <i>Duplicate
+play</i>, borrowed from duplicate bridge, cancels some of it: every match is played <e>twice</e>, the second
+time with the same dice and the two brains exchanged between the seats.   Each brain then receives, in the
+second half, exactly what its opponent received in the first.
+
+<p> The mechanism is cheap because the batch runners already alternated seats: the mirror of a match is the
+same call with the arguments swapped and the same seed.   Mirroring is at the <e>match</e> level, so the whole
+match &mdash; Crawford, the cube cap, the ending &mdash; is mirrored, and every game within it is still paired
+with its counterpart by index.   The dice come from a seeded generator (a mulberry32, so it is bit-identical in
+the browser, in a worker and in Node), with each game's seed derived from the match seed and the game index.
+
+<p> One consequence is exact rather than statistical: <e>two brains that play identically now tie exactly</e>.
+With equal weights the two halves are the same computation, so the same seat wins both, and since the brains
+change seats the pair cancels to zero.   Not approximately &mdash; zero.   That is what makes duplicate play
+valuable during evolution, where a mutant is compared with a parent it differs from barely at all: a
+behaviourally identical mutant nets 0 instead of a couple of matches of noise, and can no longer be crowned by
+luck.
+
+<p> <e>&#9888; Between brains that play differently the gain is slight, and the reason is worth understanding.</e>
+Backgammon's randomness is interleaved with the decisions, so the dice are genuinely shared only up to the first
+divergence: after that the same number arrives at a different board.   Two roster brains playing the same match
+diverge on average by turn 11.   Longer matches make it worse.   Measured effective sample multipliers in
+tournaments between real, differing brains have been 1.01 to 1.08 &mdash; that is, almost nothing.
+
+<p> The exported spreadsheet reports the multiplier as the ratio of an <e>independent-play baseline</e> to the
+observed rate of <i>sweeps</i>, a sweep being the same brain winning both halves of a pair.   The baseline is
+not one half.   Two independent matches between brains with win probability $p$ sweep with probability
+$p^2 + (1-p)^2$, which is one half only for an even pairing and rises towards 1 as the field spreads out; a
+98%-vs-2% pairing sweeps 96% of the time with no pairing at all.   The baseline is therefore computed as the
+mean of $p^2+(1-p)^2$ over the pairings actually played.
+
+<H2 id="sec-noise">6.3. How many matches are enough</H2>
+
+<p> This is the question that decides whether any of the numbers on this page mean anything, so it is worth
+stating plainly.   For a head-to-head of $n$ matches with a true probability near one half, the standard error
+of the observed share is $1/(2\sqrt{n})$: about 1.6 percentage points at 1,000 matches and 0.5 at 10,000.
+Equivalently, over 10,000 matches a lead of $d$ matches is worth $z = d/100$.
+
+<table class="meas">
+  <tr><th class="name">matches per pairing</th><th>standard error</th><th>what it can resolve</th></tr>
+  <tr><td class="name">50</td><td>7 points</td><td>nothing in a tight field &mdash; the order swings by &plusmn;30 matches run to run</td></tr>
+  <tr><td class="name">1,000</td><td>1.6 points</td><td>a real difference of about 5 points</td></tr>
+  <tr><td class="name">10,000</td><td>0.5 points</td><td>a difference of about 1.5 points</td></tr>
+</table>
+
+<p> Two warnings, both learned by getting them wrong.   <e>Do not read a running total.</e>   A watched score
+crosses two standard errors far more often than 5% of the time; one comparison that finished at 58.3% stood at
+64.6% after 65 matches.   Decide the threshold before the run and read only the final number.   And <e>a
+measurement is not the only source of noise</e>: two nets trained to the same recipe with different seeds differ
+by about a point, so at 10,000 matches per pairing the training seed, not the match count, is what limits how
+finely two recipes can be told apart.
+
+<H2 id="sec-results">6.4. What has been measured</H2>
+
+<p> All of the following come from the tournament and competition machinery in the control column, and can be
+re-run there.   Since the dice are not seeded across runs, re-running gives a statistically equivalent answer
+rather than the same number, which is why sample sizes are quoted.
+
+<p> <e>Search depth pays, and it is the biggest single dial after &lambda;.</e>   The strongest net at depth 1
+against the same net at depth 2, 1,000 matches to 11: <e>depth 2 won 583&ndash;417</e>, that is 58.3%,
+z = 5.25, and +0.22 game points per game.   The control &mdash; the same net at the same depth on both sides
+&mdash; returned exactly 500&ndash;500 with duplicate play on, which is what says the harness is sound.
+
+<p> <e>What each net parameter is worth.</e>   Ten nets, each differing from a common reference in exactly one
+respect, played a round robin of 10,000 matches per pairing at depth 1 &mdash; 450,000 matches, about 71
+minutes.   The reference is two hidden layers of 80, sigmoid, &lambda; = 0.7, 800,000 training games, all
+trained from one seed.
+
+<table class="meas">
+  <tr><th class="name">the one change</th><th>against the reference</th><th>z</th></tr>
+  <tr><td class="name">twice the training (1.6M games)</td><td>53.4%</td><td>+6.7</td></tr>
+  <tr><td class="name">twice the width (160)</td><td>50.8%</td><td>+1.7</td></tr>
+  <tr><td class="name">a third hidden layer</td><td>49.8%</td><td>&minus;0.4</td></tr>
+  <tr><td class="name">leaky ReLU instead of sigmoid</td><td>42.9%</td><td>&minus;14.1</td></tr>
+  <tr><td class="name">tanh</td><td>41.5%</td><td>&minus;17.0</td></tr>
+  <tr><td class="name">ReLU</td><td>39.3%</td><td>&minus;21.5</td></tr>
+  <tr><td class="name">arctan</td><td>37.8%</td><td>&minus;24.4</td></tr>
+  <tr><td class="name">&lambda; = 1 (Monte-Carlo targets)</td><td>8.9%</td><td>&minus;82</td></tr>
+  <tr><td class="name">no nonlinearity at all (the control)</td><td>1.6%</td><td>&minus;97</td></tr>
+</table>
+
+<p> Read from the bottom up, that table is the argument of this whole page.   The <e>learning rule</e> matters
+most by a distance: Monte-Carlo targets cost more than every architecture choice put together, and get you
+barely more than logistic regression.   The <e>activation</e> matters next, and sigmoid wins decisively &mdash;
+which is striking, since tanh is the same function class rescaled, so the difference is gradient scale
+rather than what the network can represent.   <e>Training volume</e> is the most reliable positive dial and has
+not begun to saturate.   <e>Width</e> helps only once there is enough training to support it: the same
+comparison at 100,000 games measured 48.3%, that is, harmful.   A <e>third layer</e> buys nothing at any volume
+tried, while costing about 1.5 times the training time.
+
+<p> <e>&#9888; Every one of those figures was measured at depth 1</e>, and the architecture effects are already
+known to interact with the activation.   None of them should be quoted as unconditional.
+
+<p> <e>Gammons are a third of the stake.</e>   Over 3,000 cubeless self-play games: 69.0% single, 29.9%
+gammon, 1.1% backgammon, so the average cubeless game is worth 1.32 points rather than 1.   And they change the
+<e>policy</e>, not just the score: ranking moves by full equity rather than by win probability alone picks a
+different move 16.9% of the time.   That is a large part of why a net beats a parameter AI, which has no
+representation of a gammon at all.
+
+<H2 id="sec-gnubg">6.5. An outside yardstick</H2>
+
+<p> Everything above is <e>self-relative</e>: this net beats that one, which beats Arwen, which beats Origin.
+A chain of relative wins carries no absolute scale, so it says nothing about how the play here compares with
+serious backgammon.   For that, the AIs were scored against <e>GNU Backgammon</e>, a mature open-source engine
+whose evaluation is the product of far more work than this project, and which prices <e>every</e> legal move.
+
+<p> <e>&#9888; The measurement below is NOT reproducible from this web page.</e>   It was made with an external
+program, on a fixed corpus of 2,400 decisions taken from 160 games of GNU Backgammon's own play, each scored by
+how much equity the choice gave away against that engine's best move.   The unit is the <i>millipoint</i> per
+decision (mpr) &mdash; thousandths of a point &mdash; and it is the standard yardstick for rating backgammon
+play.   Lower is better.
+
+<table class="meas">
+  <tr><th class="name">player</th><th>plays the reference engine's top move</th><th>mean error</th></tr>
+  <tr><td class="name">the net, depth 1</td><td>64.4%</td><td>12.6 mpr</td></tr>
+  <tr><td class="name">the net, depth 2</td><td>69.8%</td><td>6.9 mpr</td></tr>
+  <tr><td class="name">the net, depth 3</td><td>74.9%</td><td>5.4 mpr</td></tr>
+  <tr><td class="name">GNU Backgammon, at its shallowest setting</td><td>&mdash;</td><td>2.0 mpr</td></tr>
+</table>
+
+<p> Two things follow, and they point in opposite directions.
+
+<p> <e>Every ply pays, and the returns diminish smoothly.</e>   The three depths are 12.6, 6.9 and 5.4 mpr;
+each extra ply removes roughly 45% and then 20% of the remaining error.   This is an independent confirmation
+of the 583&ndash;417 match result above, by a completely different instrument, and it is the measurement that
+justifies playing at depth 2 or 3 when you have the patience.
+
+<p> <e>But the like-for-like comparison is humbling.</e>   At the <e>same</e> search depth, the net gives away
+12.6 mpr where the reference engine gives away 2.0 &mdash; a factor of six.   The net needs two extra plies,
+and seconds per move rather than milliseconds, to reach 5.4, which is still more than twice the reference at
+its cheapest setting.   The gap is in the <e>evaluation</e>, not the search, and that is exactly what the raw
+196-input encoding predicts: the reference engine's inputs include hand-designed features for containment,
+timing and distribution which this encoding must discover for itself and largely does not.
+
+<p> The same conclusion arrives from the other direction.   Doubling the training volume is worth about 0.66
+mpr, or 5% of the error &mdash; and a constant fraction per doubling, at both depths.   Closing a factor of six
+that way would take on the order of $10^{11}$ self-play games.   <e>Training volume is the cheapest and most
+reliable dial available here, and it is not the one that reaches a modern engine.</e>   Features, phase-split
+networks and rollout targets are; none of them is implemented.
+
+<p> For orientation, the reference engine sorts play into named bands by exactly this error rate: under about
+2 mpr it calls "supernatural", 2 to 4 "world class", and around 6 "expert".   Those names describe checker play
+only, cubeless, and they are that program's nomenclature rather than a claim about tournament results against
+human champions.
 
 <p style="margin-top:2em;"><a href="manual.html">&larr; Back to the User's Guide</a></p>
 

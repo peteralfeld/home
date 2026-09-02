@@ -4709,21 +4709,49 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
   });
 
   // How often the SAME brain won BOTH halves of a mirrored pair. This is the whole
-  // story on DUPLO's precision: for independent (unpaired) matches between evenly
-  // matched brains it would be 0.5, so the effective sample multiplier against an
-  // unpaired run is 0.5 / sweepRate. Two identical brains never sweep — they net
-  // exactly zero — and the closer two brains are, the rarer a sweep becomes, which is
-  // why the gain is largest exactly where the roster is tightest.
-  function duploStats(wonFlags, n) {
+  // story on DUPLO's precision: pairing cancels dice luck, so the two halves correlate
+  // and sweeps become RARER than independent matches would make them. The effective
+  // sample multiplier is baseline / sweepRate. Two identical brains never sweep — they
+  // net exactly zero — and the closer two brains are, the rarer a sweep becomes, which
+  // is why the gain is largest exactly where the roster is tightest.
+  // ⚠ THE UNPAIRED BASELINE IS NOT 0.5. Independent matches sweep at p^2 + (1-p)^2,
+  // which is 0.5 only for an EVENLY MATCHED pair: a 98%-vs-2% pairing sweeps 96% of the
+  // time with no pairing at all. Hardcoding 0.5 understated every uneven field, and on
+  // the 9/2 ten-net tournament (98% down to 1.6%) it printed 0.8 — i.e. claimed DUPLO
+  // made the sample WORSE, which is impossible. So `groups[i]` names the brain-pair
+  // match i belonged to, p is estimated per pairing, and the baselines are averaged
+  // over pairs: a tournament pools all its pairings into ONE flat array and must not be
+  // priced as though it were a single even match. Compete passes no groups (it has one
+  // pairing) and still gets its own p rather than 0.5.
+  function duploStats(wonFlags, n, groups) {
     if (!duploOn) return { on: false };
     let pairs = 0, sweeps = 0;
+    const byPairing = new Map();                         // pairing key -> {pairs, aWins}
     for (let k = 0; 2 * k + 1 < n; k++) {
       const a = wonFlags[2 * k], b = wonFlags[2 * k + 1];
       if (a === undefined || b === undefined) continue;   // run stopped mid-pair
       pairs++;
       if (a === b) sweeps++;
+      const key = groups ? groups[2 * k] : '';
+      let g = byPairing.get(key);
+      if (!g) byPairing.set(key, g = { pairs: 0, aWins: 0 });
+      g.pairs++;
+      if (a) g.aWins++;
+      if (b) g.aWins++;
     }
-    return { on: true, pairs, sweeps, rate: pairs ? sweeps / pairs : null };
+    // Mean over pairings of p^2 + (1-p)^2, weighted by the mirrored pairs each
+    // contributed. p is that pairing's own observed win rate, read off these same
+    // flags — so this is a reference line for the multiplier, not a significance test.
+    let wsum = 0;
+    for (const g of byPairing.values()) {
+      const p = g.aWins / (2 * g.pairs);
+      wsum += g.pairs * (p * p + (1 - p) * (1 - p));
+    }
+    return {
+      on: true, pairs, sweeps,
+      rate: pairs ? sweeps / pairs : null,
+      baseline: pairs ? wsum / pairs : null,
+    };
   }
 
   function duploCSV(d) {
@@ -4734,9 +4762,11 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     csv += 'Mirrored pairs,' + csvNum(d.pairs) + '\n';
     csv += 'Pair sweeps (same brain won both halves),' + csvNum(d.sweeps) + '\n';
     csv += 'Sweep rate,' + (d.rate === null ? '?' : d.rate.toFixed(4)) + '\n';
-    csv += 'Unpaired sweep rate for reference,0.5000\n';
-    csv += 'Effective sample multiplier (0.5 / sweep rate),'
-        + (d.rate === null ? '?' : (d.sweeps === 0 ? '>' + (0.5 * d.pairs).toFixed(1) : (0.5 / d.rate).toFixed(1))) + '\n';
+    csv += 'Unpaired sweep rate for this field,' + (d.baseline === null ? '?' : d.baseline.toFixed(4)) + '\n';
+    csv += 'Effective sample multiplier (unpaired baseline / sweep rate),'
+        + (d.rate === null || d.baseline === null ? '?'
+           : (d.sweeps === 0 ? '>' + (d.baseline * d.pairs).toFixed(1)
+                             : (d.baseline / d.rate).toFixed(2))) + '\n';
     return csv;
   }
 
@@ -5021,15 +5051,17 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
 
     // DUPLO: mirrored pairs sharing a seed. matchesPer is even, so every brain-pair
     // block starts at an even flat index and the pairs are (2k, 2k+1) globally.
-    // aWonArr[i] records whether A won match i, for the sweep rate.
+    // aWonArr[i] records whether A won match i, for the sweep rate; aPairing[i] names
+    // the brain-pair it belonged to, so the unpaired baseline is priced per pairing.
     const duploBase = duploBaseSeed();
     const aWonArr = [];
+    const aPairing = [];
     let flatIdx = 0;
 
     // Tally one finished match given its pair/swap meta.
     const tally = (res, A, B, swap, idx) => {
       const aWon = swap ? (res.winner === 'B') : (res.winner === 'A');
-      if (idx !== undefined) aWonArr[idx] = aWon;
+      if (idx !== undefined) { aWonArr[idx] = aWon; aPairing[idx] = A + '\u0000' + B; }
       const winner = aWon ? A : B, loser = aWon ? B : A;
       const aScore = swap ? res.scoreB : res.scoreA, bScore = swap ? res.scoreA : res.scoreB;
       mWins[winner]++; mLoss[loser]++; h2h[winner][loser]++;
@@ -5076,7 +5108,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
     const ranked = names.slice().sort((a, b) => (mWins[b] - mWins[a]) || (gpts[b] - gpts[a]));
     const secs = ((tEnd - tStart) / 1000).toFixed(1);
     downloadCSV('BGTournamentResults.csv', buildTournamentCSV(names, mWins, mLoss, gpts, gplayed, h2h, matchesPer, X, tStart, tEnd, depth,
-      perfBlock(done, totalGames, tEnd - tStart, totalTurns), duploStats(aWonArr, done),
+      perfBlock(done, totalGames, tEnd - tStart, totalTurns), duploStats(aWonArr, done, aPairing),
       { stopped, played: done, planned: total, cubeOff }));
     gameMessageEl.textContent = `Tournament ${stopped ? 'STOPPED' : 'done'} — winner ${ranked[0]} (${mWins[ranked[0]]} matches). ${done}${stopped ? ' of ' + total : ''} matches to ${X} in ${secs}s. Results saved.`;
     sysLog(`[Tournament] ${done}${stopped ? ' of ' + total : ''} matches to ${X} in ${secs}s. Winner: ${ranked[0]} (${mWins[ranked[0]]} matches won).`);
