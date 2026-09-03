@@ -53,51 +53,7 @@ e { color: rgb(200,255,200);
     
 
 
-/* Thumbnail images for the item list: text wraps alongside them. */
-img.thumb {
-    float: left;
-    height: 100px;
-    width: auto;
-    margin: 0 20px 10px 0;
-}
-
-/* Keep each item's heading below the previous item's thumbnail. */
-h2 {
-    clear: left;
-}
-
-/* Headline with a wide image on the same line, running off the right edge.
-   The image keeps a fixed 100px height; a wider window simply reveals more
-   of it rather than scaling it down. */
-.ruleline {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    overflow: hidden;      /* clip whatever runs past the right edge */
-    clear: left;
-    margin: 1.2em 0 0.6em 0;
-    margin-right: -8px;    /* bleed to the window edge, past the body margin */
-}
-
-.ruleline > a {
-    flex: none;            /* the headline keeps its two lines ... */
-}
-
-.ruleline h2 {
-    margin: 0;
-    white-space: nowrap;   /* ... breaking only at the explicit <br> */
-}
-
-.ruleline img {
-    height: 100px;
-    width: auto;
-    max-width: none;       /* never shrink to fit the window */
-    flex: none;            /* ... and the slide rule takes the clipping */
-}
-
-
 @media screen and (max-width: 600px) {
-    img.thumb,
     img[style*="float: left"] {
         float: none !important;
         display: block;
