@@ -170,6 +170,21 @@ brings you back here.
       <li><a href="#sec-gnubg">6.5. An outside yardstick</a></li>
     </ul>
   </li>
+  <li><a href="#sec-runs">7. Three Runs, in Full</a>
+    <ul>
+      <li><a href="#sec-run-nets">7.1. The nets, with the best parameter AI among them</a></li>
+      <li><a href="#sec-run-linear">7.2. The parameter roster, with one net among them</a></li>
+      <li><a href="#sec-run-depth">7.3. One net against itself, one ply apart</a></li>
+      <li><a href="#sec-run-comments">7.4. What the three runs say together</a></li>
+    </ul>
+  </li>
+  <li><a href="#sec-depth23">8. Depth 2 against Depth 3</a>
+    <ul>
+      <li><a href="#sec-d23-numbers">8.1. The measurement</a></li>
+      <li><a href="#sec-d23-says">8.2. What it says</a></li>
+      <li><a href="#sec-d23-why">8.3. Why this one is not a competition</a></li>
+    </ul>
+  </li>
 </ul>
 
 <H1 id="sec-brains">1. Two Kinds of Brain<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
@@ -1132,7 +1147,23 @@ mean of $p^2+(1-p)^2$ over the pairings actually played.
 <p> This is the question that decides whether any of the numbers on this page mean anything, so it is worth
 stating plainly.   For a head-to-head of $n$ matches with a true probability near one half, the standard error
 of the observed share is $1/(2\sqrt{n})$: about 1.6 percentage points at 1,000 matches and 0.5 at 10,000.
-Equivalently, over 10,000 matches a lead of $d$ matches is worth $z = d/100$.
+
+<p> Every result on this page is therefore quoted with a <i>z-score</i>: <e>the number of standard errors
+separating the observed result from a dead heat.</e>   For a head-to-head it has a particularly simple form.
+With $n$ matches played and a margin of $d$ matches (the winner's total minus the loser's),
+
+<p style="text-align:center;"> $ \displaystyle z \;=\; \frac{d}{\sqrt{n}}. $
+
+<p> So a 572&ndash;428 result over 1,000 matches is $z = 144/\sqrt{1000} = 4.6$, and over 10,000 matches the
+rule of thumb is simply $z = d/100$.   Where the statistic is a mean rather than a count &mdash; the millipoint
+figures of sections <a href="#sec-gnubg">6.5</a> and <a href="#sec-depth23">8</a> &mdash; $z$ is the same idea:
+the measured difference divided by its own standard error.
+
+<p> What the number means: if the two players were in truth exactly equal, chance alone would produce
+$|z| \ge 2$ about one time in twenty, $|z| \ge 3$ about one time in 370, and $|z| \ge 4$ about one time in
+16,000.   So $z$ below about 2 means the run did <e>not</e> settle the question, whatever the percentages
+look like; $z$ above 4 means it did.   The convention throughout is that a positive $z$ favours the player
+named first.
 
 <table class="meas">
   <tr><th class="name">matches per pairing</th><th>standard error</th><th>what it can resolve</th></tr>
@@ -1210,21 +1241,26 @@ play.   Lower is better.
 
 <table class="meas">
   <tr><th class="name">player</th><th>plays the reference engine's top move</th><th>mean error</th></tr>
-  <tr><td class="name">the net, depth 1</td><td>64.4%</td><td>12.6 mpr</td></tr>
-  <tr><td class="name">the net, depth 2</td><td>69.8%</td><td>6.9 mpr</td></tr>
+  <tr><td class="name">the net, depth 1</td><td>62.3%</td><td>13.3 mpr</td></tr>
+  <tr><td class="name">the net, depth 2</td><td>68.0%</td><td>7.3 mpr</td></tr>
   <tr><td class="name">the net, depth 3</td><td>74.9%</td><td>5.4 mpr</td></tr>
   <tr><td class="name">GNU Backgammon, at its shallowest setting</td><td>&mdash;</td><td>2.0 mpr</td></tr>
 </table>
 
 <p> Two things follow, and they point in opposite directions.
 
-<p> <e>Every ply pays, and the returns diminish smoothly.</e>   The three depths are 12.6, 6.9 and 5.4 mpr;
-each extra ply removes roughly 45% and then 20% of the remaining error.   This is an independent confirmation
+<p> All three rows are the <e>same net</e> &mdash; the 80+80 sigmoid trained on 800,000 games, which is the one
+that has been measured at every depth.   The larger net of section <a href="#sec-run-nets">7.1</a> scores a
+little better at the two depths where it has been measured, 12.6 and 6.9 mpr, and it has never been run at
+depth 3; section <a href="#sec-depth23">8</a> takes the depth comparison further.
+
+<p> <e>Every ply pays, and the returns diminish smoothly.</e>   The three depths are 13.3, 7.3 and 5.4 mpr;
+each extra ply removes roughly 45% and then 26% of the remaining error.   This is an independent confirmation
 of the 583&ndash;417 match result above, by a completely different instrument, and it is the measurement that
 justifies playing at depth 2 or 3 when you have the patience.
 
 <p> <e>But the like-for-like comparison is humbling.</e>   At the <e>same</e> search depth, the net gives away
-12.6 mpr where the reference engine gives away 2.0 &mdash; a factor of six.   The net needs two extra plies,
+13.3 mpr where the reference engine gives away 2.0 &mdash; a factor of six and a half.   The net needs two extra plies,
 and seconds per move rather than milliseconds, to reach 5.4, which is still more than twice the reference at
 its cheapest setting.   The gap is in the <e>evaluation</e>, not the search, and that is exactly what the raw
 196-input encoding predicts: the reference engine's inputs include hand-designed features for containment,
@@ -1240,6 +1276,227 @@ networks and rollout targets are; none of them is implemented.
 2 mpr it calls "supernatural", 2 to 4 "world class", and around 6 "expert".   Those names describe checker play
 only, cubeless, and they are that program's nomenclature rather than a claim about tournament results against
 human champions.
+
+<H1 id="sec-runs">7. Three Runs, in Full<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<p> The figures quoted earlier on this page are summaries.   This section gives three complete runs, made on the
+3rd of September 2026 with version 154, as they came out of the <e>TOURNAMENT</e> and <e>COMPETE</e> buttons.
+All three used <e>10,000 matches per pairing</e> (1,000 for the competition), matches to <e>11</e>, search
+depth <e>1</e> unless stated, the money cube, and <e>DUPLO</e> on.   Between them they took a little over four
+and a half hours on a 32-thread desktop.
+
+<p> Everything here is reproducible from the control column, which is the point of showing it.   The dice are
+not seeded across runs, so repeating one of these gives a statistically equivalent answer rather than the same
+number &mdash; which is exactly what makes the comparison in section <a href="#sec-run-comments">7.4</a> worth
+making.
+
+<H2 id="sec-run-nets">7.1. The nets, with the best parameter AI among them</H2>
+
+<p> All ten nets plus <e>Arwen</e>, the strongest of the parameter AIs: 11 players, 55 pairings, <e>550,000
+matches</e> and 2.4 million games in 1 h 53 m.   Each player therefore played 100,000 matches.
+
+<table class="meas">
+  <tr><th class="name">rank</th><th class="name">player</th><th class="name">what it is</th><th>matches won of 100,000</th><th>share</th></tr>
+  <tr><td class="name">1</td><td class="name">Apollo</td><td class="name">80+80 sigmoid, 1,600,000 games</td><td>68,229</td><td>68.2%</td></tr>
+  <tr><td class="name">2</td><td class="name">Belona</td><td class="name">160+160, 800,000 games</td><td>67,196</td><td>67.2%</td></tr>
+  <tr><td class="name">3</td><td class="name">Castor</td><td class="name">80+80, 800,000 games &mdash; the reference</td><td>65,677</td><td>65.7%</td></tr>
+  <tr><td class="name">4</td><td class="name">Diana</td><td class="name">80+80+80, 800,000 games</td><td>65,234</td><td>65.2%</td></tr>
+  <tr><td class="name">5</td><td class="name">Eros</td><td class="name">leaky ReLU</td><td>58,927</td><td>58.9%</td></tr>
+  <tr><td class="name">6</td><td class="name">Flora</td><td class="name">tanh</td><td>57,956</td><td>58.0%</td></tr>
+  <tr><td class="name">7</td><td class="name">Ganymede</td><td class="name">ReLU</td><td>55,758</td><td>55.8%</td></tr>
+  <tr><td class="name">8</td><td class="name">Hera</td><td class="name">arctan</td><td>54,140</td><td>54.1%</td></tr>
+  <tr><td class="name">9</td><td class="name">Arwen</td><td class="name">the best parameter AI</td><td>33,299</td><td>33.3%</td></tr>
+  <tr><td class="name">10</td><td class="name">Icarus</td><td class="name">&lambda; = 1</td><td>18,948</td><td>18.9%</td></tr>
+  <tr><td class="name">11</td><td class="name">Juno</td><td class="name">no nonlinearity &mdash; the control</td><td>4,636</td><td>4.6%</td></tr>
+</table>
+
+<p> <e>The headline is where Arwen finishes.</e>   The best brain the genetic algorithm has produced &mdash;
+the top of a roster that took months of evolution &mdash; comes <e>ninth of eleven</e>, below every net that
+has a working activation function, and above only the two deliberately crippled controls.   Head to head it
+loses to Apollo <e>83.8%</e> of the time, and to <e>Hera</e> &mdash; the worst of the four real activations,
+a net built to lose &mdash; still <e>71.6%</e> of the time.   It beats Icarus, the &lambda; = 1 net, 69.5%, and
+Juno 96.5%.
+
+<p> Read down the standings and the shape of section <a href="#sec-results">6.4</a> is there again: training
+volume at the top, then width, then the third layer buying nothing, then a five-point gap down to the
+non-sigmoid activations, then a chasm to the two controls.
+
+<H2 id="sec-run-linear">7.2. The parameter roster, with one net among them</H2>
+
+<p> The nine parameter AIs plus <e>Apollo</e>: 10 players, 45 pairings, <e>450,000 matches</e> in 1 h 54 m.
+Each player played 90,000 matches.
+
+<table class="meas">
+  <tr><th class="name">rank</th><th class="name">player</th><th>matches won of 90,000</th><th>share</th><th>net matches over the next one down</th></tr>
+  <tr><td class="name">1</td><td class="name">Apollo (the net)</td><td>76,819</td><td>85.4%</td><td>6,756</td></tr>
+  <tr><td class="name">2</td><td class="name">Arwen</td><td>49,283</td><td>54.8%</td><td>84</td></tr>
+  <tr><td class="name">3</td><td class="name">Bilbo</td><td>48,265</td><td>53.6%</td><td>104</td></tr>
+  <tr><td class="name">4</td><td class="name">Celebrian</td><td>48,140</td><td>53.5%</td><td>490</td></tr>
+  <tr><td class="name">5</td><td class="name">Dwalin</td><td>47,038</td><td>52.3%</td><td>240</td></tr>
+  <tr><td class="name">6</td><td class="name">Eowyn</td><td>46,865</td><td>52.1%</td><td>540</td></tr>
+  <tr><td class="name">7</td><td class="name">Frodo</td><td>44,526</td><td>49.5%</td><td>498</td></tr>
+  <tr><td class="name">8</td><td class="name">Galadriel</td><td>42,956</td><td>47.7%</td><td>402</td></tr>
+  <tr><td class="name">9</td><td class="name">Hamfast</td><td>42,303</td><td>47.0%</td><td>9,088</td></tr>
+  <tr><td class="name">10</td><td class="name">Origin</td><td>3,805</td><td>4.2%</td><td>&mdash;</td></tr>
+</table>
+
+<p> Three things are worth pulling out.
+
+<p> <e>The roster is in very nearly the right order, and the top of it is a three-way tie.</e>   The last column
+is the head-to-head margin over the next brain down, and at 10,000 matches a margin of $d$ carries
+$z = d/100$.   So Arwen over Bilbo (84, $z = 0.8$) and Bilbo over Celebrian (104, $z = 1.0$) are <e>not
+resolved</e> &mdash; those three are indistinguishable even at ten thousand matches each.   Every pairing
+further down is resolved, at $z$ between 2.4 and 5.4.   There are two small inversions in the full
+head-to-head table as well: Arwen beats Galadriel by more than it beats Hamfast, and Bilbo beats Dwalin by more
+than it beats Eowyn, though in both cases the standings put those opponents the other way round.   Both gaps
+are under one standard error, so they are noise rather than a genuine circle of superiority.
+
+<p> <e>Origin is a different order of thing.</e>   The hand-guessed baseline wins 4.2% of its matches and loses
+to Arwen 95.9%.   Whatever else these numbers say, they say that hand-tuning two dozen interacting weights is
+hopeless, and that the genetic algorithm of section <a href="#sec-evolution">4</a> has done a great deal of
+real work.
+
+<p> <e>And a net beats all of it comfortably.</e>   Apollo took 85.4% of its 90,000 matches, beating every
+parameter AI between 83.2% and 84.5% individually.   Note the shape of that: the whole nine-brain roster, from
+Arwen down to Hamfast, spans about eight percentage points, while the gap from Arwen up to Apollo is more than
+thirty.
+
+<H2 id="sec-run-depth">7.3. One net against itself, one ply apart</H2>
+
+<p> Apollo in both seats, one searching at depth 1 and the other at depth 2, 1,000 matches to 11 &mdash; the
+cleanest possible measurement of what a ply is worth, since the two players are the <e>same evaluation
+function</e> and nothing but the search differs.
+
+<table class="meas">
+  <tr><th class="name">seat</th><th class="name">depth</th><th>matches won</th><th>game points</th></tr>
+  <tr><td class="name">Red</td><td class="name">2</td><td>572</td><td>9,251</td></tr>
+  <tr><td class="name">White</td><td class="name">1</td><td>428</td><td>7,931</td></tr>
+</table>
+
+<p> <e>Depth 2 wins 572&ndash;428</e> &mdash; 57.2%, $z = 4.6$, with a 95% interval of 54.1% to 60.3% &mdash;
+and takes <e>+0.21 game points per game</e> over the 6,437 games played.   An earlier run of the same
+comparison finished 583&ndash;417; pooled, that is 1,155 of 2,000 matches, <e>57.8%</e> at $z = 6.9$.
+
+<p> <e>The price is the whole story of why depth 1 is the default.</e>   The tournament of section
+<a href="#sec-run-nets">7.1</a> played 550,000 matches in 113 minutes.   This competition played <e>1,000</e>
+matches in 56 minutes &mdash; and only <e>one</e> of the two seats was searching deeper.
+
+<p> That gives a clean check on the estimate in section <a href="#sec-cost">2.7</a> that a ply costs a factor of
+about four hundred.   Per move, and in the same units, the depth-1 tournament cost 1.8 and this competition
+361.8.   Half the moves here are depth 1, so the depth-2 moves cost about $2 \times 361.8 - 1.8 = 722$, and
+$722 / 1.8 = 401$.   The measured factor is <e>401</e> against a predicted 400, from two runs made for entirely
+different reasons.
+
+<H2 id="sec-run-comments">7.4. What the three runs say together</H2>
+
+<p> <e>The 9/2 measurements reproduced.</e>   Section <a href="#sec-results">6.4</a> reports a ten-net
+tournament of the same design run the previous day.   Scoring every net in 7.1 against the same reference
+(Castor) gives 53.3, 52.2, 50.7, 42.4, 41.0, 39.4, 36.7, 9.1 and 1.6 per cent, against 53.4, 50.8, 49.8, 42.9,
+41.5, 39.3, 37.8, 8.9 and 1.6 the day before.   <e>Every one of the nine agrees within 1.4 points</e>, and the
+standard error on a difference of two independent 10,000-match measurements is 0.7, so the whole table
+reproduces within about two standard errors.   Nine independent agreements is a much stronger statement than
+any single one of them.
+
+<p> <e>Search and evaluation are separate axes, and the second is where the distance is.</e>   One extra ply
+of search buys 57.2% head to head; being a net rather than the best parameter AI buys 83.8%.   The two are not
+in competition &mdash; section <a href="#sec-results">6.4</a> found the training gain survives search almost
+undiminished &mdash; but if you are choosing where to spend effort, the evaluation function is worth more than
+the search, and it is also the cheaper of the two at run time.
+
+<p> <e>Duplicate play did nothing measurable in any of the three.</e>   The multipliers came out 1.01, 1.04 and
+0.97 &mdash; the last of them below 1, which simply means the sweep rate fell a little the wrong side of its
+baseline by chance.   That is the expected result between brains that play differently, for the reason given in
+section <a href="#sec-duplo">6.2</a>, and it is not an argument for turning DUPLO off: it costs nothing, and
+the case it is there for is evolution, where a mutant and its parent play almost identically.
+
+<p> <e>A weak opponent is cheap to beat, which shows up in the game counts.</e>   A match against Juno lasted
+2.4 games on average and one against Origin 2.8, against tournament-wide averages of 4.4 and 4.8.   A match
+ends when someone reaches eleven points, so a hopeless opponent concedes it in two or three gammons.
+That is worth knowing when you plan a run: adding a very weak player to a tournament costs far less time than
+adding a strong one.
+
+<p> <e>&#9888; All three runs are at depth 1 and at one training seed.</e>   Two nets built to the same recipe
+with different seeds differ by about a point, so at 10,000 matches per pairing the seed, not the sample size,
+is what limits how finely two recipes can be told apart &mdash; and 7.2's three-way tie at the top of the
+parameter roster would need a different instrument, not merely more matches, to break.
+
+<H1 id="sec-depth23">8. Depth 2 against Depth 3<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></H1>
+
+<p> Section <a href="#sec-run-depth">7.3</a> settled depth 1 against depth 2 by playing a thousand matches.
+The next question is the obvious one &mdash; is a third ply worth having? &mdash; and it is answered here by a
+different instrument, for reasons section <a href="#sec-d23-why">8.3</a> explains.
+
+<H2 id="sec-d23-numbers">8.1. The measurement</H2>
+
+<p> The same corpus as section <a href="#sec-gnubg">6.5</a>: 2,400 positions drawn from 160 games of
+GNU Backgammon's own play, each one scored by how much equity the net's chosen move gives away against that
+engine's best.   The player is the 80+80 sigmoid net trained on 800,000 games, run at each depth over the same
+positions, so the three rows are <e>paired</e> &mdash; the same decisions, three times.
+
+<table class="meas">
+  <tr><th class="name">search depth</th><th class="name">the reference's own name for it</th><th>plays the top move</th><th>mean error</th><th>median</th><th>p90</th></tr>
+  <tr><td class="name">1</td><td class="name">0-ply</td><td>62.3%</td><td>13.3 &plusmn; 0.9 mpr</td><td>0.0</td><td>38</td></tr>
+  <tr><td class="name">2</td><td class="name">1-ply</td><td>68.0%</td><td>7.3 &plusmn; 0.5 mpr</td><td>0.0</td><td>21</td></tr>
+  <tr><td class="name">3</td><td class="name">2-ply</td><td>74.9%</td><td>5.4 &plusmn; 0.4 mpr</td><td>0.0</td><td>12</td></tr>
+</table>
+
+<p> Paired, depth 2 against depth 3: <e>+1.91 &plusmn; 0.48 mpr in favour of depth 3, z = 4.0</e>.   The sample
+is 2,400 decisions at depths 1 and 2 and 2,357 at depth 3; the positions were taken in a seeded random order,
+so the shortfall is an unbiased subsample rather than a truncated prefix.
+
+<p> The second column is worth a moment.   Because this page numbers depths one higher than the literature
+does (section <a href="#sec-depth">2.2</a>), depth 3 here <e>is</e> the reference engine's 2-ply &mdash; the
+very setting used to score it.   So the last row is a like-for-like comparison at equal nominal depth, and it
+is the harshest reading available.
+
+<H2 id="sec-d23-says">8.2. What it says</H2>
+
+<p> <e>The third ply is real, and it is worth about half of what the second was.</e>   Depth 1 to 2 removes 45%
+of the error; depth 2 to 3 removes a further 26%.   The agreement rate tells the same story from another angle
+&mdash; 62.3%, 68.0%, 74.9% &mdash; and so does the tail, which is where the damage in backgammon actually
+lives: the 90th-percentile error falls 38, 21, 12 millipoints.   The median is 0 at every depth, because most
+decisions are not close.
+
+<p> <e>It is worth having, and it is not free.</e>   A depth-3 decision takes tens of seconds
+(section <a href="#sec-cost">2.7</a>), so this is a setting for a considered game or for examining one position
+with <e>MOV</e>, and not one for a tournament.
+
+<p> <e>&#9888; An early version of this measurement said the opposite, and the reason is instructive.</e>   A
+first pass over 24 positions put depth 3 <e>behind</e> depth 2 by 4.6 mpr &mdash; wrong sign, and it was flagged
+at the time as meaningless at that sample size (z = 1.5).   The full corpus reversed it at z = 4.0.   A
+backgammon measurement that is not significant is not weak evidence for its own sign; it is no evidence at all.
+
+<p> <e>&#9888; And a corpus of the net's own games flatters it.</e>   Scored on positions from its own play
+rather than the reference engine's, the same net at depth 3 measured 4.9 mpr against the 5.4 here &mdash; about
+half a millipoint of self-flattery.   Small, but in the direction you would expect, and a reason to prefer a
+corpus the player did not generate.
+
+<H2 id="sec-d23-why">8.3. Why this one is not a competition</H2>
+
+<p> Depth 1 against depth 2 was settled by playing matches.   The same approach at depth 3 is not
+impractical by a small margin, it is out of reach, and the arithmetic is worth setting down because it applies
+to any future question of this kind.
+
+<p> A depth-3 decision costs roughly 460 core-seconds, and a batch match runs on a <e>single</e> worker.   One
+cubeless game asks the deep side for about 27 decisions, so a single game costs some 3.4 core-hours; with 32
+workers busy that is about nine matches an hour.   The effect to be detected is small &mdash; if the head-to-head
+advantage scales with the error reduction above, depth 3 should win a single game about 51.5 to 52% of the time
+&mdash; and separating that from a coin needs on the order of four thousand matches.   <e>That is two to three
+weeks of continuous running</e>, for a result the corpus delivers in an afternoon at z = 4.
+
+<p> <e>&#9888; And a shorter match does not help, which is the part that surprises people.</e>   It is tempting
+to play to 1 point instead of 11 on the grounds that matches are then six times cheaper.   They are &mdash; but
+a match to $X$ points <e>amplifies</e> a small per-game edge in proportion to the square root of the games it
+contains.   Writing $\varepsilon$ for the per-game edge and $g$ for the games per match, the significance of
+$N$ matches goes as
+
+<p style="text-align:center;"> $ \displaystyle z \;\propto\; \varepsilon\,\sqrt{g}\,\sqrt{N} \;=\; \varepsilon\,\sqrt{gN} \;=\; \varepsilon\,\sqrt{G}, $
+
+<p> where $G$ is the total number of <e>games</e> played.   The match length cancels exactly: a short match is
+cheap and carries proportionally less information.   What match length changes is <e>what</e> is measured
+&mdash; at a match length of 1 the cube is dead, so the comparison covers checker play alone &mdash; and how
+well duplicate play works, since two brains diverge less within one game than across eleven points.   Neither
+of those is a reason to expect more significance per hour.
 
 <p style="margin-top:2em;"><a href="manual.html">&larr; Back to the User's Guide</a></p>
 
