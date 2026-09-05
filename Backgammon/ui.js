@@ -307,39 +307,50 @@ document.addEventListener('DOMContentLoaded', () => {
       + ', opener = ' + (starter == null ? 'roll-off' : 'forced ' + starter));
   }
 
-  // Swap the two participants between the White and Red seats: who they are, their search
-  // depth, and their running score — the score belongs to the player, so it travels with
-  // them — then re-apply the menus to the engine.
-  function swapSeats() {
-    [['p1-type', 'p2-type'], ['p1-depth', 'p2-depth'], ['p1-score', 'p2-score']].forEach(([a, b]) => {
-      const ea = document.getElementById(a), eb = document.getElementById(b);
-      if (!ea || !eb) return;
-      const t = ea.value; ea.value = eb.value; eb.value = t;
-    });
-    syncPlayersFromMenus();
-    syncDepthMenu(1); syncDepthMenu(2);
+  // Everything DUPLO needs to replay a game: the board it started from, and the rolls in
+  // order, each tagged with the side that received it. Only REAL rolls — a doubling-accept
+  // snapshot carries [0,0] dice and does not alternate players, so including it would shift
+  // the whole sequence by one turn. Same filter game.js uses for time travel.
+  function captureGameForDuplo() {
+    const h = game.gameHistory;
+    if (!h || !h.length) return null;
+    const init = h.find((sn) => sn.isInitial) || h[0];
+    const rolls = h.filter((sn) => !sn.isInitial && sn.dice[0] && sn.dice[1])
+                   .map((sn) => ({ p: sn.currentPlayer, d: [sn.dice[0], sn.dice[1]] }));
+    if (!rolls.length) return null;                     // nothing has been rolled yet
+    return { points: JSON.parse(JSON.stringify(init.points)),
+             bar: { ...init.bar }, borneOff: { ...init.borneOff },
+             opener: rolls[0].p, rolls };
   }
 
-  // DUPLO button — replay the game just played: same dice, seats swapped.
+  // DUPLO button — play the SAME game again with the luck the other way round.
+  //
+  // ⚠ THE PLAYERS DO NOT MOVE. Alice keeps the White seat and receives the rolls Bob
+  // received; the board is MIRRORED so that her side of it is the side he played, and the
+  // opening roll goes to the other colour. Two people therefore swap games without swapping
+  // chairs, which is what makes this work for humans (two seats reading "Human" are
+  // indistinguishable, so swapping them changed nothing) and over the network (host and
+  // guest keep their roles). For a symmetric opening the mirror is invisible; from a
+  // hand-set-up board it is what makes the duplicate a duplicate at all.
+  //
+  // The dice come from the RECORDED rolls, not from a re-seeded stream, so the replay needs
+  // no shared RNG and works the same locally and online.
   function duploReplay() {
-    if (isNetworkGame) { gameMessageEl.textContent = 'DUPLO is not available in a network game.'; return; }
-    if ((duploTarget || liveGame).seed == null) { gameMessageEl.textContent = 'DUPLO: start a game first — DUPLO replays it with the players swapped.'; return; }
-    // Prefer the finished game; fall back to the one in progress if none has ended yet.
-    const src = duploTarget || liveGame;
-    const seed = src.seed, starter = src.starter;
-    sysLog('[DUPLO-diag] DUPLO pressed. replaying seed ' + seed + ', recorded opener '
-      + (starter == null ? 'roll-off' : starter) + ', source ' + (duploTarget ? 'FINISHED game' : 'game in progress')
+    if (isNetworkGame && localPlayerRole !== 1) {
+      gameMessageEl.textContent = 'DUPLO is run by the host.'; return;
+    }
+    const cap = duploTarget || captureGameForDuplo();
+    if (!cap) { gameMessageEl.textContent = 'DUPLO: play a game first — DUPLO replays it with the luck reversed.'; return; }
+    sysLog('[DUPLO-diag] DUPLO pressed. ' + cap.rolls.length + ' recorded rolls, opener was player '
+      + cap.opener + ', source ' + (duploTarget ? 'FINISHED game' : 'game in progress')
       + ', setupOrigin ' + (setupOriginBoard ? 'yes' : 'no'));
-    swapSeats();
-    const keep = duploTarget;                           // applyRestartNewGame re-seeds; keep the target
-    if (setupOriginBoard && setupOriginBoard.starter) applyRestartNewGame(setupOriginBoard.starter, seed);
-    else if (starter != null) applyRestartNewGame(starter, seed);
-    else applyRestartNewGame(null, seed, true);         // re-run the roll-off on the same stream
-    duploTarget = keep;
-    const w = document.getElementById('p1-type'), r = document.getElementById('p2-type');
-    gameMessageEl.textContent = 'DUPLO — same dice, seats swapped: ' + (w ? w.value : '?')
-      + ' now White, ' + (r ? r.value : '?') + ' now Red.';
-    sysLog('[DUPLO] Replaying the same dice with the seats swapped.');
+    const keep = duploTarget;
+    applyRestartNewGame(cap.opener === 1 ? 2 : 1, null, false, cap);
+    duploTarget = keep || cap;                          // pressing DUPLO twice returns to the original
+    if (isNetworkGame) netSend({ type: 'duplo', cap });
+    gameMessageEl.textContent = 'DUPLO — the same game with the luck reversed: '
+      + (cap.opener === 1 ? 'Red' : 'White') + ' opens, and each side now plays the other\'s dice.';
+    sysLog('[DUPLO] Replaying with the board mirrored and the rolls handed to the other side.');
   }
   let autoMoveOn  = false;
 
@@ -1620,8 +1631,9 @@ renderBorneOff();
       // Tally the winner's game points once (this branch re-runs on every render).
       if (!gameScored) {
         addScore(winner, pts); gameScored = true;
-        // Freeze this finished game as DUPLO's target (see duploTarget).
-        if (!isNetworkGame && liveGame.seed != null) duploTarget = { seed: liveGame.seed, starter: liveGame.starter };
+        // Freeze this finished game as DUPLO's target (see duploTarget). Network games are
+        // included now: the replay reads recorded rolls, so it needs no shared dice stream.
+        duploTarget = captureGameForDuplo() || duploTarget;
       }
       // Auto Record: one game record per completed game, written the moment the game ends.
       // Guarded like gameScored, because this branch re-runs on every render.
@@ -2302,7 +2314,7 @@ let handleRollClick;
    * Used by Restart to alternate the opener each game, locally and (mirrored from the host)
    * over the network.
    */
-  function applyRestartNewGame(starter, seed = null, rollOff = false) {
+  function applyRestartNewGame(starter, seed = null, rollOff = false, duplo = null) {
     if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
     if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
     if (autoRollTimeout) { clearTimeout(autoRollTimeout); autoRollTimeout = null; }
@@ -2318,7 +2330,20 @@ let handleRollClick;
     isProcessingQueue = false;
 
     game.restart();
-    if (setupOriginBoard) {   // game was launched from a set-up position → restart from THAT board
+    if (duplo) {
+      // The duplicate is played from the MIRROR of the position the original started from:
+      // point p becomes point 25-p and the colours swap, so this seat now holds what the
+      // other seat held. mirrorPosition is net.js's, the same one the encoder uses, so the
+      // reflection is the one eval-symmetry-test.js already covers.
+      const m = BG_NET.mirrorPosition(duplo.points, duplo.bar, duplo.borneOff);
+      game.points   = m.points;
+      game.bar      = { ...m.bar };
+      game.borneOff = { ...m.borneOff };
+      // A game launched from a set-up board keeps its origin, mirrored to match, so RESTART
+      // still reproduces what is now on the screen (and doubling stays off for both halves).
+      if (setupOriginBoard) setupOriginBoard = { points: JSON.parse(JSON.stringify(m.points)),
+        bar: { ...m.bar }, borneOff: { ...m.borneOff }, starter, dice: null };
+    } else if (setupOriginBoard) {   // launched from a set-up position → restart from THAT board
       game.points   = JSON.parse(JSON.stringify(setupOriginBoard.points));
       game.bar      = { ...setupOriginBoard.bar };
       game.borneOff = { ...setupOriginBoard.borneOff };
@@ -2327,7 +2352,17 @@ let handleRollClick;
     // DUPLO: install the dice stream BEFORE any roll is drawn. `seed` is null for an
     // ordinary restart (fresh stream) and the recorded seed for a DUPLO replay.
     beginSeededGame(seed, rollOff ? null : starter);
-    if (rollOff) {
+    if (duplo) {
+      game.beginGameWithStarter(starter);   // the OTHER colour opens
+      // ⚠ THE TAGS ARE FLIPPED HERE, ON PURPOSE. rollDice replays a buffered roll only if it
+      // belongs to the side now on roll, and drops the whole buffer otherwise — the guard that
+      // stops a player being handed the opponent's dice by accident. Handing each side the
+      // other's dice is precisely what a duplicate IS, so the swap is done when the buffer is
+      // built and the guard goes on doing its job.
+      game.futureRolls = duplo.rolls.map((r) => ({ p: r.p === 1 ? 2 : 1, d: [r.d[0], r.d[1]] }));
+      game.futureRollIndex = 0;
+      sysLog('[DUPLO-diag] replay armed: ' + game.futureRolls.length + ' rolls, opener player ' + starter);
+    } else if (rollOff) {
       game.rollForFirstTurn();           // same stream -> same opening dice -> same colour opens
       starter = game.currentPlayer;
       sysLog('[DUPLO-diag] replayed roll-off -> dice ' + game.dice[0] + '-' + game.dice[1] + ', opener player ' + starter);
@@ -2425,7 +2460,12 @@ let handleRollClick;
     const W = scoringWeights(onRoll);
     if (!isNetScore(W) || !W.net) return (snapshot._dist = null);
     const p = BG_NET.evaluatePosition(W.net, snapshot.points, snapshot.bar, snapshot.borneOff, onRoll).p;
-    snapshot._dist = (onRoll === 1) ? p : BG_NET.swapOutcomes(p);
+    // ⚠ ALWAYS A PLAIN ARRAY. net.js answers with a Float64Array, and swapOutcomes returns a
+    // plain one — so returning `p` unchanged made this function's type depend on who was on
+    // roll. Float64Array.prototype.map COERCES its callback's result back to a number, so
+    // formatting the row with .map(v => v.toFixed(2).padStart(7)) silently threw the padding
+    // and the trailing zeros away on exactly half the rows of the exported move list.
+    snapshot._dist = (onRoll === 1) ? Array.from(p) : BG_NET.swapOutcomes(p);
     return snapshot._dist;
   }
 
@@ -6055,6 +6095,15 @@ connection.on('data', (data) => {
           // 1. Apply engine state instantly
           game.rollDice(data.dice[0], data.dice[1]);
           if (data.turnCount !== undefined) game.turnCount = data.turnCount;  // keep the anchor aligned
+          // ⚠ DUPLO OVER THE NETWORK: each machine rolls only its OWN dice, so a buffered
+          // replay would be consumed at half speed here and the head would then belong to the
+          // other side — which rollDice's guard reads as misalignment and answers by throwing
+          // the whole buffer away. Step over the entry the opponent just used, so both
+          // machines walk the same buffer in lockstep and the guard keeps its meaning.
+          const fr = game.futureRolls[game.futureRollIndex];
+          if (fr && fr.p === data.player && fr.d[0] === data.dice[0] && fr.d[1] === data.dice[1]) {
+            game.futureRollIndex++;
+          }
           }
 
           // 2. Lock UI and visually animate
@@ -6088,6 +6137,17 @@ connection.on('data', (data) => {
       }
 
       // Host restarted the game — mirror the reset on the guest's side
+      else if (data.type === 'duplo') {
+          // The host replays the finished game with the luck reversed. Seats do not move, so
+          // host stays host and guest stays guest; both sides install the same mirrored board
+          // and the same roll buffer.
+          sysLog('[Network] DUPLO received (' + (data.cap ? data.cap.rolls.length : 0) + ' rolls).');
+          if (data.cap) {
+            applyRestartNewGame(data.cap.opener === 1 ? 2 : 1, null, false, data.cap);
+            duploTarget = data.cap;
+            gameMessageEl.textContent = 'DUPLO — the same game with the luck reversed.';
+          }
+      }
       else if (data.type === 'restart') {
           if (data.starter) {
             // New game with the host-chosen alternated opener (no roll-off, no Start click).
