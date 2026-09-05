@@ -955,36 +955,13 @@
                             <LI>
                                 6-complex, a ring surrounding a regular hexagon
                             </LI>
-                            <LI>
                                 double 6-complex, a double ring surrounding a regular hexagon
+                            <LI>
+                                triple 6-complex, a double ring surrounding a regular hexagon
                             </LI>
                             <LI>
-                                <B>WuDeng I</B>, the 18 triangle example of
-                                Xinyu Wu and Jiansong Deng (<EM>Geometry
-                                dependent rank defect in C<SUP>1</SUP> cubic
-                                spline space</EM>, arXiv:2609.02424, 2026),
-                                which disproves the conjecture that
-                                Schumaker's lower bound is always attained.
-                                All seven interior vertices are non-singular,
-                                so the bound is 33, yet the dimension is 34.
-                                The defect is global: it couples all seven
-                                interior vertex cycles, and so cannot be
-                                accounted for by any correction attached to a
-                                single vertex.  The coordinates are exact and
-                                have to stay that way; rounding any vertex
-                                gives back 33.
-                            </LI>
-                            <LI>
-                                <B>WuDeng II</B>, the same complex with the
-                                central vertex moved onto the two lines
-                                through its four neighbors, so that it becomes
-                                a singular four-star.  The correction is then
-                                1, the lower bound rises to 34, and the
-                                dimension is 34.  Shown next to WuDeng I as
-                                the contrast case: the same combinatorics,
-                                the same valences and the same dimension, but
-                                here it is exactly what the classical local
-                                correction predicts.
+                                The 1-split, a 4-cell with each triangle
+                                split by Clough-Tocher
                             </LI>
                             <LI>
                                 <B>Cells or Vertex Stars.</B> This
