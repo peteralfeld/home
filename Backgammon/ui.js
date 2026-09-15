@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let setupSel     = null;   // two-click source location ('pN'|'bar1'|'bar2'|'tray1'|'tray2')
   let setupDragLoc = null;   // drag source location
   let setupOnRoll  = null;   // side to move next (1|2|null)
-  let setupKind    = null;   // 'clear' | 'initial' | 'examine' (last entered)
+  let setupKind    = null;   // 'clear' | 'trays' | 'initial' | 'examine' (last entered)
   let setupBaseMsg = 'Examination Mode';   // idle instruction-line text while in setup
   // When a game is launched from a hand-set-up position (START/PLAY in examination mode), we
   // remember that position here so Restart restarts from IT rather than the standard opening.
@@ -6559,6 +6559,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     selectedSource = null; legalDestinations = [];
     gameStarted = false;
     if (kind === 'clear') game.setupClear();
+    else if (kind === 'trays') game.setupTrays();
     else if (kind === 'initial') game.setupInitial();
     else {   // 'examine' — keep the current position; just reset dice/turn scaffolding
       setupOnRoll = game.currentPlayer || null;
@@ -6773,6 +6774,17 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
   // (updateUI → checkAndTriggerAITurn), which drives any AI seat, lets a human seat play, and
   // populates the move list (row 10) with the usual time-travel navigation and analysis.
   function startGameFromCurrentBoard() {
+    // A side holding all fifteen checkers in its tray has already won, so there is no game to
+    // start. CT reaches that board in one click, and EX on a finished game reached it before CT
+    // existed: START launched anyway, and the first endTurn() then declared that side the
+    // winner, tallied the scoreboard and fired Auto Record off a position nobody had played.
+    if (game.borneOff[1] === 15 || game.borneOff[2] === 15) {
+      const both = game.borneOff[1] === 15 && game.borneOff[2] === 15;
+      const who = both ? 'Both sides have' : (game.borneOff[1] === 15 ? 'White has' : 'Red has');
+      gameMessageEl.textContent = `${who} all fifteen checkers off — there is no game to start. `
+        + 'Drag some back onto the board first.';
+      return;
+    }
     const allBlank = setupAllBlank();
     setupMode = false;
     clearSetupHighlight();
@@ -6860,6 +6872,7 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
 
   document.getElementById('btn-ex')?.addEventListener('click', () => enterSetup('examine'));
   document.getElementById('btn-clear')?.addEventListener('click', () => enterSetup('clear'));
+  document.getElementById('btn-trays')?.addEventListener('click', () => enterSetup('trays'));
   document.getElementById('btn-initial')?.addEventListener('click', () => enterSetup('initial'));
   document.getElementById('btn-mov')?.addEventListener('click', doMOV);
   document.getElementById('btn-play')?.addEventListener('click', doPLAY);

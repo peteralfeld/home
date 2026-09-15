@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 155</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 156</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -295,7 +295,8 @@
   <div class="glass-card setup-station" style="padding: 0.6rem 0.8rem;">
     <div style="display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; width: 100%;">
       <button id="btn-ex" class="setup-btn" title="Examine: enter setup keeping the current position on the board" style="padding: 0.4rem 0.3rem; background: #a21caf; color: #ffffff; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Ex</button>
-      <button id="btn-clear" class="setup-btn" title="Stop play and clear the board (all checkers to the trays)" style="padding: 0.4rem 0.3rem; background: #b91c1c; color: #fed7aa; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Cl</button>
+      <button id="btn-clear" class="setup-btn" title="Stop play and clear the board, putting all 30 checkers on the bar. A game can be started straight from there, with every checker entering from the bar." style="padding: 0.4rem 0.3rem; background: #b91c1c; color: #fed7aa; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Cb</button>
+      <button id="btn-trays" class="setup-btn" title="Stop play and clear the board, putting all 30 checkers in the collection trays. The quick start for a bear-off position: drag out only the checkers you want. Both sides then hold fifteen checkers off, so START will not launch a game until some are back on the board." style="padding: 0.4rem 0.3rem; background: #7f1d1d; color: #fed7aa; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">Ct</button>
       <button id="btn-initial" class="setup-btn" title="Stop play and load the standard starting position" style="padding: 0.4rem 0.3rem; background: #ea580c; color: #fef08a; border: none; border-radius: 5px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; white-space: nowrap; cursor: pointer;">In</button>
 
       <select id="setup-r1" class="setup-die setup-die-white" title="White die (White on roll)" style="background: #ffffff; color: #dc2626; border: 1px solid #94a3b8; border-radius: 4px; font-size: 0.72rem; font-weight: bold; padding: 0.35rem 0.05rem; cursor: pointer;">
@@ -472,7 +473,7 @@
           <span class="settings-item-label">Auto Record</span>
           <span class="settings-item-badge" id="badge-autorecord">OFF</span>
         </div>
-        <div class="settings-item" id="setting-duplo" data-setting="duplo" title="Duplicate-bridge scoring for Tournament and Compete. Every match is played twice: the same dice, the seats swapped. Luck largely cancels between the two halves, so far fewer matches are needed to separate two AIs — and a brain played against itself scores an exact tie. Forces the match count to be even. Does not change how any single game is played.">
+        <div class="settings-item" id="setting-duplo" data-setting="duplo" title="Duplicate-bridge scoring for Tournament, Compete and Evolve. Every match is played twice: the same dice, the seats swapped. Luck largely cancels between the two halves, so far fewer matches are needed to separate two AIs — and a brain played against itself scores an exact tie. Forces the match count to be even. Does not change how any single game is played.">
           <span class="settings-item-label">DUPLO</span>
           <span class="settings-item-badge" id="badge-duplo">ON</span>
         </div>

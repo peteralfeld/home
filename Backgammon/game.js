@@ -242,14 +242,26 @@ class BackgammonGame {
     this.futureRollIndex = 0;
   }
 
-  // CLEAR: empty board, all 30 checkers parked on the two borne-off trays.
-  // CLEAR: board empty, all 15 of each colour sitting on its own BAR (White bar = point 25,
-  // Red bar = point 0). Trays empty. So a game can be started straight from here with every
-  // checker entering from the bar.
+  // CLEAR TO BAR (CB): board empty, all 15 of each colour sitting on its own BAR (White bar =
+  // point 25, Red bar = point 0). Trays empty. So a game can be started straight from here
+  // with every checker entering from the bar.
   setupClear() {
     this.points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
     this.bar = { 1: 15, 2: 15 };
     this.borneOff = { 1: 0, 2: 0 };
+    this._setupResetTurn();
+  }
+
+  // CLEAR TO TRAYS (CT): board and bars empty, all 30 checkers in their collection trays. The
+  // quick start for a bear-off study: drag out the two or three checkers the position needs,
+  // rather than putting twenty-eight back. NB this leaves BOTH sides showing fifteen off, i.e.
+  // both have "won". That is safe only because setup editing never reaches endTurn(), the sole
+  // caller of checkWinner(), and updateUI() returns early while setupMode is on. START refuses
+  // to launch while either side still has all fifteen off - see startGameFromCurrentBoard.
+  setupTrays() {
+    this.points = Array(25).fill(null).map(() => ({ player: null, count: 0 }));
+    this.bar = { 1: 0, 2: 0 };
+    this.borneOff = { 1: 15, 2: 15 };
     this._setupResetTurn();
   }
 
@@ -716,15 +728,23 @@ rollDice(d1 = null, d2 = null) {
     // more dice. (Trial-based, because the memoised search records only one move order
     // per resulting position and would hide equivalent first moves.)
     const set = new Set();
+    const endsGame = new Set();
     for (const src of sources) {
       for (const d of this.getRawDestinations(src)) {
+        const key = `${src}|${d.to}|${d.dieUsed}`;
         const clone = this._cloneForSearch();
         clone.makeMove(src, d.to, false);
+        if (clone.borneOff[player] === 15) { endsGame.add(key); set.add(key); continue; }
         const sub = clone._maxUsageSequences(player, clone.movesLeft);
         const afterMax = clone.movesLeft.length - (sub.length ? sub[0].diceLeftCount : clone.movesLeft.length);
-        if (1 + afterMax === maxDice) set.add(`${src}|${d.to}|${d.dieUsed}`);
+        if (1 + afterMax === maxDice) set.add(key);
       }
     }
+
+    // Bearing off the fifteenth checker ends the game, so that move IS the turn.
+    // Anything else on offer now is the same last checker stepping down first — a
+    // longer spelling of the same journey — so only the direct bear-off is offered.
+    if (endsGame.size) return endsGame;
 
     // "If only one die can be played, it must be the higher one."
     if (maxDice === 1 && this.movesLeft.length === 2 && this.movesLeft[0] !== this.movesLeft[1]) {
@@ -757,6 +777,12 @@ rollDice(d1 = null, d2 = null) {
     if (!this.hasRolled || total === 0) return null;
     const states = this._maxUsageSequences(this.currentPlayer, this.movesLeft);
     if (states.length === 0) return null;
+    // The game ends the moment the fifteenth checker comes off, so the direct bear-off
+    // is the only move offered and the rest of the roll is never played. Without this
+    // the generic wording below would tell the winner they must play both dice.
+    if (states.some((s) => s.moves.length === 1 && s.borneOff[this.currentPlayer] === 15)) {
+      return "Bearing off your last checker wins the game — the rest of the roll is not played.";
+    }
     const minLeft = Math.min(...states.map((s) => s.diceLeftCount));
     const used = total - minLeft;
     if (used === 0) return null;
@@ -1522,12 +1548,21 @@ rollDice(d1 = null, d2 = null) {
       }
 
       if (!branchExpanded) {
+        // Bearing off the fifteenth checker ENDS THE GAME, so no dice remain to be
+        // played and the turn is complete however many were used. Counting the unused
+        // die here lets the maximum-usage rule outlive the game: the last checker on
+        // the 2-point rolling 6-1 was forced to shuffle 2/1 before bearing off with
+        // the 6, and 6-1 with the last checker on the 6-point was forced to play
+        // 6/5 5/off instead of 6/off. The two spellings are one checker making the
+        // same journey to the same final position, so no result can change by this;
+        // gnubg 1.07.001 likewise offers only the direct bear-off.
+        const gameOver = currentBorneOff[player] === 15;
         finalStates.push({
           points: currentPoints,
           bar: currentBar,
           borneOff: currentBorneOff,
           moves: moveSequence,
-          diceLeftCount: currentDice.length
+          diceLeftCount: gameOver ? 0 : currentDice.length
         });
       }
     };
@@ -1538,6 +1573,22 @@ rollDice(d1 = null, d2 = null) {
     
     let minDiceLeft = Math.min(...finalStates.map(s => s.diceLeftCount));
     let validCompleteStates = finalStates.filter(s => s.diceLeftCount === minDiceLeft);
+
+    // Two kept sequences reaching the SAME final position are one move differently
+    // spelt: a checker playing 2/1 and then 1/off has made the journey 2/off. Keep the
+    // shortest spelling. This can only fire on a turn that ENDS THE GAME, since any
+    // other short sequence has already been dropped by the maximum-usage rule above,
+    // so what it removes is the pointless step-down before a final bear-off. It
+    // compares only sequences reaching the SAME position, so two genuinely different
+    // first moves that converge (24/18 18/15 against 24/21 21/15) are the same length
+    // and both survive, which _legalFirstSteps depends on.
+    const shortestFor = new Map();
+    for (const s of validCompleteStates) {
+      const k = serializeState(s.points, s.bar, s.borneOff);
+      if (!shortestFor.has(k) || s.moves.length < shortestFor.get(k)) shortestFor.set(k, s.moves.length);
+    }
+    validCompleteStates = validCompleteStates.filter(
+      (s) => s.moves.length === shortestFor.get(serializeState(s.points, s.bar, s.borneOff)));
 
     if (diceRolls.length === 2 && minDiceLeft === 1 && diceRolls[0] !== diceRolls[1]) {
       const largerDie = Math.max(...diceRolls);
