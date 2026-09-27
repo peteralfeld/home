@@ -2418,7 +2418,11 @@
     log: log,
     open: function () { if (!net) return; netTitle(); netStatus('Connected as ' + (net.role === 1 ? 'host' : 'guest') + ', room ' + net.code + '.'); log('Net: the other computer is here (room ' + net.code + ').'); sayTurn(); draw(); },
     close: function () { if (!net) return; netTitle(); netStatus('The other computer has left room ' + net.code + '.'); log('Net: the other computer has left.'); say('The other computer has left.   You can play on alone; Net → Leave closes the room.', true); },
-    hello: function (msg) { if (net.role === 1 && msg.fresh) netStartGame(); },   // a guest without a game (just arrived, or reloaded): give it one
+    hello: function (msg) {
+      var mine = document.getElementById('app-version').textContent;
+      if (msg.ver !== mine) statusEl.textContent = 'The other computer runs ' + msg.ver + ', this one ' + mine + ' — reload the older page (Ctrl+F5).   ' + statusEl.textContent, statusEl.classList.add('warn');   // (happened on the first evening: a tab from before a deploy — Peter, 9/27)
+      if (net.role === 1 && msg.fresh) netStartGame();   // a guest without a game (just arrived, or reloaded): give it one
+    },
     game: function (msg) { netNewGame(msg); },
     move: function (msg, done) { whenIdle(function () { netDraw(msg, done); }); },
     undo: function (msg, done) { whenIdle(function () { log('Net: the other computer undoes move ' + msg.k + '.'); undo(true); done(true); }); },
