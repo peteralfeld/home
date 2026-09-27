@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sprouts</title>
+<link rel="stylesheet" href="style.css?v=78">
+</head>
+<body>
+
+<div id="menubar">
+  <span id="app-version">SPROUTS v. 78</span>
+  <div class="menu">
+    <button class="menu-title" id="workers-title">Workers</button>
+    <div class="menu-panel">
+      <label class="row">Workers <select id="opt-workers"></select></label>
+      <div class="row note">Parallel processes for the computer players (Monte Carlo, Parity search). The default is what this machine has.</div>
+    </div>
+  </div>
+  <div class="menu">
+    <button class="menu-title">Game</button>
+    <div class="menu-panel">
+      <label class="row">Spots <input id="opt-spots" type="number" min="1" value="3"></label>
+      <label class="row">Layout
+        <select id="opt-layout">
+          <option value="circle">Circle</option>
+          <option value="line">Line</option>
+          <option value="random">Random</option>
+          <option value="manual">Place by hand</option>
+        </select>
+      </label>
+      <label class="row">Rules
+        <select id="opt-rules">
+          <option value="normal">Normal: last to move wins</option>
+          <option value="misere">Mis&egrave;re: last to move loses</option>
+        </select>
+      </label>
+      <button class="item" id="cmd-new">New game <kbd>N</kbd></button>
+      <div class="row note"><kbd>1</kbd> … <kbd>9</kbd>: a new game with that many spots in the chosen layout (one spot in the center). <kbd>0</kbd>: a blank window, spots placed by hand.</div>
+      <button class="item" id="cmd-undo">Undo move <kbd>U</kbd></button>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">Player 1</button>
+    <div class="menu-panel">
+      <label class="row">Plays
+        <select id="opt-player1" class="player">
+          <option value="human">Human</option>
+          <option value="random">Random</option>
+          <option value="montecarlo">Monte Carlo</option>
+          <option value="parity">Parity search</option>
+        </select>
+      </label>
+      <label class="row montecarlo">Random games per move <input id="opt-trials1" type="number" min="1" value="100"></label>
+      <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec1" type="number" min="0.1" step="0.1"></label>
+      <label class="row parity">Search depth <input id="opt-depth1" type="number" min="1" value="6"></label>
+      <label class="row parity">&hellip; or seconds per move <input id="opt-parsec1" type="number" min="0.1" step="0.1"></label>
+      <div class="row note">Player 1 moves first. Random: any legal move. Monte Carlo: the move after which the set number of random games goes best. Parity search: the move that keeps the number of moves left at the parity it wants (odd; even in misère), looking the set number of moves ahead — or as far as the seconds allow, one move deeper at a time. Filling in one of a pair of fields empties the other. The computer moves as soon as it is its turn; Esc interrupts its thinking, Human in its menu stops it.</div>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">Player 2</button>
+    <div class="menu-panel">
+      <label class="row">Plays
+        <select id="opt-player2" class="player">
+          <option value="human">Human</option>
+          <option value="random">Random</option>
+          <option value="montecarlo">Monte Carlo</option>
+          <option value="parity">Parity search</option>
+        </select>
+      </label>
+      <label class="row montecarlo">Random games per move <input id="opt-trials2" type="number" min="1" value="100"></label>
+      <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec2" type="number" min="0.1" step="0.1"></label>
+      <label class="row parity">Search depth <input id="opt-depth2" type="number" min="1" value="6"></label>
+      <label class="row parity">&hellip; or seconds per move <input id="opt-parsec2" type="number" min="0.1" step="0.1"></label>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">View</button>
+    <div class="menu-panel">
+      <button class="item" id="cmd-full">Full screen <kbd>F</kbd></button>
+      <button class="item" id="cmd-poly">Control polygons <kbd>C</kbd></button>
+      <button class="item" id="cmd-numbers">Spot numbers <kbd>S</kbd></button>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">Settings</button>
+    <div class="menu-panel">
+      <label class="row">Minimum clearance <span class="val" id="val-d0"></span>
+        <input id="opt-d0" type="range" min="3" max="30" step="1" value="10"></label>
+      <label class="row">Comfort distance <span class="val" id="val-D"></span>
+        <input id="opt-D" type="range" min="10" max="64" step="1" value="40"></label>
+      <label class="row">Room vs length <span class="val" id="val-lambda"></span>
+        <input id="opt-lambda" type="range" min="-1" max="1" step="0.1" value="0"></label>
+      <label class="row">Spot size <span class="val" id="val-spotsize"></span>
+        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="1.7"></label>
+      <label class="row">Curve thickness <span class="val" id="val-linewidth"></span>
+        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1.3"></label>
+      <label class="row">Number size <span class="val" id="val-numbersize"></span>
+        <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
+      <label class="row">Animate <input id="opt-animate" type="checkbox" checked></label>
+      <label class="row">Click to connect <input id="opt-click" type="checkbox" checked></label>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">Room</button>
+    <div class="menu-panel">
+      <div class="row note">When a move does not fit, the status line says why and offers <kbd>M</kbd> to make room: by sliding spots along their curves, else by pushing curves apart. <kbd>Ctrl</kbd>+click where a spot fits adds one (no curves, 3 lives; not a move). <kbd>Ctrl</kbd>+drag moves a spot: along its curve, anywhere in its region (no curves), or back along / onward from its one curve.</div>
+      <label class="row">Shift spots automatically <input id="opt-shift-spots" type="checkbox" checked></label>
+      <label class="row">Shift curves automatically <input id="opt-shift-curves" type="checkbox" checked></label>
+      <button class="item" id="cmd-adjust">Adjust the drawing now <kbd>A</kbd></button>
+      <label class="row">Adjust the drawing after each move <input id="opt-adjust-after" type="checkbox"></label>
+      <div class="row note">Adjusting lays the curves out again with the spots where they are (a spot on its move's curve moves with it); Esc stops it. Each region gets room in proportion to its lives; a region with no move left gets none.</div>
+      <button class="item" id="cmd-redraw">Rearrange the drawing <kbd>R</kbd></button>
+      <label class="row">Rearrange the drawing after each move <input id="opt-redraw-after" type="checkbox"></label>
+      <div class="row note">Rearranging moves the spots too. Same position; U undoes it. When a move cannot be made even after making room, <kbd>R</kbd> rearranges and tries it again.</div>
+      <label class="row">Heroic <input id="opt-heroic" type="checkbox"></label>
+      <div class="row note">Heroic: a curve you draw by hand is kept exactly as drawn, without smoothing; it only may not cross or touch anything. Curves made by clicking are routed and smoothed as before. Curves and spots are not moved locally (no M, no shifting, no Ctrl+drag); A and R still work.</div>
+    </div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">Colors</button>
+    <div class="menu-panel" id="colour-panel"></div>
+  </div>
+
+  <div class="menu">
+    <button class="menu-title">File</button>
+    <div class="menu-panel">
+      <button class="item" id="cmd-png">Save picture as PNG <kbd>P</kbd></button>
+      <button class="item" id="cmd-save">Save game as JSON</button>
+      <button class="item" id="cmd-load">Load game&hellip;</button>
+      <button class="item" id="cmd-log">Save log as text</button>
+      <button class="item" id="cmd-position">Save position as text</button>
+    </div>
+  </div>
+
+  <span id="status"></span>
+</div>
+
+<div id="stage"><canvas id="board"></canvas></div>
+
+<script src="geom.js?v=78"></script>
+<script src="relax.js?v=78"></script>
+<script src="route.js?v=78"></script>
+<script src="engine.js?v=78"></script>
+<script src="describe.js?v=78"></script>
+<script src="room.js?v=78"></script>
+<script src="redraw.js?v=78"></script>
+<script src="ai.js?v=78"></script>
+<script src="ui.js?v=78"></script>
+</body>
+</html>
