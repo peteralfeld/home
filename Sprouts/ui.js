@@ -8,7 +8,7 @@
    ========================================================================= */
 (function () {
   'use strict';
-  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, AI = SproutsAI;
+  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, AI = SproutsAI, Nt = SproutsNet;
 
   var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 1.7, × 1.3 from Peter's game of 9/26, v56)
   var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 1.6 from Peter's game of 9/26, v58)
@@ -59,7 +59,7 @@
      (Peter, 9/26, v59). */
   var BUSY_BACKGROUND = '#d3d3d3';
   var roomBusy = false;  // M or the automatic room-making is at work (makeRoom → makeRoomNow)
-  function computing() { return !!relaying || roomBusy || !!(ai && ai.thinking); }
+  function computing() { return !!relaying || roomBusy || !!(ai && ai.thinking) || netGray(); }
   function background() { return computing() ? BUSY_BACKGROUND : colours.background; }
   function spotColour(sp) { return colours['deg' + Math.min(3, sp.deg)]; }
   /* While a drag is on, the spots a release would join — the destination and
@@ -167,12 +167,17 @@
     return 'Player ' + p;
   }
   function sayTurn() {
-    if (game.phase === 'place') {
+    var w = net && net.session.waiting;
+    if (w) {                                      // (v79: my action is on its way to the other computer — the page is gray meanwhile)
+      say(w.type === 'move' ? 'Your move is being drawn on the other computer…' : w.type === 'undo' ? 'Undoing on the other computer…' : 'Starting the game on the other computer…');
+    } else if (net && net.role === 2 && !net.started) {
+      say('Connected as guest.   Waiting for the host to start a game…');
+    } else if (game.phase === 'place') {
       say('Click to place the spots (' + game.spots.length + ' so far), then press Enter to start.');
     } else if (game.phase === 'over') {
       sayGameOver();
     } else {
-      say(playerName(game.player) + ' to move   (move ' + (game.moves + 1) + ')   ' + countsText());
+      say(playerName(game.player) + (net ? (game.player === net.role ? ' (you)' : ' (the other computer)') : '') + ' to move   (move ' + (game.moves + 1) + ')   ' + countsText());
     }
   }
   /* "m=2  M=7  K=1" (Peter, 9/27, v75): m and M the least and most moves the
@@ -348,6 +353,9 @@
 
   /* layout: the Game menu's unless given (key 0 asks for 'manual' without changing the menu) */
   function newGame(layout) {
+    if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true); return; }   // (v79)
+    var nb = net && !netAllow ? netBlock(true) : null;
+    if (nb) { say(nb, true); return; }
     if (typeof layout !== 'string') layout = document.getElementById('opt-layout').value;
     var n = Math.floor(Number(document.getElementById('opt-spots').value));
     var W = stage.clientWidth, H = stage.clientHeight, pts = [];
@@ -365,6 +373,7 @@
     log(layout === 'manual' ? 'New game: spots to be placed by hand, ' + rulesName(game.rules) + '.'
                             : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + layout + '), ' + rulesName(game.rules) + '.');
     resizeCanvas();
+    netGameStarted();
     sayTurn();
     maybeAI();
   }
@@ -375,21 +384,33 @@
     history = []; historyWhy = {};
     game.phase = 'play';
     log('Play starts with ' + game.spots.length + ' spots placed by hand.');
+    netGameStarted();
     sayTurn(); draw();
     maybeAI();
   }
 
-  function undo() {
+  /* U. Connected (v79): either side may undo, and an undone MOVE is undone
+     on the other computer too (a step that only changed the picture — room
+     made, A, R, a spot moved by hand — is local, like the picture itself).
+     `remote`: the other computer undid its last move — take steps off until
+     a move is gone (my own picture steps on top of it go with it). */
+  function undo(remote) {
     if (!history.length) { say('Nothing to undo.', true); return; }
+    if (net && !remote) { var nb = netBlock(true); if (nb) { say(nb, true); return; } }
+    var was = game.moves, redo = net ? { game: JSON.stringify(game), entry: history[history.length - 1], why: historyWhy[history.length - 1] } : null;
+    do undoStep(); while (remote && history.length && game.moves === was);
+    stroke = null; band = null; armed = null; if (!remote) aiCancel();
+    if (net && !remote && game.moves < was) { netRedo = redo; net.session.undone(was); }
+    sayTurn(); draw();
+    maybeAI();
+  }
+  function undoStep() {
     var was = game.moves, n = game.spots.length, placing = game.phase === 'place';
     var why = historyWhy[history.length - 1];
     delete historyWhy[history.length - 1];
     game = JSON.parse(history.pop()); pendingRoom = null; roomSnapshot = false;
     log(game.moves < was ? 'Undo move ' + was + '.' : placing ? 'Undo (spot placement).' : why ? 'Undo (' + why + ').' :
         game.spots.length < n ? 'Undo (spot ' + n + ' added by hand).' : 'Undo (spot moved by hand).');
-    stroke = null; band = null; armed = null; aiCancel();
-    sayTurn(); draw();
-    maybeAI();
   }
 
   /* ---------------- pointer input ---------------- */
@@ -421,6 +442,8 @@
 
   canvas.addEventListener('pointerdown', function (e) {
     if (band || relaying) return;
+    var nb = net && (e.button === 0 || e.button === 2) ? netBlock(e.ctrlKey && e.button === 0) : null;   // (v79: not my turn, or the other computer is at work; Ctrl+drag moves spots any time)
+    if (nb) { say(nb, true); return; }
     if (ai || (game.phase === 'play' && isAI(game.player))) { say(playerName(game.player) + ' is played by the computer (' + kindName(players[game.player].kind) + '); set it to Human in its menu to play yourself.', true); return; }
     var marking = e.button === 2 || (e.button === 0 && e.shiftKey);
     if (e.button !== 0 && !marking) return;
@@ -436,6 +459,7 @@
     if (game.phase === 'over') { sayGameOver(); return; }
     if (e.ctrlKey) {                              // Ctrl+click where a spot fits: add one; else Ctrl+drag moves the nearest spot
       var fit = newSpotRoom(p);
+      if (fit.ok && net) { say('No spots added by hand while connected: the other computer could not follow.', true); return; }   // (v79)
       if (fit.ok) { addSpot(p, fit); return; }
       if (startSpotDrag(nearestSpot(p), p, fit.why)) canvas.setPointerCapture(e.pointerId);
       return;
@@ -711,7 +735,7 @@
     relaying = null;
     var r = Rd.finishRedraw(st);
     game = JSON.parse(rl.start);
-    if (r.error) { say((adjust ? 'Not adjusted: ' : 'Not rearranged: ') + r.error, true, (adjust ? 'Not adjusted: ' : 'Not rearranged: ') + r.error + ' (least clearance ' + r.clearance.toFixed(1) + ' px)'); draw(); maybeAI(); return; }
+    if (r.error) { say((adjust ? 'Not adjusted: ' : 'Not rearranged: ') + r.error, true, (adjust ? 'Not adjusted: ' : 'Not rearranged: ') + r.error + ' (least clearance ' + r.clearance.toFixed(1) + ' px)'); draw(); afterRelay(); return; }
     if (!rl.after) snapshot(adjust ? 'drawing adjusted' : 'drawing rearranged');
     game = r.game;
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
@@ -720,7 +744,12 @@
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s.');
     sayTurn(); draw();
     statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : 'rearranged') + (rl.after ? '' : '   (U undoes it)');
-    if (rl.retry) retryMove(rl.retry); else maybeAI();
+    if (rl.retry) retryMove(rl.retry); else afterRelay();
+  }
+  /* After A or R: the other computer's move that waited for the rearranging (v79), else the computer's turn. */
+  function afterRelay() {
+    if (netRetry) { var r = netRetry; netRetry = null; netDraw(r.msg, r.done); return; }
+    maybeAI();
   }
   /* The move that waited for room, tried again after a redraw: A armed again
      in the same region (found by its description: regions have no lasting
@@ -1572,9 +1601,12 @@
     log(line);
     marksUsed = null;
     if (game.phase === 'over') log(gameOverText().replace(/\s{2,}/g, ' '));
+    if (net && !(ai && ai.remote)) net.session.moved(game.moves - 1, netDescribe(mv.a, mv.b));   // (v79: my move goes to the other computer; sayTurn says so)
     sayTurn(); draw();
     if (note) { statusEl.textContent += '   —   ' + note; statusEl.classList.add('warn'); note = null; }
+    var committed = game.moves;
     if (ai) aiCommitted();
+    if (game.moves !== committed) return;        // (v79: the other computer's move was drawn as another move and taken back in aiCommitted)
     if (route.redrawAfter) relayDrawing('redraw', true);   // Room → Redraw from scratch after each move (undone with the move, v47)
     else if (route.adjustAfter) relayDrawing('adjust', true);   // Room → Adjust the drawing after each move (undone with the move)
     if (!relaying) maybeAI();
@@ -1688,6 +1720,7 @@
     return out;
   }
   function loadGame() {
+    if (net) { say('No loading while connected: the other computer could not follow (Net → Leave first).', true); return; }   // (v79)
     var input = document.createElement('input');
     input.type = 'file'; input.accept = '.json,application/json';
     input.addEventListener('change', function () {
@@ -2093,6 +2126,21 @@
     }
     if (!a.second && a.plain.length) { a.second = true; a.queue = a.plain; aiNext(); return; }
     ai = null;
+    if (a.remote) {                                // the other computer's move (v79): R once for this move, then it is refused there and taken back
+      if (!a.remote.redrew) {                      // (for every move, not once per position as for the computer: a move taken back costs the other player more than R costs here)
+        a.remote.redrew = true;
+        log(a.who + ': its move ' + a.sent + ' could not be drawn here: ' + a.failed.join('; ') + '. Rearranging the drawing (R) to try again.');
+        netRetry = { msg: a.remote, done: a.done };
+        relayDrawing('redraw');
+        if (relaying) return;
+        netRetry = null;
+      }
+      log(a.who + ': its move ' + a.sent + ' could not be drawn here, even after rearranging: ' + a.failed.join('; ') + '. It is refused and taken back there.');
+      say('The move of the other computer could not be drawn here, even after rearranging; it was refused and taken back there.', true);
+      draw();
+      a.done(false, 'no way to draw it, even after rearranging');
+      return;
+    }
     if (aiRedrew !== game.moves) {
       aiRedrew = game.moves;
       log(a.who + ' found no move it could draw: ' + a.failed.join('; ') + '. Rearranging the drawing (R) to try again.');
@@ -2207,6 +2255,14 @@
   function aiCommitted() {
     var a = ai; ai = null;
     var got = AI.gameKey(AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots));
+    if (a.remote) {                                // the other computer's move (v79): the drawn position must be the one sent (or its mirror image)
+      if (got === a.remote.key || got === a.remote.mkey) { log('    ' + a.who + ': ' + a.sent + ' drawn as on the other computer.'); a.done(true); return; }
+      log('    ' + a.who + ': the router drew ' + a.text + ' as another move than the one sent (' + a.sent + '); taken back, trying another way.');
+      undoStep();                                  // (the move's own snapshot; the log line of the move stays, followed by this one)
+      a.failed.push(a.text + ' (drawn as another move)');
+      ai = a; aiNext();
+      return;
+    }
     if (a.verdict) { log('    ' + a.who + ' ' + a.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + a.who + ' ' + a.verdict; }
     if (got === a.expect) { log('    ' + a.who + ' intended ' + a.text + ': drawn as intended.'); return; }
     var other = null, big = false;
@@ -2247,6 +2303,223 @@
     if (players[p].mcSeconds) { document.getElementById('opt-mcsec' + p).value = players[p].mcSeconds; document.getElementById('opt-trials' + p).value = ''; }
     rows();
   });
+
+  /* ---------------- two computers (menu Net, v79) ----------------
+     Peter, 9/27. Host and guest meet in a Firebase room named by a three-
+     digit code (net.js: the transport, the protocol, the safeguards; the
+     Firebase project is Backgammon's, the rooms under `sprouts/`). Only the
+     moves travel: the other computer's move arrives as its two spots and
+     the position it made (ai.js gameKey, and its mirror image's), the moves
+     between those spots that make that position are found here (`netCandidates`)
+     and handed to the computer players' machinery (`aiNext` → `aiTry` →
+     the router; `aiCommitted` checks the drawn position and takes back a
+     move the router drew as another one); R once when nothing can be
+     drawn, then the move is REFUSED and taken back on the other computer.
+     The host is Player 1 and the only one to start games; the guest lays
+     the same number of spots out in its own way (all isolated spots are
+     alike). Either side undoes; U undoes the last move whoever made it.
+     After my move or undo my page is gray (netGray) until the other computer
+     has drawn / undone it (the ack), and I take no input meanwhile; nor
+     while the other computer's move is being drawn here, nor out of turn
+     (netBlock). Two actions at once: the host's wins, the guest's is
+     reverted (netRedo keeps what an undo removed). Each computer keeps its
+     own picture, settings, colors, A and R. */
+  var net = null;        // { session, role (1 host, 2 guest), code, started, kinds (the Player menus before) } while connected
+  var netAllow = false;  // the guest's newGame at the host's word (its own N is refused)
+  var netRedo = null;    // what my undo took off, kept until it is acknowledged (the host's action may win and put it back)
+  var netRetry = null;   // the other computer's move waiting for R to finish: { msg, done }
+  /* Backgammon's Firebase project (its web config is meant to be public; the database rules decide what may be written). */
+  var FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyDhjX4ULNwwHs4etViXMEqmsoDImVR8UBw', authDomain: 'pabg-1b336.firebaseapp.com',
+    databaseURL: 'https://pabg-1b336-default-rtdb.firebaseio.com', projectId: 'pabg-1b336', appId: '1:1016658098456:web:41b4fd6992668c2d77c66d'
+  };
+  var fbDb = null;
+  function firebaseDb() {
+    if (fbDb) return fbDb;
+    if (typeof firebase === 'undefined') { say('The Firebase library did not load (no internet?): no play over the net.', true); return null; }
+    try { if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); fbDb = firebase.database(); }
+    catch (e) { say('Firebase could not be started: ' + e.message, true); return null; }
+    return fbDb;
+  }
+  function netGray() { return !!(net && (net.session.waiting || (net.role === 2 && !net.started))); }
+  /* Why I may not act now, or null. anyTurn: the action is not a move (undo, moving a spot), so the turn does not matter. */
+  function netBlock(anyTurn) {
+    if (!net) return null;
+    if (net.session.waiting) return 'Waiting for the other computer…';
+    if (net.session.busy || netRetry) return 'The other computer\'s move is being drawn here — a moment.';
+    if (net.role === 2 && !net.started) return 'Waiting for the host to start a game.';
+    if (!anyTurn && game.phase === 'play' && game.player !== net.role) return playerName(game.player) + ' on the other computer is to move.';
+    return null;
+  }
+  function mirrorPos(pos) { return { n: pos.n, deg: pos.deg, regions: pos.regions.map(function (r) { return { boundaries: r.boundaries.map(function (b) { return b.slice().reverse(); }) }; }) }; }
+  function netKeys() { var pos = AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots); return { key: AI.gameKey(pos), mkey: AI.gameKey(mirrorPos(pos)) }; }
+  function netState() { var k = netKeys(); return { k: game.moves, key: k.key, mkey: k.mkey, fresh: !net.started }; }
+  /* My move a → b just made, for the other computer: the two spots, the
+     spots of one of the two regions it made (a one-boundary move; null for
+     two boundaries) without the move's own, and the position's keys. */
+  function netDescribe(a, b) {
+    var z = game.spots.length - 1, an = E.analyse(game.spots, game.edges), k = netKeys();
+    var regs = an.regions.filter(function (r) { return r.spots.indexOf(z) >= 0; });
+    var inside = regs.length > 1 ? regs[0].spots.filter(function (s) { return s !== a && s !== b && s !== z; }) : null;
+    return { x: a, y: b, inside: inside, key: k.key, mkey: k.mkey };
+  }
+  /* The moves here between the two spots that make the position sent, in
+     either direction (the router draws from x; from y it may arrive at x by
+     the other corner). One-boundary moves: the other boundaries whose spots
+     all lie in `inside` go with the arc — or all the others do (inside may
+     name either side). */
+  function netCandidates(pos, msg) {
+    var out = [], seen = {}, inside = {};
+    (msg.inside || []).forEach(function (s) { inside[s] = true; });
+    function consider(mv) {
+      var id = [mv.x, mv.j, mv.i, mv.j2, mv.i2, mv.S.join('.')].join('/');
+      if (seen[id]) return;
+      seen[id] = true;
+      var k = AI.gameKey(AI.apply(pos, mv));
+      if (k === msg.key || k === msg.mkey) out.push(mv);
+    }
+    AI.families(pos).forEach(function (fam) {
+      if (!((fam.x === msg.x && fam.y === msg.y) || (fam.x === msg.y && fam.y === msg.x))) return;
+      var Ss = [[]];
+      if (fam.j === fam.j2 && msg.inside) {
+        var reg = pos.regions[fam.r];
+        var S1 = fam.others.filter(function (k) { return reg.boundaries[k].every(function (s) { return inside[s]; }); });
+        var S2 = fam.others.filter(function (k) { return S1.indexOf(k) < 0; });
+        Ss = [S1, S2];
+      } else if (fam.j === fam.j2) return;
+      Ss.forEach(function (S) {
+        var mv = AI.expand(fam, S);
+        consider(mv);
+        consider({ r: mv.r, j: mv.j2, i: mv.i2, j2: mv.j, i2: mv.i, x: mv.y, y: mv.x, S: mv.S, two: mv.two });   // from the other end
+        if (!mv.two) consider({ r: mv.r, j: mv.j2, i: mv.i2, j2: mv.j, i2: mv.i, x: mv.y, y: mv.x, S: fam.others.filter(function (k) { return S.indexOf(k) < 0; }), two: false });
+      });
+    });
+    out.sort(function (u, v) { return (u.x === msg.x ? 0 : 1) - (v.x === msg.x ? 0 : 1); });   // as sent first
+    return out;
+  }
+  /* Draw the other computer's move here: done(ok, why) when it is drawn (the
+     ack) or given up (the refusal). Runs when the page is idle. */
+  function netDraw(msg, done) {
+    if (game.phase !== 'play' || game.moves !== msg.k) { log('Net: move ' + (msg.k + 1) + ' of the other computer does not fit here (' + game.moves + ' moves, ' + game.phase + ').'); done(false, 'the positions differ'); return; }
+    var an = E.analyse(game.spots, game.edges), pos = AI.fromAnalysis(an, game.spots), cands = netCandidates(pos, msg);
+    var who = playerName(game.player) + ' (the other computer)', sent = (msg.x + 1) + ' → ' + (msg.y + 1);
+    if (!cands.length) { log('Net: no move ' + sent + ' here makes the position the other computer sent — the positions differ (a bug: please save the game on both computers).'); say('The other computer\'s move ' + sent + ' does not exist here (a bug: please save the game).', true); done(false, 'no such move here'); return; }
+    marksUsed = null; pendingRoom = null; roomSnapshot = false; armed = null;
+    ai = { remote: msg, done: done, player: game.player, who: who, sent: sent, an: an, pos: pos, queue: cands, failed: [], plain: [] };
+    aiNext();
+  }
+  function whenIdle(fn) {
+    if (band || relaying || roomBusy || roomCheck || stroke || slideDrag || ai || netRetry) { setTimeout(function () { whenIdle(fn); }, AI_WATCH_MS); return; }
+    fn();
+  }
+  function takeBackMove() { var was = game.moves; do undoStep(); while (history.length && game.moves === was); }
+  var netHooks = {
+    log: log,
+    open: function () { if (!net) return; netTitle(); netStatus('Connected as ' + (net.role === 1 ? 'host' : 'guest') + ', room ' + net.code + '.'); log('Net: the other computer is here (room ' + net.code + ').'); sayTurn(); draw(); },
+    close: function () { if (!net) return; netTitle(); netStatus('The other computer has left room ' + net.code + '.'); log('Net: the other computer has left.'); say('The other computer has left.   You can play on alone; Net → Leave closes the room.', true); },
+    hello: function (msg) { if (net.role === 1 && msg.fresh) netStartGame(); },   // a guest without a game (just arrived, or reloaded): give it one
+    game: function (msg) { netNewGame(msg); },
+    move: function (msg, done) { whenIdle(function () { netDraw(msg, done); }); },
+    undo: function (msg, done) { whenIdle(function () { log('Net: the other computer undoes move ' + msg.k + '.'); undo(true); done(true); }); },
+    revert: function (w) {
+      if (w.type === 'move') { takeBackMove(); log('Net: my move taken back (the host moved at the same time).'); }
+      else if (w.type === 'undo' && netRedo) { history.push(netRedo.entry); if (netRedo.why) historyWhy[history.length - 1] = netRedo.why; game = JSON.parse(netRedo.game); log('Net: my undo taken back (the host acted at the same time).'); }
+      netRedo = null; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false;
+      sayTurn(); draw();
+    },
+    acked: function () { netRedo = null; sayTurn(); draw(); },
+    refused: function (msg) {
+      takeBackMove();
+      log('Net: the other computer could not draw my move (' + msg.why + '); it is taken back.');
+      sayTurn(); draw();
+      statusEl.textContent = 'The other computer could not draw your move — it is taken back; play another.   ' + statusEl.textContent; statusEl.classList.add('warn');
+    },
+    diverged: function (mine, peer) {
+      log('Net: the two positions differ after ' + mine.k + ' moves (a bug: please save the game on both computers).\n    here:  ' + mine.key + '\n    there: ' + peer.key);
+      say('The two computers disagree about the position (a bug: please save the game on both).', true);
+    }
+  };
+  /* The host has a guest without a game: a game with no moves yet is sent as it is, spots still being placed wait for Enter, anything else starts anew. */
+  function netStartGame() {
+    if (relaying) finishRelaying(false);
+    if (game.phase === 'play' && game.moves === 0 && !band) netGameStarted();
+    else if (game.phase === 'place') say('Place the spots and press Enter: the game then starts on both computers.');
+    else newGame();
+  }
+  /* A game began here (newGame, startPlay): the host sends it. */
+  function netGameStarted() {
+    if (!net || net.role !== 1 || game.phase !== 'play') return;
+    net.started = true;
+    net.session.sendGame(game.spots.length, game.rules);
+    log('Net: the game (' + game.spots.length + ' spots, ' + rulesName(game.rules) + ') goes to the guest.');
+  }
+  /* The guest: the host's game, laid out my way (Place by hand becomes a circle). */
+  function netNewGame(msg) {
+    if (relaying) finishRelaying(false);
+    band = null; stroke = null; armed = null; aiCancel();
+    document.getElementById('opt-spots').value = msg.n;
+    document.getElementById('opt-rules').value = msg.rules === 'misere' ? 'misere' : 'normal';
+    var layout = document.getElementById('opt-layout').value;
+    if (layout === 'manual') layout = 'circle';
+    netAllow = true;
+    try { newGame(layout); if (game.spots.length !== msg.n || game.phase !== 'play') newGame('random'); } finally { netAllow = false; }
+    net.started = true;
+    if (game.spots.length !== msg.n || game.phase !== 'play') { log('Net: could not lay out the host\'s ' + msg.n + ' spots here.'); say('Could not lay out the host\'s ' + msg.n + ' spots in a window this size.', true); return; }
+    log('Net: the host started a game: ' + msg.n + ' spots, ' + rulesName(game.rules) + '.');
+    sayTurn(); draw();
+  }
+  function netTitle() { document.getElementById('net-title').textContent = net ? 'Net: ' + (net.role === 1 ? 'host ' : 'guest ') + net.code + (net.session.connected ? '' : ' (alone)') : 'Net'; }
+  function netStatus(text) { document.getElementById('net-status').textContent = text; }
+  function netOpen(db, code, role) {
+    var first = true, kinds = { 1: players[1].kind, 2: players[2].kind };
+    aiCancel();
+    [1, 2].forEach(function (p) { var sel = document.getElementById('opt-player' + p); sel.value = 'human'; sel.dispatchEvent(new Event('change')); sel.disabled = true; });   // (humans only over the net)
+    net = { role: role, code: code, started: false, kinds: kinds, session: null };
+    net.session = Nt.createSession({
+      role: role, version: document.getElementById('app-version').textContent, state: netState,
+      connect: function () { if (!first) { try { db.goOffline(); db.goOnline(); } catch (e) {} } first = false; return Nt.firebaseTransport(db, code, role, log); }   // (a rebuild wants a fresh socket)
+    }, netHooks);
+    netTitle();
+    netStatus(role === 1 ? 'Hosting room ' + code + '. Waiting for the guest…' : 'Joining room ' + code + '…');
+    log('Net: ' + (role === 1 ? 'hosting' : 'joining') + ' room ' + code + '.');
+    say(role === 1 ? 'Room ' + code + ' is open: tell the other player the code.   Waiting for the guest…' : 'Joining room ' + code + '…');
+    net.session.start();                           // (may find the other side there at once: its `open` overwrites the lines above)
+    draw();
+  }
+  function netHost() {
+    if (net) { say('Already connected (Net → Leave first).', true); return; }
+    var db = firebaseDb(); if (!db) return;
+    var code = Nt.randomCode();
+    document.getElementById('opt-code').value = code;
+    netStatus('Opening room ' + code + '…');
+    Nt.createRoom(db, code).then(function () { if (!net) netOpen(db, code, 1); })
+      .catch(function (e) { netStatus('Could not open a room: ' + e.message); log('Net: could not open room ' + code + ': ' + e.message); say('Could not open a room: ' + e.message, true); });
+  }
+  function netGuest() {
+    if (net) { say('Already connected (Net → Leave first).', true); return; }
+    var code = document.getElementById('opt-code').value.trim();
+    if (!/^\d{3}$/.test(code)) { say('Type the host\'s three-digit code first.', true); return; }
+    var db = firebaseDb(); if (!db) return;
+    netStatus('Looking for room ' + code + '…');
+    Nt.hostPresent(db, code).then(function (yes) {
+      if (!yes) { netStatus('No host is waiting in room ' + code + '.'); say('No host is waiting in room ' + code + '.', true); return; }
+      if (!net) netOpen(db, code, 2);
+    }).catch(function (e) { netStatus('Could not reach the room: ' + e.message); say('Could not reach the room: ' + e.message, true); });
+  }
+  function netLeave() {
+    if (!net) { say('Not connected.', true); return; }
+    var kinds = net.kinds;
+    net.session.leave();
+    net = null; netRedo = null; netRetry = null;
+    [1, 2].forEach(function (p) { var sel = document.getElementById('opt-player' + p); sel.disabled = false; sel.value = kinds[p]; sel.dispatchEvent(new Event('change')); });
+    netTitle(); netStatus('Not connected.');
+    log('Net: left the room.');
+    sayTurn(); draw();
+  }
+  document.getElementById('cmd-host').addEventListener('click', function () { closeMenus(); netHost(); });
+  document.getElementById('cmd-guest').addEventListener('click', function () { closeMenus(); netGuest(); });
+  document.getElementById('cmd-leave').addEventListener('click', function () { closeMenus(); netLeave(); });
+  document.getElementById('opt-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); closeMenus(); netGuest(); } });
 
   /* ---------------- start ---------------- */
   new ResizeObserver(resizeCanvas).observe(stage);
