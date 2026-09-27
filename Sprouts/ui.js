@@ -2307,7 +2307,7 @@
   /* ---------------- two computers (menu Net, v79) ----------------
      Peter, 9/27. Host and guest meet in a Firebase room named by a three-
      digit code (net.js: the transport, the protocol, the safeguards; the
-     Firebase project is Backgammon's, the rooms under `sprouts/`). Only the
+     Firebase project is Backgammon's, the rooms `rooms/sprouts<code>` — see net.js). Only the
      moves travel: the other computer's move arrives as its two spots and
      the position it made (ai.js gameKey, and its mirror image's), the moves
      between those spots that make that position are found here (`netCandidates`)

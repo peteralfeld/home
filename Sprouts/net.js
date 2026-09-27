@@ -58,7 +58,10 @@
 
   /* ---------------- the Firebase transport ----------------
      A DataConnection-shaped shim (send, on('open'|'data'|'close'), open,
-     close), Backgammon's, over a room `sprouts/rooms/<code>`: two queues
+     close), Backgammon's, over a room `rooms/sprouts<code>` (under Backgammon's
+     `rooms/`, the path its database rules allow — a path of our own was
+     PERMISSION_DENIED, Peter 9/27; the prefix keeps a Sprouts room apart from a
+     Backgammon room with the same code): two queues
      host2guest / guest2host of JSON strings, presence flags with
      onDisconnect, "open" while the other side is present. A (re)attach
      delivers only messages above the HIGH-WATER MARK — the highest push key
@@ -67,8 +70,9 @@
      landed during the rebuild: Backgammon 8/25). A fresh room has nothing
      to skip. */
   var marks = {};
+  function roomPath(code) { return 'rooms/sprouts' + code; }
   function firebaseTransport(db, code, role, log) {
-    var roomRef = db.ref('sprouts/rooms/' + code);
+    var roomRef = db.ref(roomPath(code));
     var outRef = roomRef.child(role === 1 ? 'host2guest' : 'guest2host');
     var inRef = roomRef.child(role === 1 ? 'guest2host' : 'host2guest');
     var meRef = roomRef.child(role === 1 ? 'hostPresent' : 'guestPresent');
@@ -113,11 +117,11 @@
   }
   /* The host's fresh room (wipes whatever a stale room at that code holds); resolves when written. */
   function createRoom(db, code) {
-    return db.ref('sprouts/rooms/' + code).set({ createdAt: Date.now() });
+    return db.ref(roomPath(code)).set({ createdAt: Date.now() });
   }
   /* Is a host waiting at this code? */
   function hostPresent(db, code) {
-    return db.ref('sprouts/rooms/' + code + '/hostPresent').once('value').then(function (snap) { return snap.val() === true; });
+    return db.ref(roomPath(code) + '/hostPresent').once('value').then(function (snap) { return snap.val() === true; });
   }
   function randomCode() { return String(100 + Math.floor(Math.random() * 900)); }   // three digits, no leading zero to lose
 
