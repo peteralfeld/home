@@ -2318,10 +2318,10 @@
      The host is Player 1 and the only one to start games; the guest lays
      the same number of spots out in its own way (all isolated spots are
      alike). Either side undoes; U undoes the last move whoever made it.
-     After my move or undo my page is gray (netGray) until the other computer
-     has drawn / undone it (the ack), and I take no input meanwhile; nor
-     while the other computer's move is being drawn here, nor out of turn
-     (netBlock). Two actions at once: the host's wins, the guest's is
+     My page is gray (netGray) whenever I cannot move: after my move or undo
+     until the other computer has drawn / undone it (the ack), and all through
+     the other computer's turn; I take no input meanwhile, nor while the
+     other computer's move is being drawn here (netBlock). Two actions at once: the host's wins, the guest's is
      reverted (netRedo keeps what an undo removed). Each computer keeps its
      own picture, settings, colors, A and R. */
   var net = null;        // { session, role (1 host, 2 guest), code, started, kinds (the Player menus before) } while connected
@@ -2341,7 +2341,8 @@
     catch (e) { say('Firebase could not be started: ' + e.message, true); return null; }
     return fbDb;
   }
-  function netGray() { return !!(net && (net.session.waiting || (net.role === 2 && !net.started))); }
+  /* Gray while I cannot move (Peter, 9/27): my action on its way, no game yet, or the other computer's turn. */
+  function netGray() { return !!(net && (net.session.waiting || (net.role === 2 && !net.started) || (game.phase === 'play' && game.player !== net.role))); }
   /* Why I may not act now, or null. anyTurn: the action is not a move (undo, moving a spot), so the turn does not matter. */
   function netBlock(anyTurn) {
     if (!net) return null;
@@ -2468,7 +2469,7 @@
     log('Net: the host started a game: ' + msg.n + ' spots, ' + rulesName(game.rules) + '.');
     sayTurn(); draw();
   }
-  function netTitle() { document.getElementById('net-title').textContent = net ? 'Net: ' + (net.role === 1 ? 'host ' : 'guest ') + net.code + (net.session.connected ? '' : ' (alone)') : 'Net'; }
+  function netTitle() { document.getElementById('net-title').textContent = net ? 'Net: ' + (net.role === 1 ? 'host' : 'guest') + (net.session.connected ? '' : ' (alone)') : 'Net'; }   // (the code is in the menu's field, not here — Peter, 9/27)
   function netStatus(text) { document.getElementById('net-status').textContent = text; }
   function netOpen(db, code, role) {
     var first = true, kinds = { 1: players[1].kind, 2: players[2].kind };
@@ -2482,7 +2483,7 @@
     netTitle();
     netStatus(role === 1 ? 'Hosting room ' + code + '. Waiting for the guest…' : 'Joining room ' + code + '…');
     log('Net: ' + (role === 1 ? 'hosting' : 'joining') + ' room ' + code + '.');
-    say(role === 1 ? 'Room ' + code + ' is open: tell the other player the code.   Waiting for the guest…' : 'Joining room ' + code + '…');
+    say(role === 1 ? 'The room is open: tell the other player the code in the Net menu.   Waiting for the guest…' : 'Joining the room…');
     net.session.start();                           // (may find the other side there at once: its `open` overwrites the lines above)
     draw();
   }
@@ -2516,7 +2517,7 @@
     log('Net: left the room.');
     sayTurn(); draw();
   }
-  document.getElementById('cmd-host').addEventListener('click', function () { closeMenus(); netHost(); });
+  document.getElementById('cmd-host').addEventListener('click', function () { netHost(); });   // (the menu stays open: the code appears in its field)
   document.getElementById('cmd-guest').addEventListener('click', function () { closeMenus(); netGuest(); });
   document.getElementById('cmd-leave').addEventListener('click', function () { closeMenus(); netLeave(); });
   document.getElementById('opt-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); closeMenus(); netGuest(); } });

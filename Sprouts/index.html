@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=80">
+<link rel="stylesheet" href="style.css?v=81">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 80</span>
+  <span id="app-version">SPROUTS v. 81</span>
   <div class="menu">
     <button class="menu-title" id="workers-title">Workers</button>
     <div class="menu-panel">
@@ -85,9 +85,9 @@
     <button class="menu-title" id="net-title">Net</button>
     <div class="menu-panel">
       <button class="item" id="cmd-host">Host a game</button>
-      <div class="row net-code">Code <input id="opt-code" type="text" inputmode="numeric" maxlength="3" placeholder="123" autocomplete="off"><button class="item" id="cmd-guest" style="width:auto">Join as guest</button></div>
+      <div class="row net-code">Code <input id="opt-code" type="text" inputmode="numeric" maxlength="3" autocomplete="off"><button class="item" id="cmd-guest" style="width:auto">Join as guest</button></div>
       <button class="item" id="cmd-leave">Leave</button>
-      <div class="row note">Play against someone on another computer. One of you clicks Host and reads the three-digit code to the other, who types it in and clicks Join. The host is Player 1 and starts the games; either may undo (U takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. After your move your page is gray until the other computer has drawn it.</div>
+      <div class="row note">Play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (U takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page is gray while it is not your turn.</div>
       <div class="row note" id="net-status">Not connected.</div>
     </div>
   </div>
@@ -159,15 +159,15 @@
 
 <div id="stage"><canvas id="board"></canvas></div>
 
-<script src="geom.js?v=80"></script>
-<script src="relax.js?v=80"></script>
-<script src="route.js?v=80"></script>
-<script src="engine.js?v=80"></script>
-<script src="describe.js?v=80"></script>
-<script src="room.js?v=80"></script>
-<script src="redraw.js?v=80"></script>
-<script src="ai.js?v=80"></script>
-<script src="net.js?v=80"></script>
-<script src="ui.js?v=80"></script>
+<script src="geom.js?v=81"></script>
+<script src="relax.js?v=81"></script>
+<script src="route.js?v=81"></script>
+<script src="engine.js?v=81"></script>
+<script src="describe.js?v=81"></script>
+<script src="room.js?v=81"></script>
+<script src="redraw.js?v=81"></script>
+<script src="ai.js?v=81"></script>
+<script src="net.js?v=81"></script>
+<script src="ui.js?v=81"></script>
 </body>
 </html>
