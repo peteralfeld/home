@@ -18,7 +18,7 @@
   var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, shiftSpots: true, shiftCurves: true, adjustAfter: false, redrawAfter: false, heroic: false, spotScale: 1.7, lineScale: 1.3, numberScale: 1.6 };   // the Settings and Room menus
+  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, shiftSpots: true, shiftCurves: true, adjustAfter: false, redrawAfter: false, heroic: false, triangles: false, spotScale: 1.7, lineScale: 1.3, numberScale: 1.6 };   // the Settings and Room menus
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -57,7 +57,7 @@
   /* While the program is computing (A, R; making room — sliding spots, moving
      curves, v65; later: working out a move) the background turns light gray
      (Peter, 9/26, v59). */
-  var BUSY_BACKGROUND = '#d3d3d3';
+  var BUSY_BACKGROUND = '#c8c8c8';               // rgb(200, 200, 200) (v89, Peter; was #d3d3d3 = 211)
   var roomBusy = false;  // M or the automatic room-making is at work (makeRoom → makeRoomNow)
   function computing() { return !!relaying || roomBusy || !!(ai && ai.thinking) || netGray(); }
   function background() { return computing() ? BUSY_BACKGROUND : colours.background; }
@@ -118,8 +118,14 @@
   var hush = 0;          // > 0 while a move is only being tried (making room): markedRoute's messages are not shown
   /* The status line speaks without pixels (Peter, 9/26, v63: not meaningful to a
      player); `detail`, the same with the numbers, goes to the log (and console). */
-  function say(text, warn, detail) {
+  /* Every status line of a game under way starts "Move N: " (Peter, 9/28,
+     v91), N the move being made — the one to come, or at the end the one
+     that cannot be made; the messages themselves no longer name it. Not
+     while spots are being placed, nor for a guest before the host's game,
+     nor (`plain`) for messages about starting or loading a new game (v92). */
+  function say(text, warn, detail, plain) {
     if (hush) return;
+    if (!plain && game && (game.phase === 'play' || game.phase === 'over') && !(net && net.role === 2 && !net.started)) text = 'Move ' + (game.moves + 1) + ': ' + text;
     if (ai && warn) ai.lastWarn = text;
     statusEl.textContent = text;
     statusEl.classList.toggle('warn', !!warn);
@@ -177,24 +183,27 @@
     } else if (game.phase === 'over') {
       sayGameOver();
     } else {
-      say(playerName(game.player) + (net ? (game.player === net.role ? ' (you)' : ' (the other computer)') : '') + ' to move   (move ' + (game.moves + 1) + ')   ' + countsText());
+      say(playerName(game.player) + (net ? (game.player === net.role ? ' (you)' : ' (the other computer)') : '') + ' to move   ' + countsText());
     }
   }
-  /* "m=2  M=7  K=1" (Peter, 9/27, v75): m and M the least and most moves the
-     game can still last (ai.js bounds: M exact, m the pharisee count of v76),
-     K the spots with one life and nowhere to go (the rings). */
+  /* "L=9  m=2  M=7  K=1" (Peter, 9/27, v75; L 9/28, v91): L the lives left on
+     the board (all of them, also those no curve can reach any more), m and M
+     the least and most moves the game can still last (ai.js bounds: M exact,
+     m the pharisee count of v76), K the spots with one life and nowhere to go
+     (the rings). */
   function countsText() {
     if (game.phase !== 'play' && game.phase !== 'over') return '';
     var b = AI.bounds(AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots));
-    return 'm=' + b.m + '  M=' + b.M + '  K=' + Object.keys(stuckSpots()).length;
+    return 'L=' + b.L + '  m=' + b.m + '  M=' + b.M + '  K=' + Object.keys(stuckSpots()).length;
   }
   /* The player to move has no move. Normal play: they lose; misère: they win. */
-  function gameOverText() {
+  /* (for the status line, `brief`: without the count of moves — say puts the move number in front) */
+  function gameOverText(brief) {
     var stuck = playerName(game.player), other = playerName(3 - game.player);
     var misere = game.rules === 'misere';
-    return stuck + " can't move — " + (misere ? stuck + ' wins (misère).' : other + ' wins.') + '   Game over after ' + game.moves + ' moves.';
+    return stuck + " can't move — " + (misere ? stuck + ' wins (misère).' : other + ' wins.') + (brief ? '   Game over.' : '   Game over after ' + game.moves + ' moves.');
   }
-  function sayGameOver() { say(gameOverText()); }
+  function sayGameOver() { say(gameOverText(true)); }
 
   /* ---------------- view ---------------- */
   function resizeCanvas() {
@@ -286,12 +295,16 @@
       });
       ctx.setLineDash([]);
     }
-    var stuck = stuckSpots();
+    var stuck = stuckSpots(), orig = route.triangles ? originalSpots() : {};
     for (i = 0; i < game.spots.length; i++) {
       var sp = game.spots[i], sr = spotRadius(i);
       ctx.fillStyle = shownColour(i);
       if (isMarked(i)) {                         // marked to be enclosed: drawn as a square
         ctx.fillRect(sp.x - 1.1 * sr, sp.y - 1.1 * sr, 2.2 * sr, 2.2 * sr);
+      } else if (orig[i]) {                      // Settings → Original spots as triangles (v98): the disc's area, point up; hollow where the disc would be a ring
+        var tr = TRI * sr;
+        triangle(sp.x, sp.y, tr); ctx.fill();
+        if (stuck[i]) { triangle(sp.x, sp.y, Math.max(0, tr - 2 * LINE_W)); ctx.fillStyle = background(); ctx.fill(); }
       } else if (stuck[i]) {                     // lives left, no other spot to reach: a ring as thick as a curve, the background inside
         ctx.beginPath(); ctx.arc(sp.x, sp.y, sr, 0, 2 * Math.PI); ctx.fill();
         ctx.beginPath(); ctx.arc(sp.x, sp.y, Math.max(0, sr - LINE_W), 0, 2 * Math.PI); ctx.fillStyle = background(); ctx.fill();
@@ -310,6 +323,26 @@
     }
   }
 
+  /* An equilateral triangle, point up, centered on (x, y), R the distance from
+     the center to a corner (v98). TRI: the R that gives a disc's area
+     (3√3/4 R² = π r²); the band of a hollow one is LINE_W wide (the inner
+     triangle's R is 2·LINE_W less: its sides are LINE_W in). */
+  var TRI = Math.sqrt(4 * Math.PI / (3 * Math.sqrt(3)));
+  function triangle(x, y, R) {
+    ctx.beginPath();
+    for (var k = 0; k < 3; k++) { var t = -Math.PI / 2 + 2 * Math.PI * k / 3; ctx[k ? 'lineTo' : 'moveTo'](x + R * Math.cos(t), y + R * Math.sin(t)); }
+    ctx.closePath();
+  }
+  /* The original spots: every spot that is not a move's new spot — the game's
+     starting spots and any added by hand (Ctrl+click). A move's edges come in
+     pairs 2m, 2m + 1 through its spot (redraw.js moveUnits). */
+  function originalSpots() {
+    var out = {}, e = game.edges, i;
+    for (i = 0; i < game.spots.length; i++) out[i] = true;
+    for (i = 0; i + 1 < e.length; i += 2) if (e[i].b === e[i + 1].a) delete out[e[i].b];
+    return out;
+  }
+
   /* Possible destinations are drawn at twice their radius while a start spot is armed. */
   function spotRadius(i) { var t = armed ? armed.targets : stroke ? stroke.targets : null; return t && t[i] ? 2 * SPOT_R : SPOT_R; }
   function isMarked(i) { return !!(armed && armed.markedSpots[i]); }
@@ -326,6 +359,26 @@
       var a = -Math.PI / 2 + 2 * Math.PI * i / n;
       pts.push([W / 2 + R * Math.cos(a), H / 2 + R * Math.sin(a)]);
     }
+    return pts;
+  }
+  /* v88 (Peter, 9/28; the default layout): the circle stretched to the
+     window's shape — semi-axes in the ratio W : H (the circle's radius
+     fraction of each side). Spots EQUALLY SPACED ALONG THE CURVE (by arc
+     length, not by angle, which would bunch them at the ends of a long
+     ellipse), the first at the top as on the circle. The arc length is
+     summed over a fine polygon of the ellipse. */
+  function layoutEllipse(n, W, H) {
+    if (n === 1) return [[W / 2, H / 2]];
+    var a = 0.36 * W, b = 0.36 * H, K = 64 * n, P = [], len = [0], i;
+    for (i = 0; i <= K; i++) { var t = -Math.PI / 2 + 2 * Math.PI * i / K; P.push([W / 2 + a * Math.cos(t), H / 2 + b * Math.sin(t)]); if (i) len.push(len[i - 1] + G.dist(P[i - 1], P[i])); }
+    var total = len[K], pts = [], k = 0;
+    for (i = 0; i < n; i++) {
+      var s = total * i / n;
+      while (len[k + 1] < s) k++;
+      var f = (s - len[k]) / (len[k + 1] - len[k]);
+      pts.push([P[k][0] + f * (P[k + 1][0] - P[k][0]), P[k][1] + f * (P[k + 1][1] - P[k][1])]);
+    }
+    for (i = 0; i < n; i++) if (G.dist(pts[i], pts[(i + 1) % n]) < MIN_SEP) return null;
     return pts;
   }
   /* v62 (Peter, 9/26): equally spaced along the middle of the window's longer
@@ -351,25 +404,26 @@
     return pts;
   }
 
-  /* layout: the Game menu's unless given (key 0 asks for 'manual' without changing the menu) */
-  function newGame(layout) {
-    if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true); return; }   // (v79)
+  /* layout: the Game menu's unless given (key 0 asks for 'manual' without changing the menu).
+     preview (v102): the new game only shows the menu's layout — a computer to move first waits for N */
+  function newGame(layout, preview) {
+    if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true, null, true); return; }   // (v79)
     var nb = net && !netAllow ? netBlock(true) : null;
-    if (nb) { say(nb, true); return; }
+    if (nb) { say(nb, true, null, true); return; }
     if (typeof layout !== 'string') layout = document.getElementById('opt-layout').value;
     var n = Math.floor(Number(document.getElementById('opt-spots').value));
     var W = stage.clientWidth, H = stage.clientHeight, pts = [];
     if (layout !== 'manual') {
-      if (!(n >= 1)) { say('The number of spots must be at least 1.', true); return; }
-      pts = layout === 'circle' ? layoutCircle(n, W, H) : layout === 'line' ? layoutLine(n, W, H) : layoutRandom(n, W, H);
-      if (!pts) { say('Unable to fit ' + n + ' spots in a window this size.', true); return; }
+      if (!(n >= 1)) { say('The number of spots must be at least 1.', true, null, true); return; }
+      pts = layout === 'ellipse' ? layoutEllipse(n, W, H) : layout === 'circle' ? layoutCircle(n, W, H) : layout === 'line' ? layoutLine(n, W, H) : layoutRandom(n, W, H);
+      if (!pts) { say('Unable to fit ' + n + ' spots in a window this size.', true, null, true); return; }
     }
     game = {
       W0: W, H0: H, edges: [], player: 1, moves: 0, added: 0,
       phase: layout === 'manual' ? 'place' : 'play', rules: document.getElementById('opt-rules').value,
       spots: pts.map(function (p) { return { x: p[0], y: p[1], deg: 0 }; })
     };
-    history = []; historyWhy = {}; stroke = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel();
+    history = []; historyWhy = {}; stroke = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = !!preview; browsing = false; redoList = [];
     log(layout === 'manual' ? 'New game: spots to be placed by hand, ' + rulesName(game.rules) + '.'
                             : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + layout + '), ' + rulesName(game.rules) + '.');
     resizeCanvas();
@@ -382,7 +436,7 @@
     if (game.phase !== 'place') return;
     if (game.spots.length < 1) { say('Place at least one spot first.', true); return; }
     history = []; historyWhy = {};
-    game.phase = 'play';
+    game.phase = 'play'; aiHeld = false; browsing = false; redoList = [];
     log('Play starts with ' + game.spots.length + ' spots placed by hand.');
     netGameStarted();
     sayTurn(); draw();
@@ -393,14 +447,64 @@
      on the other computer too (a step that only changed the picture — room
      made, A, R, a spot moved by hand — is local, like the picture itself).
      `remote`: the other computer undid its last move — take steps off until
-     a move is gone (my own picture steps on top of it go with it). */
+     a move is gone (my own picture steps on top of it go with it).
+     Against the computer (v93, Peter): undoing the computer's move goes on
+     back to the human's turn before it — the human's own last move goes too
+     (else the computer would at once play again); when the move to undo is
+     the computer's FIRST move of the game there is nothing of the human's to
+     go back to, and N is offered instead. Two computers: one step, as before. */
   function undo(remote) {
     if (!history.length) { say('Nothing to undo.', true); return; }
     if (net && !remote) { var nb = netBlock(true); if (nb) { say(nb, true); return; } }
+    var vsComputer = !net && !remote && (isAI(1) !== isAI(2));
+    if (vsComputer) {
+      var prev = JSON.parse(history[history.length - 1]);
+      if (prev.moves < game.moves && prev.moves === 0 && isAI(prev.player)) { say('The only move so far is the computer\'s: type N to restart the game.', true); return; }
+    }
     var was = game.moves, redo = net ? { game: JSON.stringify(game), entry: history[history.length - 1], why: historyWhy[history.length - 1] } : null;
     do undoStep(); while (remote && history.length && game.moves === was);
+    if (vsComputer && game.moves < was) while (history.length && game.phase === 'play' && isAI(game.player)) undoStep();
     stroke = null; band = null; armed = null; if (!remote) aiCancel();
     if (net && !remote && game.moves < was) { netRedo = redo; net.session.undone(was); }
+    sayTurn(); draw();
+    maybeAI();
+  }
+  /* < and > (v97, Peter): back and forward through the game one MOVE at a
+     time (a move and the picture steps on top of it — room made, A, R, spots
+     moved — go and come back together). Unlike U, < takes back any move, the
+     computer's too, and nothing is taken back with it; while browsing
+     (`browsing`) the computer players wait, so a move can be made by hand in
+     the computer's place — a move made anywhere ends the browsing, clears the
+     way forward, and the game goes on from there. > at the end of the way
+     forward is back at the present, and the computer plays again. The way
+     forward (`redoList`) holds, for each step back, the states taken off and
+     the position after it; it is dropped as soon as anything else changes
+     the game. Not while connected. */
+  var redoList = [], browsing = false;
+  function stepBack() {
+    if (net) { say('Not while connected: U undoes a move on both computers.', true); return; }
+    if (!history.length || game.phase === 'place') { say('Nothing to go back to.', true); return; }
+    aiCancel(); stroke = null; band = null; armed = null;
+    var before = JSON.stringify(game), hist = history.slice(), why = Object.assign({}, historyWhy), was = game.moves;
+    do undoStep(); while (history.length && game.moves === was);
+    var k = history.length, w = {};
+    Object.keys(why).forEach(function (i) { if (Number(i) >= k) w[i] = why[i]; });
+    redoList.push({ game: before, hist: hist.slice(k), why: w, base: k, after: JSON.stringify(game) });
+    browsing = true;
+    sayTurn(); draw();
+    maybeAI();
+  }
+  function stepForward() {
+    var r = redoList[redoList.length - 1];
+    if (r && (history.length !== r.base || JSON.stringify(game) !== r.after)) { redoList = []; r = null; }   // something else changed the game since
+    if (!r) { say('Nothing to go forward to.', true); return; }
+    aiCancel(); stroke = null; band = null; armed = null;
+    redoList.pop();
+    history = history.concat(r.hist);
+    Object.keys(r.why).forEach(function (i) { historyWhy[i] = r.why[i]; });
+    game = JSON.parse(r.game); pendingRoom = null; roomSnapshot = false;
+    log('Redo move ' + game.moves + '.');
+    browsing = redoList.length > 0;
     sayTurn(); draw();
     maybeAI();
   }
@@ -444,7 +548,7 @@
     if (band || relaying) return;
     var nb = net && (e.button === 0 || e.button === 2) ? netBlock(e.ctrlKey && e.button === 0) : null;   // (v79: not my turn, or the other computer is at work; Ctrl+drag moves spots any time)
     if (nb) { say(nb, true); return; }
-    if (ai || (game.phase === 'play' && isAI(game.player))) { say(playerName(game.player) + ' is played by the computer (' + kindName(players[game.player].kind) + '); set it to Human in its menu to play yourself.', true); return; }
+    if (ai || (game.phase === 'play' && isAI(game.player) && !browsing)) { say(playerName(game.player) + ' is played by the computer (' + kindName(players[game.player].kind) + '); set it to Human in its menu to play yourself.', true); return; }
     var marking = e.button === 2 || (e.button === 0 && e.shiftKey);
     if (e.button !== 0 && !marking) return;
     closeMenus();
@@ -469,7 +573,7 @@
       if (any === armed.a && !armed.targets[any]) { disarm('Cancelled.'); return; }
       if (armed.blocked[any]) { explainBlocked(any); return; }   // the rules allow it, the room does not: say so
       var t = nearestSpot(p, function (sp, i) { return armed.targets[i]; });
-      if (t >= 0) connectTo(t); else disarm('Cancelled.');
+      if (t >= 0) { armed.bside = t !== armed.a ? sideOfClick(t, p) : null; connectTo(t); } else disarm('Cancelled.');   // (v85: a click just outside the spot picks the side it is reached from)
       return;
     }
     marksUsed = null; pendingRoom = null; roomSnapshot = false;
@@ -532,17 +636,26 @@
     }
     var b = t;                                    // the nearest lit spot other than A
     if (!strokeRoute(st, b)) {                    // the drag was not usable as a curve: route instead
-      var pb = [game.spots[b].x, game.spots[b].y], path = st.planner.pathTo(pb);
+      var pb = [game.spots[b].x, game.spots[b].y], side = sideOfClick(b, end), path = st.planner.pathTo(pb, side);   // (v85: released just outside the spot: reached by that side)
+      if (!path && side) path = st.planner.pathTo(pb);
       if (!path) { say('No route found.', true); draw(); return; }
       startRoute(a, b, G.resample([[A.x, A.y]].concat(path, [pb]), STEP), st.obs, { st: st });
     }
   });
   canvas.addEventListener('pointercancel', function () { stroke = null; draw(); });
 
+  /* The SPACE BAR stops or cancels (v101, Peter; was Esc, which Chrome keeps
+     for leaving full screen): A/R under way, an armed move, the computer's
+     thinking. Its default is suppressed — it would press a menu button that
+     still has the focus — except in the menus' fields. */
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && relaying) { finishRelaying(false); return; }
-    if (e.key === 'Escape' && armed) disarm('Cancelled.');
-    if (e.key === 'Escape' && ai && (ai.timer || ai.thinking)) { aiCancel(); say('Computer move cancelled — U, a move of yours, or N lets it move again; or set it to Human.', true); }
+    if (e.key !== ' ' || e.ctrlKey || e.altKey || e.metaKey) return;
+    var tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    if (relaying) { finishRelaying(false); return; }
+    if (armed) disarm('Cancelled.');
+    if (ai && (ai.timer || ai.thinking)) { aiCancel(); say('Computer move cancelled — U, a move of yours, or N lets it move again; or set it to Human.', true); }
   });
 
   /* ---------------- click to connect ---------------- */
@@ -682,7 +795,7 @@
     }
     pendingRoom = { a: a, b: b, room: { clearance: low.t.rmin }, marked: true,
                     ghost: { path: low.t.pts, w: low.t.rmin, stubs: false, fits: false } };   // (the first ghost for moving curves: no need to search again)
-    say('No room to go round the marked spots: the best way round them is too narrow.' + roomOffer() + '   —   or Esc', true,
+    say('No room to go round the marked spots: the best way round them is too narrow.' + roomOffer() + '   —   or Space', true,
         'No room to go round the marked spots: the best way round them keeps only ' + Math.max(0, Math.round(low.t.rmin)) +
         ' px clear of the curves, and the minimum clearance is ' + route.d0 + ' px.');
     draw();
@@ -697,7 +810,7 @@
      drawing (R, v60; was "Redraw from scratch") moves the spots too; Room → Adjust the drawing (A) keeps the
      original and hand-added ones (a spot made by a move moves with its curve).
      Animated, as many steps a frame as fit in RELAY_FRAME_MS, the polylines
-     drawn as they go, until converged (a second press changes nothing); Esc
+     drawn as they go, until converged (a second press changes nothing); Space
      stops early and keeps what is there. Then every curve
      becomes a smooth spline (no corners) and is certified, and the position
      must be unchanged; otherwise nothing changes. Its own undo step — or,
@@ -713,7 +826,7 @@
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2 };
     relaying = { kind: kind, after: !!after, st: Rd.createRedraw(game, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(),
                  before: Rd.leastClearance(game, o), retry: retry };
-    say(relayWord() + '…   Esc stops');
+    say(relayWord() + '…   Space stops');
     draw();                                       // the gray background at once, also when not animated
     if (route.animate) requestAnimationFrame(relayFrame); else setTimeout(function () { finishRelaying(true); }, 30);
   }
@@ -725,7 +838,7 @@
     do Rd.stepRedraw(st, 1); while (!st.done && performance.now() - t < RELAY_FRAME_MS);
     game = Rd.redrawCurrent(st);
     if (st.done) { finishRelaying(false); return; }
-    say(relayWord() + ': step ' + st.it + ', ' + ((Date.now() - relaying.t0) / 1000).toFixed(0) + ' s…   Esc stops');
+    say(relayWord() + ': step ' + st.it + ', ' + ((Date.now() - relaying.t0) / 1000).toFixed(0) + ' s…   Space stops');
     draw();
     requestAnimationFrame(relayFrame);
   }
@@ -740,7 +853,7 @@
     game = r.game;
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
     log((adjust ? 'Adjusted the drawing' : 'Rearranged the drawing') + (rl.after ? ' after move ' + game.moves : '') +
-        (st.done ? '' : ' (stopped with Esc)') + ': ' + (adjust ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
+        (st.done ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s.');
     sayTurn(); draw();
     statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : 'rearranged') + (rl.after ? '' : '   (U undoes it)');
@@ -1069,7 +1182,7 @@
     var bl = Object.keys(armed.blocked || {}).map(function (i) { return Number(i) + 1; }).sort(function (x, y) { return x - y; });
     var text = 'Click the destination spot (' + n + ' possible' + (bl.length ? '; no room for ' + bl.join(', ') : '') + ')';
     if (m.length) text += '   —   enclosing spot' + (m.length > 1 ? 's ' : ' ') + m.map(function (i) { return i + 1; }).join(', ');
-    say(text + '   —   right-click marks spots to enclose   —   Esc cancels');
+    say(text + '   —   right-click marks spots to enclose   —   click just outside a spot to choose its side   —   Space cancels');
   }
 
   /* ---------------- marking spots to enclose ----------------
@@ -1134,7 +1247,7 @@
         Object.keys(ar.arcMarks).map(Number).forEach(function (s) { if (s !== a && s !== b) items.push({ spot: s, marked: true, arc: true }); });
       }
     });
-    if (!items.some(function (it) { return it.marked; })) return { plain: true };
+    if (!items.some(function (it) { return it.marked; }) && !ar.encloseNone) return { plain: true };
     /* In the outside region the unbounded part is itself an unmarked side:
        "enclose these" means the bounded pocket holds them, not that the curve
        merely passes them (Peter's game, 9/22: 5 → 2 round the path 1-3-4, the
@@ -1194,8 +1307,13 @@
       });
       var lead = items.filter(function (it) { return it.marked && it.side >= 0 && it.arc; })[0] ||
                  items.filter(function (it) { return it.marked && it.side >= 0; })[0];
-      if (!lead) return null;
-      var mside = lead.side;
+      var mside;
+      if (lead) mside = lead.side;
+      else if (ar.encloseNone) {                    // nothing marked: the enclosure is the side away from the outside — everything must stay out of it
+        var out = items.filter(function (it) { return it.outside && it.side >= 0; })[0];
+        if (!out) return null;
+        mside = 1 - out.side;
+      } else return null;
       var wrong = items.filter(function (it) { return it.side >= 0 && (it.marked ? it.side !== mside : it.side === mside); });
       return { ok: !wrong.length, wrong: wrong, conflict: wrong.some(function (it) { return it.arc; }) };
     }
@@ -1203,8 +1321,8 @@
     var cuts = items.filter(function (it) { return it.marked; });   // the marked ones always have cuts
     var cand = null;
     if (!loop) {
-      var p0 = pl.pathTo(pb);
-      if (!p0) { ar.why = 'room'; say('No route found.', true); return null; }
+      var p0 = pl.pathTo(pb, ar.bside);
+      if (!p0) { ar.why = 'room'; say(ar.bside ? 'No route to spot ' + (b + 1) + ' from that side.' : 'No route found.', true); return null; }
       cand = [pa].concat(p0, [pb]);
     }
     for (var round = 0; round <= Rt.MAX_CUTS; round++) {
@@ -1225,7 +1343,7 @@
         if (!it.marked ^ it.flip) w2 |= 1 << k;
       });
       var rays = cuts.map(function (it) { return it.ray; });
-      var path = Rt.pathWithParity(pl.grid, obs, pl.start, pb, pl.ring, rays, [w1]) || Rt.pathWithParity(pl.grid, obs, pl.start, pb, pl.ring, rays, [w2]);
+      var path = Rt.pathWithParity(pl.grid, obs, pl.start, pb, pl.ring, rays, [w1], ar.bside) || Rt.pathWithParity(pl.grid, obs, pl.start, pb, pl.ring, rays, [w2], ar.bside);
       if (!path) { ar.why = 'room'; say('No route found that encloses the marked spots.', true); return null; }
       var cands = enclosingCurves(Rt.inflate(pl.grid, obs, [pl.start].concat(path, [pb])), pa, pb, loop, obs);
       /* the candidates that cross nothing, each judged: the first the engine
@@ -1364,8 +1482,8 @@
     armed = null;
     if (b === ar.a) { loopAround(ar.a, ar.obs, { ar: ar }); return; }
     var B = game.spots[b], pb = [B.x, B.y];
-    var path = ar.planner.pathTo(pb);
-    if (!path) { say('No route found.', true); draw(); return; }
+    var path = ar.planner.pathTo(pb, ar.bside);
+    if (!path) { say(ar.bside ? 'No route to spot ' + (b + 1) + ' from that side.' : 'No route found.', true); draw(); return; }
     startRoute(ar.a, b, G.resample([ar.spot].concat(path, [pb]), STEP), ar.obs, { ar: ar });
   }
 
@@ -1583,7 +1701,7 @@
     var mv = { a: a, b: b };
     var cut = G.splitCurveAtHalf(fit), A = game.spots[mv.a], B = game.spots[mv.b];
     if (!roomSnapshot) snapshot();               // (after making room, its snapshot covers the move too)
-    roomSnapshot = false;
+    roomSnapshot = false; browsing = false; redoList = [];   // (v97: a move ends browsing with < >)
     var z = game.spots.length;
     game.spots.push({ x: cut.point[0], y: cut.point[1], deg: 2 });
     game.edges.push({ a: mv.a, b: z, pieces: cut.left.pieces, h: cut.left.h, player: game.player });
@@ -1622,6 +1740,27 @@
       out.push([v[0] / len, v[1] / len]);
     });
     return out;
+  }
+
+  /* The ARRIVAL SIDE at spot b (v85, Peter 9/28): a test of whether a point q
+     lies in the sector between b's curves that `dir` (from b) points into —
+     the planner ends the path only in cells that pass it (route.js
+     bestCellNear), so the curve reaches b by that side, and the band keeps
+     to it (makeBand's sideB). Null when b has fewer than two curves: there
+     is only one side. */
+  function sideTest(b, dir) {
+    var tans = tangentsAt(b).map(function (t) { return Math.atan2(t[1], t[0]); }).sort(function (x, y) { return x - y; });
+    if (tans.length < 2) return null;
+    var B = game.spots[b];
+    function sector(th) { for (var k = 0; k < tans.length - 1; k++) if (th >= tans[k] && th < tans[k + 1]) return k; return tans.length - 1; }   // the last sector wraps round
+    var want = sector(Math.atan2(dir[1], dir[0]));
+    return function (q) { return sector(Math.atan2(q[1] - B.y, q[0] - B.x)) === want; };
+  }
+  /* The side a click (or a release) at p chooses at spot b: none when p is on
+     the spot's disc (as drawn: lit spots are bigger) — then the shortest way. */
+  function sideOfClick(b, p) {
+    var B = game.spots[b];
+    return G.dist(p, [B.x, B.y]) > spotRadius(b) ? sideTest(b, [p[0] - B.x, p[1] - B.y]) : null;
   }
 
   var MIN_ANGLE = Math.PI / 6;   // a new curve leaves a spot at least 30° from any curve already there
@@ -1677,9 +1816,15 @@
   }
 
   /* ---------------- commands ---------------- */
+  /* F. When the BROWSER is in full screen (F11, or a shortcut started with
+     --start-fullscreen) a page cannot leave it — there is no call for that —
+     and asking for the page's own full screen on top of it only brings Chrome's
+     "press and hold Esc" notice (Peter, 9/28): then F says F11 instead (v105). */
   function toggleFullScreen() {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else document.documentElement.requestFullscreen();
+    if (document.fullscreenElement) { document.exitFullscreen(); return; }
+    var browserFull = window.matchMedia('(display-mode: fullscreen)').matches || (window.innerWidth === screen.width && window.innerHeight === screen.height);
+    if (browserFull) { say('The browser is in full screen: press F11 to leave it.', true, null, true); return; }
+    document.documentElement.requestFullscreen();
   }
   function togglePolygons() { showPolygons = !showPolygons; draw(); }
   function toggleNumbers() { showNumbers = !showNumbers; draw(); }
@@ -1720,7 +1865,7 @@
     return out;
   }
   function loadGame() {
-    if (net) { say('No loading while connected: the other computer could not follow (Net → Leave first).', true); return; }   // (v79)
+    if (net) { say('No loading while connected: the other computer could not follow (Net → Leave first).', true, null, true); return; }   // (v79)
     var input = document.createElement('input');
     input.type = 'file'; input.accept = '.json,application/json';
     input.addEventListener('change', function () {
@@ -1728,10 +1873,10 @@
       if (!file) return;
       file.text().then(function (text) {
         var data;
-        try { data = JSON.parse(text); } catch (e) { say('Not a JSON file.', true); return; }
-        if (!data || data.format !== 'sprouts-game' || !data.game || !data.game.spots) { say('Not a Sprouts game file.', true); return; }
+        try { data = JSON.parse(text); } catch (e) { say('Not a JSON file.', true, null, true); return; }
+        if (!data || data.format !== 'sprouts-game' || !data.game || !data.game.spots) { say('Not a Sprouts game file.', true, null, true); return; }
         game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel();
-        history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {};
+        history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
         if (data.route) applySettings(data.route);
         if (data.colours) applyColours(data.colours);
         if (game.rules) document.getElementById('opt-rules').value = game.rules;
@@ -1784,6 +1929,7 @@
     if (typeof r.numberScale === 'number') set('opt-numbersize', r.numberScale);
     if (typeof r.animate === 'boolean') { document.getElementById('opt-animate').checked = r.animate; route.animate = r.animate; }
     if (typeof r.click === 'boolean') { document.getElementById('opt-click').checked = r.click; route.click = r.click; }
+    if (typeof r.triangles === 'boolean') { document.getElementById('opt-triangles').checked = r.triangles; route.triangles = r.triangles; }
     if (typeof r.shiftSpots === 'boolean') { document.getElementById('opt-shift-spots').checked = r.shiftSpots; route.shiftSpots = r.shiftSpots; }
     if (typeof r.shiftCurves === 'boolean') { document.getElementById('opt-shift-curves').checked = r.shiftCurves; route.shiftCurves = r.shiftCurves; }
     if (typeof r.adjustAfter === 'boolean') { document.getElementById('opt-adjust-after').checked = r.adjustAfter; route.adjustAfter = r.adjustAfter; }
@@ -1793,12 +1939,25 @@
   }
   function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
 
-  var commands = { 'cmd-new': newGame, 'cmd-undo': undo, 'cmd-full': toggleFullScreen, 'cmd-poly': togglePolygons, 'cmd-numbers': toggleNumbers,
+  var commands = { 'cmd-new': newGame, 'cmd-exit': exitPage, 'cmd-undo': undo, 'cmd-full': toggleFullScreen, 'cmd-poly': togglePolygons, 'cmd-numbers': toggleNumbers,
                    'cmd-png': savePNG, 'cmd-save': saveGame, 'cmd-load': loadGame,
                    'cmd-log': saveLog, 'cmd-position': savePosition, 'cmd-adjust': function () { relayDrawing('adjust'); }, 'cmd-redraw': function () { relayDrawing('redraw'); } };
   Object.keys(commands).forEach(function (id) {
     document.getElementById(id).addEventListener('click', function () { closeMenus(); if (!relaying) commands[id](); });
   });
+
+  /* v102 (Peter): before the first move, a change of Layout or Spots in the Game
+     menu shows at once (a new game laid out the new way; a computer that moves
+     first still waits for N). Spots does not matter for Place by hand. Not
+     while connected, nor while a field is half typed (no valid number). */
+  function previewLayout(spotsChanged) {
+    if (net || game.moves > 0 || relaying || band || roomBusy) return;
+    var layout = document.getElementById('opt-layout').value, n = Math.floor(Number(document.getElementById('opt-spots').value));
+    if (layout === 'manual' ? spotsChanged : !(n >= 1)) return;
+    newGame(undefined, true);
+  }
+  document.getElementById('opt-layout').addEventListener('change', function () { previewLayout(false); });
+  document.getElementById('opt-spots').addEventListener('input', function () { previewLayout(true); });
 
   /* Digit keys (Peter, 9/24, v49): 1 … 9 start a new game with that many spots in the Game menu's
      layout (v62, Peter 9/26; before: always a circle), and set its Spots, so N repeats it; 0 (v61; was
@@ -1808,13 +1967,22 @@
     document.getElementById('opt-spots').value = n;
     newGame();
   }
-  var keys = { n: newGame, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, p: savePNG, enter: startPlay, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); } };
+  /* X (v99, Peter): close the page. A browser lets a page close itself only
+     when the tab was opened straight at it (a desktop shortcut, a link that
+     opens a new tab — one entry in its history); otherwise it silently
+     refuses, and the status line says what to do instead. */
+  function exitPage() {
+    if (net) netLeave();
+    window.close();
+    setTimeout(function () { say('The browser does not let the page close itself here: close the tab with Ctrl+W (or the window with Alt+F4).', true, null, true); }, 300);
+  }
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newGame, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, p: savePNG, enter: startPlay, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     var tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT') return;
-    if (relaying) return;                         // (Esc is handled above)
+    if (relaying) return;                         // (the space bar is handled above)
     var fn = keys[e.key.toLowerCase()];
     if (fn) { e.preventDefault(); closeMenus(); fn(); }
   });
@@ -1827,10 +1995,26 @@
     btn.addEventListener('click', function (e) {
       var menu = btn.parentNode, wasOpen = menu.classList.contains('open');
       closeMenus();
-      if (!wasOpen) menu.classList.add('open');
+      if (!wasOpen) { menu.classList.add('open'); placePanel(menu); }
       e.stopPropagation();
     });
   });
+  /* v94: the panels are position: fixed (the menu bar scrolls sideways and
+     would clip them): under their title, kept inside the window. */
+  function placePanel(menu) {
+    var panel = menu.querySelector('.menu-panel'), r = menu.querySelector('.menu-title').getBoundingClientRect();
+    panel.style.top = r.bottom + 'px';
+    panel.style.left = Math.max(0, Math.min(r.left, window.innerWidth - panel.offsetWidth)) + 'px';
+  }
+  var menubar = document.getElementById('menubar');
+  function placeOpen() { document.querySelectorAll('.menu.open').forEach(placePanel); }
+  menubar.addEventListener('scroll', placeOpen);   // (an open panel follows its title)
+  window.addEventListener('resize', placeOpen);
+  /* the mouse wheel over the bar scrolls it sideways, when there is more than fits */
+  menubar.addEventListener('wheel', function (e) {
+    if (menubar.scrollWidth <= menubar.clientWidth || !e.deltaY || e.target.closest('.menu-panel')) return;
+    menubar.scrollLeft += e.deltaY; e.preventDefault();
+  }, { passive: false });
   document.querySelectorAll('.menu-panel').forEach(function (panel) {
     panel.addEventListener('click', function (e) { e.stopPropagation(); });
   });
@@ -1888,6 +2072,7 @@
   bindSlider('opt-numbersize', 'val-numbersize', 'numberScale', function (v) { NUMBER_PX = NUMBER_PX0 * v; return NUMBER_PX.toFixed(1).replace(/\.0$/, '') + ' px'; }, function (v) { return v; });
   ['opt-spotsize', 'opt-linewidth', 'opt-numbersize'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { draw(); }); });
   document.getElementById('opt-animate').addEventListener('change', function (e) { route.animate = e.target.checked; });
+  document.getElementById('opt-triangles').addEventListener('change', function (e) { route.triangles = e.target.checked; draw(); });
   document.getElementById('opt-rules').addEventListener('change', function (e) { game.rules = e.target.value; log('Rules changed to ' + rulesName(game.rules) + '.'); sayTurn(); });
   document.getElementById('opt-click').addEventListener('change', function (e) { route.click = e.target.checked; if (!route.click && armed) disarm('Cancelled.'); });
   document.getElementById('opt-shift-spots').addEventListener('change', function (e) { route.shiftSpots = e.target.checked; log('Room: shift spots automatically ' + (route.shiftSpots ? 'on' : 'off') + '.'); });
@@ -1947,11 +2132,17 @@
     if (ai && ai.thinking) { pool.forEach(function (w) { w.terminate(); }); pool = []; jobs = {}; ai = null; draw(); }   // (the workers' answers would only be thrown away)
     ai = null;
   }
-  /* The computer's move, if it is its turn and nothing else is going on. */
+  /* The computer's move, if it is its turn and nothing else is going on.
+     A computer set to move first in a game with no move yet waits for N
+     (aiHeld, v95, Peter: so the game's settings can still be changed); a
+     game started by N or Enter with the computer first begins at once. */
+  var aiHeld = false;
   function maybeAI() {
     if (ai || band || relaying || roomBusy || stroke || armed || game.phase !== 'play' || !isAI(game.player)) return;
+    if (browsing) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') waits:   > goes forward, or make its move by hand.'); return; }
+    if (aiHeld && game.moves === 0) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') moves first: press N to start the game.'); return; }
     ai = { player: game.player, timer: setTimeout(aiMove, AI_DELAY) };
-    say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') to move   (move ' + (game.moves + 1) + ')');
+    say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') to move');
   }
   function aiMove() {
     var a = ai, p = game.player;
@@ -1988,7 +2179,7 @@
           '; the candidates: ' + order.slice(0, 8).map(function (i) { return AI.describe(a.pos, cands[i]) + ' ' + (kind === 'montecarlo' ? Math.round(100 * scores[i]) + '%' : scores[i].toFixed(2)); }).join(', ') + (order.length > 8 ? ', …' : '') + '.');
       a.queue = order.map(function (i) { return cands[i]; });
       /* an exact search knows the outcome (v78, Peter): said after the move, on the status line and in the log */
-      if (exact) a.verdict = best > 0 ? 'has a winning position' : 'is lost against best play' + (ties.length === cands.length ? ' (every move loses)' : '');
+      if (exact) a.verdict = best > 0 ? 'has a winning position' : 'is lost against best play' + (ties.length === cands.length ? ' (every move loses)' : '');   // (v83: exact also when every candidate was solved by parts, long before the depth reaches M)
       draw();
       aiNext();
     });
@@ -2032,22 +2223,23 @@
      Without workers the same on the page's own thread (frozen meanwhile). */
   function score(pos, cands, opt, progress, done) {
     ensurePool();
+    var solved = function (sc, d) { return !!sc && (d >= opt.M || sc.every(function (v) { return Math.abs(v) === 2; })); };   // (v83: every candidate exact — solved by parts — or the depth reaches M)
     var mc = opt.kind === 'montecarlo', t0 = Date.now(), deadline = opt.seconds ? t0 + 1000 * opt.seconds : null;
     var ratio = function (r) { return r.wins.map(function (w, i) { return r.games[i] ? w / r.games[i] : 0; }); };
     var mcInfo = function (r) { return r.games[0] + ' games each'; };
     if (!pool.length) {                            // no workers: on the page's thread, after the gray background has been painted
       setTimeout(function () {
         if (mc) { var r = deadline ? AI.monteCarloTimed(pos, cands, deadline, opt.misere) : AI.monteCarlo(pos, cands, opt.trials, opt.misere); done(ratio(r), mcInfo(r)); return; }
-        if (!deadline) { done(AI.paritySearch(pos, cands, opt.depth, opt.misere, opt.cap), null); return; }
+        if (!deadline) { var sc0 = AI.paritySearch(pos, cands, opt.depth, opt.misere, opt.cap); done(sc0, solved(sc0, opt.depth) ? 'exact' : null, solved(sc0, opt.depth)); return; }
         var last = null, d = 1, ctx = AI.newContext(deadline), took = 0;
         for (;;) {
           var td = Date.now(), sc = AI.paritySearch(pos, cands, d, opt.misere, opt.cap, null, null, ctx);
           if (!sc) break;
           last = sc; took = Date.now() - td;
-          if (d >= opt.M || deadline - Date.now() <= took) break;
+          if (solved(sc, d) || deadline - Date.now() <= took) break;
           d++;
         }
-        done(last || cands.map(function () { return 0; }), 'depth ' + (last ? d : 0), !!last && d >= opt.M);
+        done(last || cands.map(function () { return 0; }), 'depth ' + (last ? d : 0) + (solved(last, d) ? ' — exact' : ''), solved(last, d));
       }, 30);
       return;
     }
@@ -2078,15 +2270,15 @@
     for (var w = 0; w < n2; w++) parts.push([]);
     cands.forEach(function (mv, i) { parts[i % n2].push(i); });
     var gather = function (res) {                  // the workers' scores back in the candidates' order; null if any was cut short
-      var sc = new Array(cands.length), nodes = 0, hits = 0;
-      for (var w = 0; w < n2; w++) { if (!res[w].scores) return null; res[w].scores.forEach(function (v, k) { sc[parts[w][k]] = v; }); nodes += res[w].nodes; hits += res[w].hits; }
-      sc.nodes = nodes; sc.hits = hits;
+      var sc = new Array(cands.length), nodes = 0, hits = 0, solvedParts = 0;
+      for (var w = 0; w < n2; w++) { if (!res[w].scores) return null; res[w].scores.forEach(function (v, k) { sc[parts[w][k]] = v; }); nodes += res[w].nodes; hits += res[w].hits; solvedParts += res[w].solved || 0; }
+      sc.nodes = nodes; sc.hits = hits; sc.solved = solvedParts;
       return sc;
     };
     var jobFor = function (depth) { return function (w) { return { kind: 'parity', cands: parts[w].map(function (i) { return cands[i]; }), misere: opt.misere, depth: depth, cap: opt.cap, deadline: deadline }; }; };
     var prog = parts.map(function () { return 0; }), onProg = function (w, k) { prog[w] = k; progress((deadline ? 'depth ' + depthNow + ', ' : '') + prog.reduce(function (t, x) { return t + x; }, 0) + ' of ' + cands.length); };
     var depthNow = opt.depth;
-    if (!deadline) { round(n2, jobFor(opt.depth), onProg, function (res) { var sc = gather(res); done(sc || cands.map(function () { return 0; }), sc ? sc.nodes + ' nodes, ' + sc.hits + ' table hits' + (opt.depth >= opt.M ? ' — exact' : '') : null, !!sc && opt.depth >= opt.M); }); return; }
+    if (!deadline) { round(n2, jobFor(opt.depth), onProg, function (res) { var sc = gather(res); done(sc || cands.map(function () { return 0; }), sc ? sc.nodes + ' nodes, ' + sc.hits + ' table hits, ' + sc.solved + ' parts solved' + (solved(sc, opt.depth) ? ' — exact' : '') : null, solved(sc, opt.depth)); }); return; }
     var last = null, lastInfo = '', took = 0;
     depthNow = 1;
     var next = function () {
@@ -2094,8 +2286,8 @@
       round(n2, jobFor(depthNow), onProg, function (res) {
         var sc = gather(res);
         if (!sc) { done(last || cands.map(function () { return 0; }), lastInfo + ' (depth ' + depthNow + ' cut short)', false); return; }
-        last = sc; took = Date.now() - td; lastInfo = 'depth ' + depthNow + ', ' + sc.nodes + ' nodes, ' + sc.hits + ' table hits';
-        if (depthNow >= opt.M || deadline - Date.now() <= took) { done(last, lastInfo + (depthNow >= opt.M ? ' — exact' : ''), depthNow >= opt.M); return; }
+        last = sc; took = Date.now() - td; lastInfo = 'depth ' + depthNow + ', ' + sc.nodes + ' nodes, ' + sc.hits + ' table hits, ' + sc.solved + ' parts solved';
+        if (solved(sc, depthNow) || deadline - Date.now() <= took) { done(last, lastInfo + (solved(sc, depthNow) ? ' — exact' : ''), solved(sc, depthNow)); return; }
         depthNow++; prog = parts.map(function () { return 0; });
         next();
       });
@@ -2104,7 +2296,8 @@
   }
   (function () {
     var sel = document.getElementById('opt-workers'), title = document.getElementById('workers-title');
-    for (var k = 1; k <= workersMax; k++) { var o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o); }
+    /* the numbers largest first (v90, Peter) */
+    for (var k = workersMax; k >= 1; k--) { var o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o); }
     sel.value = workersWanted; title.textContent = 'Workers: ' + workersWanted;
     sel.addEventListener('change', function () { workersWanted = Number(sel.value); title.textContent = 'Workers: ' + workersWanted; log('Workers: ' + workersWanted + ' of ' + workersMax + '.'); if (!ai) ensurePool(); });
   })();
@@ -2122,7 +2315,7 @@
       a.making = false;
       var why = aiTry(mv, a.second);
       if (!why) { say(a.who + ' plays ' + a.text + (a.making ? ' — making room for it…' : '…')); return; }
-      if (why === 'plain' && !a.second) a.plain.push(mv); else a.failed.push(a.text + ' (' + why + ')');
+      if ((why === 'plain' || why === 'sided') && !a.second) a.plain.push(mv); else a.failed.push(a.text + ' (' + (why === 'sided' ? 'no route to spot ' + (mv.y + 1) + ' from the intended side' : why) + ')');
     }
     if (!a.second && a.plain.length) { a.second = true; a.queue = a.plain; aiNext(); return; }
     ai = null;
@@ -2184,8 +2377,9 @@
     return [sp.x + 12 * Math.cos(th), sp.y + 12 * Math.sin(th)];
   }
   /* Hand the move to the router. Null when the band has started; else why
-     not ('plain': the marks cannot be applied — with `plain` the shortest
-     way is drawn instead). */
+     not ('plain': the marks cannot be applied; 'sided': spot y cannot be
+     reached from the corner the move names — with `plain` the shortest way,
+     from any side, is drawn instead, and aiCommitted says what came out). */
   function aiTry(mv, plain) {
     var a = ai, an = a.an, pos = a.pos, reg = an.regions[mv.r], x = mv.x, y = mv.y, X = game.spots[x], pa = [X.x, X.y];
     var probe = X.deg === 2 ? cornerProbe(an, reg.boundaries[mv.j], mv.i) : pa;
@@ -2196,6 +2390,12 @@
     if (!ok) return 'cannot start at spot ' + (x + 1);
     var ar = armed; armed = null;
     if (ar.region.key !== reg.key) return 'the side of spot ' + (x + 1) + ' was not found';
+    var Y0 = game.spots[y];
+    if (y !== x && Y0.deg === 2 && !plain) {       // y has two corners: arrive by the one the move names (v85, the router's target side; the second round takes any side)
+      var pby = cornerProbe(an, reg.boundaries[mv.j2], mv.i2);
+      ar.bside = sideTest(y, [pby[0] - Y0.x, pby[1] - Y0.y]);
+      if (ar.bside && ar.targets[y] && !ar.planner.reachable([Y0.x, Y0.y], ar.bside)) return 'sided';
+    }
     if (!ar.targets[y] && !ar.blocked[y]) return 'spot ' + (y + 1) + ' cannot be reached from that side';
     a.moves0 = game.moves; a.lastWarn = null;
     if (!ar.targets[y]) {                          // the rules allow it, the room does not: as for a click — M's machinery, if Room → Shift … is on
@@ -2222,12 +2422,16 @@
       }
       S.forEach(function (k) { ar.marks[k] = true; });
       if (arc !== null) ar.arcMarks[arc] = true;
+      /* no spot on either arc and nothing to enclose, in the outside region: the loop must go round NOTHING —
+         markedRoute's parity search with every other boundary on the outside's side (v85; before, the shortest way,
+         which enclosed whatever lay in it, "the router drew … enclosing 4 instead") */
+      if (arc === null && pI > 0 && !S.length && reg.key === -1 && reg.boundaries.length > 1) ar.encloseNone = true;
       Object.keys(ar.arcMarks).forEach(function (i) { ar.markedSpots[i] = true; });
       Object.keys(ar.marks).forEach(function (k) { reg.boundaries[k].spots.forEach(function (j) { ar.markedSpots[j] = true; }); });
     }
     marksUsed = Object.keys(ar.markedSpots).map(Number).sort(function (u, v) { return u - v; });
     var P, Y = game.spots[y], pb = [Y.x, Y.y];
-    if (Object.keys(ar.marks).length || Object.keys(ar.arcMarks).length) {
+    if (Object.keys(ar.marks).length || Object.keys(ar.arcMarks).length || ar.encloseNone) {
       hush++;
       try { var mr = markedRoute(ar, y); } finally { hush--; }
       if (!mr) return ar.why === 'room' ? 'no room round the marks' : 'no route round the marks';
@@ -2263,7 +2467,8 @@
       ai = a; aiNext();
       return;
     }
-    if (a.verdict) { log('    ' + a.who + ' ' + a.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + a.who + ' ' + a.verdict; }
+    /* the exact verdict — not after the move that ends the game, where the game-over line says it (v100, Peter) */
+    if (a.verdict && game.phase !== 'over') { log('    ' + a.who + ' ' + a.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + a.who + ' ' + a.verdict; }
     if (got === a.expect) { log('    ' + a.who + ' intended ' + a.text + ': drawn as intended.'); return; }
     var other = null, big = false;
     AI.families(a.pos).forEach(function (fam) {
@@ -2288,6 +2493,7 @@
       players[p].kind = sel.value; rows();
       log('Player ' + p + ' (' + playerName(p) + '): ' + kindName(sel.value) + '.');
       if (sel.value === 'human' && ai && (ai.timer || ai.thinking)) aiCancel();
+      if (game.phase === 'play' && game.moves === 0 && !net) { aiHeld = true; if (ai && ai.timer) aiCancel(); }   // (v95: a computer's first move waits for N)
       sayTurn(); maybeAI();
     });
     /* games or seconds, depth or seconds: filling in one empties the other (Peter, 9/27) */
@@ -2458,18 +2664,18 @@
     net.session.sendGame(game.spots.length, game.rules);
     log('Net: the game (' + game.spots.length + ' spots, ' + rulesName(game.rules) + ') goes to the guest.');
   }
-  /* The guest: the host's game, laid out my way (Place by hand becomes a circle). */
+  /* The guest: the host's game, laid out my way (Place by hand becomes an ellipse). */
   function netNewGame(msg) {
     if (relaying) finishRelaying(false);
     band = null; stroke = null; armed = null; aiCancel();
     document.getElementById('opt-spots').value = msg.n;
     document.getElementById('opt-rules').value = msg.rules === 'misere' ? 'misere' : 'normal';
     var layout = document.getElementById('opt-layout').value;
-    if (layout === 'manual') layout = 'circle';
+    if (layout === 'manual') layout = 'ellipse';
     netAllow = true;
     try { newGame(layout); if (game.spots.length !== msg.n || game.phase !== 'play') newGame('random'); } finally { netAllow = false; }
     net.started = true;
-    if (game.spots.length !== msg.n || game.phase !== 'play') { log('Net: could not lay out the host\'s ' + msg.n + ' spots here.'); say('Could not lay out the host\'s ' + msg.n + ' spots in a window this size.', true); return; }
+    if (game.spots.length !== msg.n || game.phase !== 'play') { log('Net: could not lay out the host\'s ' + msg.n + ' spots here.'); say('Could not lay out the host\'s ' + msg.n + ' spots in a window this size.', true, null, true); return; }
     log('Net: the host started a game: ' + msg.n + ' spots, ' + rulesName(game.rules) + '.');
     sayTurn(); draw();
   }

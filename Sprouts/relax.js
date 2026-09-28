@@ -551,13 +551,13 @@
      onto the end spots, where the self-distance becomes meaningless) and the hard clearance dh is raised
      towards d0 (continuation: a stroke drawn closer than d0 to something
      starts with a smaller barrier). */
-  var QUIET_MOVE = 0.05;   // px: a step that moves the band less than this is "quiet" — the band's precision
-  var QUIET_E = 0.01;      // … or that lowers its energy by less than this
+  var QUIET_MOVE = 0.05;   // px: a step that moves the band less than this …
+  var QUIET_E = 0.01;      // … AND lowers its energy by less than this is "quiet" (v96; before: or)
   function iterate(band, count) {
     for (var c = 0; c < count && !band.done; c++) {
       var before = band.state.E, moved = step(band);
       band.iter++;
-      var small = moved < QUIET_MOVE || before - band.state.E < QUIET_E;
+      var small = moved < QUIET_MOVE && before - band.state.E < QUIET_E;   // (v96, Peter: BOTH small — a step that moved the shape little but still lowered E a lot stopped the band with a kink in it)
       /* while the barrier is still being raised towards d0 only a step that
          achieved nothing at all counts as quiet */
       band.quiet = (small && (band.dh >= band.params.d0 - 1e-9 || moved === 0)) ? band.quiet + 1 : 0;
@@ -896,7 +896,7 @@
     for (var c = 0; c < count && !sb.done; c++) {
       var before = sb.state.E, moved = splineStep(sb);
       sb.iter++;
-      var small = moved < QUIET_MOVE || before - sb.state.E < QUIET_E;
+      var small = moved < QUIET_MOVE && before - sb.state.E < QUIET_E;   // (v96: both small, as in iterate)
       var dh = Math.max(sb.dh, Math.min(sb.params.d0, 0.7 * sb.state.rmin)), raised = dh > sb.dh + 1e-6;
       if (raised) { sb.dh = dh; sb.state = evaluateSpline(sb, sb.pts, dh, true); }
       sb.quiet = small && !raised ? sb.quiet + 1 : 0;

@@ -142,12 +142,15 @@
 
   /* The best free cell near p (within radius) by distance-from-start plus the
      straight hop to p — a hop that crosses nothing: a cell on the far side of
-     a curve ending at p is not an approach to p; -1 if none is reachable. */
-  function bestCellNear(grid, dd, p, radius, obs) {
+     a curve ending at p is not an approach to p; -1 if none is reachable.
+     `side` (v85), if given, is a test of the cell's centre: only cells on the
+     wanted side of p — in the sector between two of p's curves — may end the
+     path, so the curve arrives at p by that side. */
+  function bestCellNear(grid, dd, p, radius, obs, side) {
     var best = -1, bd = Infinity;
     cellsNear(grid, p, radius).forEach(function (k) {
       var q = centre(grid, k), d = dd.dist[k] + G.dist(q, p);
-      if (d < bd && !R.polylineCrossesObstacle(obs, [q, p])) { bd = d; best = k; }
+      if (d < bd && (!side || side(q)) && !R.polylineCrossesObstacle(obs, [q, p])) { bd = d; best = k; }
     });
     return best;
   }
@@ -245,12 +248,12 @@
     var ring = d0 + spotRadius + 1.5 * grid.cell;
     return {
       grid: grid, ring: ring, start: start, ctx: ctx, d0: d0, W: W, H: H,
-      reachable: function (p) { return bestCellNear(grid, dd, p, ring, obs) >= 0; },
+      reachable: function (p, side) { return bestCellNear(grid, dd, p, ring, obs, side) >= 0; },
       /* the room on the best way to p (see widest) */
       room: function (p) { return widest(grid, obs, start, p, ring); },
-      /* Polyline of cell centres from the start's neighbourhood to near p, or null. */
-      pathTo: function (p) {
-        var k = bestCellNear(grid, dd, p, ring, obs);
+      /* Polyline of cell centres from the start's neighbourhood to near p, or null; `side` as in bestCellNear. */
+      pathTo: function (p, side) {
+        var k = bestCellNear(grid, dd, p, ring, obs, side);
         if (k < 0) return null;
         var pts = [];
         for (; k >= 0; k = dd.prev[k]) pts.push(centre(grid, k));
@@ -290,7 +293,7 @@
   /* Shortest grid path from `start` to near p whose crossing parity with the
      cut rays is one of `wanted` (an array of masks). Returns the polyline of
      cell centres, or null. */
-  function pathWithParity(grid, obs, start, p, ring, rays, wanted) {
+  function pathWithParity(grid, obs, start, p, ring, rays, wanted, side) {   // side: as in bestCellNear (v85)
     var k = rays.length, states = 1 << k, n = grid.nx * grid.ny, nx = grid.nx, ny = grid.ny, c = grid.cell;
     var dist = new Float64Array(n * states).fill(Infinity), prev = new Int32Array(n * states).fill(-1);
     function hopMask(a, b) {
@@ -351,6 +354,7 @@
     var best = -1, bd = Infinity;
     cellsNear(grid, p, ring).forEach(function (cell) {
       var q = centre(grid, cell), last = hopMask(q, p);
+      if (side && !side(q)) return;
       if (R.polylineCrossesObstacle(obs, [q, p])) return;
       wanted.forEach(function (w) {
         var s = cell * states + (w ^ last), d = dist[s] + G.dist(q, p);

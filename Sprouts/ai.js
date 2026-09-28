@@ -198,39 +198,146 @@
     });
     return regs;
   }
-  function livesString(pos, bd) {                 // the least rotation of the boundary's lives, and where it starts
-    var n = bd.length, best = null, at = 0, i, k;
+  function livesString(pos, bd) {                 // the least rotation of the boundary's lives, and every rotation that gives it
+    var n = bd.length, best = null, i, k, str = '';
     var lv = bd.map(function (t) { return lives(pos, t); });
     for (i = 0; i < n; i++) {
-      var better = false, same = true;
+      var better = false;
       if (best === null) better = true;
-      else for (k = 0; k < n; k++) { var a = lv[(i + k) % n], b = lv[(best + k) % n]; if (a !== b) { better = a < b; same = false; break; } }
-      if (better) { best = i; }
+      else for (k = 0; k < n; k++) { var a = lv[(i + k) % n], b = lv[(best + k) % n]; if (a !== b) { better = a < b; break; } }
+      if (better) best = i;
     }
-    var str = '';
     for (k = 0; k < n; k++) str += lv[(best + k) % n];
-    return { str: str, at: best };
+    var ats = [];
+    for (i = 0; i < n; i++) { for (k = 0; k < n && lv[(i + k) % n] === lv[(best + k) % n]; k++) { /* on */ } if (k === n) ats.push(i); }
+    return { str: str, ats: ats };
   }
+  /* The form of `regs` (the reduced regions, each a list of boundaries) —
+     the least string over every way of writing the position (v84, a TRUE
+     canonical form: the old one let the order of tied boundaries and
+     regions, and the rotation among tied ones, follow the spot numbers, so
+     equal positions got different strings — one part in three, measured).
+     Boundaries are ordered by their lives-strings and regions by the joined
+     strings of theirs; only TIES are left to choose, and only where letters
+     are involved (boundaries without a one-life spot are interchangeable
+     when tied). A boundary whose one-life spots all lie on it alone
+     ("local": a bare path) is interchangeable with a tied one of its kind,
+     and its rotation is chosen on its own (the least pattern); a boundary
+     with a SHARED spot (a cycle's spot, on a boundary of another region too)
+     is branched over — its order among the tied and its rotation — and so
+     are tied regions holding shared spots. Branch and bound on the string
+     being built; ties among the rest are settled by the letters' first
+     appearance. */
   function canonicalOf(pos, regs) {
-    var items = regs.map(function (bds) {
-      var list = bds.map(function (bd) { var ls = livesString(pos, bd); return { bd: bd, str: ls.str, at: ls.at }; });
-      list.sort(function (u, v) { return u.str < v.str ? -1 : u.str > v.str ? 1 : 0; });
-      return { list: list, str: list.map(function (x) { return x.str; }).join('|') };
+    var seenIn = {}, all = [];                    // one-life spot → the boundaries (info records) it lies on
+    var R = regs.map(function (bds) {
+      var list = bds.map(function (bd) {
+        var ls = livesString(pos, bd), b = { bd: bd, str: ls.str, ats: ls.ats, letters: false, shared: false, sig: ls.str }, here = {};
+        bd.forEach(function (t) { if (lives(pos, t) === 1) { b.letters = true; if (!here[t]) { here[t] = 1; (seenIn[t] = seenIn[t] || []).push(b); } } });
+        all.push(b);
+        return b;
+      });
+      return { list: list, shared: false };
     });
-    items.sort(function (u, v) { return u.str < v.str ? -1 : u.str > v.str ? 1 : 0; });
-    var names = {}, next = 0, out = [];
-    items.forEach(function (it) {
-      out.push(it.list.map(function (x) {
-        var n = x.bd.length, str = '';
-        for (var k = 0; k < n; k++) {
-          var t = x.bd[(x.at + k) % n], l = lives(pos, t);
-          if (l === 1) { if (!(t in names)) names[t] = String.fromCharCode(97 + (next++ % 26)) + (next > 26 ? Math.floor((next - 1) / 26) : ''); str += names[t]; }
-          else str += l;
-        }
-        return str;
-      }).join('|'));
+    /* refined signatures (one round): a boundary's, its lives-string plus the
+       lives-strings of the boundaries its shared spots also lie on; a region's,
+       its boundaries' sorted signatures. Tied items are then rarely more than
+       interchangeable ones. */
+    R.forEach(function (reg) { reg.str = reg.list.map(function (x) { return x.str; }).sort().join('|'); reg.list.forEach(function (b) { b.reg = reg; }); });
+    all.forEach(function (b) {
+      var links = [];
+      b.bd.forEach(function (t) { if (lives(pos, t) === 1 && seenIn[t].length > 1) { b.shared = true; seenIn[t].forEach(function (o) { if (o !== b) links.push(o.str + '@' + o.reg.str); }); } });
+      if (links.length) b.sig = b.str + '#' + links.sort().join(',');
     });
-    return out.join('/');
+    var bySig = function (u, v) { return u.sig < v.sig ? -1 : u.sig > v.sig ? 1 : 0; };
+    R.forEach(function (reg) {
+      reg.list.sort(bySig);
+      reg.sig = reg.list.map(function (x) { return x.sig; }).join('|');
+      reg.shared = reg.list.some(function (x) { return x.shared; });
+    });
+    R.sort(bySig);
+    var best = null, names = [], named = [];      // names[spot] = its letter; named: the spots named so far, in order (undone on backtracking)
+    function letter(k) { return String.fromCharCode(97 + (k % 26)) + (k >= 26 ? Math.floor(k / 26) : ''); }
+    /* the string of boundary b from rotation `at`, naming new letters as they appear */
+    function emit(b, at) {
+      var n = b.bd.length, out = '';
+      for (var k = 0; k < n; k++) {
+        var t = b.bd[(at + k) % n], l = lives(pos, t);
+        if (l === 1) { if (names[t] === undefined) { names[t] = letter(named.length); named.push(t); } out += names[t]; }
+        else out += l;
+      }
+      return out;
+    }
+    function unname(to) { while (named.length > to) names[named.pop()] = undefined; }
+    /* a local boundary: its least pattern over its rotations (the pattern does not depend on the letters' names) */
+    function emitLocal(b) {
+      var bestAt = b.ats[0];
+      if (b.ats.length > 1) {
+        var bestPat = null, mark = named.length;
+        b.ats.forEach(function (at) { var pat = emit(b, at); unname(mark); if (bestPat === null || pat < bestPat) { bestPat = pat; bestAt = at; } });
+      }
+      return emit(b, bestAt);
+    }
+    /* may a string that starts with `prefix` still be the least? */
+    function hopeless(prefix) { return best !== null && !(best.length >= prefix.length && best.lastIndexOf(prefix, 0) === 0) && prefix > best; }
+    /* the regions: the tie group of the first remaining one; a group with shared spots is branched over, else taken in order */
+    function regions(done, prefix) {
+      if (done.length === R.length) { if (best === null || prefix < best) best = prefix; return; }
+      if (hopeless(prefix)) return;
+      var f = 0;
+      while (done.indexOf(f) >= 0) f++;
+      var group = [];
+      for (var j = f; j < R.length; j++) if (R[j].sig === R[f].sig && done.indexOf(j) < 0) group.push(j);
+      var sep = done.length ? '/' : '';
+      if (!group.some(function (j) { return R[j].shared; })) {
+        var mark = named.length, out = prefix;
+        group.forEach(function (j, u) { out = boundaries(R[j].list, [], out + (u ? '/' : sep)); });   // (no branching inside: boundaries returns the string)
+        regions(done.concat(group), out);
+        unname(mark);
+        return;
+      }
+      var tried = {};                             // a member that reads as one already tried here is (all but surely) its twin: skipped
+      group.forEach(function (j) {
+        var mark = named.length;
+        boundariesB(R[j].list, [], prefix + sep, function (p2) { regions(done.concat([j]), p2); });
+        unname(mark);
+      });
+    }
+    /* the boundaries of a region with no shared spots: deterministic, returns the string */
+    function boundaries(list, done, prefix) {
+      var out = prefix;
+      for (var i = 0; i < list.length; i++) {
+        if (i) out += '|';
+        out += list[i].letters ? emitLocal(list[i]) : list[i].str;
+      }
+      return out;
+    }
+    /* the boundaries of a region with shared spots: the tie groups; a group with shared spots is branched over (member and rotation) */
+    function boundariesB(list, done, prefix, then) {
+      if (done.length === list.length) { then(prefix); return; }
+      if (hopeless(prefix)) return;
+      var sep = done.length ? '|' : '', f = 0;
+      while (done.indexOf(f) >= 0) f++;
+      var group = [];
+      for (var j = f; j < list.length; j++) if (list[j].sig === list[f].sig && done.indexOf(j) < 0) group.push(j);
+      if (!group.some(function (j) { return list[j].shared; })) {   // no shared spots in the group: any order; local letters rotated on their own
+        var mark = named.length, out = prefix;
+        group.forEach(function (j, u) { out += (u ? '|' : sep) + (list[j].letters ? emitLocal(list[j]) : list[j].str); });
+        boundariesB(list, done.concat(group), out, then);
+        unname(mark);
+        return;
+      }
+      group.forEach(function (j) {
+        var b = list[j], ats = b.shared ? b.ats : [null];
+        ats.forEach(function (at) {
+          var mark = named.length, str = at === null ? emitLocal(b) : emit(b, at);
+          boundariesB(list, done.concat([j]), prefix + sep + str, then);
+          unname(mark);
+        });
+      });
+    }
+    regions([], '');
+    return best === null ? '' : best;
   }
   function canonical(pos) {
     var regs = reduce(pos), a = canonicalOf(pos, regs);
@@ -367,9 +474,9 @@
      boundaries contributes `cap` random distinct ones (a stopgap until the
      canonical form tells interchangeable boundaries apart — see the notes). */
   function children(pos, cap, rnd) {
-    var out = [], seen = {}, regCount = {};        // regCount[s]: how many regions spot s is on
+    var out = [], regCount = {};                   // regCount[s]: how many regions spot s is on
     pos.regions.forEach(function (reg) { var here = {}; reg.boundaries.forEach(function (bd) { bd.forEach(function (t) { here[t] = 1; }); }); Object.keys(here).forEach(function (t) { regCount[t] = (regCount[t] || 0) + 1; }); });
-    var push = function (mv) { var k = canonical(apply(pos, mv)); if (!seen[k]) { seen[k] = 1; out.push(mv); } };
+    var push = function (mv) { out.push(mv); };   // (v84: no dedup by canonical form here — the table catches equal children at their own node, and alpha-beta never visits many of them; before, every child was canonicalized up front)
     families(pos).forEach(function (fam) {
       if (!fam.others.length) { push(expand(fam, [])); return; }
       /* interchangeable other boundaries: the same lives-string and nothing
@@ -399,18 +506,276 @@
     return out;
   }
 
+  /* ---------------- exact play by parts (nimbers, v83) ----------------
+     A position is the SUM of independent games — its PARTS — when its
+     regions fall into collections that share no live spot (the paper, 3.3:
+     the connected components of the region graph, regions joined by a spot
+     of degree two lying on both). A move in one part changes nothing in the
+     others, and the player chooses the part to move in. Under NORMAL play the
+     Sprague–Grundy theorem then applies: every part has a NIMBER (the least
+     non-negative integer that is not the nimber of any successor — the mex
+     rule; a part with no move has 0), the nimber of the sum is the XOR of the
+     parts' nimbers, and the player to move LOSES exactly when the XOR is 0.
+     So a position is solved exactly as soon as each of its parts is small
+     enough to solve on its own — the cost is the sum of the parts' trees,
+     where the whole-position search pays their product (every interleaving
+     of the parts' moves) — and a part with nimber 0 can be dropped from a
+     position without changing its value (val(L ⊕ V) = val(V)). Nimbers are
+     memoized on the canonical form (ctx.nim, a Map that outlives a search).
+     None of this holds for misère (the paper, 3.3); misère has its own
+     theory by parts below (v86). Regions with under two lives have no move and are no part. */
+  function parts(pos) {
+    var live = [], regOf = {}, r;
+    pos.regions.forEach(function (reg, i) { if (regionLives(pos, reg) >= 2) live.push(i); });
+    live.forEach(function (i) {                   // the live spots on each region; a spot on two live regions joins them
+      pos.regions[i].boundaries.forEach(function (bd) { bd.forEach(function (t) { if (lives(pos, t) > 0) { if (!regOf[t]) regOf[t] = []; if (regOf[t].indexOf(i) < 0) regOf[t].push(i); } }); });
+    });
+    var comp = {}, out = [];
+    live.forEach(function (i) {
+      if (comp[i] !== undefined) return;
+      var stack = [i], members = [];
+      comp[i] = out.length;
+      while (stack.length) {
+        r = stack.pop(); members.push(r);
+        pos.regions[r].boundaries.forEach(function (bd) { bd.forEach(function (t) {
+          (regOf[t] || []).forEach(function (j) { if (comp[j] === undefined) { comp[j] = out.length; stack.push(j); } });
+        }); });
+      }
+      out.push({ n: pos.n, deg: pos.deg, regions: members.sort(function (a, b) { return a - b; }).map(function (j) { return pos.regions[j]; }) });
+    });
+    return out;
+  }
+  /* The nimber of a position (the XOR of its parts'); −1 when the deadline
+     cut the computation short (ctx.aborted). Every successor is needed (no
+     pruning); equal successors meet in the memo. */
+  function nimber(pos, ctx) {
+    var x = 0, ps = parts(pos);
+    for (var i = 0; i < ps.length; i++) {
+      var p = ps[i], key = canonical(p), g = ctx.nim.get(key);
+      if (g === undefined) {
+        if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
+        if (ctx.aborted) return -1;
+        var seen = {}, kids = children(p, Infinity);
+        for (var k = 0; k < kids.length; k++) {
+          var v = nimber(apply(p, kids[k]), ctx);
+          if (ctx.aborted) return -1;
+          seen[v] = 1;
+        }
+        g = 0; while (seen[g]) g++;
+        ctx.nim.set(key, g);
+      }
+      x ^= g;
+    }
+    return x;
+  }
+  /* What the search knows of a position at `depth` plies from its horizon.
+     When the position is a SUM (two or more parts), each part whose bound M
+     (at most that many moves are left in it) is within the depth — the
+     search would look to its end anyway — is solved for its nimber
+     (memoized). A position that is one part is searched as before: the mex
+     rule prunes nothing, alpha-beta does, and the theory adds nothing to an
+     undivided game (a fixed depth ≥ M at the start would otherwise solve the
+     whole game by nimbers — minutes for 5 spots, where the search takes
+     seconds). All parts solved → { exact: true, value: ±2 } for the player
+     to move (the XOR of the nimbers and of `heap`, see below, 0 = lost).
+     Else { exact: false, pos, heap }: the solved parts are TAKEN OUT of the
+     position and replaced by a NIM HEAP — the XOR of their nimbers with the
+     heap that came in (the paper's section 5: a solved part with a nimber
+     above 0 need not be searched on, a heap of that size is the same game;
+     a lost part, nimber 0, vanishes: val(L ⊕ V) = val(V)). The search goes
+     on with the unsolved parts and the heap (v84; v83 dropped only the lost
+     parts). */
+  function solveParts(pos, depth, ctx, canon, heap) {   // canon: canonical(pos) if already known — it is the one part's, when there is one
+    var ps = parts(pos), x = heap || 0, all = true, keep = [];
+    for (var i = 0; i < ps.length; i++) {
+      var p = ps[i], key = ps.length === 1 && canon ? canon : canonical(p), g = ctx.nim.get(key);
+      if (g === undefined && ps.length >= 2 && bounds(p).M <= depth) { g = nimber(p, ctx); if (ctx.aborted) return { exact: false, pos: pos, heap: x }; ctx.solved++; }
+      if (g === undefined) { all = false; keep.push(p); }
+      else x ^= g;
+    }
+    if (all) return { exact: true, value: x ? 2 : -2 };
+    if (keep.length === ps.length) return { exact: false, pos: pos, heap: x };
+    var regions = [];
+    keep.forEach(function (p) { regions = regions.concat(p.regions); });
+    return { exact: false, pos: { n: pos.n, deg: pos.deg, regions: regions }, heap: x };
+  }
+
+  /* ---------------- misère play by parts (v86) ----------------
+     Under misère play a part has no nimber: whether a part is won or lost
+     on its own does not say how it behaves beside another. What does is its
+     MISÈRE CANONICAL TREE (Conway, On Numbers and Games ch. 12; Lemoine &
+     Viennot's "reduced canonical trees" for misère Sprouts): its game tree
+     with equal options merged and REVERSIBLE options removed, which is the
+     same tree for two games exactly when they are indistinguishable — the
+     same outcome beside any third game. Two parts with the same tree can
+     stand in for each other in any sum, so a solved part is replaced by its
+     tree (a number, the tree's id in a store), and a position all of whose
+     parts are solved is decided by the outcome of the sum of the trees.
+     The rules used (checked by brute force on all games born by day 4 —
+     Conway's count, 22 — and on sums of them):
+     - equal (Conway): G = H iff both have the same misère outcome, every
+       option of G equals an option of H or has an option equal to H, and
+       every option of H equals an option of G or has an option equal to G;
+     - simplify: an option x of G = S may be removed when x has an option
+       equal to S − {x} — unless S − {x} is empty and G is a misère loss for
+       the player to move (the empty game is a win in misère);
+     - nim heaps are canonical, and *m + *n = *(m XOR n) when m or n is 0
+       or 1 (so * + * = 0); a sum of heaps only is decided by the misère nim
+       rule (mover wins iff XOR ≠ 0, except when every heap is 0 or 1:
+       then iff the XOR is 0).
+     Tree ids: 0 is the empty game. out[id]: true when the player to move in
+     it WINS (misère). The store lives in the search context (ctx.T) with the
+     trees of the parts (ctx.mis, keyed by canonical form); the transposition
+     table's keys carry tree ids, so the three are cleared together. */
+  function newStore() { return { opts: [[]], out: [true], heap: [0], heaps: [0], key: new Map([['', 0]]), sum: new Map(), ol: new Map() }; }
+  function outSet(T, S) { if (!S.length) return true; for (var i = 0; i < S.length; i++) if (!T.out[S[i]]) return true; return false; }
+  /* is tree y equal to the game whose options are the trees R (Conway's test)? */
+  function treeEquals(T, y, R) {
+    if (T.out[y] !== outSet(T, R)) return false;
+    var oy = T.opts[y], i, j, k;
+    for (i = 0; i < R.length; i++) if (oy.indexOf(R[i]) < 0 && T.opts[R[i]].indexOf(y) < 0) return false;
+    for (j = 0; j < oy.length; j++) {
+      if (R.indexOf(oy[j]) >= 0) continue;
+      var o2 = T.opts[oy[j]], ok = false;
+      for (k = 0; k < o2.length && !ok; k++) if (treeEquals(T, o2[k], R)) ok = true;
+      if (!ok) return false;
+    }
+    return true;
+  }
+  /* the tree of the game whose options are the trees S */
+  function mkTree(T, S) {
+    S = S.filter(function (x, i) { return S.indexOf(x) === i; }).sort(function (a, b) { return a - b; });
+    var key = S.join(','), id = T.key.get(key), outS, i, k;
+    if (id !== undefined) return id;
+    outS = outSet(T, S);
+    for (i = 0; i < S.length; i++) {             // a reversible option: the game is the game without it
+      var R = S.slice(0, i).concat(S.slice(i + 1)), ox = T.opts[S[i]];
+      if (!R.length && !outS) continue;
+      for (k = 0; k < ox.length; k++) if (treeEquals(T, ox[k], R)) { id = mkTree(T, R); T.key.set(key, id); return id; }
+    }
+    id = T.opts.length; T.opts.push(S); T.out.push(outS);
+    var h = S.length;
+    for (i = 0; i < S.length; i++) if (T.heap[S[i]] !== i) { h = -1; break; }
+    T.heap.push(h); if (h >= 0) T.heaps[h] = id;
+    T.key.set(key, id);
+    return id;
+  }
+  function heapTree(T, n) { while (T.heaps.length <= n) mkTree(T, T.heaps.slice()); return T.heaps[n]; }
+  /* the tree of the sum of two trees (memoized) */
+  function treeSum(T, a, b) {
+    if (a === 0) return b;
+    if (b === 0) return a;
+    var ha = T.heap[a], hb = T.heap[b];
+    if (ha >= 0 && hb >= 0 && (ha <= 1 || hb <= 1)) return heapTree(T, ha ^ hb);
+    if (a > b) { var t = a; a = b; b = t; }
+    var key = a + '+' + b, id = T.sum.get(key), S = [];
+    if (id !== undefined) return id;
+    T.opts[a].forEach(function (x) { S.push(treeSum(T, x, b)); });
+    T.opts[b].forEach(function (x) { S.push(treeSum(T, a, x)); });
+    id = mkTree(T, S); T.sum.set(key, id);
+    return id;
+  }
+  /* A list of trees standing for their sum, in a normal form: empty games
+     dropped, the 0/1 heaps folded into one heap (a * joins a larger heap if
+     there is one), sorted. Larger trees are NOT summed into one: the sum's
+     tree can be far bigger than the pair (Lemoine–Viennot kept lists too). */
+  function normList(T, L) {
+    var out = [], one = 0, big = -1, i;
+    for (i = 0; i < L.length; i++) {
+      var h = T.heap[L[i]];
+      if (L[i] === 0) continue;
+      if (h === 1) { one ^= 1; continue; }
+      if (h >= 2 && big < 0) { big = out.length; }
+      out.push(L[i]);
+    }
+    if (one) { if (big >= 0) out[big] = heapTree(T, T.heap[out[big]] ^ 1); else out.push(heapTree(T, 1)); }
+    return out.sort(function (a, b) { return a - b; });
+  }
+  /* The misère outcome of the sum of a normal list: true = the player to move wins. */
+  function listWins(T, L) {
+    var x = 0, big = false, heaps = true, i;
+    for (i = 0; i < L.length; i++) { var h = T.heap[L[i]]; if (h < 0) { heaps = false; break; } x ^= h; if (h >= 2) big = true; }
+    if (heaps) return big ? x !== 0 : x === 0;
+    var key = L.join('.'), w = T.ol.get(key);
+    if (w !== undefined) return w;
+    w = false;
+    for (i = 0; i < L.length && !w; i++) {
+      var o = T.opts[L[i]];
+      for (var k = 0; k < o.length && !w; k++) { var L2 = L.slice(); L2[i] = o[k]; if (!listWins(T, normList(T, L2))) w = true; }
+    }
+    T.ol.set(key, w);
+    return w;
+  }
+  /* The misère tree of a position (the sum of its parts' trees); −1 when the
+     deadline cut it short. Parts are memoized on the canonical form. */
+  function misTree(pos, ctx, canon) {
+    var T = ctx.T, ps = parts(pos), t, u, i;
+    if (ps.length !== 1) {
+      t = 0;
+      for (i = 0; i < ps.length; i++) { u = misTree(ps[i], ctx); if (u < 0) return -1; t = treeSum(T, t, u); }
+      return t;
+    }
+    var key = canon || canonical(pos);
+    t = ctx.mis.get(key);
+    if (t !== undefined) return t;
+    if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
+    if (ctx.aborted) return -1;
+    var kids = children(pos, Infinity), ids = [];
+    for (i = 0; i < kids.length; i++) { u = misTree(apply(pos, kids[i]), ctx); if (u < 0) return -1; ids.push(u); }
+    t = mkTree(T, ids);
+    ctx.mis.set(key, t);
+    return t;
+  }
+  /* solveParts for misère: the same rule for which parts to solve (a sum,
+     M within the depth); a solved part joins `list` as its tree. All solved →
+     exact, from the outcome of the list. */
+  function solvePartsMisere(pos, depth, ctx, canon, list) {
+    var ps = parts(pos), L = (list || []).slice(), keep = [];
+    for (var i = 0; i < ps.length; i++) {
+      var p = ps[i], key = ps.length === 1 && canon ? canon : canonical(p), t = ctx.mis.get(key);
+      if (t === undefined && ps.length >= 2 && bounds(p).M <= depth) { t = misTree(p, ctx, key); if (ctx.aborted) return { exact: false, pos: pos, list: list || [] }; ctx.solved++; }
+      if (t === undefined) keep.push(p); else L.push(t);
+    }
+    L = normList(ctx.T, L);
+    if (!keep.length) return { exact: true, value: listWins(ctx.T, L) ? 2 : -2 };
+    if (keep.length === ps.length) return { exact: false, pos: pos, list: L };
+    var regions = [];
+    keep.forEach(function (p) { regions = regions.concat(p.regions); });
+    return { exact: false, pos: { n: pos.n, deg: pos.deg, regions: regions }, list: L };
+  }
+
   /* Alpha-beta (negamax) to `depth` plies, on `evaluate` at the leaves, with
      a TRANSPOSITION TABLE keyed by the canonical form (ctx.tt, a Map that may
      outlive the search: {d: plies searched, v, f: 0 exact, 1 a lower bound,
      −1 an upper bound}) and a DEADLINE (ctx.deadline, ms as Date.now(); the
      clock is read every 256 nodes; once past, ctx.aborted is set and the
      values coming back mean nothing). */
-  function newContext(deadline) { return { tt: new Map(), deadline: deadline || Infinity, nodes: 0, aborted: false, hits: 0 }; }
-  function negamax(pos, depth, alpha, beta, misere, cap, rnd, ctx) {
-    if (depth <= 0 || !canMove(pos)) return evaluate(pos, misere);
+  function newContext(deadline) { return { tt: new Map(), nim: new Map(), mis: new Map(), T: newStore(), deadline: deadline || Infinity, nodes: 0, aborted: false, hits: 0, solved: 0 }; }
+  /* A value of ±2 is EXACT (no move, or solved by parts) and holds at any depth: stored as such. */
+  /* `heap`: what stands beside the position for the solved parts — in normal
+     play a nim heap (solveParts; a move may take it down to any smaller
+     size), in misère a normal list of trees (solvePartsMisere, v86; a move
+     may replace one tree by one of its options). */
+  function negamax(pos, depth, alpha, beta, misere, cap, rnd, ctx, heap) {
+    heap = heap || (misere ? [] : 0);
+    var T = ctx.T;
+    /* no move in the position: only the solved parts' moves are left — exact */
+    var over = function () { return misere ? (listWins(T, heap) ? 2 : -2) : heap ? 2 : -2; };
+    if (!canMove(pos)) return over();
+    var canon = canonical(pos);
+    if (!ctx.noParts) {                            // exact by parts where the search can afford it (v83, misère v86; ctx.noParts: without, for comparisons)
+      var sp = misere ? solvePartsMisere(pos, depth, ctx, canon, heap) : solveParts(pos, depth, ctx, canon, heap);
+      if (ctx.aborted) return 0;
+      if (sp.exact) return sp.value;
+      if (sp.pos !== pos) { pos = sp.pos; canon = canonical(pos); }
+      heap = misere ? sp.list : sp.heap;
+      if (!canMove(pos)) return over();
+    }
+    if (depth <= 0) return evaluate(pos, misere);   // (the heap is not in the heuristic: a leaf with solved parts beside an unsolved part is judged by the part)
     if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
     if (ctx.aborted) return 0;
-    var key = (misere ? 'm' : 'n') + canonical(pos), e = ctx.tt.get(key), alpha0 = alpha;
+    var extra = misere ? (heap.length ? '+' + heap.join('.') : '') : (heap ? '+' + heap : '');
+    var key = (misere ? 'm' : 'n') + canon + extra, e = ctx.tt.get(key), alpha0 = alpha;
     if (e && e.d >= depth) {
       ctx.hits++;
       if (e.f === 0) return e.v;
@@ -418,21 +783,33 @@
       if (e.f === -1 && e.v < beta) beta = e.v;
       if (alpha >= beta) return e.v;
     }
-    var kids = children(pos, cap, rnd), best = -Infinity;
-    for (var i = 0; i < kids.length; i++) {
-      var v = -negamax(apply(pos, kids[i]), depth - 1, -beta, -alpha, misere, cap, rnd, ctx);
+    var kids = children(pos, cap, rnd), best = -Infinity, v, i;
+    for (i = 0; i < kids.length; i++) {
+      v = -negamax(apply(pos, kids[i]), depth - 1, -beta, -alpha, misere, cap, rnd, ctx, heap);
       if (ctx.aborted) return 0;
       if (v > best) best = v;
       if (v > alpha) alpha = v;
       if (alpha >= beta) break;
     }
-    ctx.tt.set(key, { d: depth, v: best, f: best <= alpha0 ? -1 : best >= beta ? 1 : 0 });
+    var others = [];                               // the moves beside the position: in the heap, to any smaller size; in a tree of the list, to one of its options
+    if (misere) {
+      var seen = {};
+      heap.forEach(function (t, j) { T.opts[t].forEach(function (o) { var L = heap.slice(); L[j] = o; L = normList(T, L); var k = L.join('.'); if (!seen[k]) { seen[k] = 1; others.push(L); } }); });
+    } else for (var h = 0; h < heap; h++) others.push(h);
+    for (i = 0; i < others.length && alpha < beta; i++) {
+      v = -negamax(pos, depth - 1, -beta, -alpha, misere, cap, rnd, ctx, others[i]);
+      if (ctx.aborted) return 0;
+      if (v > best) best = v;
+      if (v > alpha) alpha = v;
+    }
+    ctx.tt.set(key, { d: Math.abs(best) === 2 && best > alpha0 && best < beta ? Infinity : depth, v: best, f: best <= alpha0 ? -1 : best >= beta ? 1 : 0 });
     return best;
   }
 
   /* Parity search: each candidate's value for the mover, searching `depth`
      plies (the candidate itself is the first). Null when the deadline cut
-     it short. */
+     it short. A value of ±2 is exact (v83: solved by parts, or the end of
+     the game); when every candidate's is, the position is solved. */
   function paritySearch(pos, cands, depth, misere, cap, rnd, report, ctx) {
     rnd = rnd || Math.random; ctx = ctx || newContext();
     var out = [];
@@ -445,7 +822,8 @@
     return out;
   }
 
-  var api = { bounds: bounds, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
+  var api = { bounds: bounds, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
+              newStore: newStore, mkTree: mkTree, treeSum: treeSum, heapTree: heapTree, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
               negamax: negamax, paritySearch: paritySearch, newContext: newContext, canonical: canonical, reduce: reduce,
               fromAnalysis: fromAnalysis, families: families, expand: expand, allMoves: allMoves, apply: apply, key: key, gameKey: gameKey,
               canMove: canMove, regionLives: regionLives, lives: lives, describe: describe, randomOf: randomOf, randomMove: randomMove };

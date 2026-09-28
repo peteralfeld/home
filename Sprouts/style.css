@@ -5,10 +5,19 @@ body {
   background: #222; overflow: hidden;
 }
 
+/* v94 (Peter): the bar stays ONE line — when it is too narrow it scrolls
+   sideways (mouse wheel over it, or a touchpad's sideways swipe) instead of
+   wrapping, which changed its height and so the drawing's. No scroll bar
+   shown: one that came and went with the status line's length would change
+   the height too. The menu panels are position: fixed (placed by ui.js
+   under their title), since the scrolling bar would clip them. */
 #menubar {
   flex: 0 0 auto; display: flex; align-items: center; gap: 2px;
   background: #1b2a4a; color: #e8ecf5; padding: 2px 8px; user-select: none;
+  white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
+#menubar::-webkit-scrollbar { display: none; }
+#menubar > * { flex: 0 0 auto; }
 .menu { position: relative; }
 .menu-title {
   background: none; border: 0; color: inherit; font: inherit;
@@ -16,7 +25,7 @@ body {
 }
 .menu-title:hover, .menu.open .menu-title { background: #33477a; }
 .menu-panel {
-  display: none; position: absolute; top: 100%; left: 0; z-index: 10;
+  display: none; position: fixed; z-index: 10; white-space: normal;
   min-width: 230px; padding: 6px; border-radius: 0 0 6px 6px;
   background: #24365f; box-shadow: 0 6px 16px rgba(0, 0, 0, .45);
 }
@@ -42,7 +51,7 @@ body {
 .menu-panel .note { font-size: 13px; opacity: .75; max-width: 300px; display: block; }
 kbd { opacity: .7; font: inherit; }
 
-#status { margin-left: 18px; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#status { margin-left: 18px; padding-right: 8px; white-space: nowrap; }
 #status.warn { color: #ffd166; }
 #app-version { font-weight: bold; letter-spacing: .04em; padding: 5px 14px 5px 4px; opacity: .85; }
 
