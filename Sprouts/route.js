@@ -293,7 +293,7 @@
   /* Shortest grid path from `start` to near p whose crossing parity with the
      cut rays is one of `wanted` (an array of masks). Returns the polyline of
      cell centres, or null. */
-  function pathWithParity(grid, obs, start, p, ring, rays, wanted, side) {   // side: as in bestCellNear (v85)
+  function pathWithParity(grid, obs, start, p, ring, rays, wanted, side, blocked) {   // side: as in bestCellNear (v85); blocked: cells the path may not use (barriers, v112)
     var k = rays.length, states = 1 << k, n = grid.nx * grid.ny, nx = grid.nx, ny = grid.ny, c = grid.cell;
     var dist = new Float64Array(n * states).fill(Infinity), prev = new Int32Array(n * states).fill(-1);
     function hopMask(a, b) {
@@ -326,7 +326,7 @@
     }
     cellsNear(grid, start, 2 * c).forEach(function (cell) {
       var q = centre(grid, cell);
-      if (R.polylineCrossesObstacle(obs, [start, q])) return;
+      if ((blocked && blocked[cell]) || R.polylineCrossesObstacle(obs, [start, q])) return;
       var s = cell * states + hopMask(start, q), d = G.dist(q, start);
       if (d < dist[s]) { dist[s] = d; push(s, d); }
     });
@@ -339,8 +339,9 @@
         var ii = i + dx[q], jj = j + dy[q];
         if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
         var kk = jj * nx + ii;
-        if (!grid.free[kk]) continue;
+        if (!grid.free[kk] || (blocked && blocked[kk])) continue;
         if (q >= 4 && !(grid.free[j * nx + ii] && grid.free[jj * nx + i])) continue;
+        if (q >= 4 && blocked && (blocked[j * nx + ii] || blocked[jj * nx + i])) continue;   // (no slipping diagonally through a barrier)
         var qc = centre(grid, kk);
         /* only clean cells (see cleanCell), except close to the two ends,
            where the cells beside the end spots are cut by their curves */
@@ -355,6 +356,7 @@
     cellsNear(grid, p, ring).forEach(function (cell) {
       var q = centre(grid, cell), last = hopMask(q, p);
       if (side && !side(q)) return;
+      if (blocked && blocked[cell]) return;
       if (R.polylineCrossesObstacle(obs, [q, p])) return;
       wanted.forEach(function (w) {
         var s = cell * states + (w ^ last), d = dist[s] + G.dist(q, p);
@@ -476,9 +478,230 @@
     return loops;
   }
 
+  /* ---------------- barriers: routes that enclose a chosen set (v112) ----------------
+
+     The parity search above needs 2^k states for k boundaries that must end
+     up on a given side — hopeless with many (Peter's 30-spot game of 9/29:
+     28 boundaries in the outside region, so the router gave up and drew
+     another move). Instead: join the boundaries that must go to one side,
+     and what they go with (an arc of the start spot's boundary, the window's
+     edge), by a BARRIER TREE of grid cells; the same for the other side;
+     the two trees must not touch. A path that uses no barrier cell cannot
+     separate what a tree joins, so each side's things end up together, with
+     their arc. Growing a tree costs a breadth-first search per member.
+
+     regionMask: the cells of the region that `start` lies in — reachable
+     from it without crossing a curve (4-connected). A hop between two cells
+     can jump a curve only if one of them is not plainly free (see buildGrid),
+     so only those hops are checked. */
+  function hopOK(grid, obs, k, kk) {
+    if (grid.free[k] === 1 && grid.free[kk] === 1 && !grid.near[k] && !grid.near[kk]) return true;
+    return !R.polylineCrossesObstacle(obs, [centre(grid, k), centre(grid, kk)]);
+  }
+  var DX4 = [1, -1, 0, 0], DY4 = [0, 0, 1, -1];
+  function regionMask(grid, obs, start) {
+    var n = grid.nx * grid.ny, mask = new Uint8Array(n), queue = [], c = grid.cell;
+    var i0 = Math.floor(start[0] / c), j0 = Math.floor(start[1] / c);
+    for (var j = j0 - 2; j <= j0 + 2; j++) for (var i = i0 - 2; i <= i0 + 2; i++) {
+      if (i < 0 || j < 0 || i >= grid.nx || j >= grid.ny) continue;
+      var k = j * grid.nx + i;
+      if (!R.polylineCrossesObstacle(obs, [start, centre(grid, k)])) { mask[k] = 1; queue.push(k); }
+    }
+    for (var h = 0; h < queue.length; h++) {
+      var kq = queue[h], iq = kq % grid.nx, jq = (kq - iq) / grid.nx;
+      for (var q = 0; q < 4; q++) {
+        var ii = iq + DX4[q], jj = jq + DY4[q];
+        if (ii < 0 || jj < 0 || ii >= grid.nx || jj >= grid.ny) continue;
+        var kk = jj * grid.nx + ii;
+        if (mask[kk] || !hopOK(grid, obs, kq, kk)) continue;
+        mask[kk] = 1; queue.push(kk);
+      }
+    }
+    return mask;
+  }
+  /* The cells of the region within r of the points pts (an anchor: a boundary's curves or spot,
+     an arc, …), not in `avoid`. r: as far as the curves and spots keep cells from being free (the
+     planner's ring), so that the anchor holds the whole zone round it that no path can use. */
+  function anchorCells(grid, mask, pts, avoid, r) {
+    var out = {}, c = grid.cell;
+    pts.forEach(function (p) {
+      var i0 = Math.floor((p[0] - r) / c), i1 = Math.floor((p[0] + r) / c), j0 = Math.floor((p[1] - r) / c), j1 = Math.floor((p[1] + r) / c);
+      for (var j = Math.max(0, j0); j <= Math.min(grid.ny - 1, j1); j++) for (var i = Math.max(0, i0); i <= Math.min(grid.nx - 1, i1); i++) {
+        var k = j * grid.nx + i;
+        if (mask[k] && !(avoid && avoid[k]) && G.dist(centre(grid, k), p) <= r) out[k] = 1;
+      }
+    });
+    return Object.keys(out).map(Number);
+  }
+  /* The cells of the region within r of the polylines (each {pts, sign}) on ONE side of them: the
+     side sign·(left normal) of the segment nearest the cell (v112). An arc of a boundary is one SIDE
+     of its curves — where a bare path has the region on both sides, its two sides are two different
+     arcs, and a zone round the curve would give a tree both. */
+  function sideCells(grid, mask, lines, avoid, r) {
+    var n = grid.nx * grid.ny, best = new Float64Array(n).fill(Infinity), side = new Int8Array(n), c = grid.cell;
+    lines.forEach(function (ln) {
+      for (var t = 1; t < ln.pts.length; t++) {
+        var a = ln.pts[t - 1], b = ln.pts[t], vx = b[0] - a[0], vy = b[1] - a[1], vv = vx * vx + vy * vy;
+        var i0 = Math.max(0, Math.floor((Math.min(a[0], b[0]) - r) / c)), i1 = Math.min(grid.nx - 1, Math.floor((Math.max(a[0], b[0]) + r) / c));
+        var j0 = Math.max(0, Math.floor((Math.min(a[1], b[1]) - r) / c)), j1 = Math.min(grid.ny - 1, Math.floor((Math.max(a[1], b[1]) + r) / c));
+        for (var j = j0; j <= j1; j++) for (var i = i0; i <= i1; i++) {
+          var k = j * grid.nx + i;
+          if (!mask[k] || (avoid && avoid[k])) continue;
+          var q = centre(grid, k), wx = q[0] - a[0], wy = q[1] - a[1];
+          var u = vv > 0 ? Math.max(0, Math.min(1, (wx * vx + wy * vy) / vv)) : 0, ex = wx - u * vx, ey = wy - u * vy, d = Math.sqrt(ex * ex + ey * ey);
+          if (d > r || d >= best[k]) continue;
+          best[k] = d;
+          var cr = vx * wy - vy * wx;              // > 0: on the left of a → b (screen coordinates: y down)
+          side[k] = cr * ln.sign > 0 ? 1 : cr * ln.sign < 0 ? -1 : 0;
+        }
+      }
+    });
+    var out = [];
+    for (var k2 = 0; k2 < n; k2++) if (best[k2] <= r && side[k2] >= 0) out.push(k2);
+    return out;
+  }
+  /* The cells of the region on the window's edge (the unbounded part's anchor). */
+  function edgeCells(grid, mask, avoid) {
+    var out = [];
+    for (var k = 0; k < grid.nx * grid.ny; k++) {
+      var i = k % grid.nx, j = (k - i) / grid.nx;
+      if ((i === 0 || j === 0 || i === grid.nx - 1 || j === grid.ny - 1) && mask[k] && !(avoid && avoid[k])) out.push(k);
+    }
+    return out;
+  }
+  /* A tree of cells joining the anchors, avoiding `forbid` and staying in the region. An anchor is
+     given by its ZONE (anchorCells: the cells within reach of it); what the tree takes of it is its
+     CORE — the zone's cells that no path could use anyway (not free, or not clean) — so the free cells
+     round a thing stay open for the curve, also where they are near a thing of the other side.
+     Between anchors the tree goes only where the curve has room beside it (clearance ≥ minClear,
+     as the grid measures it) or through the zone of an anchor of its own: the first anchor, then
+     repeatedly the shortest 4-connected way from the tree to the nearest zone not yet joined. So a
+     tree keeps clear of everything it does not join. Returns the tree's cells (Uint8Array) or null
+     when some anchor cannot be reached. */
+  function barrierTree(grid, obs, mask, anchors, forbid, minClear) {
+    var n = grid.nx * grid.ny, tree = new Uint8Array(n), owner = new Int32Array(n).fill(-1), left = 0;
+    anchors = anchors.filter(function (a) { return a.length; });
+    if (!anchors.length) return tree;
+    var joined = new Uint8Array(anchors.length);
+    var unusable = function (k) { return !grid.free[k] || !cleanCell(grid, obs, k); };   // (a curve can use neither: not free, or free by the angle rule only — see cleanCell)
+    function take(t) {                             // anchor t joins: its core becomes tree (or, with no core, its whole zone)
+      joined[t] = 1; left--;
+      var core = anchors[t].filter(unusable);
+      (core.length ? core : anchors[t]).forEach(function (k) { tree[k] = 1; });
+    }
+    anchors.forEach(function (a, t) { left++; a.forEach(function (k) { if (owner[k] < 0) owner[k] = t; }); });
+    /* ONE search that goes on (v112): every cell's distance to the tree so far; when an anchor is
+       reached, its way there and its core join the tree at distance 0 and the search continues from
+       them (a fresh search per anchor cost k searches of the grid) */
+    var dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), heap = [];
+    function push(k, d) {
+      heap.push([d, k]);
+      for (var i = heap.length - 1; i > 0;) { var p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; var t0 = heap[p]; heap[p] = heap[i]; heap[i] = t0; i = p; }
+    }
+    function pop() {
+      var top = heap[0], last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        for (var i = 0;;) {
+          var l = 2 * i + 1, r = l + 1, m = i;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === i) break;
+          var t1 = heap[m]; heap[m] = heap[i]; heap[i] = t1; i = m;
+        }
+      }
+      return top;
+    }
+    function seed(k) { if (dist[k] > 0) { dist[k] = 0; prev[k] = -1; push(k, 0); } }
+    take(0);
+    for (var k0 = 0; k0 < n; k0++) if (tree[k0]) seed(k0);
+    while (left > 0) {
+      if (!heap.length) return null;
+      var top = pop(), kq = top[1];
+      if (top[0] > dist[kq]) continue;
+      if (owner[kq] >= 0 && !joined[owner[kq]]) {  // an anchor reached: its way and (on to) its core join
+        for (var kp = kq, kn; kp >= 0 && !tree[kp]; kp = kn) { kn = prev[kp]; tree[kp] = 1; seed(kp); }   // (the next one read before seed resets it)
+        var t = owner[kq];
+        /* on inside the zone to its core: a gap of free cells between the tree and the core would let
+           a curve slip between them */
+        if (!unusable(kq) && anchors[t].some(unusable)) {
+          var prev2 = new Map([[kq, -1]]), q2 = [kq], end = -1;
+          for (var h2 = 0; h2 < q2.length && end < 0; h2++) {
+            var k2 = q2[h2], i2 = k2 % grid.nx, j2 = (k2 - i2) / grid.nx;
+            for (var d4 = 0; d4 < 4; d4++) {
+              var i3 = i2 + DX4[d4], j3 = j2 + DY4[d4];
+              if (i3 < 0 || j3 < 0 || i3 >= grid.nx || j3 >= grid.ny) continue;
+              var k3 = j3 * grid.nx + i3;
+              if (prev2.has(k3) || owner[k3] !== t || (forbid && forbid[k3]) || !hopOK(grid, obs, k2, k3)) continue;
+              prev2.set(k3, k2); q2.push(k3);
+              if (unusable(k3)) { end = k3; break; }
+            }
+          }
+          for (var k4 = end; k4 >= 0; k4 = prev2.get(k4)) { tree[k4] = 1; seed(k4); }
+        }
+        take(t);
+        anchors[t].forEach(function (k5) { if (tree[k5]) seed(k5); });
+        continue;
+      }
+      var iq = kq % grid.nx, jq = (kq - iq) / grid.nx;
+      for (var q = 0; q < 4; q++) {
+        var ii = iq + DX4[q], jj = jq + DY4[q];
+        if (ii < 0 || jj < 0 || ii >= grid.nx || jj >= grid.ny) continue;
+        var kk = jj * grid.nx + ii, nd = dist[kq] + 1;
+        if (nd >= dist[kk] || !mask[kk] || (forbid && forbid[kk])) continue;
+        var own = owner[kk] >= 0;
+        if (!own && (!grid.free[kk] || (minClear !== undefined && grid.clear[kk] < minClear))) continue;
+        if (!hopOK(grid, obs, kq, kk)) continue;
+        dist[kk] = nd; prev[kk] = kq; push(kk, nd);
+      }
+    }
+    return tree;
+  }
+
+  /* The cells of the region next to (8-neighbours of) the set `blob`, not in it. */
+  function around(grid, mask, blob) {
+    var n = grid.nx * grid.ny, out = new Uint8Array(n);
+    for (var k = 0; k < n; k++) {
+      if (!blob[k]) continue;
+      var i = k % grid.nx, j = (k - i) / grid.nx;
+      for (var dj = -1; dj <= 1; dj++) for (var di = -1; di <= 1; di++) {
+        var ii = i + di, jj = j + dj;
+        if (ii < 0 || jj < 0 || ii >= grid.nx || jj >= grid.ny) continue;
+        var kk = jj * grid.nx + ii;
+        if (mask[kk] && !blob[kk]) out[kk] = 1;
+      }
+    }
+    return out;
+  }
+  /* The shortest way through free cells, not in `avoid`, from `start` to any cell of `goal`, as a
+     set of cells with their neighbours (a stem the other tree may not cut); null if none. */
+  function stem(grid, obs, mask, start, goal, avoid) {
+    var n = grid.nx * grid.ny, prev = new Int32Array(n).fill(-2), queue = [], hit = -1;
+    cellsNear(grid, start, 2 * grid.cell).forEach(function (k) { if (!avoid[k] && !R.polylineCrossesObstacle(obs, [start, centre(grid, k)])) { prev[k] = -1; queue.push(k); } });
+    for (var h = 0; h < queue.length && hit < 0; h++) {
+      var kq = queue[h];
+      if (goal[kq]) { hit = kq; break; }
+      var iq = kq % grid.nx, jq = (kq - iq) / grid.nx;
+      for (var q = 0; q < 4; q++) {
+        var ii = iq + DX4[q], jj = jq + DY4[q];
+        if (ii < 0 || jj < 0 || ii >= grid.nx || jj >= grid.ny) continue;
+        var kk = jj * grid.nx + ii;
+        if (prev[kk] !== -2 || !mask[kk] || avoid[kk] || !(grid.free[kk] || goal[kk]) || !hopOK(grid, obs, kq, kk)) continue;
+        prev[kk] = kq; queue.push(kk);
+      }
+    }
+    if (hit < 0) return null;
+    var line = new Uint8Array(n);
+    for (var k = hit; k >= 0; k = prev[k]) line[k] = 1;
+    var wide = around(grid, mask, line);
+    for (k = 0; k < n; k++) if (line[k]) wide[k] = 1;
+    return wide;
+  }
+
   var api = { buildGrid: buildGrid, distances: distances, planner: planner, widest: widest,
               widestField: widestField, widestTo: widestTo,
-              ray: ray, crossings: crossings, pathWithParity: pathWithParity, MAX_CUTS: MAX_CUTS, inflate: inflate };
+              ray: ray, crossings: crossings, pathWithParity: pathWithParity, MAX_CUTS: MAX_CUTS, inflate: inflate,
+              regionMask: regionMask, anchorCells: anchorCells, sideCells: sideCells, edgeCells: edgeCells, barrierTree: barrierTree, around: around, stem: stem };
   root.SproutsRoute = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -199,7 +199,9 @@
      must and on to the best place nearby, never round to the far side.
      Returns { u, side, E, room (the curve's clearance), from, to } or
      { fail, best (the largest estimated room), bestU, bestSide }. */
-  function slideFor(game, z, from, fromIdx, inRegion, trial, o) {
+  /* wantSide (v112): only candidates on that side of z's curve (±1, as `side`) — the side the move
+     leaves or reaches z by, where z's two corners are both in the region (a spot on a bare path) */
+  function slideFor(game, z, from, fromIdx, inRegion, trial, o, wantSide) {
     var sp = spline(game, z), u0 = sp.u, all = roomAlong(game, z, from, fromIdx, inRegion, o), list = [], last = {};
     all.sort(function (x, y) { return x.u - y.u; });
     all.forEach(function (c) {                    // thin to one candidate per d0 of curve on each side
@@ -211,6 +213,7 @@
     for (var i = 0; i < list.length; i++) {
       var c = list[i];
       if (c.room < o.d0) continue;                  // cannot fit there: no trial needed
+      if (wantSide && c.side !== wantSide) continue;
       var dk = (c.u > u0 ? '+' : '-') + c.side, d = dirs[dk] || (dirs[dk] = { fitted: false, last: Infinity });
       var g2 = copyGame(game);
       place(g2, z, c.u, 2 * o.spotR);

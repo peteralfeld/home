@@ -6,7 +6,8 @@
    nimbers and the misère trees of solved parts live here for as long as the
    worker does.
 
-   In:  { id, kind: 'montecarlo', pos, cands, misere, trials | deadline }
+   In:  { id, kind: 'keys', pos, moves }                 (v122: → { id, keys }, the canonical forms after each move)
+        { id, kind: 'montecarlo', pos, cands, misere, trials | deadline }
         { id, kind: 'parity',     pos, cands, misere, depth, cap, deadline? }
    Out: { id, progress: k }                 (parity: after each candidate)
         { id, wins: [...], games: [...] }   (Monte Carlo)
@@ -17,6 +18,10 @@ var AI = self.SproutsAI, ctx = AI.newContext();
 var TT_MAX = 2000000;                            // entries; the table is emptied when it grows past this
 self.onmessage = function (e) {
   var d = e.data;
+  if (d.kind === 'keys') {                       // (v122) the canonical forms of the positions after the moves, for the page to drop equal ones
+    self.postMessage({ id: d.id, keys: d.moves.map(function (mv) { return AI.canonical(AI.apply(d.pos, mv)); }) });
+    return;
+  }
   if (d.kind === 'montecarlo') {
     var r = d.deadline ? AI.monteCarloTimed(d.pos, d.cands, d.deadline, d.misere) : AI.monteCarlo(d.pos, d.cands, d.trials, d.misere);
     self.postMessage({ id: d.id, wins: r.wins, games: r.games });

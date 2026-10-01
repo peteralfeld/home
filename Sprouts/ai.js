@@ -257,6 +257,8 @@
     });
     R.sort(bySig);
     var best = null, names = [], named = [];      // names[spot] = its letter; named: the spots named so far, in order (undone on backtracking)
+    var work = 0, greedy = false, STOP = {};      // (the branch and bound's steps, and the way out when they are too many — see below)
+    function step() { if (!greedy && ++work > CANON_WORK) throw STOP; }
     function letter(k) { return String.fromCharCode(97 + (k % 26)) + (k >= 26 ? Math.floor(k / 26) : ''); }
     /* the string of boundary b from rotation `at`, naming new letters as they appear */
     function emit(b, at) {
@@ -284,6 +286,7 @@
     function regions(done, prefix) {
       if (done.length === R.length) { if (best === null || prefix < best) best = prefix; return; }
       if (hopeless(prefix)) return;
+      step();
       var f = 0;
       while (done.indexOf(f) >= 0) f++;
       var group = [];
@@ -296,8 +299,7 @@
         unname(mark);
         return;
       }
-      var tried = {};                             // a member that reads as one already tried here is (all but surely) its twin: skipped
-      group.forEach(function (j) {
+      (greedy ? group.slice(0, 1) : group).forEach(function (j) {
         var mark = named.length;
         boundariesB(R[j].list, [], prefix + sep, function (p2) { regions(done.concat([j]), p2); });
         unname(mark);
@@ -316,6 +318,7 @@
     function boundariesB(list, done, prefix, then) {
       if (done.length === list.length) { then(prefix); return; }
       if (hopeless(prefix)) return;
+      step();
       var sep = done.length ? '|' : '', f = 0;
       while (done.indexOf(f) >= 0) f++;
       var group = [];
@@ -327,6 +330,21 @@
         unname(mark);
         return;
       }
+      if (greedy) {                               // the least next string alone, no branching (see below)
+        var pick = null;
+        group.forEach(function (j) {
+          var b = list[j];
+          (b.shared ? b.ats : [null]).forEach(function (at) {
+            var mark = named.length, str = at === null ? emitLocal(b) : emit(b, at);
+            unname(mark);
+            if (pick === null || str < pick.str) pick = { j: j, at: at, str: str };
+          });
+        });
+        var m2 = named.length, b2 = list[pick.j], s2 = pick.at === null ? emitLocal(b2) : emit(b2, pick.at);
+        boundariesB(list, done.concat([pick.j]), prefix + sep + s2, then);
+        unname(m2);
+        return;
+      }
       group.forEach(function (j) {
         var b = list[j], ats = b.shared ? b.ats : [null];
         ats.forEach(function (at) {
@@ -336,10 +354,35 @@
         });
       });
     }
-    regions([], '');
+    /* A BUDGET (v122): when the branch and bound takes more than CANON_WORK steps, the form is
+       finished GREEDILY — at every tie the least next string, no branching — and the least of that
+       and whatever complete string was found is the form. Still a way of writing this position and
+       no other (never a wrong table hit); equal positions may then get different forms (a missed
+       hit, a duplicate candidate). Not reached on 20 random 30-spot games once positions are
+       written part by part (canonical); it is the guard against a part that is itself a large
+       tangle of tied regions. */
+    try { regions([], ''); }
+    catch (e) {
+      if (e !== STOP) throw e;
+      greedy = true; unname(0); canonFallbacks++;
+      regions([], '');
+    }
     return best === null ? '' : best;
   }
+  /* The form of a position: its PARTS' forms (see parts: regions joined by a shared live spot),
+     sorted and joined by '+' — each part written on its own, letters from 'a' in each (no spot lies
+     in two parts), its mirror image taken on its own (a sum of games does not care how each part is
+     turned). v122: written as one, the branch and bound over the tied regions of many small parts
+     (all "11", "111"…) took seconds on some 30-spot positions — on Peter's game of 10/1 the page
+     froze for minutes while the computer's candidates were sorted out. A position of one part is
+     written as before, so a part's form is the same alone or in a sum. */
+  var CANON_WORK = (typeof process !== 'undefined' && process.env && Number(process.env.CANON_WORK)) || 20000, canonFallbacks = 0;     // (see canonicalOf; canonFallbacks counts the greedy ones, for tests)
   function canonical(pos) {
+    var ps = parts(pos);
+    if (ps.length <= 1) return canonicalPart(pos);
+    return ps.map(canonicalPart).sort().join('+');
+  }
+  function canonicalPart(pos) {
     var regs = reduce(pos), a = canonicalOf(pos, regs);
     var b = canonicalOf(pos, regs.map(function (bds) { return bds.map(function (bd) { return bd.slice().reverse(); }); }));
     return a < b ? a : b;
@@ -553,7 +596,7 @@
     for (var i = 0; i < ps.length; i++) {
       var p = ps[i], key = canonical(p), g = ctx.nim.get(key);
       if (g === undefined) {
-        if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
+        ctx.nodes++; late(ctx);
         if (ctx.aborted) return -1;
         var seen = {}, kids = children(p, Infinity);
         for (var k = 0; k < kids.length; k++) {
@@ -718,7 +761,7 @@
     var key = canon || canonical(pos);
     t = ctx.mis.get(key);
     if (t !== undefined) return t;
-    if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
+    ctx.nodes++; late(ctx);
     if (ctx.aborted) return -1;
     var kids = children(pos, Infinity), ids = [];
     for (i = 0; i < kids.length; i++) { u = misTree(apply(pos, kids[i]), ctx); if (u < 0) return -1; ids.push(u); }
@@ -748,8 +791,12 @@
      a TRANSPOSITION TABLE keyed by the canonical form (ctx.tt, a Map that may
      outlive the search: {d: plies searched, v, f: 0 exact, 1 a lower bound,
      −1 an upper bound}) and a DEADLINE (ctx.deadline, ms as Date.now(); the
-     clock is read every 256 nodes; once past, ctx.aborted is set and the
-     values coming back mean nothing). */
+     clock is read at every position, leaves included; once past, ctx.aborted is set and the
+     values coming back mean nothing). v123: it was read every 256 nodes, and leaves were not
+     counted — in a large position a worker could finish a whole depth (depth 1 always, depth 2
+     with ~128 candidates) without once looking: Peter's 5 s budget ran to 20–46 s. A clock read
+     costs nanoseconds against a position's microseconds to milliseconds. */
+  function late(ctx) { if (!ctx.aborted && Date.now() > ctx.deadline) ctx.aborted = true; return ctx.aborted; }
   function newContext(deadline) { return { tt: new Map(), nim: new Map(), mis: new Map(), T: newStore(), deadline: deadline || Infinity, nodes: 0, aborted: false, hits: 0, solved: 0 }; }
   /* A value of ±2 is EXACT (no move, or solved by parts) and holds at any depth: stored as such. */
   /* `heap`: what stands beside the position for the solved parts — in normal
@@ -758,6 +805,7 @@
      may replace one tree by one of its options). */
   function negamax(pos, depth, alpha, beta, misere, cap, rnd, ctx, heap) {
     heap = heap || (misere ? [] : 0);
+    if (late(ctx)) return 0;
     var T = ctx.T;
     /* no move in the position: only the solved parts' moves are left — exact */
     var over = function () { return misere ? (listWins(T, heap) ? 2 : -2) : heap ? 2 : -2; };
@@ -772,7 +820,7 @@
       if (!canMove(pos)) return over();
     }
     if (depth <= 0) return evaluate(pos, misere);   // (the heap is not in the heuristic: a leaf with solved parts beside an unsolved part is judged by the part)
-    if ((++ctx.nodes & 255) === 0 && Date.now() > ctx.deadline) ctx.aborted = true;
+    ctx.nodes++; late(ctx);
     if (ctx.aborted) return 0;
     var extra = misere ? (heap.length ? '+' + heap.join('.') : '') : (heap ? '+' + heap : '');
     var key = (misere ? 'm' : 'n') + canon + extra, e = ctx.tt.get(key), alpha0 = alpha;
@@ -822,7 +870,7 @@
     return out;
   }
 
-  var api = { bounds: bounds, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
+  var api = { canonFallbacks: function () { return canonFallbacks; }, bounds: bounds, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
               newStore: newStore, mkTree: mkTree, treeSum: treeSum, heapTree: heapTree, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
               negamax: negamax, paritySearch: paritySearch, newContext: newContext, canonical: canonical, reduce: reduce,
               fromAnalysis: fromAnalysis, families: families, expand: expand, allMoves: allMoves, apply: apply, key: key, gameKey: gameKey,

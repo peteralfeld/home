@@ -37,7 +37,8 @@
     /* sa / sb: arc length along the curve from the segment to its end spots s0 / s1
        (phase 1 of the band ignores a curve's ends near the end spots by these) */
     function addSeg(a, b, eps, s0, s1, id, sa, sb) {
-      var seg = { a: a, b: b, eps: eps, s0: s0, s1: s1, id: id, sa: sa, sb: sb };
+      var seg = { a: a, b: b, eps: eps, s0: s0, s1: s1, id: id, sa: sa, sb: sb,
+                  x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: Math.min(a[1], b[1]), y1: Math.max(a[1], b[1]) };   // (its box: rObs skips it cheaply, v109)
       obs.segs.push(seg);
       var x0 = Math.floor(Math.min(a[0], b[0]) / CELL), x1 = Math.floor(Math.max(a[0], b[0]) / CELL);
       var y0 = Math.floor(Math.min(a[1], b[1]) / CELL), y1 = Math.floor(Math.max(a[1], b[1]) / CELL);
@@ -81,9 +82,12 @@
      certify and the route planner use that; the band does not — its departure
      directions are fixed by ports (see createBand) and it works with plain
      distances, which keeps it well conditioned. */
-  function rObs(obs, ctx, p, byId, byDir) {
+  /* touched (with byId, v109): the ids byId holds a distance for, in the order met; only they are
+     reset at the start (was byId.fill over every obstacle id, and the callers summed over all). */
+  function rObs(obs, ctx, p, byId, byDir, touched) {
     var best = Infinity, fA = 1, fB = 1;
-    if (byId) byId.fill(Infinity);
+    if (touched) { for (var u = 0; u < touched.length; u++) byId[touched[u]] = Infinity; touched.length = 0; }
+    else if (byId) byId.fill(Infinity);
     if (ctx.scaleEnds || ctx.scaleAll) {
       fA = Math.max(1, ctx.rho / (G.dist(p, ctx.A) || 1e-9));
       fB = Math.max(1, ctx.rho / (G.dist(p, ctx.B) || 1e-9));
@@ -99,7 +103,14 @@
           var c = obs.cells.get(cellKey(cx, cy));
           if (!c) continue;
           for (var i = 0; i < c.segs.length; i++) {
-            var s = c.segs[i], d = G.distPointSeg(p, s.a, s.b) - s.eps, f = 1;
+            var s = c.segs[i];
+            /* v109: the segment's box is at least lb from p, and the scale f below is ≥ 1: a segment that
+               cannot come nearer than what is known already (best, and its obstacle's own least distance)
+               changes nothing — skipped before the exact distance. The results are the same to the bit. */
+            var bx = p[0] < s.x0 ? s.x0 - p[0] : p[0] > s.x1 ? p[0] - s.x1 : 0, by = p[1] < s.y0 ? s.y0 - p[1] : p[1] > s.y1 ? p[1] - s.y1 : 0;
+            var lb = Math.sqrt(bx * bx + by * by) - s.eps;
+            if (lb >= 0 && lb >= best && (!byId || lb >= byId[s.id])) continue;
+            var d = G.distPointSeg(p, s.a, s.b) - s.eps, f = 1;
             if (ctx.skipEnds) {                   // phase 1: the curves at an end spot are ignored close to it
               /* "close to it" is measured ALONG the curve, and never more than 35 % of
                  its length from that end, so that a short curve — a small loop, whose
@@ -120,6 +131,7 @@
             d *= f;
             if (d < best) best = d;
             if (byId && d < byId[s.id]) {
+              if (touched && byId[s.id] === Infinity) touched.push(s.id);
               byId[s.id] = d;
               if (byDir) {                          // the gradient of this distance: from the nearest point of the segment towards p
                 var vx = s.b[0] - s.a[0], vy = s.b[1] - s.a[1], wx = p[0] - s.a[0], wy = p[1] - s.a[1], vv = vx * vx + vy * vy;
@@ -139,6 +151,7 @@
             var ds = G.dist(p, sp.p) - obs.spotR;
             if (ds < best) best = ds;
             if (byId && ds < byId[sp.id]) {
+              if (touched && byId[sp.id] === Infinity) touched.push(sp.id);
               byId[sp.id] = ds;
               if (byDir) { var dl = ds + obs.spotR || 1e-9; byDir[2 * sp.id] = (p[0] - sp.p[0]) / dl; byDir[2 * sp.id + 1] = (p[1] - sp.p[1]) / dl; }
             }
@@ -234,6 +247,14 @@
             if (dx < 0) dx = -dx;
             if (dy < 0) dy = -dy;
             if ((dx > dy ? dx : dy) - (S[j] - S[j - 1]) >= SELF_RATIO * sigma) continue;
+            if (best < Infinity) {                  // v109: its box no nearer than the best so far (legScale ≥ 1): no change
+              var o0 = pts[j - 1], bx = p[0] - (o0[0] > q[0] ? o0[0] : q[0]), by = p[1] - (o0[1] > q[1] ? o0[1] : q[1]);
+              var ax = (o0[0] < q[0] ? o0[0] : q[0]) - p[0], ay = (o0[1] < q[1] ? o0[1] : q[1]) - p[1];
+              bx = bx > ax ? bx : ax; by = by > ay ? by : ay;
+              if (bx < 0) bx = 0;
+              if (by < 0) by = 0;
+              if (Math.sqrt(bx * bx + by * by) * legScale >= best) continue;
+            }
             var d = G.distPointSeg(p, pts[j - 1], pts[j]) * legScale;
             if (d >= SELF_RATIO * sigma) continue;
             if (d < best) { best = d; bj = j; }
@@ -344,9 +365,15 @@
      of the curve has no move left, so no curve will ever come into it — an
      obstacle on that side (seen along nrm, the curve's normal there) keeps the
      hard barrier but adds no crowding penalty: the room is worth nothing there. */
+  function byNumber(x, y) { return x - y; }
+  /* The list of ids band.scratch holds distances for (v109); the first time, every entry is emptied. */
+  function touchedOf(band) {
+    if (!band.touched) { band.touched = []; band.scratch.fill(Infinity); }
+    return band.touched;
+  }
   function clearanceGrad(band, pts, S, p, s, dh, g, nrm) {
-    var byId = band.scratch, byDir = band.scratchDir, D = band.params.D, sd = [0, 0], dead = nrm && band.dead;
-    var r = rObs(band.obs, band.ctx, p, byId, byDir), rs = rSelf(band.ctx, pts, S, p, s, sd);
+    var byId = band.scratch, byDir = band.scratchDir, D = band.params.D, sd = [0, 0], dead = nrm && band.dead, ids = touchedOf(band);
+    var r = rObs(band.obs, band.ctx, p, byId, byDir, ids), rs = rSelf(band.ctx, pts, S, p, s, sd);
     if (rs < r) r = rs;
     g[0] = 0; g[1] = 0;
     if (r <= dh) return { r: r, phi: BIG };
@@ -357,7 +384,9 @@
     var Ds = band.ctx.aIdx === band.ctx.bIdx ? 2 * D : D;
     var phi = 0, d1;
     if (rs < Infinity && !(dead && wasted(sd[0], sd[1]))) { phi += pen(rs, Ds, dh); d1 = pen1(rs, Ds, dh); g[0] += d1 * sd[0]; g[1] += d1 * sd[1]; }
-    for (var i = 0; i < byId.length; i++) if (byId[i] < Infinity) {
+    ids.sort(byNumber);                            // (in the order of the ids, as the sum over every id had it)
+    for (var t = 0; t < ids.length; t++) {
+      var i = ids[t];
       if (dead && wasted(byDir[2 * i], byDir[2 * i + 1])) continue;
       phi += pen(byId[i], D, dh); d1 = pen1(byId[i], D, dh); g[0] += d1 * byDir[2 * i]; g[1] += d1 * byDir[2 * i + 1];
     }
@@ -365,8 +394,8 @@
     return { r: r, phi: Math.min(BIG, phi) };
   }
   function clearance(band, pts, S, p, s, dh) {
-    var byId = band.scratch, D = band.params.D;
-    var r = rObs(band.obs, band.ctx, p, byId), rs = rSelf(band.ctx, pts, S, p, s);
+    var byId = band.scratch, D = band.params.D, ids = touchedOf(band);
+    var r = rObs(band.obs, band.ctx, p, byId, null, ids), rs = rSelf(band.ctx, pts, S, p, s);
     if (rs < r) r = rs;
     if (r <= dh) return { r: r, phi: BIG };
     /* A loop's two sides are its own region's whole boundary, and a move can
@@ -374,7 +403,8 @@
        they want 2 D between them, so that a curve inside has D on each side. */
     var Ds = band.ctx.aIdx === band.ctx.bIdx ? 2 * D : D;
     var phi = rs < Infinity ? pen(rs, Ds, dh) : 0;
-    for (var i = 0; i < byId.length; i++) if (byId[i] < Infinity) phi += pen(byId[i], D, dh);
+    ids.sort(byNumber);
+    for (var t = 0; t < ids.length; t++) phi += pen(byId[ids[t]], D, dh);
     return { r: r, phi: Math.min(BIG, phi) };
   }
 
@@ -558,12 +588,15 @@
       var before = band.state.E, moved = step(band);
       band.iter++;
       var small = moved < QUIET_MOVE && before - band.state.E < QUIET_E;   // (v96, Peter: BOTH small — a step that moved the shape little but still lowered E a lot stopped the band with a kink in it)
-      /* while the barrier is still being raised towards d0 only a step that
-         achieved nothing at all counts as quiet */
-      band.quiet = (small && (band.dh >= band.params.d0 - 1e-9 || moved === 0)) ? band.quiet + 1 : 0;
+      /* quiet: a small step that did not raise the barrier either — as the spline band has it
+         (v109). v8–v108 counted a step as quiet below d0 only if it moved nothing at all, so a band
+         in a place too tight for d0 (0.7 · its least clearance < d0: the barrier cannot rise) never
+         settled and ran to the caps, 80 + 600 iterations — every trial of a move that does not fit
+         yet, when room is being made (Peter's game of 9/29, move 24: 9.5 of 31 s in one trial). */
       applyRespace(band);
-      var dh = Math.max(band.dh, Math.min(band.params.d0, 0.7 * band.state.rmin));
-      if (dh > band.dh + 1e-6) { band.dh = dh; band.state = evaluate(band, band.pts, dh); band.quiet = 0; }
+      var dh = Math.max(band.dh, Math.min(band.params.d0, 0.7 * band.state.rmin)), raised = dh > band.dh + 1e-6;
+      if (raised) { band.dh = dh; band.state = evaluate(band, band.pts, dh); }
+      band.quiet = small && !raised ? band.quiet + 1 : 0;
       if (band.quiet >= 3 || band.iter >= 600) band.done = true;
     }
     return band.done;
@@ -896,7 +929,12 @@
     for (var c = 0; c < count && !sb.done; c++) {
       var before = sb.state.E, moved = splineStep(sb);
       sb.iter++;
-      var small = moved < QUIET_MOVE && before - sb.state.E < QUIET_E;   // (v96: both small, as in iterate)
+      /* small: the SHAPE moved less than QUIET_MOVE (across the curve), whatever the energy did (v110,
+         Peter: "let's go shape only"). v96–v109 also asked for a small energy gain, as the elastic band
+         does (iterate: there a step that moved little but gained a lot hid a kink); here the tail of
+         such steps is the samples sliding ALONG the curve — which the sampled energy rewards, with no
+         visible change: on Peter's move 25 of 9/29 3347 of 5169 steps, 66 of 87 s of making room. */
+      var small = moved < QUIET_MOVE;
       var dh = Math.max(sb.dh, Math.min(sb.params.d0, 0.7 * sb.state.rmin)), raised = dh > sb.dh + 1e-6;
       if (raised) { sb.dh = dh; sb.state = evaluateSpline(sb, sb.pts, dh, true); }
       sb.quiet = small && !raised ? sb.quiet + 1 : 0;

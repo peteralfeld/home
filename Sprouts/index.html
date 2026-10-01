@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=105">
+<link rel="stylesheet" href="style.css?v=139">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 105</span>
+  <span id="app-version">SPROUTS v. 139</span>
   <div class="menu">
     <button class="menu-title" id="workers-title">Workers</button>
     <div class="menu-panel">
@@ -40,7 +40,7 @@
         </select>
       </label>
       <button class="item" id="cmd-new">New game <kbd>N</kbd></button>
-      <div class="row note"><kbd>1</kbd> … <kbd>9</kbd>: a new game with that many spots in the chosen layout (one spot in the center). <kbd>0</kbd>: a blank window, spots placed by hand.</div>
+      <div class="row note"><kbd>1</kbd> … <kbd>9</kbd>: a new game with that many spots in the chosen layout (one spot in the center). <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
       <button class="item" id="cmd-undo">Undo move <kbd>U</kbd></button>
       <div class="row note"><kbd>&lt;</kbd> / <kbd>&gt;</kbd>: back / forward through the game one move at a time, the computer's moves too. Meanwhile the computer waits; make a move anywhere (also in the computer's place) and the game goes on from there.</div>
       <button class="item" id="cmd-exit">Exit (close the page) <kbd>X</kbd></button>
@@ -58,11 +58,12 @@
           <option value="parity">Parity search</option>
         </select>
       </label>
+      <button class="item" id="cmd-same1">Same as Player 2</button>
       <label class="row montecarlo">Random games per move <input id="opt-trials1" type="number" min="1" value="100"></label>
       <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec1" type="number" min="0.1" step="0.1"></label>
       <label class="row parity">Search depth <input id="opt-depth1" type="number" min="1" value="6"></label>
       <label class="row parity">&hellip; or seconds per move <input id="opt-parsec1" type="number" min="0.1" step="0.1"></label>
-      <div class="row note">Player 1 moves first. Random: any legal move. Monte Carlo: the move after which the set number of random games goes best. Parity search: the move that keeps the number of moves left at the parity it wants (odd; even in misère), looking the set number of moves ahead — or as far as the seconds allow, one move deeper at a time. Filling in one of a pair of fields empties the other. The computer moves as soon as it is its turn; <kbd>Space</kbd> interrupts its thinking, Human in its menu stops it.</div>
+      <div class="row note">Player 1 moves first. Random: any legal move. Monte Carlo: the move after which the set number of random games goes best. Parity search: the move that keeps the number of moves left at the parity it wants (odd; even in misère), looking the set number of moves ahead — or as far as the seconds allow, one move deeper at a time. Filling in one of a pair of fields empties the other. The computer moves as soon as it is its turn; <kbd>Space</kbd> interrupts its thinking, Human in its menu stops it. Between two computers <kbd>Space</kbd> stops the game after the move being drawn; <kbd>Space</kbd> again continues it, <kbd>N</kbd> starts a new game.</div>
     </div>
   </div>
 
@@ -77,6 +78,7 @@
           <option value="parity">Parity search</option>
         </select>
       </label>
+      <button class="item" id="cmd-same2">Same as Player 1</button>
       <label class="row montecarlo">Random games per move <input id="opt-trials2" type="number" min="1" value="100"></label>
       <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec2" type="number" min="0.1" step="0.1"></label>
       <label class="row parity">Search depth <input id="opt-depth2" type="number" min="1" value="6"></label>
@@ -90,7 +92,7 @@
       <button class="item" id="cmd-host">Host a game</button>
       <div class="row net-code">Code <input id="opt-code" type="text" inputmode="numeric" maxlength="3" autocomplete="off"><button class="item" id="cmd-guest" style="width:auto">Join as guest</button></div>
       <button class="item" id="cmd-leave">Leave</button>
-      <div class="row note">Play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (U takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page is gray while it is not your turn.</div>
+      <div class="row note">Play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (U takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page has the Background while computing color (Colors menu) while it is not your turn.</div>
       <div class="row note" id="net-status">Not connected.</div>
     </div>
   </div>
@@ -121,7 +123,9 @@
         <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
       <label class="row">Animate <input id="opt-animate" type="checkbox" checked></label>
       <label class="row">Click to connect <input id="opt-click" type="checkbox" checked></label>
-      <label class="row">Original spots as triangles <input id="opt-triangles" type="checkbox"></label>
+      <label class="row">Original spots as triangles <kbd>T</kbd> <input id="opt-triangles" type="checkbox"></label>
+      <label class="row">No numbers on spots with no lives <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
+      <label class="row">Spots with no lives half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
     </div>
   </div>
 
@@ -137,6 +141,8 @@
       <button class="item" id="cmd-redraw">Rearrange the drawing <kbd>R</kbd></button>
       <label class="row">Rearrange the drawing after each move <input id="opt-redraw-after" type="checkbox"></label>
       <div class="row note">Rearranging moves the spots too. Same position; U undoes it. When a move cannot be made even after making room, <kbd>R</kbd> rearranges and tries it again.</div>
+      <button class="item" id="cmd-fresh">Draw the picture afresh <kbd>Z</kbd></button>
+      <div class="row note">Afresh: the picture is drawn anew from the position alone, without regard to how it looks now, then rearranged. Same position; U undoes it. When a move cannot be made even after rearranging, <kbd>Z</kbd> draws afresh and tries it again; the computer does the same by itself, with its move in the new picture.</div>
       <label class="row">Heroic <input id="opt-heroic" type="checkbox"></label>
       <div class="row note">Heroic: a curve you draw by hand is kept exactly as drawn, without smoothing; it only may not cross or touch anything. Curves made by clicking are routed and smoothed as before. Curves and spots are not moved locally (no M, no shifting, no Ctrl+drag); A and R still work.</div>
     </div>
@@ -150,10 +156,12 @@
   <div class="menu">
     <button class="menu-title">File</button>
     <div class="menu-panel">
+      <button class="item" id="cmd-load">Load game&hellip;</button>
       <button class="item" id="cmd-png">Save picture as PNG <kbd>P</kbd></button>
       <button class="item" id="cmd-save">Save game as JSON</button>
-      <button class="item" id="cmd-load">Load game&hellip;</button>
       <button class="item" id="cmd-log">Save log as text</button>
+      <button class="item" id="cmd-log-prev">Save the log of the last session</button>
+      <div class="row note">The log is kept in this browser as it grows, so after a crash or a reload the last session's log can still be saved.</div>
       <button class="item" id="cmd-position">Save position as text</button>
     </div>
   </div>
@@ -163,15 +171,17 @@
 
 <div id="stage"><canvas id="board"></canvas></div>
 
-<script src="geom.js?v=105"></script>
-<script src="relax.js?v=105"></script>
-<script src="route.js?v=105"></script>
-<script src="engine.js?v=105"></script>
-<script src="describe.js?v=105"></script>
-<script src="room.js?v=105"></script>
-<script src="redraw.js?v=105"></script>
-<script src="ai.js?v=105"></script>
-<script src="net.js?v=105"></script>
-<script src="ui.js?v=105"></script>
+<script src="geom.js?v=139"></script>
+<script src="relax.js?v=139"></script>
+<script src="route.js?v=139"></script>
+<script src="engine.js?v=139"></script>
+<script src="describe.js?v=139"></script>
+<script src="room.js?v=139"></script>
+<script src="moves.js?v=139"></script>
+<script src="redraw.js?v=139"></script>
+<script src="layout.js?v=139"></script>
+<script src="ai.js?v=139"></script>
+<script src="net.js?v=139"></script>
+<script src="ui.js?v=139"></script>
 </body>
 </html>
