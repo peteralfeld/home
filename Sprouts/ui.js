@@ -1572,6 +1572,7 @@
   /* Second click: route from the armed start to spot b and hand over to the band. */
   function connectTo(b) {
     var ar = armed;
+    plainOffer = null;
     marksUsed = Object.keys(ar.markedSpots).map(Number).sort(function (x, y) { return x - y; });
     if (Object.keys(ar.marks).length || Object.keys(ar.arcMarks).length || ar.encloseNone || ar.mArc) {   // (v112: as aiTry — also the computer's arc and a loop round nothing)
       ar.why = null;
@@ -1581,6 +1582,15 @@
       return;
     }
     connectRouted(ar, b, false);
+  }
+  /* Enter after the marks could not be applied (v140): the move the shortest way, the marks dropped */
+  var plainOffer = null;
+  function plainAnyway() {
+    var o = plainOffer; plainOffer = null;
+    if (!o || armed !== o.ar) return;
+    marksUsed = null;
+    note = 'the marks could not be applied — drawn the shortest way (Enter)';
+    connectRouted(o.ar, o.b, false);
   }
   /* connectTo's second half (v139: after the marked route, which may come from the worker) */
   function connectRouted(ar, b, marked, mr) {
@@ -1592,6 +1602,12 @@
         roomCheck = true;
         setTimeout(function () { roomCheck = false; if (armed === ar) explainMarkedNoRoom(b); }, 30);
         return;
+      }
+      if (mr.plain && mr.failed) {                 // v140 (Peter): a hand move is drawn as marked or not at all — the shortest way only if asked (Enter)
+        plainOffer = { ar: ar, b: b };
+        say('The marks cannot be applied here: ' + String(note || 'no way round them').replace(/ — drawn the shortest way$/, '') +
+            '.   Enter: the shortest way anyway (it may enclose other spots) — or draw the curve by hand, or click another spot', true);
+        note = null; draw(); return;
       }
       armed = null;
       if (mr.path) { startRoute(ar.a, b, G.resample(mr.path, STEP), ar.obs, { ar: ar }); return; }
@@ -1939,7 +1955,7 @@
     window.close();
     setTimeout(function () { say('The browser does not let the page close itself here: close the tab with Ctrl+W (or the window with Alt+F4).', true, null, true); }, 300);
   }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, enter: startPlay, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;

@@ -288,8 +288,8 @@
           if (v) v.wrong.forEach(function (it) { if (!it.outside && cuts.indexOf(it) < 0) cuts.push(it); });
           else if (round > 0) break;               // the engine could not read the candidate
         }
-        if (cuts.some(function (it) { return !it.ray; })) { S.note = 'cannot tell the sides apart here — drawn the shortest way'; return { plain: true }; }
-        if (cuts.length > Rt.MAX_CUTS) { S.note = 'too many boundaries in that region to route around the marks — drawn the shortest way'; return { plain: true }; }
+        if (cuts.some(function (it) { return !it.ray; })) { S.note = 'cannot tell the sides apart here — drawn the shortest way'; return { plain: true, failed: true }; }
+        if (cuts.length > Rt.MAX_CUTS) { S.note = 'too many boundaries in that region to route around the marks — drawn the shortest way'; return { plain: true, failed: true }; }
         /* the parities to look for: the marked ones away from the reference and
            the others with it — failing that, the other way round */
         var w1 = 0, w2 = 0;
@@ -314,7 +314,7 @@
         if (!cand) break;
       }
       S.note = 'could not route around the marks — drawn the shortest way';
-      return { plain: true };
+      return { plain: true, failed: true };   // (failed, v140: the marks could not be applied — a hand move is then not drawn unless asked; plain alone: they do not matter)
     }
 
     /* Which arc of the boundary cycle `cyc` (from the engine) each of its
