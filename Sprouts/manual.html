@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
+ <title>Sprouts &mdash; User's Guide</title>
+ <link rel="stylesheet" href="manual.css?v=151">
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+</head>
+
+<body>
+
+<a href="index.html"><h1>The Game of Sprouts &mdash; User's Guide</h1></a>
+
+
+<p><!-- Introduction: what Sprouts is, what this page lets you do, and how to get to <a href="index.html">the game itself</a>. --></p>
+
+<p>The Table of Contents below takes you to any part of this page. Clicking on a symbol like this
+&nbsp;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a>&nbsp; anywhere on the
+page brings you back here.</p>
+
+<h2 id="toc">Table of Contents</h2>
+<ul id="toc-list">
+ <!-- <li><a href="#sec-1">1. &hellip;</a></li> -->
+</ul>
+
+<!-- Sections, each like this:
+ <h1 id="sec-1">1. &hellip;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
+ -->
+
+ <H2>Introduction and Tutorial</h2>
+
+
+ <a href="index.html">
+ <figure style="margin: 0 15px 15px 0; max-width: 100%;">
+ <img src="intro.png" style="height: 300px; width: auto;" alt="introductory picture"> 
+ <figcaption style="text-align: left; font-size: 0.9em;">Fig. 1: The Beginning of a Game</figcaption>
+ </figure>
+</a> 
+
+ <p> Read this section if this is your first introduction to Sprouts and this software.
+The easiest way to get started quickly on your fist game is to watch the video or do the tutorial below.   [Have Links].
+
+
+<p> The rules of the Game are simple. Two players start with a number of <i>spots</i> (also called <e>points</e> or <e>vertices</e>) and take turns connecting spots with <i>curves</i> (also called <e>edges</e>). The curves <i>must not touch or intersect</i>, and no spot can have <i>more than three curves</i> attached. When drawing a new curve, from one spot to another, the player adds a new spot somewhere along the curve, usually the approximate center. The player who first is unable to draw a new curve <e>looses</e>. In another version, <e>Misere</e>, that player </e>wins</e>.
+
+<p> The number of curves that still can be connected to a spot are the <i>lives</i> of that spot. That number equals 3 minus the number of curves already attached. It is convenient to have separate names for the
+  different possible numbers of lives of a spot. We use the following terminology:
+
+<p>  The colors in this Table are the defaults, they can be changed, and may be different in any picture you see.
+
+ <Table>
+ <tr><td><b>Lives</b></td><td><b>Name</b></td><td><b>Color</b></td></tr>
+ <tr><td> 3 </td><td> <i>seed</i>  </td><td> Rose </td></tr>
+ <tr><td> 2 </td><td> <i>sprout</i> </td><td> Orange </td></tr>
+ <tr><td> 1 </td><td> <i>link</i>  </td><td> Fuchsia</td></tr>
+ <tr><td> 0 </td><td> <i>stump</i>  </td><td> Gray</td></tr>
+ <tr><td> 1, no possible destination </td><td> <i>survivor</i> </td><td> Fuchsia, hollow </td></tr>
+</Table>
+
+ <p>Most spots are shown as filled circles, but seeds can also be shown as triangles.   Survivors are shown as hollow circles or triangles.
+
+
+<h3> Tutorial </h3>
+
+<p> <p> Figure 1 shows the beginning of a game. The players started with 5 seeds, shown as triangles, and labeled 1 through 5.  As a first introduction to this software, and a tutorial in the mechanics of a game, follow these instructions to create the picture in Figure 1:
+
+ <OL>
+ <li>Click on the picture in Figure 1. A new window will appear that shows five labeled seed in an elliptical pattern.</li>
+ <li>Find the menu labeled <e>Player 2</e>, open the sub-menu <e>Plays</e> and select <e>Human</e>. Player 1 starts out as human by default, but repeat the process if necessary. </li>
+ <li>Focus on the new window and type <e>T</e> (or <e>t</e>) to mark seeds as triangles, <e>G</e> to label the stumps, and <e>H</e> to show the stumps in full size.</li>
+ <li>Draw a curve from spot 4 around spot 3 and back to spot 4. Keep the left mouse button depressed as you do so. When you are done you will see the curve smooth out and show a new link labeled 6. If you make a mistake type <E>u</e> to undo the move. If you start at the wrong spot use the space bar to cancel the drawing of that curve.</li>
+ <li>Click twice on spot 3. You will see a loop starting at 3.</li>
+ <li>Draw a curve from spot 7 to spot 3.</li>
+ <li>Draw a curve from spot 2 to to spot 6.</li>
+ <li>Draw a curve from spot 4 to spot 5.</li>
+ <li>Draw a curve from spot 10 to spot 2.</li>
+ <li>To save the picture open the File Menu and click on <e>Save Picture as PNG</e>. </li>
+ </OL>
+<p> You are now ready to use the software. To play against the computer select <e>Parity Search</e> in the Player 2 menu, type <e>N</e> and make your first move. By default your opponent will use 5 seconds of parity search at each move.
+ 
+
+ <H3>Game Essentials</H3>
+
+<p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link, so the total number of lives decreases by 1. At the end of the game there is at least one survivor left.
+
+ <a href="index.html">
+ <figure style="margin: 0 15px 15px 0; max-width: 100%;">
+ <img src="2.png" style="height: 200px; width: auto;" alt="two survivors">
+ <img src="3.png" style="height: 200px; width: auto;" alt="three survivors">
+ <img src="4.png" style="height: 200px; width: auto;" alt="four survivors"> 
+ <figcaption style="text-align: left; font-size: 0.9em;">Fig. 2: 2, 3, or 4 survivors</figcaption>
+ </figure>
+</a> 
+
+
+
+
+
+<p> You might argue (I did when I first learned about the game) that initially there are $n$ seeds and $3n$ lives. The last move leaves a survivor, and therefore it will take $3n-1$ moves to finish the game. Inevitably, player 1 will win if $3n-1$ is odd, and player 2 will win if it is even. It's not that simple! Look at the picture in Figure 1. There are nine lives left (count them!) but spot 10, with one life left, cannot be connected to another spot. It is a survivor! The curve 4-6-4 surrounds a separate <i>region</i> that was created with the original curve around vertex 3, However complex the inside of that region may be, it cannot interact with spots on the outside.
+
+<p> The game can continue outside that region, and there will be at least one more survivor on the outside. But there may be more than 2! Figure 2 shows three possible completions of the game, with 2, 3, or 4 survivors. The total number of moves in any game, therefore, is $M=3n-s$ where $s$ is the number of survivors. The first player plays to make M odd, the second to make it even. This is the source of all the complexity and trickery!
+
+
+
+ <H2>Game Layout</H2>
+
+
+ <p> Since the drawing may get crowded the layout of the game Page is chosen so as to maximize the area in which you can draw. There are just two rows at the top of the page that are not used for drawing. The first row contains a number of menus that you can use to control the game. This is the <i>Control Row</i>. The second row gives you information about the game as it proceeds. This is the <i>Status Row</i>. Below it is the <i>Drawing Area</i>.
+
+<p> The size of the drawing area, <e>width x height</e> is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (available by typing <e>F</E>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3140x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
+ 
+
+ <H2>Drawing the Curves</h2>
+
+
+
+<h3>Drawing by Dragging</h3>
+
+<p> There are several ways to draw the curves. The simplest may come most naturally. Click on a spot, keep the mouse button depressed, drag the cursor to another spot, and let go of the mouse button. As you do this, all possible destinations, spots that you can reach with your curve, will light up by doubling their size. You can let go of the mouse button and stop drawing as soon as your intended destination changes its color. When you click anywhere in the drawing field this is interpreted as clicking on the nearest spot that has lives left. The starting spot is marked with a circle around it.
+
+</p> Clicking on link, a spot with one life left, is somewhat delicate. You can depart from a link to one side or the other. You choose the side by moving a small distance in your chose direction. If you forget and just click on link then the system will change a direction for you which may not be the direction you intended.    If a link can reach another life point only from one side the system will depart towards that side even if you choose the other.
+
+<p> If anything goes wrong with your curve but you ave not finished it hit the space bar (which interrupts any ongoing process) and try again.
+
+<h3>Drawing by Clicking</h3>
+
+You may find it easier to draw by clicking. To move from $x$ to $y$ click on $x$, taking care to make a small movement in your intended direction of departure if $x$ is a link. Then click on $y$.   If $y$ is a link it may matter from which side you approach it.  Indicate that side by starting a short distance from the link and moving to the link from that position.   If both $x$ and $y$ are connected (or$x=y$) and you wish to include some points in the resulting new region, right click first on those points.   They will turn into squares to indicate their status.
+
+<h3>Adding Seeds</H3>
+<p> The system let's you add a new seed by CTL-clicking in an empty part of the drawing area.   This facility may be helpful for experiments and study, but of course adding seeds is not part of an ordinary game.
+
+
+ <H2>Making Space</H2>
+ <H2>AI Players</H2>
+ <H2>The Menus</H2>
+ <H2>Keyboard Commands</H2>
+ <H2>AI Assisted Programming</H2>
+
+<p> I have been programming computers for more than 50 years, and this project has been different from all preceding ones.   My first project after retiring in July of 2025 consisted of writing a <a href="https://peteralfeld.github.io/home/financial/FI.html"> financial calculator</a> in a language new to me, i.e., <a href="https://www.javascript.com/">JavaScript</a>.   I proceeded as I had many times before: I bought a book on JavaScript, read much of it,  and proceeded to write the code all by myself, debugging it laboriously as I went on.  In subsequent projects, I relied increasingly on AI help, first from <a href="https://gemini.google.com/"> Gemini</a>, and then from <a href="https://claude.ai/"> Claude</a>.   About 20 years ago, I had tried to program Sprouts in <a href="https://www.java.com/en/">Java</a>.   Then, I got to a stage where you could draw curves by hand, and two players could play a game on the same computer, taking turns. There was no curve smoothing, space making, or AI play. I gave up eventually because the project was just too difficult, for me at that time.  Developing this new software (comprising more than 9,000 lines of JavaScript code so far) to the stage that everything works and I am writing this User's Guide took just two weeks!   Moreover, except for a couple of times when I was curious, I never looked at the code!   At each stage I just told Claude what the software should do, and Claude wrote it, tested it, and debugged it.   The world of computer programming has changed profoundly!   Moreover, it continues to change extremely rapidly.  Claude of October 2026 is vastly more powerful than Gemini of August 2025, or even Claude before the release of Claude Fable in June of 2026, or Claude Fable 5.1 in September, 2026.   Beyond coding, I had many conversations with Claude about algorithmic details, and Claude was helpful in writing the documentation.   I wrote this User's Guide and Claude helped with formatting, and checking for completeness and correctness.   By contrast, Claude wrote the <a href="technical.html">technical description</a> almost entirely by itself and I edited it only in minor ways, with a view towards clarity and appropriate emphasis.  There is of course a great deal of discussion currently of where AI is taking us. I don't know where we are going, but we are going somewhere awfully fast! 
+
+</body>
+</html>

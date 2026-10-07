@@ -22,8 +22,62 @@
   var G = root.SproutsGeom || require('./geom.js');
   var R = root.SproutsRelax || require('./relax.js');
 
+  /* A binary heap of (key, value) pairs in typed arrays (v148): the searches below kept
+     [d, k] pairs as small JavaScript arrays — tens of bytes each, millions of them in a
+     large window (Peter's 100-spot game in 3840×2103 crashed with "Aw, Snap" during a
+     marked route). Twelve bytes a pair here, and the same sifting as before, so ties
+     come out in the same order. `max`: the largest key on top (widestField). */
+  function makeHeap(max) {
+    var cap = 1024, keys = new Float64Array(cap), vals = new Int32Array(cap), size = 0;
+    function less(a, b) { return max ? keys[a] > keys[b] : keys[a] < keys[b]; }
+    function swap(a, b) { var tk = keys[a], tv = vals[a]; keys[a] = keys[b]; vals[a] = vals[b]; keys[b] = tk; vals[b] = tv; }
+    return {
+      get length() { return size; },
+      push: function (key, val) {
+        if (size === cap) {
+          cap *= 2;
+          var k2 = new Float64Array(cap), v2 = new Int32Array(cap);
+          k2.set(keys); v2.set(vals); keys = k2; vals = v2;
+        }
+        keys[size] = key; vals[size] = val;
+        for (var i = size++; i > 0;) {
+          var q = (i - 1) >> 1;
+          if (max ? keys[q] >= keys[i] : keys[q] <= keys[i]) break;
+          swap(q, i); i = q;
+        }
+      },
+      /* the top pair, removed: sets heap.key and returns its value */
+      pop: function () {
+        var topK = keys[0], topV = vals[0];
+        size--;
+        if (size > 0) {
+          keys[0] = keys[size]; vals[0] = vals[size];
+          for (var i = 0;;) {
+            var l = 2 * i + 1, r = l + 1, m = i;
+            if (l < size && less(l, m)) m = l;
+            if (r < size && less(r, m)) m = r;
+            if (m === i) break;
+            swap(m, i); i = m;
+          }
+        }
+        this.key = topK;
+        return topV;
+      },
+      key: 0
+    };
+  }
+
+  /* The sizes of the grids and searches (v148), for a watch line in the page's log while a
+     worker searches: sprouts-room-worker.js sets it; null elsewhere. */
+  var reporter = null;
+  function setReporter(f) { reporter = f; }
+
   /* Sample the free space. ctx is the routing context for the start spot
      (aIdx = the spot, bIdx = -1: no destination yet). */
+  /* grid.base (v148): how many cells the grid has at the Settings' clearance (ctx.cellD0, set by
+     moves.js trialMove when it searches with less — d0/2, d0/4 …, the search for a narrower way —
+     where the cells shrink with the clearance: at d0/4 they are 2 px, 2 million of them in a
+     3840×2103 window). pathWithParity compares its size with it. */
   function buildGrid(obs, ctx, d0, W, H) {
     var cell = Math.max(2, Math.min(8, 0.7 * d0));
     var nx = Math.ceil(W / cell), ny = Math.ceil(H / cell);
@@ -49,7 +103,9 @@
         for (var s = 0; s < obs.spots.length && !near[k]; s++) if (G.dist(p, obs.spots[s].p) < reach) near[k] = 1;
       }
     }
-    return { cell: cell, nx: nx, ny: ny, free: free, near: near, clear: clear, W: W, H: H };
+    var bc = ctx.cellD0 ? Math.max(2, Math.min(8, 0.7 * ctx.cellD0)) : cell, base = Math.ceil(W / bc) * Math.ceil(H / bc);
+    if (reporter) reporter({ what: 'grid', cells: nx * ny, cell: cell, d0: d0 });
+    return { cell: cell, nx: nx, ny: ny, free: free, near: near, clear: clear, W: W, H: H, base: base };
   }
 
   function centre(grid, k) {
@@ -94,37 +150,16 @@
      start may sit right next to one). Returns { dist, prev } over all cells. */
   function distances(grid, start, obs) {
     var n = grid.nx * grid.ny, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1);
-    var heap = [], nx = grid.nx, ny = grid.ny, c = grid.cell;
-    function push(k, d) {                        // binary heap of [d, k]
-      heap.push([d, k]);
-      for (var i = heap.length - 1; i > 0;) {
-        var p = (i - 1) >> 1;
-        if (heap[p][0] <= heap[i][0]) break;
-        var t = heap[p]; heap[p] = heap[i]; heap[i] = t; i = p;
-      }
-    }
-    function pop() {
-      var top = heap[0], last = heap.pop();
-      if (heap.length) {
-        heap[0] = last;
-        for (var i = 0;;) {
-          var l = 2 * i + 1, r = l + 1, m = i;
-          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-          if (m === i) break;
-          var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
-        }
-      }
-      return top;
-    }
+    var heap = makeHeap(false), nx = grid.nx, ny = grid.ny, c = grid.cell;
+    function push(k, d) { heap.push(d, k); }
     cellsNear(grid, start, 2 * c).forEach(function (k) {
       var q = centre(grid, k), d = G.dist(q, start);
       if (d < dist[k] && !R.polylineCrossesObstacle(obs, [start, q])) { dist[k] = d; push(k, d); }
     });
     var dx = [1, -1, 0, 0, 1, 1, -1, -1], dy = [0, 0, 1, -1, 1, -1, 1, -1];
     while (heap.length) {
-      var top = pop(), k = top[1];
-      if (top[0] > dist[k]) continue;
+      var k = heap.pop();
+      if (heap.key > dist[k]) continue;
       var i = k % nx, j = (k - i) / nx;
       for (var q = 0; q < 8; q++) {
         var ii = i + dx[q], jj = j + dy[q];
@@ -178,37 +213,16 @@
   }
   function widestField(grid, obs, start) {
     var n = grid.nx * grid.ny, nx = grid.nx, ny = grid.ny, c = grid.cell, clear = grid.clear;
-    var best = new Float32Array(n).fill(-Infinity), prev = new Int32Array(n).fill(-1), heap = [];
-    function push(k, v) {                         // max-heap of [v, k]
-      heap.push([v, k]);
-      for (var i = heap.length - 1; i > 0;) {
-        var q = (i - 1) >> 1;
-        if (heap[q][0] >= heap[i][0]) break;
-        var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q;
-      }
-    }
-    function pop() {
-      var top = heap[0], last = heap.pop();
-      if (heap.length) {
-        heap[0] = last;
-        for (var i = 0;;) {
-          var l = 2 * i + 1, rr = l + 1, m = i;
-          if (l < heap.length && heap[l][0] > heap[m][0]) m = l;
-          if (rr < heap.length && heap[rr][0] > heap[m][0]) m = rr;
-          if (m === i) break;
-          var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
-        }
-      }
-      return top;
-    }
+    var best = new Float32Array(n).fill(-Infinity), prev = new Int32Array(n).fill(-1), heap = makeHeap(true);
+    function push(k, v) { heap.push(v, k); }
     cellsAround(grid, start, 2 * c).forEach(function (k) {
       if (R.polylineCrossesObstacle(obs, [start, centre(grid, k)])) return;
       if (clear[k] > best[k]) { best[k] = clear[k]; push(k, clear[k]); }
     });
     var dx = [1, -1, 0, 0, 1, 1, -1, -1], dy = [0, 0, 1, -1, 1, -1, 1, -1];
     while (heap.length) {
-      var top = pop(), k = top[1];
-      if (top[0] < best[k]) continue;
+      var k = heap.pop();
+      if (heap.key < best[k]) continue;
       var i = k % nx, j = (k - i) / nx;
       for (var q = 0; q < 8; q++) {
         var ii = i + dx[q], jj = j + dy[q];
@@ -293,48 +307,30 @@
   /* Shortest grid path from `start` to near p whose crossing parity with the
      cut rays is one of `wanted` (an array of masks). Returns the polyline of
      cell centres, or null. */
+  /* v148: the states are indexed among the cells the search actually touches (each cell's
+     states allocated when it is first reached, its allowed hops worked out once, when it is
+     first expanded), the heap is in typed arrays, and the search is an A* search: a state is
+     taken in order of its distance so far plus the straight distance from its cell to p (no way
+     on is shorter), and the search stops as soon as no state left can lead to a better end than
+     the best found. The path is as short as before; of equally short ones another may come out. Before, it kept two arrays over the whole
+     window's cells × 2^k and searched every reachable state: in Peter's 100-spot game in a
+     3840×2103 window, with the finer cells of a search at a quarter of the clearance, 258
+     million states — the likely cause of its "Aw, Snap".
+     A search may have no more states than the larger of: the same search at the Settings'
+     clearance (grid.base cells, see buildGrid, × 2^k — the search the move itself was refused
+     by), and a plain search on this grid (one state per cell); past that it is given up (null,
+     reported as such). So a search for a narrower way is never larger than one of the two
+     searches the program makes anyway. */
   function pathWithParity(grid, obs, start, p, ring, rays, wanted, side, blocked) {   // side: as in bestCellNear (v85); blocked: cells the path may not use (barriers, v112)
     var k = rays.length, states = 1 << k, n = grid.nx * grid.ny, nx = grid.nx, ny = grid.ny, c = grid.cell;
-    var dist = new Float64Array(n * states).fill(Infinity), prev = new Int32Array(n * states).fill(-1);
     function hopMask(a, b) {
       var m = 0;
       for (var i = 0; i < k; i++) if (G.segCross(a, b, rays[i][0], rays[i][1])) m ^= (1 << i);
       return m;
     }
-    var heap = [];
-    function push(s, d) {
-      heap.push([d, s]);
-      for (var i = heap.length - 1; i > 0;) {
-        var q = (i - 1) >> 1;
-        if (heap[q][0] <= heap[i][0]) break;
-        var t = heap[q]; heap[q] = heap[i]; heap[i] = t; i = q;
-      }
-    }
-    function pop() {
-      var top = heap[0], last = heap.pop();
-      if (heap.length) {
-        heap[0] = last;
-        for (var i = 0;;) {
-          var l = 2 * i + 1, rr = l + 1, m = i;
-          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-          if (rr < heap.length && heap[rr][0] < heap[m][0]) m = rr;
-          if (m === i) break;
-          var t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
-        }
-      }
-      return top;
-    }
-    cellsNear(grid, start, 2 * c).forEach(function (cell) {
-      var q = centre(grid, cell);
-      if ((blocked && blocked[cell]) || R.polylineCrossesObstacle(obs, [start, q])) return;
-      var s = cell * states + hopMask(start, q), d = G.dist(q, start);
-      if (d < dist[s]) { dist[s] = d; push(s, d); }
-    });
     var dx = [1, -1, 0, 0, 1, 1, -1, -1], dy = [0, 0, 1, -1, 1, -1, 1, -1];
-    while (heap.length) {
-      var top = pop(), s = top[1];
-      if (top[0] > dist[s]) continue;
-      var cell = Math.floor(s / states), mask = s - cell * states, i = cell % nx, j = (cell - i) / nx, pc = centre(grid, cell);
+    function hopsOf(cell) {                        // bit q: the hop in direction q is allowed
+      var i = cell % nx, j = (cell - i) / nx, pc = centre(grid, cell), bits = 0;
       for (var q = 0; q < 8; q++) {
         var ii = i + dx[q], jj = j + dy[q];
         if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
@@ -347,25 +343,77 @@
            where the cells beside the end spots are cut by their curves */
         if (!cleanCell(grid, obs, kk) && G.dist(qc, start) > ring && G.dist(qc, p) > ring) continue;
         if ((grid.near[cell] || grid.near[kk]) && R.polylineCrossesObstacle(obs, [pc, qc])) continue;
-        var s2 = kk * states + (mask ^ hopMask(pc, qc)), nd = dist[s] + (q < 4 ? c : c * Math.SQRT2);
-        if (nd < dist[s2]) { dist[s2] = nd; prev[s2] = s; push(s2, nd); }
+        bits |= 1 << q;
       }
+      return bits;
     }
-    /* the best end state: a cell near p, with a wanted parity after the final hop to p */
-    var best = -1, bd = Infinity;
+    /* the touched cells: index[cell] → ix; their states ix * states + mask */
+    var limit = Math.max(Math.floor(n / states), grid.base);   // (cells to touch, each with its 2^k states)
+    var index = new Int32Array(n).fill(-1), m = 0, cap = 256, cells = new Int32Array(cap), hops = new Int16Array(cap).fill(-1);
+    var dist = new Float64Array(cap * states).fill(Infinity), prev = new Int32Array(cap * states).fill(-1), over = false;
+    function ixOf(cell) {
+      if (index[cell] >= 0) return index[cell];
+      if (m >= limit) { over = true; return -1; }
+      if (m === cap) {
+        cap *= 2;
+        var c2 = new Int32Array(cap); c2.set(cells); cells = c2;
+        var h2 = new Int16Array(cap).fill(-1); h2.set(hops); hops = h2;
+        var d2 = new Float64Array(cap * states).fill(Infinity); d2.set(dist); dist = d2;
+        var p2 = new Int32Array(cap * states).fill(-1); p2.set(prev); prev = p2;
+      }
+      cells[m] = cell; index[cell] = m;
+      return m++;
+    }
+    if (reporter) reporter({ what: 'parity', of: n, base: grid.base, rays: k, cell: c });
+    /* the end states: a cell near p, with a wanted parity after the final hop to p */
+    var ends = [], endAt = {};
     cellsNear(grid, p, ring).forEach(function (cell) {
-      var q = centre(grid, cell), last = hopMask(q, p);
+      var q = centre(grid, cell);
       if (side && !side(q)) return;
       if (blocked && blocked[cell]) return;
       if (R.polylineCrossesObstacle(obs, [q, p])) return;
+      var e = { cell: cell, last: hopMask(q, p), hop: G.dist(q, p) };
+      ends.push(e); endAt[cell] = e;
+    });
+    var heap = makeHeap(false), bestEnd = Infinity;
+    cellsNear(grid, start, 2 * c).forEach(function (cell) {
+      var q = centre(grid, cell);
+      if ((blocked && blocked[cell]) || R.polylineCrossesObstacle(obs, [start, q])) return;
+      var ix = ixOf(cell);
+      if (ix < 0) return;
+      var s = ix * states + hopMask(start, q), d = G.dist(q, start);
+      if (d < dist[s]) { dist[s] = d; heap.push(d + G.dist(q, p), s); }
+    });
+    while (heap.length && !over) {
+      var s = heap.pop(), f = heap.key;
+      if (f >= bestEnd) break;                     // every end still to come is at least this far
+      var ix = Math.floor(s / states), mask = s - ix * states, cell = cells[ix], i = cell % nx, j = (cell - i) / nx, pc = centre(grid, cell);
+      var ds = dist[s];
+      if (f > ds + G.dist(pc, p) + 1e-9) continue;   // (a stale entry: the state was reached shorter since)
+      var e = endAt[cell];
+      if (e && wanted.indexOf(mask ^ e.last) >= 0 && ds + e.hop < bestEnd) bestEnd = ds + e.hop;
+      if (hops[ix] < 0) hops[ix] = hopsOf(cell);
+      for (var q = 0; q < 8; q++) {
+        if (!(hops[ix] & (1 << q))) continue;
+        var kk = (j + dy[q]) * nx + i + dx[q], ik = ixOf(kk);
+        if (ik < 0) break;
+        var qc = centre(grid, kk), s2 = ik * states + (mask ^ hopMask(pc, qc)), nd = ds + (q < 4 ? c : c * Math.SQRT2);
+        if (nd < dist[s2]) { dist[s2] = nd; prev[s2] = s; heap.push(nd + G.dist(qc, p), s2); }
+      }
+    }
+    if (reporter) reporter({ what: 'parity done', cells: m, of: n, base: grid.base, rays: k, states: m * states, cell: c, over: over });
+    if (over) return null;
+    var best = -1, bd = Infinity;
+    ends.forEach(function (e) {
+      if (index[e.cell] < 0) return;
       wanted.forEach(function (w) {
-        var s = cell * states + (w ^ last), d = dist[s] + G.dist(q, p);
+        var s = index[e.cell] * states + (w ^ e.last), d = dist[s] + e.hop;
         if (d < bd) { bd = d; best = s; }
       });
     });
     if (best < 0) return null;
     var pts = [];
-    for (var st = best; st >= 0; st = prev[st]) pts.push(centre(grid, Math.floor(st / states)));
+    for (var st = best; st >= 0; st = prev[st]) pts.push(centre(grid, cells[Math.floor(st / states)]));
     return pts.reverse();
   }
 
@@ -701,7 +749,8 @@
   var api = { buildGrid: buildGrid, distances: distances, planner: planner, widest: widest,
               widestField: widestField, widestTo: widestTo,
               ray: ray, crossings: crossings, pathWithParity: pathWithParity, MAX_CUTS: MAX_CUTS, inflate: inflate,
-              regionMask: regionMask, anchorCells: anchorCells, sideCells: sideCells, edgeCells: edgeCells, barrierTree: barrierTree, around: around, stem: stem };
+              regionMask: regionMask, anchorCells: anchorCells, sideCells: sideCells, edgeCells: edgeCells, barrierTree: barrierTree, around: around, stem: stem,
+              setReporter: setReporter };
   root.SproutsRoute = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

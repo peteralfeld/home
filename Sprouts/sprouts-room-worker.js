@@ -14,13 +14,17 @@
           Out { id, res: { mr, why, note, said } }   mr as markedRoute returns it ({ path }, { plain }, null);
           why = ar.why; note = the note it left; said = its messages ([text, warn]), for the page to show
    Lower: In  as Route with kind: 'lower'; Out { id, res: { low, note, said } }   moves.js lowerFor (v139)
+   Size:  Out { id, size } while a job runs (v148): each grid and parity search route.js sets up
+          ({ what: 'grid' | 'parity', cells, … }), for the page's watch lines
    ========================================================================= */
 var q = self.location.search;
 importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'describe.js' + q, 'room.js' + q, 'moves.js' + q);
 var S = { game: null, route: null, spotR: 6, note: null, hush: 1, say: function () {} };   // (hush: nothing to say — the page says it)
-var Mk = self.SproutsMoves.create(S);
+var Mk = self.SproutsMoves.create(S), jobId = null;
+self.SproutsRoute.setReporter(function (size) { self.postMessage({ id: jobId, size: size }); });
 self.onmessage = function (e) {
   var d = e.data, res;
+  jobId = d.id;
   S.game = d.game; S.route = d.route; S.spotR = d.spotR; S.note = null; S.hush = 1;
   if (d.kind === 'route' || d.kind === 'lower') {
     var said = [];

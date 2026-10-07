@@ -314,17 +314,20 @@
      parameter is chord length, so the end derivatives are the unit directions.
      Starts from a single piece and refines LOCALLY: while the error exceeds
      tol, the worst piece that can still be halved gets one new knot.
-     opts: { minPiece (shortest allowed piece, default 12), maxPieces (40) }.
+     opts: { minPiece (shortest allowed piece, default 12) }. No cap on the
+     number of pieces (v147: a cap of 40 let long curves — a loop round most
+     of 100 spots in a 3840-px window — come out 40–90 px off their polyline,
+     and every such move failed its certificate; such a curve needed ~110).
      Returns { pieces, h, err }. */
   function fitClamped(P, dirA, dirB, tol, opts) {
     opts = opts || {};
-    var minPiece = opts.minPiece || 12, maxPieces = opts.maxPieces || 40;
+    var minPiece = opts.minPiece || 12;
     var N = P.length, u = new Float64Array(N), j;
     for (j = 1; j < N; j++) u[j] = u[j - 1] + dist(P[j], P[j - 1]);
     var t = [0, u[N - 1]], fit;
     for (;;) {
       fit = fitOnKnots(P, u, t, dirA, dirB);
-      if (fit.err <= tol || t.length - 1 >= maxPieces) break;
+      if (fit.err <= tol) break;
       var worst = -1, worstErr = tol, i = 0, pieceErr = new Array(t.length - 1).fill(0);
       for (j = 0; j < N; j++) {
         while (i < t.length - 2 && u[j] > t[i + 1]) i++;

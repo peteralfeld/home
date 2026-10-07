@@ -1,0 +1,69 @@
+/* Sprouts — the style of the User's Guide and the Technical Information
+   (manual.html, technical.html), taken from Backgammon's manual.css. */
+
+:root {
+    /* --- Core Colors --- */
+    --bgColor: rgb(15,40,100);
+    --textColor: white;
+
+    /* --- Link Colors --- */
+    --linkColor: #87CEEB;       /* Sky Blue */
+    --linkHover: #FFFFFF;       /* White */
+}
+
+body {
+    background-color: var(--bgColor);
+    color: var(--textColor);
+    font-family: Calibri, 'Carlito', sans-serif;
+    font-size: 18px;
+    margin: 8px;               /* Standard browser margin */
+}
+
+/* Global Link Styles */
+a, a:visited {
+    color: var(--linkColor);
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--linkHover);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Lists: the marker inside the line box, so a numbered or bulleted list starts
+   exactly where the paragraph text starts (as in Backgammon's manual). */
+ol, ul {
+    padding-inline-start: 0;
+    list-style-position: inside;
+}
+
+/* Emphasis tags used in the guide text */
+i {
+    color: #FFD700;            /* Gold */
+    font-weight: bold;
+}
+
+e {
+    color: rgb(200,255,200);   /* Light green */
+    font-weight: bold;
+}
+
+red {
+    color: rgb(255, 0, 0);
+    font-weight: bold;
+}
+
+green {
+    color: rgb(0, 255, 0);
+    font-weight: bold;
+}
+
+/* Section anchors clear the top edge when jumped to; the arrow back to the Table of Contents */
+h1[id], h2[id], h3[id] { scroll-margin-top: 12px; }
+#toc-list, #toc-list ul { padding-inline-start: 40px; list-style-position: outside; }
+#toc-list li { margin-bottom: 5px; }
+.to-top { text-decoration: none; font-size: 0.9em; margin-left: 8px; color: #6495ED; }
+.to-top:hover { text-decoration: none; color: #FFD700; }

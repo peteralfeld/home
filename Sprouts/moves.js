@@ -459,9 +459,11 @@
     }
     function trialMove(gm, a, b, start, opt) {
       opt = opt || {};
-      var saved = S.game, savedD0 = S.route.d0, savedNote = S.note;
+      var saved = S.game, savedD0 = S.route.d0, savedNote = S.note, savedCell = S.route.cellD0;
       S.game = gm;                                    // choosePort, tangentsAt and markedRoute read `game`
-      if (opt.d0) S.route.d0 = opt.d0;
+      /* v148: at a lower clearance the grids are told the Settings' clearance (ctx.cellD0): a marked
+         route's parity search on their finer cells may be no larger than at the Settings' (route.js) */
+      if (opt.d0) { if (S.route.cellD0 === undefined) S.route.cellD0 = savedD0; S.route.d0 = opt.d0; }
       S.hush++;
       try {
         var obs = R.buildObstacles(gm, S.spotR), A = gm.spots[a], B = gm.spots[b], pa = [A.x, A.y], pb = [B.x, B.y], P;
@@ -477,7 +479,7 @@
           if (!lp) return null;
           P = G.resample(lp, STEP);
         } else {
-          var ctx = { aIdx: a, bIdx: -1, A: pa, B: pa, rho: S.route.D * Math.SQRT2, spotR: S.spotR };
+          var ctx = { aIdx: a, bIdx: -1, A: pa, B: pa, rho: S.route.D * Math.SQRT2, spotR: S.spotR, cellD0: S.route.cellD0 };
           var path = Rt.planner(obs, ctx, S.route.d0, gm.W0, gm.H0, start, S.spotR).pathTo(pb, arrivalSide(b, opt.marks));   // (v112: by the intended side)
           if (!path) return null;
           P = G.resample([pa].concat(path, [pb]), STEP);
@@ -493,7 +495,7 @@
         if (typeof rt === 'string') return null;
         R.advance(rt, 2000);
         return rt.error ? null : { E: rt.state.E, rmin: rt.state.rmin, pts: rt.pts };
-      } finally { S.game = saved; S.route.d0 = savedD0; S.note = savedNote; S.hush--; }
+      } finally { S.game = saved; S.route.d0 = savedD0; S.note = savedNote; S.hush--; if (savedCell === undefined) delete S.route.cellD0; }
     }
 
     /* The armed state for a move from spot a (leaving from `start`) in position
@@ -505,7 +507,7 @@
       var an = E.analyse(gm.spots, gm.edges), A = gm.spots[a], pa = [A.x, A.y];
       var reg = A.deg === 2 ? an.regionAt(start) : an.regions.filter(function (r) { return r.spots.indexOf(a) >= 0; })[0];
       if (!reg) return null;
-      var ctx = { aIdx: a, bIdx: -1, A: pa, B: pa, rho: S.route.D * Math.SQRT2, spotR: S.spotR };
+      var ctx = { aIdx: a, bIdx: -1, A: pa, B: pa, rho: S.route.D * Math.SQRT2, spotR: S.spotR, cellD0: S.route.cellD0 };
       var ar = { a: a, spot: pa, start: start, obs: obs, an: an, region: reg, boundary: -1, marks: {}, arcMarks: {}, markedSpots: ar0.markedSpots,
                  planner: Rt.planner(obs, ctx, S.route.d0, gm.W0, gm.H0, start, S.spotR) };
       reg.boundaries.forEach(function (bd, k) { if (bd.spots.indexOf(a) >= 0) ar.boundary = k; });

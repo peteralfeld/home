@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=140">
+<link rel="stylesheet" href="style.css?v=151">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,16 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 140</span>
+  <span id="app-version">SPROUTS v. 151</span>
+  <div class="menu">
+    <button class="menu-title" id="help-title">Help</button>
+    <div class="menu-panel">
+      <button class="item off" id="cmd-video" disabled>Introductory Video <span class="soon">coming soon</span></button>
+      <a class="item" href="manual.html" target="_blank">User&rsquo;s Guide</a>
+      <a class="item" href="technical.html" target="_blank">Technical Information</a>
+      <button class="item" id="cmd-keys">Keyboard Commands <kbd>K</kbd></button>
+    </div>
+  </div>
   <div class="menu">
     <button class="menu-title" id="workers-title">Workers</button>
     <div class="menu-panel">
@@ -116,9 +125,9 @@
       <label class="row">Room vs length <span class="val" id="val-lambda"></span>
         <input id="opt-lambda" type="range" min="-1" max="1" step="0.1" value="0"></label>
       <label class="row">Spot size <span class="val" id="val-spotsize"></span>
-        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="1.7"></label>
+        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="1.9"></label>
       <label class="row">Curve thickness <span class="val" id="val-linewidth"></span>
-        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1.3"></label>
+        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1.8"></label>
       <label class="row">Number size <span class="val" id="val-numbersize"></span>
         <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
       <label class="row">Animate <input id="opt-animate" type="checkbox" checked></label>
@@ -165,23 +174,65 @@
       <button class="item" id="cmd-position">Save position as text</button>
     </div>
   </div>
-
-  <span id="status"></span>
 </div>
 
-<div id="stage"><canvas id="board"></canvas></div>
+<div id="statusbar"><span id="status"></span></div>
 
-<script src="geom.js?v=140"></script>
-<script src="relax.js?v=140"></script>
-<script src="route.js?v=140"></script>
-<script src="engine.js?v=140"></script>
-<script src="describe.js?v=140"></script>
-<script src="room.js?v=140"></script>
-<script src="moves.js?v=140"></script>
-<script src="redraw.js?v=140"></script>
-<script src="layout.js?v=140"></script>
-<script src="ai.js?v=140"></script>
-<script src="net.js?v=140"></script>
-<script src="ui.js?v=140"></script>
+<div id="stage"><canvas id="board"></canvas>
+<div id="keys-overlay" hidden>
+  <h2>Keyboard Commands</h2>
+  <p class="keys-hint"><kbd>Space</kbd> returns to the drawing.</p>
+  <div class="keys-cols">
+  <table>
+    <tr><th colspan="2">Game</th></tr>
+    <tr><td><kbd>1</kbd> &hellip; <kbd>9</kbd></td><td>New game with that many spots, in the Game menu&rsquo;s layout</td></tr>
+    <tr><td><kbd>0</kbd></td><td>Blank window: place the spots by clicking</td></tr>
+    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them)</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Start the game from the spots placed; draw a move the shortest way when its marks cannot be applied</td></tr>
+    <tr><td><kbd>U</kbd></td><td>Undo the last move</td></tr>
+    <tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Back / forward through the game one move at a time</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Stop what is under way: the computer&rsquo;s thinking, A, R, Z, making room, finding a way, a move begun by clicking. Between two computers: stop the game after the move being drawn; again: continue</td></tr>
+    <tr><td><kbd>X</kbd></td><td>Exit (close the page)</td></tr>
+    <tr><th colspan="2">Drawing</th></tr>
+    <tr><td><kbd>M</kbd></td><td>Make room for a move that does not fit</td></tr>
+    <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
+    <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">View</th></tr>
+    <tr><td><kbd>F</kbd></td><td>Full screen</td></tr>
+    <tr><td><kbd>C</kbd></td><td>Control polygons</td></tr>
+    <tr><td><kbd>S</kbd></td><td>Spot numbers</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Original spots as triangles</td></tr>
+    <tr><td><kbd>G</kbd></td><td>No numbers on spots with no lives</td></tr>
+    <tr><td><kbd>H</kbd></td><td>Spots with no lives half size</td></tr>
+    <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
+    <tr><th colspan="2">File and Help</th></tr>
+    <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
+    <tr><td><kbd>K</kbd> or <kbd>?</kbd></td><td>This list</td></tr>
+    <tr><th colspan="2">With the mouse</th></tr>
+    <tr><td>Click, click</td><td>Connect two spots (Click to connect, Settings menu)</td></tr>
+    <tr><td>Drag</td><td>Draw a curve by hand from spot to spot</td></tr>
+    <tr><td>Right-click or <kbd>Shift</kbd>+click</td><td>After the first click: mark spots the curve is to enclose</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a spot where one fits</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+drag</td><td>Move a spot</td></tr>
+  </table>
+  </div>
+</div>
+</div>
+
+<script src="geom.js?v=151"></script>
+<script src="relax.js?v=151"></script>
+<script src="route.js?v=151"></script>
+<script src="engine.js?v=151"></script>
+<script src="describe.js?v=151"></script>
+<script src="room.js?v=151"></script>
+<script src="moves.js?v=151"></script>
+<script src="redraw.js?v=151"></script>
+<script src="layout.js?v=151"></script>
+<script src="ai.js?v=151"></script>
+<script src="net.js?v=151"></script>
+<script src="ui.js?v=151"></script>
 </body>
 </html>

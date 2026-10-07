@@ -35,7 +35,7 @@
       return c;
     }
     /* sa / sb: arc length along the curve from the segment to its end spots s0 / s1
-       (phase 1 of the band ignores a curve's ends near the end spots by these) */
+       (phase 1 of the band discounts a curve's ends near the end spots by these) */
     function addSeg(a, b, eps, s0, s1, id, sa, sb) {
       var seg = { a: a, b: b, eps: eps, s0: s0, s1: s1, id: id, sa: sa, sb: sb,
                   x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: Math.min(a[1], b[1]), y1: Math.max(a[1], b[1]) };   // (its box: rObs skips it cheaply, v109)
@@ -79,9 +79,10 @@
      distance is magnified by rho/|p - spot| inside radius rho, which turns the
      clearance requirement there into a requirement on the ANGLE between the
      curves (at angle theta the effective distance is about rho*sin(theta)).
-     certify and the route planner use that; the band does not — its departure
-     directions are fixed by ports (see createBand) and it works with plain
-     distances, which keeps it well conditioned. */
+     certify and the route planner use that; the band's phase 1 a stronger version for the
+     curves at its own end spots (skipEnds, v151, below); in phase 2 the departure directions
+     are fixed by ports (see createBand) and the band works with plain distances, which keeps
+     it well conditioned. */
   /* touched (with byId, v109): the ids byId holds a distance for, in the order met; only they are
      reset at the start (was byId.fill over every obstacle id, and the callers summed over all). */
   function rObs(obs, ctx, p, byId, byDir, touched) {
@@ -111,18 +112,29 @@
             var lb = Math.sqrt(bx * bx + by * by) - s.eps;
             if (lb >= 0 && lb >= best && (!byId || lb >= byId[s.id])) continue;
             var d = G.distPointSeg(p, s.a, s.b) - s.eps, f = 1;
-            if (ctx.skipEnds) {                   // phase 1: the curves at an end spot are ignored close to it
-              /* "close to it" is measured ALONG the curve, and never more than 35 % of
-                 its length from that end, so that a short curve — a small loop, whose
-                 every point is within rho of its spots — keeps a visible middle;
-                 otherwise the band settled flat on it (Peter's game, 9/22). */
-              var lim = Math.min(ctx.rho, 0.35 * (s.sa + s.sb));
-              if (G.dist(p, ctx.A) < ctx.rho && ((s.s0 === ctx.aIdx && s.sa < lim) || (s.s1 === ctx.aIdx && s.sb < lim))) continue;
-              if (G.dist(p, ctx.B) < ctx.rho && ((s.s0 === ctx.bIdx && s.sa < lim) || (s.s1 === ctx.bIdx && s.sb < lim))) continue;
+            var fFrom = null, fSq = false;        // the spot whose rule scales d (for the gradient); fSq: by (rho/r)²
+            if (ctx.skipEnds) {
+              /* Phase 1: the curves at an end spot count less close to it — the distance magnified
+                 by (rho/r)², r the distance from the spot, within rho of it — so that the band can
+                 leave a spot beside them and reach one between them, even arriving along one (a
+                 route ending 4 px from its spot at 0.07 px from that spot's curve still counts as
+                 14 px away). v151: they were IGNORED within rho, and counted in full beyond: a
+                 point stepping across that circle met a curve from nowhere. A loop leaving spot 1
+                 beside its curve 1-11 (Peter's game of 10/4) lay unhindered against that curve
+                 inside the circle, could neither cross it nor move out across the circle, and
+                 crept. The plain angle rule (rho/r, as certify has it) was tried: it fixed that
+                 loop but not the route arriving along its destination's curve (0.9 px: the band
+                 could not start). "Close to it" is measured ALONG the curve, and never more than
+                 35 % of its length from that end, so that a short curve — a small loop, whose every
+                 point is within rho of its spots — keeps a middle at its plain distance (Peter's
+                 game, 9/22: otherwise the band settled flat on it). */
+              var lim = Math.min(ctx.rho, 0.35 * (s.sa + s.sb)), dA = G.dist(p, ctx.A), dB = G.dist(p, ctx.B), fq;
+              if (dA < ctx.rho && ((s.s0 === ctx.aIdx && s.sa < lim) || (s.s1 === ctx.aIdx && s.sb < lim))) { fq = ctx.rho / (dA || 1e-9); f = fq * fq; fFrom = ctx.A; fSq = true; }
+              if (dB < ctx.rho && ((s.s0 === ctx.bIdx && s.sa < lim) || (s.s1 === ctx.bIdx && s.sb < lim))) { fq = ctx.rho / (dB || 1e-9); if (fq * fq > f) { f = fq * fq; fFrom = ctx.B; fSq = true; } }
+            } else {
+              if (s.s0 === ctx.aIdx || s.s1 === ctx.aIdx) { f = fA; if (fA > 1) fFrom = ctx.A; }
+              if ((s.s0 === ctx.bIdx || s.s1 === ctx.bIdx) && fB > f) { f = fB; fFrom = ctx.B; }
             }
-            var fFrom = null;                     // the spot whose angle rule scales d (for the gradient)
-            if (s.s0 === ctx.aIdx || s.s1 === ctx.aIdx) { f = fA; if (fA > 1) fFrom = ctx.A; }
-            if ((s.s0 === ctx.bIdx || s.s1 === ctx.bIdx) && fB > f) { f = fB; fFrom = ctx.B; }
             var dRaw = d;
             if (ctx.scaleAll) {                   // the route planner: every spot's own curves count by angle near it
               if (s.s0 >= 0) f = Math.max(f, ctx.rho / (G.dist(p, obs.spots[s.s0].p) || 1e-9));
@@ -138,9 +150,10 @@
                 var tt = vv > 0 ? (wx * vx + wy * vy) / vv : 0; tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
                 var ex = wx - tt * vx, ey = wy - tt * vy, el = Math.sqrt(ex * ex + ey * ey) || 1e-9;
                 byDir[2 * s.id] = f * ex / el; byDir[2 * s.id + 1] = f * ey / el;
-                if (fFrom && !ctx.scaleAll) {          // + d ∇f, f = ρ / |p - spot|
+                if (fFrom && !ctx.scaleAll) {          // + d ∇f, f = ρ / |p - spot| (or its square, fSq)
                   var qx = p[0] - fFrom[0], qy = p[1] - fFrom[1], q2 = qx * qx + qy * qy, q3 = q2 * Math.sqrt(q2) || 1e-9;
-                  byDir[2 * s.id] -= dRaw * ctx.rho * qx / q3; byDir[2 * s.id + 1] -= dRaw * ctx.rho * qy / q3;
+                  if (fSq) { var q4 = q2 * q2 || 1e-18; byDir[2 * s.id] -= dRaw * 2 * ctx.rho * ctx.rho * qx / q4; byDir[2 * s.id + 1] -= dRaw * 2 * ctx.rho * ctx.rho * qy / q4; }
+                  else { byDir[2 * s.id] -= dRaw * ctx.rho * qx / q3; byDir[2 * s.id + 1] -= dRaw * ctx.rho * qy / q3; }
                 }
               }
             }
@@ -620,7 +633,6 @@
              pts: band.pts, state: band.state, iter: 0, done: false, error: null, dirA: null, dirB: null };
   }
 
-  var PHASE1_MAX = 80;
 
   function rawDirection(pts, spot, reach) {
     var s = 0, k = 1;
@@ -633,11 +645,15 @@
   function advance(rt, count) {
     while (count > 0 && !rt.done) {
       var b = rt.band, before = b.iter;
-      iterate(b, rt.phase === 1 ? Math.min(count, PHASE1_MAX - b.iter) : count);
+      /* v150: phase 1 runs until it settles, as phase 2 does (it was cut at 80 steps). Peter's loop
+         1 → 1 enclosing 2 (10/4) started from a marked route lying one grid cell from the curve
+         1-11 and was still pulling away from it, a little each step, when the cap cut it: the
+         grid's steps stayed in the curve, and the ports and phase 2 started from that shape. */
+      iterate(b, count);
       count -= b.iter - before;
       rt.iter += b.iter - before;
       rt.pts = b.pts; rt.state = b.state;
-      if (!b.done && b.iter < PHASE1_MAX) continue;
+      if (!b.done) continue;
       if (rt.phase === 2) { rt.done = true; break; }
       /* phase 1 finished: place the ports and start phase 2 from this shape */
       var A = rt.ctx.A, B = rt.ctx.B, q0 = 3 * rt.params.d0;

@@ -22,7 +22,7 @@
       trialMove = Mk.trialMove, armFor = Mk.armFor, loopStart = Mk.loopStart, markedRoute = Mk.markedRoute,
       segIntersection = Mk.segIntersection, cornerProbe = Mk.cornerProbe;
 
-  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 1.7, × 1.3 from Peter's game of 9/26, v56)
+  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 1.9, × 1.8 from Peter's game of 10/2, v146)
   var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 1.6 from Peter's game of 9/26, v58)
   var SPOT_R = 6;        // drawn radius of a spot — also what curves keep clear of (the disc), so a bigger spot needs more room
   var SNAP = 16;         // a stroke starts/ends at a spot if within this distance
@@ -30,7 +30,7 @@
   var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, shiftSpots: true, shiftCurves: true, adjustAfter: false, redrawAfter: false, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 1.7, lineScale: 1.3, numberScale: 1.6 };   // the Settings and Room menus
+  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, shiftSpots: true, shiftCurves: true, adjustAfter: false, redrawAfter: false, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 1.9, lineScale: 1.8, numberScale: 1.6 };   // the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -63,9 +63,9 @@
     ['background', 'Background'], ['busy', 'Background while computing'], ['player1', 'Player 1 curves'], ['player2', 'Player 2 curves'],
     ['deg0', 'Spots with 0 curves'], ['deg1', 'Spots with 1 curve'], ['deg2', 'Spots with 2 curves'], ['deg3', 'Spots with 3 curves']
   ];
-  /* defaults from Peter's game sprouts-2026-09-26T18-00-49.json (v56); spots with 2 curves Fuchsia (v66) */
-  var colours = { background: '#e0f9ff', busy: '#ffffff', player1: '#0000ff', player2: '#ff0000',
-                  deg0: '#ac6488', deg1: '#008000', deg2: '#fc2dfc', deg3: '#666666' };
+  /* defaults from Peter's game sprouts-2026-10-02T14-49-06.json (v146: Player 2 Green, spots with 1 curve Orange) */
+  var colours = { background: '#e0f9ff', busy: '#ffffff', player1: '#0000ff', player2: '#008000',
+                  deg0: '#ac6488', deg1: '#fc6300', deg2: '#fc2dfc', deg3: '#666666' };
   /* While the program is computing (the computer's turn, A, R, Z, making room) the background is
      Colors → Background while computing (v135, Peter; White by default — it was light gray #c8c8c8
      from v59/v89, which the background list does not offer). */
@@ -744,6 +744,7 @@
     var tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     e.preventDefault();
+    if (!keysOverlay.hidden) { keysOverlay.hidden = true; return; }   // (v142) Space closes the keyboard list, and does nothing else
     if (aiHalt && !ai && !relaying && !band && !roomBusy && !routeBusy) { aiHalt = false; log('Continued (Space).'); maybeAI(); return; }   // a stopped game between two computers goes on
     if (bothAI() && game.phase === 'play' && !aiHalt) { aiHalt = true; log('Stopped (Space).'); }   // (v125) set first: finishRelaying below calls maybeAI
     if (relaying) { finishRelaying(false); return; }
@@ -1004,8 +1005,15 @@
     var f = rl.fresh, mv = f ? f.mv : null, player = f ? f.player : game.player, base = JSON.parse(rl.start);
     var F = Ly.faces(base, mv), order = [F.outer], i;
     for (i = 0; i < F.count; i++) if (i !== F.outer) order.push(i);
+    /* v141: the page and ALL its workers share Chrome's one 4 GB JavaScript heap (V8 9.2+: one pointer-compression
+       cage per process), however much memory the machine has — Peter's 40-spot game of 10/1 died ("Aw, Snap",
+       out of memory) 22 s into a Z with 32 drawing and 32 thinking workers. The thinking workers are idle during
+       Z: ended (started again for the next move — their tables are small). Not limited (yet): the drawing workers —
+       measured at full speed, a layout of that position took 74–107 MB, so 32 should fit, and the crash could not be
+       reproduced (Linux Chromium, 32 layouts + 32 thinking: steady at 1.5–1.9 GB); the log watches Z instead. */
+    if (!(ai && ai.thinking)) { pool.forEach(function (w) { w.terminate(); }); pool = []; jobs = {}; }
     var n = Math.min(poolSize(), order.length);
-    while (drawPool.length > poolSize()) drawPool.pop().terminate();
+    while (drawPool.length > n) drawPool.pop().terminate();
     while (drawPool.length < n) drawPool.push(new Worker('sprouts-draw-worker.js' + version()));
     var par = rl.par = { order: order, outer: F.outer, next: 0, done: 0, results: [], best: null, workers: n,
                          running: {}, shown: F.outer, shows: 1, slowest: 0, givenUp: 0 };   // running: face → { w, gap, t0 }
@@ -1077,7 +1085,15 @@
         if (par.shown === null) showNext();
       });
     }
-    par.timer = setInterval(function () { stragglers(); sayProgress(); }, 1000);
+    par.timer = setInterval(function () {
+      stragglers(); sayProgress();
+      /* v141: a watch line every 5 s while Z runs — the log survives a crash, and these say how far it got */
+      var secs = Math.round((Date.now() - rl.t0) / 1000);
+      if (relaying === rl && secs % 5 === 0 && secs !== par.watched) {
+        par.watched = secs;
+        log('Watch (Z, ' + secs + ' s): ' + Object.keys(par.running).length + ' layouts running, ' + par.done + ' of ' + order.length + ' done; ' + memoryText() + '.');
+      }
+    }, 1000);
     drawPool.slice(0, n).forEach(give);
   }
   function outsideOf(g) { var an = E.analyse(g.spots, g.edges); return D.region(an, an.regions.filter(function (x) { return x.key === -1; })[0]).replace(/^the outside region, containing /, 'the region along ').replace(/^the outside region, empty inside/, 'an empty region'); }
@@ -1085,7 +1101,7 @@
   function freshResult(rl) {
     var par = rl.par, all = par.order.length;
     clearInterval(par.timer);
-    if (par.done < all) { drawPool.forEach(function (w) { w.terminate(); }); drawPool = []; }
+    drawPool.forEach(function (w) { w.terminate(); }); drawPool = [];   // (v141: always — idle, they kept their memory from the thinking workers)
     var fails = par.results.filter(function (m) { return m.error; }), running = Object.keys(par.running).length;
     par.summary = par.results.slice().sort(function (a, b) { return (b.error ? -Infinity : b.clearance) - (a.error ? -Infinity : a.clearance); }).map(function (m) {
       return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '')) +
@@ -1379,6 +1395,7 @@
     if (movesWorker) return movesWorker;
     movesWorker = new Worker('sprouts-room-worker.js' + version());
     movesWorker.onmessage = function (e) {
+      if (e.data.size) { jobSize(roomJob && e.data.id === roomJob.id ? roomJob : routeJob && e.data.id === routeJob.id ? routeJob : null, e.data.size); return; }
       if (roomJob && e.data.id === roomJob.id) roomJob.done(e.data.res);
       else if (routeJob && e.data.id === routeJob.id) routeJob.done(e.data.res);
     };
@@ -1390,6 +1407,31 @@
     };
     return movesWorker;
   }
+  /* Watch lines for the room worker's jobs (v148, Peter's 100-spot crash of 10/2: the page died a minute
+     into drawing a move and the log said nothing of what was running). The worker reports the size of
+     every grid and parity search it sets up; while a job runs, every 5 s, a line says what it is, how
+     long it has run, the latest search and the largest so far — the log survives a crash. */
+  function sizeText(z) {
+    if (z.what === 'grid') return 'grid ' + z.cells + ' cells of ' + z.cell.toFixed(1) + ' px at clearance ' + (+z.d0.toFixed(2));
+    if (z.what === 'parity') return 'parity search under way on ' + z.of + ' cells of ' + z.cell.toFixed(1) + ' px, ' + z.rays + ' rays (' + (1 << z.rays) + ' states a cell)';
+    return 'parity search ' + z.cells + ' cells of ' + z.of + ' × ' + (1 << z.rays) + ' = ' + z.states + ' states' + (z.over ? ' — given up: larger than the searches made anyway' : '');
+  }
+  function jobSize(job, z) {
+    if (!job) return;
+    job.last = z;
+    var w = z.states || z.cells || 0;
+    if (!job.peak || w > job.peakW) { job.peak = z; job.peakW = w; }
+  }
+  function watchJob(job, what) {
+    job.t0 = Date.now(); job.what = what;
+    job.watch = setInterval(function () {
+      var secs = Math.round((Date.now() - job.t0) / 1000);
+      if (secs % 5 || secs === job.watched) return;
+      job.watched = secs;
+      log('Watch (' + what + ', ' + secs + ' s): ' + (job.last ? 'now ' + sizeText(job.last) + '; largest ' + sizeText(job.peak) : 'no search reported yet') + '; ' + memoryText() + '.');
+    }, 1000);
+  }
+  function unwatchJob(job) { if (job && job.watch) { clearInterval(job.watch); job.watch = null; } }
   /* stopped by Space: whatever it still reports is dropped — even an error from scripts it was still loading
      (v139: logged as a script error twice, the page's own handler too, without preventDefault) */
   function dropMovesWorker() {
@@ -1405,7 +1447,7 @@
     var pending = { ghost: pr.ghost || null, clearance: pr.room ? pr.room.clearance : null };
     roomBusy = true; draw();
     var done = function (res) {
-      roomJob = null;
+      unwatchJob(roomJob); roomJob = null;
       try { if (armed === ar && pendingRoom === pr) makeRoomNow(res, ar, b, spots, curves); }
       finally { roomBusy = false; draw(); if (!relaying) maybeAI(); }   // (a move made at once, not animated, found roomBusy still set)
     };
@@ -1413,9 +1455,10 @@
       try {
         var w = ensureMovesWorker();
         roomJob = { id: ++movesJobs, done: done };
+        watchJob(roomJob, 'making room for ' + (ar.a + 1) + ' → ' + (b + 1));
         w.postMessage({ id: roomJob.id, game: game, route: route, spotR: SPOT_R, job: Mk.jobOf(ar, b), spots: spots, curves: curves, pending: pending });
         return;
-      } catch (e) { movesWorker = null; roomJob = null; log('No room worker (' + e.message + '): room is made on the page\'s own thread.'); }
+      } catch (e) { movesWorker = null; unwatchJob(roomJob); roomJob = null; log('No room worker (' + e.message + '): room is made on the page\'s own thread.'); }
     }
     requestAnimationFrame(function () {
       setTimeout(function () { done(Mk.roomFor(ar, b, spots, curves, pending)); }, 0);
@@ -1425,7 +1468,7 @@
      move stays armed, M tries again. */
   function stopRoom() {
     if (!roomJob) return false;
-    dropMovesWorker(); roomJob = null;
+    dropMovesWorker(); unwatchJob(roomJob); roomJob = null;
     roomBusy = false;
     log('Making room stopped (Space).');
     say('Making room stopped.   M tries again — or click another spot', true);
@@ -1447,7 +1490,7 @@
     try { var w = ensureMovesWorker(); } catch (e) { movesWorker = null; log('No room worker (' + e.message + '): routes are found on the page\'s own thread.'); return false; }
     var job = Mk.jobOf(ar, b);
     job.encloseNone = !!ar.encloseNone;
-    var finish = function (mr) { routeJob = null; routeBusy = false; draw(); done(mr); };
+    var finish = function (mr) { unwatchJob(routeJob); routeJob = null; routeBusy = false; draw(); done(mr); };
     routeJob = { id: ++movesJobs, ai: !!ai, ar: ar,
       done: function (res) {
         if (kind === 'route') { ar.why = res.why; note = res.note; }
@@ -1460,6 +1503,7 @@
         finish(r);
       } };
     routeBusy = true; draw();
+    watchJob(routeJob, (kind === 'route' ? 'the marked route ' : 'a narrower way round the marks, ') + (ar.a + 1) + ' → ' + (b + 1));
     w.postMessage({ id: routeJob.id, kind: kind, game: game, route: route, spotR: SPOT_R, job: job });
     return true;
   }
@@ -1468,7 +1512,7 @@
   function stopRoute() {
     if (!routeJob) return false;
     var wasAI = routeJob.ai;
-    dropMovesWorker(); routeJob = null;
+    dropMovesWorker(); unwatchJob(routeJob); routeJob = null;
     routeBusy = false;
     log('Finding a way stopped (Space).');
     if (wasAI && ai) {
@@ -1721,8 +1765,9 @@
     }
     var fit = G.fitClamped(G.resample(bd.pts, STEP), bd.dirA, bd.dirB, TOL, { minPiece: 12 });
     var cert = R.certify(mv.obs, mv.ctx, fit.pieces, 0.6 * route.d0);
-    if (!cert.ok) { say('The fitted curve came too close to something. Try drawing it again.', true,
-                        'The fitted curve came too close to something (clearance ' + cert.clearance.toFixed(1) + ' px). Try drawing it again.'); draw(); return; }
+    if (!cert.ok) { var again = ai ? '' : ' Try drawing it again.';   // (v147: not said to the computer's moves)
+                    say('The fitted curve came too close to something.' + again, true,
+                        'The fitted curve came too close to something (clearance ' + cert.clearance.toFixed(1) + ' px, fit within ' + fit.err.toFixed(1) + ' px, ' + fit.pieces.length + ' pieces).' + again); draw(); return; }
 
     commitMove(mv.a, mv.b, fit, fit.pieces.length + ' pieces, clearance ' + Math.min(cert.clearance, bd.state.rmin).toFixed(0) + ' px, ' + bd.iter + ' iterations');
   }
@@ -1916,6 +1961,9 @@
   Object.keys(commands).forEach(function (id) {
     document.getElementById(id).addEventListener('click', function () { closeMenus(); if (!relaying && !roomBusy && !routeBusy) commands[id](); });
   });
+  /* Help (v142): the keyboard list any time; the guides open in a new tab (target=_blank), the menu closes */
+  document.getElementById('cmd-keys').addEventListener('click', function () { closeMenus(); keysOverlay.hidden = false; });
+  document.querySelectorAll('.menu-panel a.item').forEach(function (a) { a.addEventListener('click', closeMenus); });
 
   /* v102 (Peter): before the first move, a change of Layout or Spots in the Game
      menu shows at once (a new game laid out the new way; a computer that moves
@@ -1955,14 +2003,21 @@
     window.close();
     setTimeout(function () { say('The browser does not let the page close itself here: close the tab with Ctrl+W (or the window with Alt+F4).', true, null, true); }, 300);
   }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
+  /* K and ? (v142, Peter): the keyboard commands, an overlay on the drawing (index.html
+     #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
+  var keysOverlay = document.getElementById('keys-overlay');
+  function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     var tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'SELECT') return;
+    var k = e.key.toLowerCase();
+    if (k === 'k' || k === '?') { e.preventDefault(); closeMenus(); toggleKeys(); return; }   // (v142) any time, busy or not
+    if (!keysOverlay.hidden) return;              // while the list is shown, the other keys wait (Space closes it, above)
     if (relaying || roomBusy || routeBusy) return;   // (the space bar is handled above; roomBusy, routeBusy: in a worker, v137, v139)
-    var fn = keys[e.key.toLowerCase()];
+    var fn = keys[k];
     if (fn) { e.preventDefault(); closeMenus(); fn(); }
   });
 
@@ -1990,10 +2045,12 @@
   menubar.addEventListener('scroll', placeOpen);   // (an open panel follows its title)
   window.addEventListener('resize', placeOpen);
   /* the mouse wheel over the bar scrolls it sideways, when there is more than fits */
-  menubar.addEventListener('wheel', function (e) {
-    if (menubar.scrollWidth <= menubar.clientWidth || !e.deltaY || e.target.closest('.menu-panel')) return;
-    menubar.scrollLeft += e.deltaY; e.preventDefault();
-  }, { passive: false });
+  [menubar, document.getElementById('statusbar')].forEach(function (bar) {   // (v142: the status line, now a line of its own, too)
+    bar.addEventListener('wheel', function (e) {
+      if (bar.scrollWidth <= bar.clientWidth || !e.deltaY || e.target.closest('.menu-panel')) return;
+      bar.scrollLeft += e.deltaY; e.preventDefault();
+    }, { passive: false });
+  });
   document.querySelectorAll('.menu-panel').forEach(function (panel) {
     panel.addEventListener('click', function (e) { e.stopPropagation(); });
   });
@@ -2852,6 +2909,30 @@
   document.getElementById('opt-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); closeMenus(); netGuest(); } });
 
   /* ---------------- start ---------------- */
-  new ResizeObserver(resizeCanvas).observe(stage);
+  /* The size of the drawing area (v143, Peter): the status line's first words are "Welcome to Sprouts.
+     Drawing area is W x H" (CSS pixels of the canvas); it says the size again whenever the area changes
+     (the window resized, full screen) and on Q. Logged at the start and after each change (v144). */
+  var lastArea = null;
+  function areaText() { return 'Drawing area is ' + stage.clientWidth + ' x ' + stage.clientHeight; }
+  function sayArea() { say(areaText(), false, null, true); }
+  new ResizeObserver(function () {
+    resizeCanvas();
+    var a = areaText();
+    if (a === lastArea) return;
+    say((lastArea ? '' : 'Welcome to Sprouts.   ') + a, false, null, true);
+    lastArea = a;
+    /* and in the log (v144, Peter): at the start and after each change. While a window edge is dragged
+       the size changes many times in a row: a new size replaces the line of the one before when nothing
+       else was logged in between, so the log keeps only where the resizing ended. */
+    if (areaLogAt === logLines.length - 1) logLines.pop();
+    log(a + '.');
+    areaLogAt = logLines.length - 1;
+  }).observe(stage);
+  var areaLogAt = -1;   // the log line of the last drawing-area size
+  /* The menu titles in the standard twelve colors (v143, Peter), in order from Coral, white text; Help
+     keeps Dark red (index.html / style.css), so the others skip it. */
+  var menuColours = PALETTE.filter(function (c) { return c[0] !== 'Dark red'; });
+  [].filter.call(document.querySelectorAll('.menu-title'), function (t) { return t.id !== 'help-title'; })
+    .forEach(function (t, i) { t.style.setProperty('--menu-bg', menuColours[i % menuColours.length][1]); });
   newGame();
 })();
