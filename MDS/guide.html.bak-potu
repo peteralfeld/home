@@ -121,7 +121,7 @@
             MDS User's Guide
         </H1>
         <H4>
-            Version 164, October 7, 2026.
+            Version 157, November 21 2021.
         </H4>
         <UL>
             <LI>
@@ -956,20 +956,7 @@
                                 6-complex, a ring surrounding a regular hexagon
                             </LI>
                             <LI>
-                                <B>Potu</B>, the 31 triangle example of
-                                Pratyush Potu (<EM>A symmetric counterexample
-                                to Strang's conjecture for bivariate C<SUP>1</SUP>
-                                cubic splines on triangulations</EM>, 2026).
-                                It triangulates an equilateral triangle, is
-                                invariant under all six symmetries of that
-                                triangle, and no two edges at a common vertex
-                                are collinear, so it has neither singular nor
-                                quasi-singular vertices.  Schumaker's lower
-                                bound is 40, yet the dimension of the C<SUP>1</SUP>
-                                cubics is 41.  Unlike WuDeng I, the defect
-                                does not rely on any pair of collinear edges.
-                                The coordinates are exact integers and have to
-                                stay that way.
+                                double 6-complex, a double ring surrounding a regular hexagon
                             </LI>
                             <LI>
                                 <B>WuDeng I</B>, the 18 triangle example of
