@@ -76,6 +76,7 @@
   }
 
   /* The whole position in words. names(p) gives player p's name. */
+  var KIND = ['seed', 'sprout', 'link', 'stump'];   // (v158: the manual's terms for degree 0–3)
   function position(game, names) {
     var an = E.analyse(game.spots, game.edges), lines = [], dead = 0;
     game.spots.forEach(function (sp) { if (sp.deg >= 3) dead++; });
@@ -88,15 +89,15 @@
       var added = game.added || 0;
       lines.push('Started with ' + plural(game.spots.length - game.moves - added, 'spot', 'spots') +
                  (added ? ', ' + added + ' added by hand' : '') + '; now ' + game.spots.length +
-                 ', of which ' + dead + ' dead (3 curves).');
+                 ', of which ' + plural(dead, 'stump', 'stumps') + ' (3 curves, no lives).');
     }
     lines.push('');
     lines.push('Regions (a boundary lists the spots met going once round it; a spot can appear twice):');
     ordered(an).forEach(function (r, i) { lines.push('  ' + (i + 1) + '. ' + region(an, r)); });
     lines.push('');
-    lines.push('Spots (curves attached, lives left):');
+    lines.push('Spots (kind, curves attached, lives left):');
     game.spots.forEach(function (sp, i) {
-      lines.push('  ' + num(i) + ': ' + plural(sp.deg, 'curve', 'curves') + ', ' + (sp.deg >= 3 ? 'dead' : plural(3 - sp.deg, 'life', 'lives')));
+      lines.push('  ' + num(i) + ': ' + KIND[Math.min(sp.deg, 3)] + ', ' + plural(sp.deg, 'curve', 'curves') + ', ' + (sp.deg >= 3 ? 'no lives' : plural(3 - sp.deg, 'life', 'lives')));
     });
     return lines.join('\n');
   }

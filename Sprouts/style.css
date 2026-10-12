@@ -49,8 +49,6 @@ body {
   padding: 5px 6px; border-radius: 4px; cursor: pointer;
 }
 .menu-panel .item:hover { background: #3d5591; }
-.menu-panel .off { opacity: .45; cursor: default; }
-.menu-panel .item.off:hover { background: none; }
 .menu-panel .note { font-size: 13px; opacity: .75; max-width: 300px; display: block; }
 kbd { opacity: .7; font: inherit; }
 
@@ -69,7 +67,6 @@ kbd { opacity: .7; font: inherit; }
 /* the Help menu's title: white on Dark red (the standard list's, #990000) */
 #help-title { --menu-bg: #990000; }
 .menu-panel a.item { color: inherit; text-decoration: none; box-sizing: border-box; }
-.menu-panel .soon { font-size: 13px; font-style: italic; }
 
 /* K / ?: the keyboard commands over the drawing, black on white; Space closes */
 #keys-overlay {
@@ -94,6 +91,24 @@ kbd { opacity: .7; font: inherit; }
 #stage { flex: 1 1 auto; min-height: 0; position: relative; }
 #board { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 .menu-panel .row.disabled { opacity: .45; }   /* v68: options greyed out while Heroic is on */
+.menu-panel table.auto { border-collapse: collapse; margin: 0 6px 4px; }   /* v152: the Room menu's eight boxes */
+.menu-panel table.auto th, .menu-panel table.auto td { padding: 3px 10px; text-align: center; font-weight: normal; }
+.menu-panel table.auto th { opacity: .8; }
+.menu-panel table.auto td:first-child { text-align: left; padding-left: 0; }
+.menu-panel tr.disabled { opacity: .45; }   /* v152: the human's boxes while Heroic is on */
 .menu-panel .row.hidden { display: none; }   /* v69: a player's setting that does not apply to what it plays */
 .menu-panel .row.net-code input { width: 60px; text-align: center; font-weight: bold; letter-spacing: .1em; }   /* v79: the room code */
 .menu-panel .row.net-code .item { width: auto; flex: 0 0 auto; }
+
+/* v154 (Peter 10/11): the hover texts (ui.js showTip), black on white like the keyboard list; the menus
+   carry no explanations. A disabled control lets the pointer through to its row, which has the text
+   (Chrome sends no pointer events over a disabled button). */
+#tip {
+  position: fixed; z-index: 20; max-width: min(420px, calc(100vw - 16px)); box-sizing: border-box;
+  padding: 8px 12px; background: #fff; color: #000; border: 1px solid #888; border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .35); font-size: 14px; line-height: 1.35; pointer-events: none;
+}
+#tip[hidden] { display: none; }
+#tip ul { margin: 4px 0; padding-left: 20px; }
+#tip kbd { opacity: 1; font-weight: bold; padding: 0 4px; border: 1px solid #999; border-radius: 3px; background: #f2f2f2; }
+.menu-panel :disabled { pointer-events: none; }

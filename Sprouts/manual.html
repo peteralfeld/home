@@ -5,7 +5,7 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
  <title>Sprouts &mdash; User's Guide</title>
- <link rel="stylesheet" href="manual.css?v=151">
+ <link rel="stylesheet" href="manual.css?v=159c">
 <script>
   MathJax = {
     tex: {
@@ -16,9 +16,9 @@
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
 
-<body>
+<body class="guide">
 
-<a href="index.html"><h1>The Game of Sprouts &mdash; User's Guide</h1></a>
+<a href="index.html" target="_blank"><h1>The Game of Sprouts &mdash; User's Guide</h1></a>
 
 
 <p><!-- Introduction: what Sprouts is, what this page lets you do, and how to get to <a href="index.html">the game itself</a>. --></p>
@@ -29,17 +29,12 @@ page brings you back here.</p>
 
 <h2 id="toc">Table of Contents</h2>
 <ul id="toc-list">
- <!-- <li><a href="#sec-1">1. &hellip;</a></li> -->
 </ul>
-
-<!-- Sections, each like this:
- <h1 id="sec-1">1. &hellip;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
- -->
 
  <H2>Introduction and Tutorial</h2>
 
 
- <a href="index.html">
+ <a href="index.html" target="_blank">
  <figure style="margin: 0 15px 15px 0; max-width: 100%;">
  <img src="intro.png" style="height: 300px; width: auto;" alt="introductory picture"> 
  <figcaption style="text-align: left; font-size: 0.9em;">Fig. 1: The Beginning of a Game</figcaption>
@@ -47,52 +42,52 @@ page brings you back here.</p>
 </a> 
 
  <p> Read this section if this is your first introduction to Sprouts and this software.
-The easiest way to get started quickly on your fist game is to watch the video or do the tutorial below.   [Have Links].
+The easiest way to get started quickly on your first game is to do the <a href="#sec-tutorial">tutorial below</a>.
 
 
-<p> The rules of the Game are simple. Two players start with a number of <i>spots</i> (also called <e>points</e> or <e>vertices</e>) and take turns connecting spots with <i>curves</i> (also called <e>edges</e>). The curves <i>must not touch or intersect</i>, and no spot can have <i>more than three curves</i> attached. When drawing a new curve, from one spot to another, the player adds a new spot somewhere along the curve, usually the approximate center. The player who first is unable to draw a new curve <e>looses</e>. In another version, <e>Misere</e>, that player </e>wins</e>.
+<p> The rules of the game are simple. Two players start with a number of <i>spots</i> (also called <e>points</e> or <e>vertices</e>) and take turns connecting spots with <i>curves</i> (also called <e>edges</e>). The curves <i>must not touch or intersect</i>, and no spot can have <i>more than three curves</i> attached (a curve from a spot back to itself, a <i>loop</i>, counts twice). When drawing a new curve, from one spot to another, the player adds a new spot somewhere along the curve, usually the approximate center. The player who first is unable to draw a new curve <e>loses</e>. In another version, <e>misère</e>, that player <e>wins</e>.
 
 <p> The number of curves that still can be connected to a spot are the <i>lives</i> of that spot. That number equals 3 minus the number of curves already attached. It is convenient to have separate names for the
   different possible numbers of lives of a spot. We use the following terminology:
 
-<p>  The colors in this Table are the defaults, they can be changed, and may be different in any picture you see.
+<p>  The colors in this table are the defaults, shown as in the Colors menu, where they can be changed; they may be different in any picture you see.
 
- <Table>
- <tr><td><b>Lives</b></td><td><b>Name</b></td><td><b>Color</b></td></tr>
- <tr><td> 3 </td><td> <i>seed</i>  </td><td> Rose </td></tr>
- <tr><td> 2 </td><td> <i>sprout</i> </td><td> Orange </td></tr>
- <tr><td> 1 </td><td> <i>link</i>  </td><td> Fuchsia</td></tr>
- <tr><td> 0 </td><td> <i>stump</i>  </td><td> Gray</td></tr>
- <tr><td> 1, no possible destination </td><td> <i>survivor</i> </td><td> Fuchsia, hollow </td></tr>
-</Table>
+ <table class="spot-kinds">
+ <tr><th>Lives</th><th>Name</th><th>Color</th></tr>
+ <tr><td> 3 </td><td> <i>seed</i> </td><td class="swatch" style="--c: #ac6488">Rose</td></tr>
+ <tr><td> 2 </td><td> <i>sprout</i> </td><td class="swatch" style="--c: #fc6300">Orange</td></tr>
+ <tr><td> 1 </td><td> <i>link</i> </td><td class="swatch" style="--c: #fc2dfc">Fuchsia</td></tr>
+ <tr><td> 0 </td><td> <i>stump</i> </td><td class="swatch" style="--c: #666666">Gray (half size)</td></tr>
+ <tr><td> 1, no possible destination </td><td> <i>survivor</i> </td><td class="swatch" style="--c: #fc2dfc">Fuchsia, hollow</td></tr>
+</table>
 
- <p>Most spots are shown as filled circles, but seeds can also be shown as triangles.   Survivors are shown as hollow circles or triangles.
+ <p>Most spots are shown as filled circles, but the initial seeds can also be shown as triangles.   Survivors are shown as hollow circles or triangles.
 
 
 <h3> Tutorial </h3>
 
-<p> <p> Figure 1 shows the beginning of a game. The players started with 5 seeds, shown as triangles, and labeled 1 through 5.  As a first introduction to this software, and a tutorial in the mechanics of a game, follow these instructions to create the picture in Figure 1:
+<p> Figure 1 shows the beginning of a game. The players started with 5 seeds, shown as triangles, and labeled 1 through 5.  As a first introduction to this software, and a tutorial in the mechanics of a game, follow these instructions to create the picture in Figure 1:
 
  <OL>
- <li>Click on the picture in Figure 1. A new window will appear that shows five labeled seed in an elliptical pattern.</li>
- <li>Find the menu labeled <e>Player 2</e>, open the sub-menu <e>Plays</e> and select <e>Human</e>. Player 1 starts out as human by default, but repeat the process if necessary. </li>
- <li>Focus on the new window and type <e>T</e> (or <e>t</e>) to mark seeds as triangles, <e>G</e> to label the stumps, and <e>H</e> to show the stumps in full size.</li>
+ <li>Click on the picture in Figure 1. A new tab will open that shows five labeled seeds in an elliptical pattern.</li>
+ <li>Find the menu labeled <e>Player 2</e>, open the submenu <e>Plays</e> and select <e>Human</e>. Player 1 starts out as human by default, but repeat the process if necessary. </li>
+ <li>In the new tab type <e>T</e> (or <e>t</e>) to mark the initial seeds as triangles, <e>G</e> to label the stumps, and <e>H</e> to show the stumps in full size.</li>
  <li>Draw a curve from spot 4 around spot 3 and back to spot 4. Keep the left mouse button depressed as you do so. When you are done you will see the curve smooth out and show a new link labeled 6. If you make a mistake type <E>u</e> to undo the move. If you start at the wrong spot use the space bar to cancel the drawing of that curve.</li>
  <li>Click twice on spot 3. You will see a loop starting at 3.</li>
- <li>Draw a curve from spot 7 to spot 3.</li>
- <li>Draw a curve from spot 2 to to spot 6.</li>
+ <li>Draw a curve from spot 2 to spot 6.</li>
  <li>Draw a curve from spot 4 to spot 5.</li>
- <li>Draw a curve from spot 10 to spot 2.</li>
- <li>To save the picture open the File Menu and click on <e>Save Picture as PNG</e>. </li>
+ <li>Draw a curve from spot 7 to spot 3.</li>
+ <li>Draw a curve from spot 9 to spot 2.</li>
+ <li>To save the picture open the File menu and click on <e>Save picture as PNG</e>. </li>
  </OL>
-<p> You are now ready to use the software. To play against the computer select <e>Parity Search</e> in the Player 2 menu, type <e>N</e> and make your first move. By default your opponent will use 5 seconds of parity search at each move.
+<p> You are now ready to use the software. To play against the computer select <e>Parity search</e> in the Player 2 menu, type <e>N</e> and make your first move. By default your opponent will use 5 seconds of parity search at each move.
  
 
  <H3>Game Essentials</H3>
 
 <p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link, so the total number of lives decreases by 1. At the end of the game there is at least one survivor left.
 
- <a href="index.html">
+ <a href="index.html" target="_blank">
  <figure style="margin: 0 15px 15px 0; max-width: 100%;">
  <img src="2.png" style="height: 200px; width: auto;" alt="two survivors">
  <img src="3.png" style="height: 200px; width: auto;" alt="three survivors">
@@ -105,18 +100,18 @@ The easiest way to get started quickly on your fist game is to watch the video o
 
 
 
-<p> You might argue (I did when I first learned about the game) that initially there are $n$ seeds and $3n$ lives. The last move leaves a survivor, and therefore it will take $3n-1$ moves to finish the game. Inevitably, player 1 will win if $3n-1$ is odd, and player 2 will win if it is even. It's not that simple! Look at the picture in Figure 1. There are nine lives left (count them!) but spot 10, with one life left, cannot be connected to another spot. It is a survivor! The curve 4-6-4 surrounds a separate <i>region</i> that was created with the original curve around vertex 3, However complex the inside of that region may be, it cannot interact with spots on the outside.
+<p> You might argue (I did when I first learned about the game) that initially there are $n$ seeds and $3n$ lives. The last move leaves a survivor, and therefore it will take $3n-1$ moves to finish the game. Inevitably, player 1 will win if $3n-1$ is odd, and player 2 will win if it is even. It's not that simple! Look at the picture in Figure 1. There are nine lives left (count them!) but spot 10, with one life left, cannot be connected to another spot. It is a survivor! The curve 4-6-4 surrounds a separate <i>region</i> that was created with the original curve around spot 3. However complex the inside of that region may be, it cannot interact with spots on the outside.
 
-<p> The game can continue outside that region, and there will be at least one more survivor on the outside. But there may be more than 2! Figure 2 shows three possible completions of the game, with 2, 3, or 4 survivors. The total number of moves in any game, therefore, is $M=3n-s$ where $s$ is the number of survivors. The first player plays to make M odd, the second to make it even. This is the source of all the complexity and trickery!
+<p> The game can continue outside that region, and there will be at least one more survivor on the outside. But there may be more than 2! Figure 2 shows three possible completions of the game, with 2, 3, or 4 survivors. The total number of moves in any game, therefore, is $T=3n-s$ where $s$ is the number of survivors. The first player plays to make $T$ odd, the second to make it even (the other way round in misère). This is the source of all the complexity and trickery!
 
 
 
  <H2>Game Layout</H2>
 
 
- <p> Since the drawing may get crowded the layout of the game Page is chosen so as to maximize the area in which you can draw. There are just two rows at the top of the page that are not used for drawing. The first row contains a number of menus that you can use to control the game. This is the <i>Control Row</i>. The second row gives you information about the game as it proceeds. This is the <i>Status Row</i>. Below it is the <i>Drawing Area</i>.
+ <p> Since the drawing may get crowded the layout of the game page is chosen so as to maximize the area in which you can draw. There are just two rows at the top of the page that are not used for drawing. The first row contains a number of menus that you can use to control the game. This is the <i>Control Row</i>. The second row gives you information about the game as it proceeds. This is the <i>Status Row</i>. Below it is the <i>Drawing Area</i>.
 
-<p> The size of the drawing area, <e>width x height</e> is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (available by typing <e>F</E>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3140x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
+<p> The size of the drawing area, <e>width x height</e> is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (available by typing <e>F</E>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3840x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
  
 
  <H2>Drawing the Curves</h2>
@@ -127,25 +122,262 @@ The easiest way to get started quickly on your fist game is to watch the video o
 
 <p> There are several ways to draw the curves. The simplest may come most naturally. Click on a spot, keep the mouse button depressed, drag the cursor to another spot, and let go of the mouse button. As you do this, all possible destinations, spots that you can reach with your curve, will light up by doubling their size. You can let go of the mouse button and stop drawing as soon as your intended destination changes its color. When you click anywhere in the drawing field this is interpreted as clicking on the nearest spot that has lives left. The starting spot is marked with a circle around it.
 
-</p> Clicking on link, a spot with one life left, is somewhat delicate. You can depart from a link to one side or the other. You choose the side by moving a small distance in your chose direction. If you forget and just click on link then the system will change a direction for you which may not be the direction you intended.    If a link can reach another life point only from one side the system will depart towards that side even if you choose the other.
+<p> Clicking on a link, a spot with one life left, is somewhat delicate. You can depart from a link to one side or the other. You choose the side by moving a small distance in your chosen direction. If you forget and just click on a link then the system will choose a direction for you which may not be the direction you intended.    If a link can reach another spot with a life only from one side the system will depart towards that side even if you choose the other.
 
-<p> If anything goes wrong with your curve but you ave not finished it hit the space bar (which interrupts any ongoing process) and try again.
+<p> If anything goes wrong with your curve but you have not finished it hit the space bar (which interrupts any ongoing process) and try again.
 
 <h3>Drawing by Clicking</h3>
 
-You may find it easier to draw by clicking. To move from $x$ to $y$ click on $x$, taking care to make a small movement in your intended direction of departure if $x$ is a link. Then click on $y$.   If $y$ is a link it may matter from which side you approach it.  Indicate that side by starting a short distance from the link and moving to the link from that position.   If both $x$ and $y$ are connected (or$x=y$) and you wish to include some points in the resulting new region, right click first on those points.   They will turn into squares to indicate their status.
+<p>You may find it easier to draw by clicking. To move from $x$ to $y$ click on $x$, taking care to make a small movement in your intended direction of departure if $x$ is a link. Then click on $y$.   If $y$ is a link it may matter from which side the curve arrives: click just outside the link, on the side you want, rather than on the link itself.   If both $x$ and $y$ are connected (or $x=y$), the new curve splits a region in two, and you may wish to include some spots in one of the new regions: after clicking on $x$ and before clicking on $y$, right-click (or <e>Shift</e>-click) on those spots.   They will turn into squares to indicate their status.   If the curve cannot be routed around the marked spots the status row says so; <e>Enter</e> then draws the shortest curve instead.
 
-<h3>Adding Seeds</H3>
-<p> The system let's you add a new seed by CTL-clicking in an empty part of the drawing area.   This facility may be helpful for experiments and study, but of course adding seeds is not part of an ordinary game.
+<h3>Adding Seeds and Moving Spots</H3>
+<p> The system lets you add a new seed by Ctrl-clicking in an empty part of the drawing area.   This facility may be helpful for experiments and study, but of course adding seeds is not part of an ordinary game.
+<p> Ctrl-dragging a spot moves it: a seed moves freely within its region, a sprout lengthens or shortens its curve, and a spot in the middle of a curve slides along it.
 
 
- <H2>Making Space</H2>
- <H2>AI Players</H2>
- <H2>The Menus</H2>
- <H2>Keyboard Commands</H2>
+ <H2>The Control Row</H2>
+
+ <p>The easiest way for two humans to play against each other is to get a large sheet of paper and a couple of pencils.    This software offers several additional options:
+
+ <OL>
+   <LI>Playing against an AI</LI>
+   <LI>Making space</LI>
+   <LI>Playing remotely</LI>
+   <LI>Undoing moves and other actions</li>
+   <LI>Recording games and pictures</li>
+ </OL>
+ 
+<p> These  options are controlled with the menus in the Control Row.  The individual items are described next, working from left to right.  All controls will also show detailed information in a text field that pops up after hovering over the control for 2 seconds.
+
+<p>To open one of the menus click on it. To close it click it again or click anywhere else.
+
+  <H3 class="menu-head" style="--menu: #1b2a4a">Name and Version Number</H3>
+<p> The name of the game is <e>Sprouts</e>.   The version number is increased every time I commit the files to Git.
+  <H3 class="menu-head" style="--menu: #990000">Help Information</H3>
+  
+  
+<p> The following items are available:
+  <OL>
+    
+    <LI> This user's guide is opened in a  new tab.</li>
+    <LI> A technical description of the software is opened in a new tab</li>
+    <LI> A list of keyboard commands is shown in the drawing field.   That list can also be invoked by typing <e>K</e> (or <e>?</e>).   To return to the drawing type <e>K</e> or <e>?</e> again, or hit the space bar.</li>
+    </OL>
+  <H3 class="menu-head" style="--menu: #f35a6c">Parallel Processing</H3>
+<p> Your computer can run several logical processes in parallel and the software uses this facility heavily in AI play and when making space in the drawing.   JavaScript refers to the available processes as <i>workers</i>.   By default the system uses all available workers, but you can reduce their numbers in the Workers menu.
+  <H3 class="menu-head" style="--menu: #fc6300">Game Settings</H3>
+  <p>The following settings are available:
+  <OL>
+    <LI>The number of spots. You can increase it or decrease it with the buttons on the right of the text field, or simply enter a number.  The default number of spots is 5.  There is no limit to the number of spots other than the size of your drawing field and your computer resources.   </LI>
+    <LI>The layout of the spots.   The default is to have them equally spaced on an ellipse that matches the aspect ratio of your drawing field.   You can also place them on a circle, in a line, randomly, or by hand.   The keys <e>1</e> &hellip; <e>9</e> start a new game with that many spots in the chosen layout; <e>0</e> gives an empty drawing area in which you place the spots by clicking, and <e>Enter</e> or <e>N</e> then starts the game.</LI>
+    <LI>By default the player who makes the last possible move wins.   You can change this to the <e>misère version</e> where that player loses.  </LI>
+    <LI>You can interrupt any ongoing game and start a new game. You can also do this by typing <e>N</e>. </LI>
+    <LI>You can undo the last move.  If a human plays against a computer the last human move will be undone.  You can also use the keyboard command <e>U</e>.   The keys <e>&lt;</e> and <e>&gt;</e> step back and forward through the game one move at a time; meanwhile the computer waits, and a move made at any point continues the game from there.</LI>
+    <LI>To close the game&rsquo;s tab click on <e>Exit</e> or type <e>X</e>.   A browser lets a page close itself only when it was opened in a tab of its own (for example from this guide, or from a desktop shortcut); otherwise the status row says how to close the tab.</LI>
+    </OL>
+  
+
+  <H3 class="menu-head" style="--menu: linear-gradient(90deg, #126c3f 50%, #51a27e 50%)">Player Settings</H3>
+
+
+<p> There are four possible settings for each player, players 1 and 2. There are four settings that can be invoked with the <e>Plays</e> submenu, one for human play, and three for AI play.  They are:
+
+  <OL>
+    <LI><e>Human</e>: all moves are made by a human player.</LI>
+    <LI><e>Random</e>: The system picks a region and a starting and an end spot at random.   If the two spots lie on the same boundary of the region, the new curve splits the region in two, and every other separate part of the drawing inside that region (a seed, or a group of spots connected to each other) can end up on either side: the system first picks at random how many of them go inside, then which ones.  There is no look ahead at all.</LI>
+
+  <LI><e>Monte Carlo</e>: The system considers all possible moves and plays a number of random games after each move.   Then it picks the move that led to the most wins by the current player.   The number of games, 100 by default, or the amount of time available to the AI player, can be set by the user. Monte Carlo never switches to exact play, even as the game gets close to the end. </LI>
+  <LI><e>Parity search</e>: The AI examines the game tree to a certain depth. The user can specify the depth, or a certain amount of time available for the move.   If a time is specified depth 1 is always searched completely. At each stage the system increases the depth by 1  and continues the search if the remaining time exceeds the amount of time used for the previous level.   At the end of each line of the search (a <i>leaf</i>) the system computes the largest and the smallest number of moves the game can still last.   It assumes that the largest number will actually be played, and judges the position by whether that number has the parity the player wants (odd in normal play, even in misère), trusting this judgment more the closer the two numbers are.   It picks the move that does best by this judgment against the opponent&rsquo;s best replies, as deep as the search goes; when several moves tie, Monte Carlo games among them decide, and if they still tie, chance.  As the board divides into separate regions it considers each region by itself, and as the end of the game approaches the search becomes exact. </LI>
+</OL>
+
+<p> Monte Carlo and Parity search each have a pair of fields: a number (random games per move, or the search depth, 6 by default) or a number of seconds per move.   Filling in one field of a pair empties the other.   The button <e>Same as Player 2</e> (in Player 1&rsquo;s menu, and the other way round) copies the other player&rsquo;s kind and settings.
+
+<p> By default Player 1 is human, and Player 2 uses parity search with  5 seconds allocated to each move.
+
+  <H3 class="menu-head" style="--menu: #0193ae">Playing Remotely</H3>
+  <p>You need to have an internet connection to play over the net.   Both players must be human.  One of you will act as <e>host</e>, the other as <e>guest</e>.  To play follow these steps:
+  <OL>
+    <LI>Both of you click on the <e>Net</e> menu.</LI>
+    <LI>As host, click on <e>Host a game</e>.   You will see a three-digit integer appear in the white <e>Code</e> field.   Communicate that number to the guest.</LI>
+    <LI>As guest, enter the code into your text field and click on <e>Join as guest</e>.</LI>
+
+    <LI>The host is Player 1 and starts the game (<e>New game</e> in the Game menu, or <e>N</e>).   Commence play.</LI>
+
+    </OL>
+
+  <p> Either one of you can leave the game by clicking on <e>Leave</e> in the Net menu.   Each player can use different settings (size of the drawing area, colors, space making) for their drawing.   After you move, your drawing area shows the <e>Background while computing</e> color (Colors menu) until the other computer has drawn your move.   Either player can undo the last move (<e>U</e>), whoever made it.
+
+  <H3 class="menu-head" style="--menu: #2d6cab">Viewing Options</H3>
+
+
+  <p>The following viewing options, listed by their keyboard shortcuts, are available.
+  <OL>
+    <LI><e>F</e> turn full screen on or off.   Generally speaking, the larger you can make your drawing area, the better</LI>
+    <LI><e>C</e> shows the control polygons.   The curves are piecewise cubic B&eacute;zier curves. </LI>
+    <LI><e>S</e>: Spots are numbered sequentially by indices.  This option turns drawing of the indices on or off.</LI>
+
+    <LI><e>T</e>: Draw the initial seeds (and any seeds added by hand) as triangles (off by default).</LI>
+    <LI><e>G</e> omit the indices of stumps.   They are not participating in new curves (on by default).</LI>
+    <LI><e>H</e> Draw stumps half size, for the same reason (on by default).</LI>
+    <LI><e>Q</e> Show the size of the drawing area in the status row as width x height, in pixels.</LI>
+    </OL>
+
+  <H3 class="menu-head" style="--menu: #4812cf">Settings</H3>
+
+  <p>This menu offers some sliders and options to fine tune the picture you are seeing:
+
+  <OL>
+    <LI><e>Minimum clearance</e> between curves, ranging from 3px to 30px </LI>
+    <LI><e>Comfort distance</e>: curves closer together than this push each other apart; beyond it they hardly affect each other.   It is the largest distance at which the system still cares how close curves come.   It ranges from 10 px to 64 px. </LI>
+    <LI><e>Room vs length</e>: The system tries to make the curves short and also so that enough room is left for more curves. This slider, ranging from 0.1 to 10, lets you adjust the relative importance of these targets.  </LI>
+    <LI><e>Spot size</e>, the diameter of the spots, ranging from 6 to 36 px.   Curves keep clear of the spots, so a change applies to moves made from then on.</LI>
+    <LI><e>Curve thickness</e>, adjusts the thickness of curves, ranging from 1.25 to 7.5 px.</LI>
+    <LI><e>Index size</e> adjusts the size of the spot indices, ranging from 6.5 to 39 px. </LI>
+    <LI><e>Animate</e>, on by default, graphically shows each new curve settling into its shape, and the process of making room</LI>
+    <LI><e>Click to connect</e>, on by default, makes it possible to define new curves by clicking on the spots.</LI>
+
+    </OL>
+
+
+  <H3 class="menu-head" style="--menu: #633f63">Making Room</H3>
+
+  <p>The system offers four options to make room or generally redraw the position:
+
+  <OL>
+
+<LI><e>M</E> adjusts the location of spots and the routing of nearby curves for a specific move.</LI>
+<LI><e>A</e> leaves the initial seeds (and any seeds added by hand) in place, but moves other spots and redraws curves.</LI>
+<LI><e>R</e> similar to A, but also moves the initial seeds.</LI>
+<LI><e>Z</e> redraws the position from scratch.</LI>
+  </OL>
+
+<p>  By default, the M and R options are invoked automatically for both human and AI players.   For AI players, the Z option is also invoked automatically.  The checkboxes can be used to turn the automatic options on and off.   When a move does not fit, the checked options are tried in the order M, A, R, Z, each once, until the move can be drawn; if none succeeds the game stops and the status row says so.   The keys <e>M</e>, <e>A</e>, <e>R</e> and <e>Z</e> can also be pressed at any time, and the space bar stops A, R or Z.
+
+  <p> Selecting <e>Heroic Mode</e> turns the human space making options off and draws curves as they are drawn by a human player.   
+  <H3 class="menu-head" style="--menu: #fc2dfc">Colors</H3>
+
+<p>The submenus let you change the colors of the various parts of the drawing.   You can save your favorite scheme by setting up a game as you like and download it as a JSON file, using the File menu.   To start afresh from the same position import the position, again using the File menu.
+
+  <H3 class="menu-head" style="--menu: #ac6488">Importing and Exporting</H3>
+  
+  <p>You can download various records of your game, and import a saved game, with these options:
+  <OL>
+    <LI><e>Load game</e> lets you import a JSON file with a saved game. It opens the regular file selection menu on your computer.</LI>
+    <LI><e>Save picture as PNG</e> puts a PNG image of the current position into your download directory, so you can send it to your friends.</LI>
+    <LI><e>Save game as JSON</e> lets you save your current status (including all selected options) for reloading at a later stage.</LI>
+    <LI><e>Save log as text</e> downloads the program&rsquo;s log of the session &mdash; every move, the computer&rsquo;s thinking, room made or refused &mdash; as a text file.   Its primary use is for debugging.</LI>
+    <LI><e>Save the log of the last session</e> is another debugging tool.  The system keeps and updates a copy of the current log in the browser&rsquo;s storage.  If the page crashes you can start a new Sprouts session and immediately select this option.  </lI>
+
+<LI><e>Save position as text</e> downloads a text file that describes the current topological position.</LI>
+
+    </OL>
+
+ <H2>The Status Row</H2>
+
+<p> The row under the menus tells you what is going on and what you can do next.   During a game every message starts with the number of the move being made, for example <e>Move 12:</e>.   Messages too long for the row can be scrolled sideways with the mouse wheel.   The players are named by the colors of their curves.
+
+<p> These are the messages you will see most often:
+<OL>
+<LI><e>Welcome to Sprouts.   Drawing area is 1090 x 607</e>: the size of the drawing area in pixels, shown when the game starts, whenever the size changes, and when you type <e>Q</e>.</LI>
+<LI><e>Blue to move   L=9  m=2  M=7  K=1</e>: whose turn it is, and four numbers about the position: <e>L</e> the lives left on the board, <e>m</e> and <e>M</e> the smallest and the largest number of moves the game can still last, and <e>K</e> the number of survivors.   When $m = M$ the length of the game is settled, however it is played.</LI>
+<LI><e>Click the destination spot (4 possible) &mdash; right-click marks spots to enclose &mdash; click just outside a spot to choose its side &mdash; Space cancels</e>: after the first click of a move.   It also lists the spots marked to be enclosed, and destinations that can be reached in principle but have no room for a curve.</LI>
+<LI><e>Green (Parity search) is thinking &hellip;</e>: the computer&rsquo;s progress.   When its search has seen the whole rest of the game, the message after its move adds a verdict: <e>Green has a winning position</e> or <e>Green is lost against best play</e>.</LI>
+<LI><e>No room to reach spot 7 &hellip;</e>: a move that does not fit.   The message offers the ways to make room (M, A, R, Z), which are also tried automatically as the Room menu says; <e>Still no room &hellip;</e> means none of them worked.</LI>
+<LI><e>Blue can&rsquo;t move &mdash; Green wins.   Game over.</e></LI>
+<LI><e>Click to place the spots (3 so far), then press Enter or N to start</e>: when you place the spots by hand.</LI>
+<LI>Over the net: <e>Blue (you) to move</e> or <e>Blue (the other computer) to move</e>, <e>Your move is being drawn on the other computer&hellip;</e>, and, for the guest, <e>Waiting for the host to start a game&hellip;</e></LI>
+</OL>
+
+<p> Warnings and refusals are written in yellow, and are also recorded in the log (File menu).
+
+<p> The browser tab&rsquo;s title (shown in the title bar when the game runs in a window of its own) carries the same numbers, and two more: for example <e>Sprouts v. 159   12: P = 5  L = 9  m = 2  M = 7  K = 1  R = 4</e>, where 12 is the number of the move to be made, <e>P</e> the number of initial seeds (and seeds added by hand), and <e>R</e> the number of regions, the outside included.
+
+ 
+<H2>Keyboard Commands</H2>
+
+<p> These are the keyboard commands and mouse actions, as in the list the game shows when you type <e>K</e> (Help menu, <e>Keyboard Commands</e>).   Letters can be typed in either case.
+
+<div class="keys-cols">
+  <table>
+    <tr><th colspan="2">Game</th></tr>
+    <tr><td><kbd>1</kbd> &hellip; <kbd>9</kbd></td><td>New game with that many spots, in the Game menu&rsquo;s layout</td></tr>
+    <tr><td><kbd>0</kbd></td><td>Blank window: place the spots by clicking</td></tr>
+    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them)</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Start the game from the spots placed; draw a move the shortest way when its marks cannot be applied</td></tr>
+    <tr><td><kbd>U</kbd></td><td>Undo the last move</td></tr>
+    <tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Back / forward through the game one move at a time</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Stop what is under way: the computer&rsquo;s thinking, A, R, Z, making room, finding a way, a move begun by clicking. Between two computers: stop the game after the move being drawn; again: continue</td></tr>
+    <tr><td><kbd>X</kbd></td><td>Exit (close the page)</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">Drawing</th></tr>
+    <tr><td><kbd>M</kbd></td><td>Make room for a move that does not fit</td></tr>
+    <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
+    <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
+    <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">View</th></tr>
+    <tr><td><kbd>F</kbd></td><td>Full screen</td></tr>
+    <tr><td><kbd>C</kbd></td><td>Control polygons</td></tr>
+    <tr><td><kbd>S</kbd></td><td>Spot indices</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Initial seeds as triangles</td></tr>
+    <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>
+    <tr><td><kbd>H</kbd></td><td>Stumps half size</td></tr>
+    <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">File and Help</th></tr>
+    <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
+    <tr><td><kbd>K</kbd> or <kbd>?</kbd></td><td>This list</td></tr>
+  </table>
+  <table>
+    <tr><th colspan="2">With the mouse</th></tr>
+    <tr><td>Click, click</td><td>Connect two spots (Click to connect, Settings menu)</td></tr>
+    <tr><td>Drag</td><td>Draw a curve by hand from spot to spot</td></tr>
+    <tr><td>Right-click or <kbd>Shift</kbd>+click</td><td>After the first click: mark spots the curve is to enclose</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a seed where one fits</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+drag</td><td>Move a spot</td></tr>
+  </table>
+</div>
+
  <H2>AI Assisted Programming</H2>
 
-<p> I have been programming computers for more than 50 years, and this project has been different from all preceding ones.   My first project after retiring in July of 2025 consisted of writing a <a href="https://peteralfeld.github.io/home/financial/FI.html"> financial calculator</a> in a language new to me, i.e., <a href="https://www.javascript.com/">JavaScript</a>.   I proceeded as I had many times before: I bought a book on JavaScript, read much of it,  and proceeded to write the code all by myself, debugging it laboriously as I went on.  In subsequent projects, I relied increasingly on AI help, first from <a href="https://gemini.google.com/"> Gemini</a>, and then from <a href="https://claude.ai/"> Claude</a>.   About 20 years ago, I had tried to program Sprouts in <a href="https://www.java.com/en/">Java</a>.   Then, I got to a stage where you could draw curves by hand, and two players could play a game on the same computer, taking turns. There was no curve smoothing, space making, or AI play. I gave up eventually because the project was just too difficult, for me at that time.  Developing this new software (comprising more than 9,000 lines of JavaScript code so far) to the stage that everything works and I am writing this User's Guide took just two weeks!   Moreover, except for a couple of times when I was curious, I never looked at the code!   At each stage I just told Claude what the software should do, and Claude wrote it, tested it, and debugged it.   The world of computer programming has changed profoundly!   Moreover, it continues to change extremely rapidly.  Claude of October 2026 is vastly more powerful than Gemini of August 2025, or even Claude before the release of Claude Fable in June of 2026, or Claude Fable 5.1 in September, 2026.   Beyond coding, I had many conversations with Claude about algorithmic details, and Claude was helpful in writing the documentation.   I wrote this User's Guide and Claude helped with formatting, and checking for completeness and correctness.   By contrast, Claude wrote the <a href="technical.html">technical description</a> almost entirely by itself and I edited it only in minor ways, with a view towards clarity and appropriate emphasis.  There is of course a great deal of discussion currently of where AI is taking us. I don't know where we are going, but we are going somewhere awfully fast! 
+<p> I have been programming computers for more than 50 years, and this project has been different from all preceding ones.   My first project after retiring in July of 2025 consisted of writing a <a href="https://peteralfeld.github.io/home/financial/FI.html"> financial calculator</a> in a language new to me, i.e., <a href="https://www.javascript.com/">JavaScript</a>.   I proceeded as I had many times before: I bought a book on JavaScript, read much of it,  and proceeded to write the code all by myself, debugging it laboriously as I went on.  In subsequent projects, I relied increasingly on AI help, first from <a href="https://gemini.google.com/"> Gemini</a>, and then from <a href="https://claude.ai/"> Claude</a>.   About 20 years ago, I had tried to program Sprouts in <a href="https://www.java.com/en/">Java</a>.   Then, I got to a stage where you could draw curves by hand, and two players could play a game on the same computer, taking turns. There was no curve smoothing, space making, or AI play. I gave up eventually because the project was just too difficult, for me at that time.  Developing this new software (comprising more than 9,000 lines of JavaScript code so far) to the stage that everything works and I am writing this User's Guide took just two weeks!   Moreover, except for a couple of times when I was curious, I never looked at the code!   At each stage I just told Claude what the software should do, and Claude wrote it, tested it, and debugged it.   The world of computer programming has changed profoundly!   Moreover, it continues to change extremely rapidly.  Claude of October 2026 is vastly more powerful than Gemini of August 2025, or even Claude before the release of Claude Fable in June of 2026, or Claude Fable 5.1 in September 2026.   Beyond coding, I had many conversations with Claude about algorithmic details, and Claude was helpful in writing the documentation.   I wrote this User's Guide and Claude helped with formatting, and checking for completeness and correctness.   By contrast, Claude wrote the <a href="technical.html">technical description</a> almost entirely by itself and I edited it only in minor ways, with a view towards clarity and appropriate emphasis.  There is of course a great deal of discussion currently of where AI is taking us. I don't know where we are going, but we are going somewhere awfully fast! 
 
+<script>
+/* The Table of Contents and the section numbers, made from the headings after it (h1, h2, h3): the
+   hierarchy follows the heading levels, so a heading added to the page is listed and numbered by itself.
+   Each heading gets an id from its text (unless it has one) and an arrow back to the table. */
+(function () {
+  var toc = document.getElementById('toc'), list = document.getElementById('toc-list');
+  var heads = [].filter.call(document.querySelectorAll('h1, h2, h3'), function (h) {
+    return h !== toc && (toc.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+  if (!heads.length) return;
+  var levels = heads.map(function (h) { return Number(h.tagName.charAt(1)); }), top = Math.min.apply(null, levels);
+  var count = [0, 0, 0], lists = [list], lastLi = [];
+  heads.forEach(function (h, k) {
+    var d = levels[k] - top;
+    while (d > 0 && !lastLi[d - 1]) d--;           // (a subheading with no heading above it: one level up)
+    count[d]++; for (var j = d + 1; j < count.length; j++) count[j] = 0;
+    var num = count.slice(0, d + 1).join('.') + '.', text = h.textContent.replace(/\s+/g, ' ').trim();
+    if (!h.id) {
+      var base = 'sec-' + text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), id = base, n = 2;
+      while (document.getElementById(id)) id = base + '-' + n++;
+      h.id = id;
+    }
+    h.insertBefore(document.createTextNode(num + ' '), h.firstChild);
+    var back = document.createElement('a');
+    back.href = '#toc'; back.className = 'to-top'; back.title = 'Back to the Table of Contents'; back.innerHTML = '&#8679;';
+    h.appendChild(back);
+    if (!lists[d]) { lists[d] = document.createElement('ul'); lastLi[d - 1].appendChild(lists[d]); }
+    var li = document.createElement('li'), a = document.createElement('a');
+    a.href = '#' + h.id; a.textContent = num + ' ' + text;
+    li.appendChild(a); lists[d].appendChild(li);
+    lastLi[d] = li; lists.length = d + 1; lastLi.length = d + 1;
+  });
+})();
+</script>
 </body>
 </html>

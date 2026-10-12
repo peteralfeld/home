@@ -30,7 +30,7 @@
   var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, shiftSpots: true, shiftCurves: true, adjustAfter: false, redrawAfter: false, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 1.9, lineScale: 1.8, numberScale: 1.6 };   // the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06)
+  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false }, autoAI: { M: true, A: false, R: true, Z: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 1.9, lineScale: 1.8, numberScale: 1.6 };   // the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -57,18 +57,19 @@
   /* The curve and spot menus: the twelve (white text) and the eight. */
   var COLOURS = PALETTE.map(function (c) { return [c[0], c[1], '#ffffff']; }).concat(EXTRA);
   /* Backgrounds: white and the twelve pastels. [name, colour, its text colour in the menu] */
-  var BACKGROUNDS = [['White', '#ffffff', '#000000']].concat(PALETTE.map(function (c) { return ['Pale ' + c[0].toLowerCase(), c[2], c[1]]; }));
+  var BACKGROUNDS = [['White', '#ffffff', '#000000']].concat(PALETTE.map(function (c) { return ['Pale ' + c[0].toLowerCase(), c[2], c[1]]; }),
+                                                         [['Medium gray', '#969696', '#000000']]);   // (v155, Peter: rgb(150,150,150), the default while computing)
   /* Spots are coloured by degree: how many curve ends are attached (0–3). */
   var COLOUR_ROLES = [
     ['background', 'Background'], ['busy', 'Background while computing'], ['player1', 'Player 1 curves'], ['player2', 'Player 2 curves'],
-    ['deg0', 'Spots with 0 curves'], ['deg1', 'Spots with 1 curve'], ['deg2', 'Spots with 2 curves'], ['deg3', 'Spots with 3 curves']
+    ['deg0', 'Seeds'], ['deg1', 'Sprouts'], ['deg2', 'Links'], ['deg3', 'Stumps']   // (v158: the manual's terms for degree 0–3)
   ];
   /* defaults from Peter's game sprouts-2026-10-02T14-49-06.json (v146: Player 2 Green, spots with 1 curve Orange) */
-  var colours = { background: '#e0f9ff', busy: '#ffffff', player1: '#0000ff', player2: '#008000',
+  var colours = { background: '#e0f9ff', busy: '#969696', player1: '#0000ff', player2: '#008000',
                   deg0: '#ac6488', deg1: '#fc6300', deg2: '#fc2dfc', deg3: '#666666' };
   /* While the program is computing (the computer's turn, A, R, Z, making room) the background is
-     Colors → Background while computing (v135, Peter; White by default — it was light gray #c8c8c8
-     from v59/v89, which the background list does not offer). */
+     Colors → Background while computing (v135, Peter; Medium gray #969696 by default since v155 — White
+     v135–v154, light gray #c8c8c8 from v59/v89). */
   var roomBusy = false;  // M or the automatic room-making is at work (makeRoom → makeRoomNow)
   var routeBusy = false; // a marked route is being found in the worker (v139, routeAsync)
   /* Busy (Background while computing): A/R/Z, room-making, the other computer — and the computer's whole turn
@@ -163,8 +164,8 @@
      and parity search to come, with their trials / depth). Not saved with a game. */
   var players = { 1: { kind: 'human', trials: 100, depth: 6, mcSeconds: null, parSeconds: null }, 2: { kind: 'parity', trials: 100, depth: 6, mcSeconds: null, parSeconds: 5 } };   // (v73: seconds per move instead of games / depth, when set; v74 defaults, Peter: Human vs Parity search with 5 s)
   var ai = null;         // the computer's move under way: see aiMove
-  var aiFresh = null;    // the same for the picture drawn afresh with the computer's move (Z, v114: 2b in aiNext)
-  var aiRedrew = null;   // the position (move count and ai.js gameKey) for which the computer last ran R itself because its best moves could not be drawn — once per position (v108: was the move count alone, which a new game or an undo could meet again)
+  var aiResume = null;   // the computer's move (or the other computer's) waiting for A or R of its ladder to finish: see aiClimb
+  var aiStopped = null;  // where the computer's ladder ran out: { here, key, mx, my, text, verdict } — it then tries that move again once, without the ladder (aiMove)
   var AI_DELAY = 300;    // ms between one move's end and the computer's next, so that a move can be seen (the one knob of the AI's pace)
   /* Workers (v71): the pool of Web Workers the searching players use — as many as the machine has by default (menu Workers). */
   var workersMax = Math.max(1, navigator.hardwareConcurrency || 1), workersWanted = workersMax, pool = [], jobs = {}, jobId = 0;
@@ -385,7 +386,7 @@
       ctx.fillStyle = shownColour(i);
       if (isMarked(i)) {                         // marked to be enclosed: drawn as a square
         ctx.fillRect(sp.x - 1.1 * sr, sp.y - 1.1 * sr, 2.2 * sr, 2.2 * sr);
-      } else if (orig[i]) {                      // Settings → Original spots as triangles (v98): the disc's area, point up; hollow where the disc would be a ring
+      } else if (orig[i]) {                      // View → Initial seeds as triangles (v98; named so v159): the disc's area, point up; hollow where the disc would be a ring
         var tr = TRI * sr;
         triangle(sp.x, sp.y, tr); ctx.fill();
         if (stuck[i]) { triangle(sp.x, sp.y, Math.max(0, tr - 2 * LINE_W)); ctx.fillStyle = background(); ctx.fill(); }
@@ -400,7 +401,7 @@
       ctx.font = 'bold ' + NUMBER_PX + 'px Calibri, "Segoe UI", sans-serif';
       ctx.textBaseline = 'bottom';
       for (i = 0; i < game.spots.length; i++) {
-        if (!route.deadNumbers && game.spots[i].deg >= 3) continue;   // Settings → no numbers on spots with no lives (G, v133; on by default, over S)
+        if (!route.deadNumbers && game.spots[i].deg >= 3) continue;   // View → No indices at stumps (G, v133; named so v157; on by default, over S)
         var r = spotRadius(i), label = String(i + 1), lx = game.spots[i].x + r + 2, ly = game.spots[i].y - r + 2;
         ctx.lineWidth = 3 * NUMBER_PX / NUMBER_PX0; ctx.strokeStyle = background(); ctx.strokeText(label, lx, ly);
         ctx.fillStyle = shownColour(i); ctx.fillText(label, lx, ly);
@@ -660,6 +661,7 @@
       return;
     }
     if (armed) {                                  // second click of click-to-connect: the nearest possible destination
+      climb = null;                               // (a click starts the ladder anew)
       var any = nearestSpot(p);
       if (any === armed.a && !armed.targets[any]) { disarm('Cancelled.'); return; }
       if (armed.blocked[any]) { explainBlocked(any); return; }   // the rules allow it, the room does not: say so
@@ -667,7 +669,7 @@
       if (t >= 0) { armed.bside = t !== armed.a ? sideOfClick(t, p) : null; armed.bsideDir = armed.bside ? [p[0] - game.spots[t].x, p[1] - game.spots[t].y] : null; connectTo(t); } else disarm('Cancelled.');   // (v85: a click just outside the spot picks the side it is reached from)
       return;
     }
-    marksUsed = null; pendingRoom = null; roomSnapshot = false;
+    marksUsed = null; pendingRoom = null; roomSnapshot = false; climb = null;
     var i = nearestSpot(p, canStart);
     if (i < 0) { say('No spot has a free connection.', true); return; }
     stroke = { from: i, pts: [p], side: null, targets: {}, planners: {}, dest: -1, loop: false, forgiving: true };   // (forgiving: a hand press may get the other side, v129)
@@ -742,12 +744,16 @@
   document.addEventListener('keydown', function (e) {
     if (e.key !== ' ' || e.ctrlKey || e.altKey || e.metaKey) return;
     var tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (tag === 'SELECT' || tag === 'TEXTAREA' || (tag === 'INPUT' && /^(text|number)$/.test(e.target.type))) return;   // (v158: a checkbox clicked last is not flipped by Space)
     e.preventDefault();
     if (!keysOverlay.hidden) { keysOverlay.hidden = true; return; }   // (v142) Space closes the keyboard list, and does nothing else
-    if (aiHalt && !ai && !relaying && !band && !roomBusy && !routeBusy) { aiHalt = false; log('Continued (Space).'); maybeAI(); return; }   // a stopped game between two computers goes on
+    if (aiHalt && !ai && !aiResume && !relaying && !band && !roomBusy && !routeBusy) { aiHalt = false; log('Continued (Space).'); maybeAI(); return; }   // a stopped game between two computers goes on
     if (bothAI() && game.phase === 'play' && !aiHalt) { aiHalt = true; log('Stopped (Space).'); }   // (v125) set first: finishRelaying below calls maybeAI
-    if (relaying) { finishRelaying(false); return; }
+    if (relaying) {                                // (v152: and no further rung of a ladder — the move is tried once more in what is there)
+      if (climb) climb.stopped = true;
+      if (aiResume) aiResume.halt = true;
+      finishRelaying(false); return;
+    }
     if (stopRoom()) return;
     if (stopRoute()) return;
     if (armed) disarm('Cancelled.');
@@ -888,7 +894,7 @@
 
   /* A destination the rules allow but the room does not (Peter, 9/23): say
      how much room the best way there has, against the minimum clearance, and
-     offer M to make room. Stays armed. */
+     offer M to make room (and climb the Room menu's ladder: roomWanted). Stays armed. */
   function explainBlocked(b) {
     var B = game.spots[b], rm = armed.planner ? armed.planner.room([B.x, B.y]) : null;
     pendingRoom = { a: armed.a, b: b, room: rm };
@@ -897,7 +903,7 @@
     say('No room to reach spot ' + (b + 1) + ': ' + why + '.' + roomOffer() + '   —   or click another spot', true,
         'No room to reach spot ' + (b + 1) + ': ' + detail + '.');
     draw();
-    if (route.shiftSpots || route.shiftCurves) makeRoom(true);   // Room → Shift spots / curves automatically
+    roomWanted();
   }
 
   /* A marked move for which no way round the marks was found at the minimum
@@ -905,7 +911,7 @@
      between the strands of two interleaved loops): is it the room or the
      topology? The same search at lower clearances (room.js lowerClearance:
      halving from d0/2) tells: found → no room, offer M as for a blocked
-     destination (and make room at once if a Room → Shift option is on);
+     destination (and climb the Room menu's ladder: roomWanted);
      not found even so → the marks cannot be enclosed from this side. */
   function explainMarkedNoRoom(b, hushed, then) {   // (v139: the search in the worker; then(room-making started) when done — hushed: the computer's)
     var ar = armed, g0 = game;
@@ -932,7 +938,7 @@
         'No room to go round the marked spots: the best way round them keeps only ' + Math.max(0, Math.round(low.t.rmin)) +
         ' px clear of the curves, and the minimum clearance is ' + route.d0 + ' px.');
     draw();
-    if (route.shiftSpots || route.shiftCurves) makeRoom(true);
+    roomWanted();
   }
 
   /* ---------------- adjusting (A) and rearranging (R) the whole drawing ----------------
@@ -946,24 +952,24 @@
      drawn as they go, until converged (a second press changes nothing); Space
      stops early and keeps what is there. Then every curve
      becomes a smooth spline (no corners) and is certified, and the position
-     must be unchanged; otherwise nothing changes. Its own undo step — or,
-     adjusting after a move (Room → Adjust the drawing after each move), part
-     of the move's. Logged.
+     must be unchanged; otherwise nothing changes. Its own undo step. Logged.
+     (v152: the Room menu's "after each move" options are gone — A, R and Z run
+     by hand or as rungs of the ladder, climbOn and aiClimb.)
      Room → Draw the picture afresh (Z, v114; Peter 9/30: "a fundamentally new option … with A and R
      we have driven the polishing roughly as far as it can go"): the picture is laid out ANEW from
      the position alone (layout.js: the combinatorial map made a triangulation and drawn on a grid,
      no reference to the present picture), then the same descent from that start (redraw.js
-     o.tight). With `fresh` = { mv, player, who, text, verdict, onFail }, the position drawn is the
-     one AFTER the move mv (ai.js form) — the computer's way out when its move cannot be drawn even
-     after R (aiNext 2b): the move is then made in the new picture without the router.
+     o.tight). With `fresh` = { a, mv, player, text, onFail }, the position drawn is the
+     one AFTER the move mv (ai.js form) — the computer's Z rung (aiClimb): the move is then made in
+     the new picture without the router, and aiCommitted checks it as any other.
      With workers (v118) Z draws the position once for EVERY region as the outer one, side by side
      (freshParallel), and keeps the drawing with the most room; without them (a page opened as a
      file) only with the present outside, on the page's own thread as A and R. */
-  function relayDrawing(kind, after, fresh) {
+  function relayDrawing(kind, fresh) {
     if (relaying || band || game.phase === 'place' || !game.spots.length || (kind === 'adjust' && !game.edges.length)) return;
     /* A, R or Z while a move waits for room (v50, Peter 9/24: offer R when the move cannot be made otherwise; A too, v136):
        redraw, then try that move again — from the same region, the marks kept */
-    var retry = !after && !fresh && pendingRoom && armed ?   // (A too since v136, Peter)
+    var retry = !fresh && pendingRoom && armed ?   // (A too since v136, Peter)
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2 }, from = game;
@@ -971,7 +977,7 @@
       o.tight = true; o.keepKnots = true;
       ensurePool();                               // (finds out whether workers can be had at all)
       if (!noWorkers) {
-        relaying = { kind: kind, after: !!after, st: null, start: JSON.stringify(game), t0: Date.now(),
+        relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(),
                      before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
         freshParallel(relaying, o);
         say(relayWord() + '…   Space stops');
@@ -981,7 +987,7 @@
       from = Ly.freshGame(game, fresh ? fresh.mv : null, fresh ? fresh.player : game.player, -1, route.D);   // (the present outside stays outside)
       if (!from) return;
     }
-    relaying = { kind: kind, after: !!after, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(),
+    relaying = { kind: kind, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(),
                  before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
     say(relayWord() + '…   Space stops');
     draw();                                       // the gray background at once, also when not animated
@@ -1132,14 +1138,14 @@
     game = JSON.parse(rl.start);
     if (r.error) {
       say(not + r.error, true, not + r.error + (par ? '' : ' (least clearance ' + r.clearance.toFixed(1) + ' px)') + (par && par.summary ? '\n    ' + par.summary : '')); draw();
-      if (rl.fresh) rl.fresh.onFail(); else afterRelay();
+      if (rl.fresh) rl.fresh.onFail(); else if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
       return;
     }
-    if (!rl.after) snapshot(adjust ? 'drawing adjusted' : fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
+    snapshot(adjust ? 'drawing adjusted' : fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
     game = r.game;
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
     var what = adjust ? 'Adjusted the drawing' : fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing';
-    log(what + (rl.after ? ' after move ' + game.moves : '') +
+    log(what +
         ((par ? par.done === par.order.length || par.early : st.done) ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s' +
         (par ? ' (' + (par.early ? 'the first layout drawn with at least the room before, after ' + par.done + ' of ' + par.order.length : par.done + ' of ' + par.order.length + ' layouts') +
@@ -1147,28 +1153,38 @@
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
                (r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
          fresh && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
-        (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a spot with three curves' :
+        (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
     if (par) log('    The layouts (each with another region outside), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
     if (rl.fresh) {                               // the computer's move, made in the new picture (the two curves are R's, certified)
       var f = rl.fresh;
       marksUsed = null; note = null; browsing = false; redoList = [];   // (the router's leftovers; a move ends browsing, as in commitMove)
+      ai = f.a; ai.fresh = true;                  // (v152: aiCommitted checks it, as any move of the computer's — and the other computer's is not sent back)
       /* the log describes the move by where its spot lies in the picture BEFORE it — here the new
          picture without the move (a drawing of the position before), not the old picture */
       var before = JSON.parse(JSON.stringify(game));
       before.spots.pop(); before.edges.length -= 2; before.spots[f.mv.x].deg--; before.spots[f.mv.y].deg--; before.moves--; before.player = f.player;
       afterMoveMade({ a: f.mv.x, b: f.mv.y }, 'drawn afresh, ' + fmt(r.clearance), before);
-      if (f.verdict && game.phase !== 'over') { log('    ' + f.who + ' ' + f.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + f.who + ' ' + f.verdict; }
-      log('    ' + f.who + ' intended ' + f.text + ': drawn as intended, in a picture drawn afresh.');
       return;
     }
     sayTurn(); draw();
-    statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : fresh ? 'drawn afresh' : 'rearranged') + (rl.after ? '' : '   (U undoes it)');
+    statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
     if (rl.retry) retryMove(rl.retry); else afterRelay();
   }
-  /* After A or R: the other computer's move that waited for the rearranging (v79), else the computer's turn. */
-  function afterRelay() {
-    if (netRetry) { var r = netRetry; netRetry = null; netDraw(r.msg, r.done); return; }
+  /* After A, R or Z: the computer's move (or the other computer's) that waited for it as a rung of its
+     ladder (aiResume: tried again in the new drawing, or on to the next rung if the drawing could not be
+     changed — `failed`), else the computer's turn. */
+  function afterRelay(failed) {
+    var a = aiResume;
+    if (a) {
+      aiResume = null;
+      if (!a.remote && (!isAI(a.player) || game.player !== a.player || game.moves !== a.atMove)) { maybeAI(); return; }   // (set to Human meanwhile, or the game changed)
+      ai = a;
+      if (a.halt) a.next = a.rungs.length;        // (Space during the rung: the move tried once more, no further rung)
+      if (failed) { a.failed.push(a.text + ' (the drawing could not be changed)'); aiClimb(a); return; }
+      aiAgain(a);
+      return;
+    }
     maybeAI();
   }
   /* The move that waited for room, tried again after a redraw: A armed again
@@ -1176,7 +1192,7 @@
      identity, the redraw keeps the position), the marks found again by their
      spots, then B as if clicked. The redraw and the move are one undo step,
      as when room is made (roomSnapshot). */
-  function retryMove(rt) {
+  function retryMove(rt, failed) {   // (failed, v152: the redraw failed — the move armed again, on to the next rung)
     var a = rt.a, A = game.spots[a], pa = [A.x, A.y], an = E.analyse(game.spots, game.edges), p = pa;
     if (A.deg === 2) {                             // a point just off A in that region (12 px, like the side probes)
       p = null;
@@ -1192,9 +1208,8 @@
     if (!arm(st)) return;
     var re = armFor(game, a, armed.start, rt.ar, armed.obs);
     if (re && re.region.key === armed.region.key) { armed.marks = re.marks; armed.arcMarks = re.arcMarks; armed.markedSpots = rt.ar.markedSpots; }
-    if (!armed.targets[rt.b]) {
-      say('Redrawn, but there is still no room for ' + (a + 1) + ' → ' + (rt.b + 1) + '.   U undoes the redrawing', true); armed = null; draw(); return;
-    }
+    if (failed) { pendingRoom = { a: a, b: rt.b, room: null }; draw(); climbOn(); return; }
+    if (!armed.targets[rt.b]) { log('Redrawn, but there is still no room for ' + (a + 1) + ' → ' + (rt.b + 1) + '.'); explainBlocked(rt.b); return; }   // (v152: and the next rung)
     roomSnapshot = true;                           // (finishBand takes no snapshot of its own; one U undoes both)
     connectTo(rt.b);
   }
@@ -1383,10 +1398,49 @@
      a few seconds, so the status line says so first, and the background turns
      gray (v65): the work starts after the next frame is painted (a timeout
      from inside requestAnimationFrame runs after that frame's paint). */
-  /* What a refusal for lack of room offers: M, or in Heroic mode (no local
-     room-making, v68) R, which rearranges and tries the move again. */
-  function roomOffer() { return route.heroic ? '   A, R or Z: redraw and try again' : '   M: make room'; }
-  /* Making room (M, or at once after a refusal for lack of room when Room → Shift … is on): in a
+  /* What a refusal for lack of room offers by hand: M (not in Heroic mode, v68: no local room-making), A, R, Z. */
+  function roomOffer() { return route.heroic ? '   A, R or Z: redraw and try again' : '   M: make room   —   A, R or Z: redraw and try again'; }
+  /* ---- THE LADDER (v152, Peter 10/7) ----
+     The four ways of making room for a move that does not fit, in increasing complexity: M (slide spots,
+     push curves: makeRoom), A (adjust the drawing), R (rearrange it), Z (draw the picture afresh). The Room
+     menu says, separately for a human's moves and the computer's (route.autoHuman, route.autoAI), which of
+     them are used AUTOMATICALLY: when a move is refused for lack of room, the next one switched on is
+     run, then the move is tried again — each at most once for the move, in that order. When those switched
+     on are used up, it stops and says so; the move stays armed, and M, A, R and Z by hand still try it
+     again (then without the automatic ones). Heroic switches the human's off (and the computer's M: the
+     curves drawn by hand have corners, which moving curves cannot handle). The computer's ladder: aiClimb. */
+  var LADDER = ['M', 'A', 'R', 'Z'];
+  var LADDER_NAME = { M: 'making room', A: 'adjusting', R: 'rearranging', Z: 'drawing afresh' };
+  var climb = null;      // the human's ladder for the move waiting for room: { a, b, moves, next (index into LADDER), used, stopped } — new for every click on a destination
+  function ladderText(used) { return used.map(function (k) { return LADDER_NAME[k] + ' (' + k + ')'; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
+  /* A refusal for lack of room, the move armed again (armed, pendingRoom): the computer's move makes room
+     here if its M is on (once for the move: aiTry's first round — its other rungs are aiClimb's); a human's
+     move climbs the ladder. */
+  function roomWanted() {
+    if (ai) { if (ai.useM && !ai.mDone) { ai.mDone = true; ai.used.push('M'); makeRoom(); } return; }
+    climbOn();
+  }
+  function climbOn() {
+    if (!armed || !pendingRoom || route.heroic) return;
+    var a = armed.a, b = pendingRoom.b;
+    if (!climb || climb.a !== a || climb.b !== b || climb.moves !== game.moves) climb = { a: a, b: b, moves: game.moves, next: 0, used: [] };
+    if (climb.stopped) return;                     // (used up, or stopped with Space: only by hand now)
+    while (climb.next < LADDER.length) {
+      var k = LADDER[climb.next++];
+      if (!route.autoHuman[k]) continue;
+      climb.used.push(k);
+      log('No room for ' + (a + 1) + ' → ' + (b + 1) + ': ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
+      if (k === 'M') { makeRoom(); if (roomBusy) return; continue; }
+      relayDrawing(k === 'A' ? 'adjust' : k === 'R' ? 'redraw' : 'fresh');
+      if (relaying) return;
+      if (!armed) { climb.stopped = true; return; }   // (Z could not lay the position out: it said why)
+    }
+    climb.stopped = true;
+    if (!climb.used.length) return;                // (none switched on: the refusal's own message stands)
+    say('Still no room for ' + (a + 1) + ' → ' + (b + 1) + ', even after ' + ladderText(climb.used) + '.' + roomOffer().replace(/try again$/, 'try again by hand') + '   —   or click another spot', true);
+    draw();
+  }
+  /* Making room (M by hand, or as the first rung of the ladder — climbOn, roomWanted): in a
      worker since v137 (sprouts-room-worker.js, moves.js roomFor) — it took the page's thread for
      seconds to a minute (Peter's games of 10/1); the page stays responsive meanwhile, gray as busy,
      and Space stops it. Without workers (a page opened as a file) on the page's thread, as before. */
@@ -1439,16 +1493,16 @@
     w.onmessage = null; w.onerror = function (e) { e.preventDefault(); };
     w.terminate();
   }
-  function makeRoom(auto) {
+  function makeRoom() {
     if (route.heroic) { say('Heroic mode: curves and spots are not moved locally.   A, R or Z: redraw' + (pendingRoom && armed ? ' and try again' : ''), true); return; }
     if (!pendingRoom || !armed) { say('Nothing is waiting for room just now.', true); return; }
     say('Making room for ' + (armed.a + 1) + ' → ' + (pendingRoom.b + 1) + '…   Space stops');
-    var ar = armed, pr = pendingRoom, b = pr.b, spots = !auto || route.shiftSpots, curves = !auto || route.shiftCurves;
+    var ar = armed, pr = pendingRoom, b = pr.b;
     var pending = { ghost: pr.ghost || null, clearance: pr.room ? pr.room.clearance : null };
     roomBusy = true; draw();
     var done = function (res) {
       unwatchJob(roomJob); roomJob = null;
-      try { if (armed === ar && pendingRoom === pr) makeRoomNow(res, ar, b, spots, curves); }
+      try { if (armed === ar && pendingRoom === pr) makeRoomNow(res, ar, b); }
       finally { roomBusy = false; draw(); if (!relaying) maybeAI(); }   // (a move made at once, not animated, found roomBusy still set)
     };
     if (!noWorkers) {
@@ -1456,12 +1510,12 @@
         var w = ensureMovesWorker();
         roomJob = { id: ++movesJobs, done: done };
         watchJob(roomJob, 'making room for ' + (ar.a + 1) + ' → ' + (b + 1));
-        w.postMessage({ id: roomJob.id, game: game, route: route, spotR: SPOT_R, job: Mk.jobOf(ar, b), spots: spots, curves: curves, pending: pending });
+        w.postMessage({ id: roomJob.id, game: game, route: route, spotR: SPOT_R, job: Mk.jobOf(ar, b), spots: true, curves: true, pending: pending });
         return;
       } catch (e) { movesWorker = null; unwatchJob(roomJob); roomJob = null; log('No room worker (' + e.message + '): room is made on the page\'s own thread.'); }
     }
     requestAnimationFrame(function () {
-      setTimeout(function () { done(Mk.roomFor(ar, b, spots, curves, pending)); }, 0);
+      setTimeout(function () { done(Mk.roomFor(ar, b, true, true, pending)); }, 0);
     });
   }
   /* Space while room is being made in the worker: the job is dropped (the worker terminated); the
@@ -1470,6 +1524,8 @@
     if (!roomJob) return false;
     dropMovesWorker(); unwatchJob(roomJob); roomJob = null;
     roomBusy = false;
+    if (climb) climb.stopped = true;               // (v152: Space stops the ladder too)
+    if (ai && ai.rungs) ai.next = ai.rungs.length;
     log('Making room stopped (Space).');
     say('Making room stopped.   M tries again — or click another spot', true);
     draw();
@@ -1525,14 +1581,13 @@
   }
   /* The result of roomFor (in the worker or here) applied: the move armed again in the new drawing and
      made — or the refusal said. `ar` is the armed state the room was made for (still armed). */
-  function makeRoomNow(res, ar, b, spots, curves) {
+  function makeRoomNow(res, ar, b) {
     var a = ar.a, g2 = res.fail ? null : res.game, start = res.start, fitted = res.fitted, what = res.what, brief = res.brief, why = res.why;
     if (!g2) {
-      var off = [spots ? null : 'sliding spots', curves ? null : 'moving curves'].filter(Boolean);
-      say('No room made for ' + (a + 1) + ' → ' + (b + 1) + (brief.length ? ': ' + brief.join('; ') : '') + '.' +
-          (off.length ? '   M also tries ' + off.join(' and ') + '.' : '') + '   A, R or Z: redraw and try again', true,
+      say('No room made for ' + (a + 1) + ' → ' + (b + 1) + (brief.length ? ': ' + brief.join('; ') : '') + '.   A, R or Z: redraw and try again', true,
           'No room made for ' + (a + 1) + ' → ' + (b + 1) + ': ' + why.join('; ') + ', minimum clearance ' + route.d0 + ' px.');
       roomSnapshot = false;                        // (after a redraw's retry, the redraw is its own undo step)
+      roomWanted();                                // (the next rung)
       return;
     }
     /* apply: one undo step for making room and the move */
@@ -1562,7 +1617,7 @@
       startRoute(a, b, G.resample(fitted, STEP), ar2.obs);
       return;
     }
-    if (!armed.targets[b]) { say('Room was made, but spot ' + (b + 1) + ' is still out of reach from this side.', true); draw(); return; }
+    if (!armed.targets[b]) { log('Room was made, but spot ' + (b + 1) + ' is still out of reach from this side.'); explainBlocked(b); return; }   // (v152: and the next rung)
     connectTo(b);
   }
 
@@ -1742,32 +1797,42 @@
       /* v39 (Peter, 9/24: 17 → 1 beside the short curve 1-17): the way was found
          but the band could not keep the minimum clearance — a refusal for lack of
          room like a destination that cannot be reached, so arm the move again and
-         offer M (or make room at once, Room → Shift …) — unless room was just made
-         for this very move, which must not go round in circles */
+         offer M, A, R, Z — and climb the ladder (roomWanted; v152: it goes round no
+         circles, each rung is used once for the move) */
       var tr = lastTry; lastTry = null;
-      if (tr && !roomSnapshot) {
-        if (tr.ar) armed = tr.ar; else if (!arm(tr.st)) return reject(msg);
+      if (roomSnapshot) {                         // room was made (or the drawing redrawn) for this very move, and it still does not fit
+        roomSnapshot = false;                     // (what was done stays, as its own undo step)
+        msg += ' (The drawing was changed for it, but not enough: U undoes that.)';
+        if (detail) detail += ' (The drawing was changed for it, but not enough.)';
+      }
+      if (tr && (tr.ar ? (armed = tr.ar) : arm(tr.st))) {
         pendingRoom = { a: mv.a, b: mv.b, room: { clearance: bd.state.rmin } };
         say(msg + roomOffer() + '   —   or click another spot', true, detail);
         draw();
-        if (route.shiftSpots || route.shiftCurves) makeRoom(true);
+        roomWanted();
         return;
-      }
-      if (roomSnapshot) {                        // room was made for this very move, and it still does not fit: offer R (v50)
-        roomSnapshot = false;                     // (the room made stays, as its own undo step)
-        msg += ' (Room was made for it, but not enough: U undoes that.)';
-        if (tr && (tr.ar ? (armed = tr.ar) : arm(tr.st))) {
-          pendingRoom = { a: mv.a, b: mv.b, room: { clearance: bd.state.rmin } };
-          return reject(msg + '   A, R or Z: redraw and try again');
-        }
       }
       return reject(msg);
     }
     var fit = G.fitClamped(G.resample(bd.pts, STEP), bd.dirA, bd.dirB, TOL, { minPiece: 12 });
     var cert = R.certify(mv.obs, mv.ctx, fit.pieces, 0.6 * route.d0);
-    if (!cert.ok) { var again = ai ? '' : ' Try drawing it again.';   // (v147: not said to the computer's moves)
-                    say('The fitted curve came too close to something.' + again, true,
-                        'The fitted curve came too close to something (clearance ' + cert.clearance.toFixed(1) + ' px, fit within ' + fit.err.toFixed(1) + ' px, ' + fit.pieces.length + ' pieces).' + again); draw(); return; }
+    if (!cert.ok) {
+      /* v153 (Peter 10/7): a refusal for lack of room too — the move armed again, M, A, R, Z offered and the
+         ladder climbed (roomWanted), as for the band's refusal above */
+      var tr2 = lastTry; lastTry = null;
+      var made2 = roomSnapshot; roomSnapshot = false;
+      var msg2 = 'The fitted curve came too close to something.' + (made2 ? ' (The drawing was changed for it, but not enough: U undoes that.)' : '');
+      var detail2 = 'The fitted curve came too close to something (clearance ' + cert.clearance.toFixed(1) + ' px, fit within ' + fit.err.toFixed(1) + ' px, ' + fit.pieces.length + ' pieces).' + (made2 ? ' (The drawing was changed for it, but not enough.)' : '');
+      if (tr2 && (tr2.ar ? (armed = tr2.ar) : arm(tr2.st))) {
+        pendingRoom = { a: mv.a, b: mv.b, room: { clearance: cert.clearance } };
+        say(msg2 + roomOffer() + '   —   or click another spot', true, detail2);
+        draw();
+        roomWanted();
+        return;
+      }
+      var again = ai ? '' : ' Try drawing it again.';   // (a curve drawn by hand: nothing armed to try again; v147: not said to the computer's moves)
+      say(msg2 + again, true, detail2 + again); draw(); return;
+    }
 
     commitMove(mv.a, mv.b, fit, fit.pieces.length + ' pieces, clearance ' + Math.min(cert.clearance, bd.state.rmin).toFixed(0) + ' px, ' + bd.iter + ' iterations');
   }
@@ -1794,7 +1859,7 @@
      what follows a move. Shared by commitMove and a move made in a picture drawn afresh (Z). */
   function afterMoveMade(mv, curveInfo, before) {
     if (!E.analyse(game.spots, game.edges).canMove) game.phase = 'over';
-    pendingRoom = null;
+    pendingRoom = null; climb = null;
     var line = D.move(before || JSON.parse(history[history.length - 1]), game, playerName(3 - game.player));
     if (marksUsed && marksUsed.length) line += '\n    Marked to enclose: ' + marksUsed.map(function (i) { return i + 1; }).join(', ') + '.';
     if (note) line += '\n    Note: ' + note + '.';
@@ -1809,8 +1874,6 @@
     var committed = game.moves;
     if (ai) aiCommitted();
     if (game.moves !== committed) return;        // (v79: the other computer's move was drawn as another move and taken back in aiCommitted)
-    if (route.redrawAfter) relayDrawing('redraw', true);   // Room → Redraw from scratch after each move (undone with the move, v47)
-    else if (route.adjustAfter) relayDrawing('adjust', true);   // Room → Adjust the drawing after each move (undone with the move)
     if (!relaying) { updateTitle(); maybeAI(); draw(); }   // (the title before the next computer turn begins — it is not updated while busy; the background white again if no computer moves)
   }
 
@@ -1827,14 +1890,14 @@
      --start-fullscreen) a page cannot leave it — there is no call for that —
      and asking for the page's own full screen on top of it only brings Chrome's
      "press and hold Esc" notice (Peter, 9/28): then F says F11 instead (v105). */
+  function browserFull() { return window.matchMedia('(display-mode: fullscreen)').matches || (window.innerWidth === screen.width && window.innerHeight === screen.height); }
   function toggleFullScreen() {
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
-    var browserFull = window.matchMedia('(display-mode: fullscreen)').matches || (window.innerWidth === screen.width && window.innerHeight === screen.height);
-    if (browserFull) { say('The browser is in full screen: press F11 to leave it.', true, null, true); return; }
+    if (browserFull()) { say('The browser is in full screen: press F11 to leave it.', true, null, true); return; }
     document.documentElement.requestFullscreen();
   }
-  function togglePolygons() { showPolygons = !showPolygons; draw(); }
-  function toggleNumbers() { showNumbers = !showNumbers; draw(); }
+  function togglePolygons() { showPolygons = !showPolygons; document.getElementById('opt-poly').checked = showPolygons; draw(); }
+  function toggleNumbers() { showNumbers = !showNumbers; document.getElementById('opt-numbers').checked = showNumbers; draw(); }
   function toggleTriangles() { var el = document.getElementById('opt-triangles'); el.checked = !el.checked; route.triangles = el.checked; draw(); }   // T (v132)
   function toggleDeadNumbers() { var el = document.getElementById('opt-deadnumbers'); el.checked = !el.checked; route.deadNumbers = !el.checked; draw(); }   // G (v133)
   function toggleSmallDead() { var el = document.getElementById('opt-smalldead'); el.checked = !el.checked; route.smallDead = el.checked; draw(); }   // H (v131)
@@ -1946,18 +2009,21 @@
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
     if (typeof r.smallDead === 'boolean') { document.getElementById('opt-smalldead').checked = r.smallDead; route.smallDead = r.smallDead; }
     if (typeof r.triangles === 'boolean') { document.getElementById('opt-triangles').checked = r.triangles; route.triangles = r.triangles; }
-    if (typeof r.shiftSpots === 'boolean') { document.getElementById('opt-shift-spots').checked = r.shiftSpots; route.shiftSpots = r.shiftSpots; }
-    if (typeof r.shiftCurves === 'boolean') { document.getElementById('opt-shift-curves').checked = r.shiftCurves; route.shiftCurves = r.shiftCurves; }
-    if (typeof r.adjustAfter === 'boolean') { document.getElementById('opt-adjust-after').checked = r.adjustAfter; route.adjustAfter = r.adjustAfter; }
-    route.redrawAfter = r.redrawAfter === true && !route.adjustAfter;   // (files from before v47 have none)
-    heroicSaved = null; route.heroic = false; setHeroic(r.heroic === true, true);   // the file's Shift values are what Heroic off restores   // (v67; v68: switches the local room-making off)
-    document.getElementById('opt-redraw-after').checked = route.redrawAfter;
+    /* the Room menu's eight boxes (v152); a file from before has Shift spots / curves automatically, which were M for both */
+    var oldM = typeof r.shiftSpots === 'boolean' || typeof r.shiftCurves === 'boolean' ? r.shiftSpots === true || r.shiftCurves === true : null;
+    ['autoHuman', 'autoAI'].forEach(function (set) {
+      LADDER.forEach(function (k) {
+        if (r[set] && typeof r[set][k] === 'boolean') route[set][k] = r[set][k];
+        else if (k === 'M' && oldM !== null) route[set].M = oldM;
+      });
+    });
+    setHeroic(r.heroic === true, true);           // (also shows the boxes)
   }
   function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
 
-  var commands = { 'cmd-new': newOrStart, 'cmd-exit': exitPage, 'cmd-undo': undo, 'cmd-full': toggleFullScreen, 'cmd-poly': togglePolygons, 'cmd-numbers': toggleNumbers,
+  var commands = { 'cmd-new': newOrStart, 'cmd-exit': exitPage, 'cmd-undo': undo,
                    'cmd-png': savePNG, 'cmd-save': saveGame, 'cmd-load': loadGame,
-                   'cmd-log': saveLog, 'cmd-log-prev': savePreviousLog, 'cmd-position': savePosition, 'cmd-adjust': function () { relayDrawing('adjust'); }, 'cmd-redraw': function () { relayDrawing('redraw'); }, 'cmd-fresh': function () { relayDrawing('fresh'); } };
+                   'cmd-log': saveLog, 'cmd-log-prev': savePreviousLog, 'cmd-position': savePosition, 'cmd-area': function () { sayArea(); } };   // (cmd-area: v156, View → Size of the drawing area, as Q)
   Object.keys(commands).forEach(function (id) {
     document.getElementById(id).addEventListener('click', function () { closeMenus(); if (!relaying && !roomBusy && !routeBusy) commands[id](); });
   });
@@ -2007,12 +2073,12 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(false); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     var tag = e.target.tagName;
-    if (tag === 'INPUT' || tag === 'SELECT') return;
+    if (tag === 'SELECT' || (tag === 'INPUT' && /^(text|number)$/.test(e.target.type))) return;   // (v158: only fields that take typing — after a checkbox or slider was clicked the keys work)
     var k = e.key.toLowerCase();
     if (k === 'k' || k === '?') { e.preventDefault(); closeMenus(); toggleKeys(); return; }   // (v142) any time, busy or not
     if (!keysOverlay.hidden) return;              // while the list is shown, the other keys wait (Space closes it, above)
@@ -2021,8 +2087,48 @@
     if (fn) { e.preventDefault(); closeMenus(); fn(); }
   });
 
+  /* ---------------- hover texts (v154, Peter 10/11) ----------------
+     The menus carry no explanations. Every control (menu titles too) has data-tip="key"; when the pointer
+     has rested on it for TIP_WAIT, the entry data-tip-for="key" of index.html's #tips is shown beside its
+     menu panel (under a closed menu's title). It goes when the pointer leaves the control, on any press, key
+     or wheel, and when the menus close. Disabled controls let the pointer through to their row (style.css). */
+  var TIP_WAIT = 2000;   // Peter: two seconds
+  var tipBox = document.createElement('div'), tipFor = null, tipTimer = null;
+  tipBox.id = 'tip'; tipBox.hidden = true; document.body.appendChild(tipBox);
+  function hideTip() { clearTimeout(tipTimer); tipTimer = null; tipFor = null; tipBox.hidden = true; }
+  function showTip(el) {
+    var src = document.querySelector('#tips [data-tip-for="' + el.dataset.tip + '"]');
+    if (!src) return;
+    tipBox.innerHTML = src.innerHTML; tipBox.style.left = tipBox.style.top = '0px'; tipBox.hidden = false;   // (measured at the corner: near an edge it would come out narrower)
+    var r = el.getBoundingClientRect(), menu = el.closest('.menu'), gap = 6;
+    var panel = menu && menu.classList.contains('open') ? menu.querySelector('.menu-panel') : null;
+    var w = tipBox.offsetWidth, h = tipBox.offsetHeight, W = window.innerWidth, H = window.innerHeight, x = null, y;
+    if (panel) {   // beside the open panel, level with the control (a title: with the panel's top), right if it fits, else left
+      var pr = panel.getBoundingClientRect();
+      y = panel.contains(el) ? r.top : pr.top;
+      if (pr.right + gap + w <= W) x = pr.right + gap; else if (pr.left - gap - w >= 0) x = pr.left - gap - w;
+    }
+    if (x === null) {   // no room beside it: under the panel (a closed menu's title: under the title), else over it
+      var under = panel ? panel.getBoundingClientRect() : r;
+      x = r.left; y = under.bottom + gap + h <= H ? under.bottom + gap : r.top - gap - h;
+    }
+    tipBox.style.left = Math.max(0, Math.min(x, W - w)) + 'px';
+    tipBox.style.top = Math.max(0, Math.min(y, H - h)) + 'px';
+  }
+  document.addEventListener('pointerover', function (e) {
+    var el = e.target.closest ? e.target.closest('[data-tip]') : null;
+    if (el === tipFor) return;   // (moving within the same control)
+    hideTip();
+    if (!el || e.pointerType === 'touch') return;
+    tipFor = el;
+    tipTimer = setTimeout(function () { tipTimer = null; if (tipFor === el && el.getClientRects().length) showTip(el); }, TIP_WAIT);
+  });
+  document.addEventListener('pointerout', function (e) { if (!e.relatedTarget) hideTip(); });   // (out of the window)
+  ['pointerdown', 'keydown', 'wheel'].forEach(function (t) { document.addEventListener(t, hideTip, true); });
+
   /* ---------------- menus ---------------- */
   function closeMenus() {
+    hideTip();
     document.querySelectorAll('.menu.open').forEach(function (m) { m.classList.remove('open'); });
   }
   document.querySelectorAll('.menu-title').forEach(function (btn) {
@@ -2069,6 +2175,7 @@
   COLOUR_ROLES.forEach(function (role) {
     var label = document.createElement('label'), select = document.createElement('select');
     label.className = 'row';
+    label.dataset.tip = 'colour-' + role[0];   // (v154: its hover text in index.html #tips)
     label.appendChild(document.createTextNode(role[1]));
     /* each item shows its colour: a colour with bold text in its menu ink (white,
        or black on the light ones), a background pastel with its own colour as text (as in the colour table); so does the
@@ -2110,37 +2217,49 @@
   document.getElementById('opt-animate').addEventListener('change', function (e) { route.animate = e.target.checked; });
   document.getElementById('opt-deadnumbers').addEventListener('change', function (e) { route.deadNumbers = !e.target.checked; draw(); });
   document.getElementById('opt-smalldead').addEventListener('change', function (e) { route.smallDead = e.target.checked; draw(); });
+  /* v158 (Peter): every View option a checkbox — C, S and F too (before, menu items without a visible state) */
+  document.getElementById('opt-poly').addEventListener('change', function (e) { showPolygons = e.target.checked; draw(); });
+  document.getElementById('opt-numbers').addEventListener('change', function (e) { showNumbers = e.target.checked; draw(); });
+  /* Full screen: the box shows whether the page fills the screen — the page's own full screen (F) or the
+     browser's (F11, or Chrome started so); clicking it asks for the change, the box follows what happened */
+  var fullBox = document.getElementById('opt-full');
+  function showFull() { fullBox.checked = !!document.fullscreenElement || browserFull(); }
+  fullBox.addEventListener('change', function () { toggleFullScreen(); showFull(); });
+  document.addEventListener('fullscreenchange', showFull);
+  window.addEventListener('resize', showFull);
+  showFull();
   document.getElementById('opt-triangles').addEventListener('change', function (e) { route.triangles = e.target.checked; draw(); });
   document.getElementById('opt-rules').addEventListener('change', function (e) { game.rules = e.target.value; log('Rules changed to ' + rulesName(game.rules) + '.'); sayTurn(); });
   document.getElementById('opt-click').addEventListener('change', function (e) { route.click = e.target.checked; if (!route.click && armed) disarm('Cancelled.'); });
-  document.getElementById('opt-shift-spots').addEventListener('change', function (e) { route.shiftSpots = e.target.checked; log('Room: shift spots automatically ' + (route.shiftSpots ? 'on' : 'off') + '.'); });
-  /* Heroic (v67) switches off and greys out the local room-making (v68, Peter
-     9/26: moving curves assumes smooth splines, and heroic curves have corners);
-     switching it off again puts the two Shift options back as they were.
-     A and R lay everything out anew and stay available. */
-  var heroicSaved = null;
+  /* The Room menu (v152, Peter 10/7): which rungs of the ladder (LADDER, climbOn, aiClimb) are used
+     automatically, for a human's moves and the computer's; and Heroic (v67), which switches the human's
+     off and greys them out (v68, Peter 9/26: moving curves assumes smooth splines, and heroic curves have
+     corners) — they keep their values, used again when Heroic is off. M, A, R and Z by hand stay available
+     (M not in Heroic mode). */
+  function showAuto() {
+    LADDER.forEach(function (k) {
+      var h = document.getElementById('auto-human-' + k), c = document.getElementById('auto-ai-' + k);
+      h.checked = route.autoHuman[k]; h.disabled = route.heroic;
+      c.checked = route.autoAI[k];
+    });
+    document.getElementById('auto-human-row').classList.toggle('disabled', route.heroic);
+  }
   function setHeroic(on, quiet) {
-    var sS = document.getElementById('opt-shift-spots'), sC = document.getElementById('opt-shift-curves');
-    if (on && !route.heroic) heroicSaved = { spots: route.shiftSpots, curves: route.shiftCurves };
-    if (on) { route.shiftSpots = route.shiftCurves = false; }
-    else if (route.heroic && heroicSaved) { route.shiftSpots = heroicSaved.spots; route.shiftCurves = heroicSaved.curves; heroicSaved = null; }
     route.heroic = on;
     document.getElementById('opt-heroic').checked = on;
-    sS.checked = route.shiftSpots; sC.checked = route.shiftCurves; sS.disabled = sC.disabled = on;
-    sS.parentNode.classList.toggle('disabled', on); sC.parentNode.classList.toggle('disabled', on);
-    if (!quiet) log('Room: heroic (hand-drawn curves kept as drawn; no local room-making) ' + (on ? 'on' : 'off') + '.');
+    showAuto();
+    if (!quiet) log('Room: heroic (hand-drawn curves kept as drawn; no local room-making; nothing automatic for a human\'s moves) ' + (on ? 'on' : 'off') + '.');
   }
   document.getElementById('opt-heroic').addEventListener('change', function (e) { setHeroic(e.target.checked); });
-  document.getElementById('opt-shift-curves').addEventListener('change', function (e) { route.shiftCurves = e.target.checked; log('Room: shift curves automatically ' + (route.shiftCurves ? 'on' : 'off') + '.'); });
-  /* after each move: adjust (A) or redraw (R) — one or the other, R already does what A does (v47) */
-  function setAfter(kind, on) {
-    route.adjustAfter = kind === 'adjust' && on; route.redrawAfter = kind === 'redraw' && on;
-    document.getElementById('opt-adjust-after').checked = route.adjustAfter;
-    document.getElementById('opt-redraw-after').checked = route.redrawAfter;
-    log('Room: ' + (kind === 'adjust' ? 'adjust the drawing' : 'rearrange the drawing') + ' after each move ' + (on ? 'on' : 'off') + '.');
-  }
-  document.getElementById('opt-adjust-after').addEventListener('change', function (e) { setAfter('adjust', e.target.checked); });
-  document.getElementById('opt-redraw-after').addEventListener('change', function (e) { setAfter('redraw', e.target.checked); });
+  LADDER.forEach(function (k) {
+    [['autoHuman', 'auto-human-', 'a human'], ['autoAI', 'auto-ai-', 'the computer']].forEach(function (t) {
+      document.getElementById(t[1] + k).addEventListener('change', function (e) {
+        route[t[0]][k] = e.target.checked;
+        log('Room: ' + LADDER_NAME[k] + ' (' + k + ') automatically for ' + t[2] + ' ' + (e.target.checked ? 'on' : 'off') + '.');
+      });
+    });
+  });
+  showAuto();
 
   /* ---------------- the computer's moves (v69) ----------------
      The computer thinks in the position alone (ai.js: regions, boundaries,
@@ -2151,10 +2270,9 @@
      point in the corner's sector, as a drag would give), the boundaries S
      marked, a spot of the arc from x to y marked (or of the other arc, with
      the complement marked), then the marked route (markedRoute) or the plain
-     one, then the band. A refusal (no room, a curve too close) is not sent to
-     the room-making: the computer tries another move — one random move of
-     every family, in random order — and when none can be drawn it says so
-     and offers R, after which it tries again.
+     one, then the band. A refusal (no room, a curve too close) climbs the
+     computer's ladder (v152: the Room menu's boxes for the computer — see
+     aiCommit); the move itself is never changed for one that is easier to draw.
      The standing test (aiCommitted): the drawn position, read off the new
      drawing, must be what apply() predicted — compared without the
      boundaries that have no life left, which may lie on either side. If it
@@ -2166,6 +2284,7 @@
   function kindName(k) { return { human: 'Human', random: 'Random', montecarlo: 'Monte Carlo', parity: 'Parity search' }[k] || k; }
   function isAI(p) { return players[p].kind !== 'human'; }
   function aiCancel() {
+    aiResume = null;
     if (ai && ai.timer) clearTimeout(ai.timer);
     if (ai && ai.thinking) { pool.forEach(function (w) { w.terminate(); }); pool = []; jobs = {}; }   // (the workers' answers would only be thrown away)
     var was = !!ai;
@@ -2199,15 +2318,22 @@
     var fams = AI.families(a.pos);
     if (!fams.length) { ai = null; log(a.who + ' has no move.'); sayTurn(); return; }   // (cannot happen: the game would be over)
     var kind = players[p].kind, shuffle = function (list) { for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; } return list; };
-    a.failed = []; a.plain = [];
-    if (kind === 'random') { a.queue = shuffle(fams).map(function (f) { return AI.randomOf(f); }); aiNext(); return; }
+    a.player = p; a.atMove = game.moves; a.here = game.moves + ':' + AI.gameKey(a.pos);
+    if (aiStopped && aiStopped.here === a.here) {  // its ladder ran out here before (aiStops): the same move, tried once more in the drawing as it is now
+      var s0 = aiStopped;
+      a.key = s0.key; a.mx = s0.mx; a.my = s0.my; a.verdict = s0.verdict;
+      log(a.who + ' tries its move ' + s0.text + ' again, in the drawing as it is now (nothing automatic: its ladder ran out here before).');
+      aiStart(a, [], null);
+      return;
+    }
+    if (kind === 'random') { aiCommit(a, AI.randomOf(fams[Math.floor(Math.random() * fams.length)])); return; }   // (v152: one move, as for the other players)
     /* Monte Carlo / parity search: EVERY move (v138: before, one random enclosure per family — Peter's
        11-spot game of 9/30 was lost at move 23, where the one winning move, 8 → 8 enclosing 6, was not
        among the six looked at; and "lost against best play" meant only "every move looked at loses").
        ai.js children with no cap: the enclosures by how many of each kind of interchangeable boundary;
        the positions they lead to are then merged by canonical form — on Peter's 30-spot games ≤ 1626
-       moves, ≤ 340 distinct positions. The candidates go to the workers; the moves tied
-       for the best value are then tried (aiScore, aiNext). The forms
+       moves, ≤ 340 distinct positions. The candidates go to the workers; of the moves tied
+       for the best value one is then chosen (aiScore, aiTieBreak — v152) and drawn (aiCommit). The forms
        that tell equal positions apart are computed on the workers too (v122:
        on the page's thread they froze it for minutes on Peter's game of 10/1). */
     a.queue = shuffle(AI.children(a.pos, Infinity));
@@ -2257,16 +2383,37 @@
       log(a.who + ' thought for ' + ((Date.now() - a.t0) / 1000).toFixed(1) + ' s (' + label + ', ' + poolSize() + ' worker' + (poolSize() > 1 ? 's' : '') + (noWorkers ? ' wanted, none: on the page' : '') + (info ? '; ' + info : '') + '): best ' +
           (kind === 'montecarlo' ? Math.round(100 * best) + ' % won' : 'value ' + best.toFixed(3)) + (ties.length > 1 ? ', ' + ties.length + ' moves tie' : '') +
           '; the candidates: ' + order.slice(0, 8).map(function (i) { return AI.describe(a.pos, cands[i]) + ' ' + (kind === 'montecarlo' ? Math.round(100 * scores[i]) + '%' : scores[i].toFixed(2)); }).join(', ') + (order.length > 8 ? ', …' : '') + '.');
-      /* Only the moves tied for the best value: the computer's move is always drawn as intended
-         (v111, Peter) — see aiNext. Each keeps its value (aiNext: which of the moves drawn the
-         shortest way are among the best). */
-      order.forEach(function (i) { cands[i].value = scores[i]; });
-      a.queue = ties.map(function (i) { return cands[i]; });
-      a.best = best;
       /* an exact search knows the outcome (v78, Peter): said after the move, on the status line and in the log */
       if (exact) a.verdict = best > 0 ? 'has a winning position' : 'is lost against best play' + (ties.length === cands.length ? ' (every move loses)' : '');   // (v83: exact also when every candidate was solved by parts, long before the depth reaches M)
       draw();
-      aiNext();
+      var tied = ties.map(function (i) { return cands[i]; });
+      if (tied.length === 1) aiCommit(a, tied[0]); else aiTieBreak(a, p, tied, label);
+    });
+  }
+  /* ONE move, chosen from the position alone (v152, Peter 10/7: "a system by which the AI chooses a move
+     using only the current topology, and then, when it has that unique move it makes space if necessary";
+     before, every move tied for the best value was tried in turn until one could be drawn — the drawing
+     decided). Moves tied for the best value: random games among them alone (Monte Carlo, the player's own
+     games or seconds — Players menu; for Parity search the Monte Carlo settings of its menu), the most
+     won; still tied: chosen at random. */
+  function aiTieBreak(a, p, tied, label) {
+    var pl = players[p], opt = { kind: 'montecarlo', trials: pl.trials, seconds: pl.mcSeconds, misere: game.rules === 'misere' };
+    var what = (opt.seconds ? opt.seconds + ' s of random games' : opt.trials + ' random games for each') + ' among the ' + tied.length + ' moves tied for the best';
+    a.thinking = true; draw();
+    say(a.who + ' is breaking a tie (' + what + ')…');
+    score(a.pos, tied, opt, function (text) {
+      if (ai !== a) return;
+      say(a.who + ' is breaking a tie (' + what + '): ' + text + '…');
+    }, function (sc, info) {
+      if (ai !== a) return;
+      a.thinking = false;
+      var top = Math.max.apply(null, sc), best = tied.filter(function (mv, i) { return sc[i] === top; });
+      var pick = best[Math.floor(Math.random() * best.length)];
+      log('    ' + tied.length + ' moves tied for the best (' + label + '); random games among them (' + (info || what) + '): ' +
+          tied.map(function (mv, i) { return AI.describe(a.pos, mv) + ' ' + Math.round(100 * sc[i]) + '%'; }).join(', ') +
+          (best.length > 1 ? '; ' + best.length + ' still tied, one taken at random' : '') + ': ' + AI.describe(a.pos, pick) + '.');
+      draw();
+      aiCommit(a, pick);
     });
   }
   /* ---- the worker pool ---- */
@@ -2387,81 +2534,108 @@
     sel.value = workersWanted; title.textContent = 'Workers: ' + workersWanted;
     sel.addEventListener('change', function () { workersWanted = Number(sel.value); title.textContent = 'Workers: ' + workersWanted; log('Workers: ' + workersWanted + ' of ' + workersMax + '.'); if (!ai) ensurePool(); });
   })();
-  /* The next move to try: the first that the router starts drawing. The
-     computer's move is ALWAYS drawn as intended (v111, Peter 9/29: "the move
-     should always be drawn as intended. If necessary (continuation is
-     impossible because a move cannot be drawn), the game should stop with a
-     message to that effect. It's then up to the user to decide what to do";
-     v108 put R first, but after R it still played worse moves, and any move
-     the router drew in place of the intended one was accepted):
-       1. the moves tied for the best value (a.queue; every move for Random),
-          as intended; 1b. those of them whose marks the router cannot apply,
-          the shortest way — kept only if the drawing is the intended move;
-       2. none can be drawn: R, once for this position (aiRedrew) — the
-          computer then thinks again in the rearranged drawing and starts at 1;
-       3. still none: the game stops, said on the status line and in the log;
-          R lets it try once more, or the user takes over.
-     aiCommitted takes back any drawing that is not the intended position.
-     The other computer's move (a.remote) keeps its own order: its candidates
-     as intended, then the shortest way (checked there against the position
-     sent), R once, then refused. */
+  /* THE COMPUTER'S LADDER (v152, Peter 10/7; before: v108–v114, every move tied for the best tried, then R
+     once for the position and the thinking all over again, then Z). The move is chosen first, from the
+     position alone (aiScore, aiTieBreak), and is then ALWAYS drawn as intended (v111, Peter 9/29), or the
+     game stops with a message:
+       1. the move in the drawing as it is — making room for it there (M) if the Room menu's M is on for the
+          computer (aiTry, roomWanted); if its marks cannot be applied, the shortest way, kept only if that
+          is the move (aiCommitted);
+       2. not drawn: the next of A, R and Z switched on for the computer (aiClimb), each once; after A or R
+          the move is found again in the new drawing (aiFind: the spots keep their numbers, the position
+          its key) and tried as in 1, without M; Z draws the picture afresh WITH the move (relayDrawing's
+          `fresh`);
+       3. none left: the game stops (aiStops), said on the status line and in the log. A, R or Z by hand,
+          then the computer tries that move once more (aiStopped: the same position) — or the user takes over.
+     The other computer's move (a.remote) climbs the same ladder, with its candidates (netCandidates: the
+     move sent, its mirror image) in place of the one move; when the ladder runs out it is refused there
+     and taken back. aiCommitted takes back any drawing that is not the intended position. */
+  function aiRungs() { return LADDER.filter(function (k) { return route.autoAI[k] && !(k === 'M' && route.heroic); }); }   // (no M in Heroic mode: hand-drawn curves have corners)
+  function aiCommit(a, mv) {
+    a.key = AI.gameKey(AI.apply(a.pos, mv)); a.mx = mv.x; a.my = mv.y;
+    aiStart(a, aiRungs(), [mv]);
+  }
+  /* rungs: those of LADDER the move may use; first: the candidates in the drawing as it is (else found) */
+  function aiStart(a, rungs, first) {
+    a.rungs = rungs; a.used = []; a.failed = [];
+    a.useM = rungs[0] === 'M'; a.mDone = false; a.next = a.useM ? 1 : 0;
+    aiRound(a, first);
+  }
+  /* The candidates in the present drawing: the other computer's from what it sent; the computer's one move
+     by its position key — it may have other region and corner numbers in a new drawing (aiCommitted's search) */
+  function aiFind(a) {
+    if (a.remote) return netCandidates(a.pos, a.remote);
+    var out = null;
+    AI.families(a.pos).forEach(function (fam) {
+      if (out || !((fam.x === a.mx && fam.y === a.my) || (fam.x === a.my && fam.y === a.mx)) || fam.count > AI_CHECK) return;
+      for (var m = 0; m < fam.count && !out; m++) {
+        var mv = AI.expand(fam, fam.others.filter(function (k, u) { return (m >> u) & 1; }));
+        if (AI.gameKey(AI.apply(a.pos, mv)) === a.key) out = mv;
+      }
+    });
+    return out ? [out] : [];
+  }
+  function aiRound(a, first) {
+    a.queue = first || aiFind(a); a.plain = []; a.second = false;
+    if (!a.queue.length) { a.move = null; a.failed.push('the move was not found again in the new drawing (too many ways to enclose things here)'); aiClimb(a); return; }
+    aiNext();
+  }
+  /* after A or R: the move in the new drawing */
+  function aiAgain(a) {
+    a.an = E.analyse(game.spots, game.edges); a.pos = AI.fromAnalysis(a.an, game.spots);
+    a.useM = false;                                // (M only in the first round)
+    aiRound(a);
+  }
   function aiFailed(a, mv, why) { if (why === 'plain' && !a.second) a.plain.push(mv); else a.failed.push(a.text + ' (' + why + ')'); }
   function aiNext() {
     var a = ai;
     while (a.queue.length) {
       var mv = a.queue.shift();
-      if (!a.first) a.first = mv;                  // (the best move, for the fresh drawing — 2b)
       a.move = mv; a.text = AI.describe(a.pos, mv); a.expect = AI.gameKey(AI.apply(a.pos, mv));
       a.making = false;
       var why = aiTry(mv, a.second);
       if (!why) { say(a.who + ' plays ' + a.text + (a.making ? ' — making room for it…' : '…')); return; }
       aiFailed(a, mv, why);
     }
-    var tried = function () { return a.failed.concat(a.plain.map(function (mv) { return AI.describe(a.pos, mv) + ' (its marks could not be applied)'; })).join('; '); };
-    var bestPlain = a.plain.filter(function (mv) { return mv.value === a.best; });   // (Random: every move)
-    if (!a.remote && a.stage === undefined && bestPlain.length) {   // 1b. the best moves the shortest way — kept only if that IS the move (aiCommitted)
-      a.stage = 'verify'; a.second = true; a.queue = bestPlain; aiNext(); return;
+    if (!a.second && a.plain.length) {             // the marks could not be applied: the shortest way — kept only if that IS the move (aiCommitted)
+      a.second = true; a.queue = a.plain; a.plain = []; aiNext(); return;
     }
     a.second = false;
-    var here = game.moves + ':' + AI.gameKey(a.pos);
-    if (!a.remote && aiRedrew !== here) {         // 2. R, then all over again
-      ai = null; aiRedrew = here;
-      log(a.who + ' could not draw its move as intended: ' + tried() + '. Rearranging the drawing (R) to try again.');
-      relayDrawing('redraw');
-      if (!relaying) maybeAI();                    // (R could not start: on to 3 at once — aiRedrew is set)
-      return;
-    }
-    if (a.remote && a.stage !== 'plain' && a.plain.length) { a.stage = 'plain'; a.second = true; a.queue = a.plain; aiNext(); return; }
-    ai = null;
-    if (a.remote) {                                // the other computer's move (v79): R once for this move, then it is refused there and taken back
-      if (!a.remote.redrew) {                      // (for every move, not once per position as for the computer: a move taken back costs the other player more than R costs here)
-        a.remote.redrew = true;
-        log(a.who + ': its move ' + a.sent + ' could not be drawn here: ' + a.failed.join('; ') + '. Rearranging the drawing (R) to try again.');
-        netRetry = { msg: a.remote, done: a.done };
-        relayDrawing('redraw');
-        if (relaying) return;
-        netRetry = null;
-      }
-      log(a.who + ': its move ' + a.sent + ' could not be drawn here, even after rearranging: ' + a.failed.join('; ') + '. It is refused and taken back there.');
-      say('The move of the other computer could not be drawn here, even after rearranging; it was refused and taken back there.', true);
-      draw();
-      a.done(false, 'no way to draw it, even after rearranging');
-      return;
-    }
-    /* 2b. the picture drawn afresh WITH the move (Z, v114): the position after the best move laid out
-       from its map alone and drawn by R — no router. Once per position, like R. */
-    if (aiFresh !== here && a.first) {
-      aiFresh = here;
-      var f = { mv: a.first, player: game.player, who: a.who, text: AI.describe(a.pos, a.first), verdict: a.verdict, onFail: function () { aiStops(a, tried); } };
-      log(a.who + ' could not draw its move as intended, even after rearranging: ' + tried() + '. Drawing the picture afresh (Z) with its move ' + f.text + '.');
-      relayDrawing('fresh', false, f);
-      if (relaying) return;
-    }
-    aiStops(a, tried);
+    aiClimb(a);
   }
-  function aiStops(a, tried) {                     // 3.
-    log(a.who + ' cannot draw its move as intended, even after rearranging and drawing afresh: ' + tried() + '. The game stops here.');
-    say(a.who + ' cannot draw its move as intended, even after rearranging and drawing afresh: the game stops here.   R or Z: try once more — or set ' + playerName(game.player) + ' to Human and draw a move by hand', true);
+  /* The next rung switched on: A or R, then the move again (afterRelay, aiAgain); Z, with the move. */
+  function aiClimb(a) {
+    while (a.next < a.rungs.length) {
+      var k = a.rungs[a.next++];
+      if (k === 'M' || (k === 'Z' && !a.move)) continue;   // (M: in the first round only, aiTry)
+      ai = null; a.used.push(k);
+      if (k === 'Z') {
+        var f = { a: a, mv: a.move, player: game.player, text: a.text, onFail: function () { ai = a; aiClimb(a); } };
+        log(a.who + (a.remote ? ': its move ' + a.sent : '') + ' could not be drawn as intended: ' + a.failed.join('; ') + '. Drawing the picture afresh (Z) with ' + a.text + ', as the Room menu says.');
+        relayDrawing('fresh', f);
+      } else {
+        log(a.who + (a.remote ? ': its move ' + a.sent : '') + ' could not be drawn as intended: ' + a.failed.join('; ') + '. ' + (k === 'A' ? 'Adjusting' : 'Rearranging') + ' the drawing (' + k + ') to try again, as the Room menu says.');
+        aiResume = a;
+        relayDrawing(k === 'A' ? 'adjust' : 'redraw');
+      }
+      if (relaying) return;
+      aiResume = null; ai = a; a.used.pop();      // (could not start: the next)
+    }
+    aiStops(a);
+  }
+  function aiStops(a) {                            // 3.
+    ai = null;
+    var after = a.used.length ? ', even after ' + ladderText(a.used) : '';
+    if (a.remote) {                                // the other computer's move (v79): refused there and taken back
+      log(a.who + ': its move ' + a.sent + ' could not be drawn here' + after + ': ' + a.failed.join('; ') + '. It is refused and taken back there.');
+      say('The move of the other computer could not be drawn here' + after + '; it was refused and taken back there.', true);
+      draw();
+      a.done(false, 'no way to draw it' + after);
+      return;
+    }
+    aiStopped = { here: a.here, key: a.key, mx: a.mx, my: a.my, text: a.text || (a.mx + 1) + ' → ' + (a.my + 1), verdict: a.verdict };
+    log(a.who + ' cannot draw its move ' + aiStopped.text + ' as intended' + after + ': ' + a.failed.join('; ') + '. The game stops here.');
+    say(a.who + ' cannot draw its move ' + aiStopped.text + ' as intended' + after + ': the game stops here.   A, R or Z: redraw, and it tries again — or set ' + playerName(game.player) + ' to Human and draw a move by hand', true);
     draw();
   }
   /* A move that ended without a commit — the watch found the page idle
@@ -2539,8 +2713,8 @@
     var sided = !!(ar.bside && ar.targets[y] && !ar.planner.reachable([Y0.x, Y0.y], ar.bside));
     if (!ar.targets[y] && !ar.blocked[y]) return 'spot ' + (y + 1) + ' cannot be reached from that side';
     a.moves0 = game.moves; a.lastWarn = null;
-    if (!ar.targets[y] || sided) {                 // the rules allow it, the room does not: as for a click — M's machinery, if Room → Shift … is on
-      if (!(route.shiftSpots || route.shiftCurves) || route.heroic) return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : '');
+    if (!ar.targets[y] || sided) {                 // the rules allow it, the room does not: as for a click — M's machinery, if the computer's M is on (and not used yet for this move)
+      if (!a.useM || a.mDone) return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : '');
       armed = ar; hush++;
       try { explainBlocked(y); } finally { hush--; }
       if (!roomBusy) { armed = null; pendingRoom = null; return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : ''); }
@@ -2572,7 +2746,7 @@
     if (marked) {
       if (!mr) {
         /* no room round the marks: M's machinery, as for a click (v112: before, the computer gave the move up) */
-        if (ar.why === 'room' && (route.shiftSpots || route.shiftCurves) && !route.heroic) {
+        if (ar.why === 'room' && a.useM && !a.mDone) {
           armed = ar;
           var sync = true, started = null, moves0 = game.moves;
           explainMarkedNoRoom(y, true, function (making) {   // (v139: may come back later, from the worker)
@@ -2590,7 +2764,7 @@
         return ar.why === 'room' ? 'no room round the marks' : 'no route round the marks';
       }
       if (mr.plain && !plain) { note = null; return 'plain'; }
-      if (mr.plain) log(a.who + ': the marks of ' + a.text + ' could not be applied (' + note + '): drawn the shortest way.');
+      if (mr.plain) log(a.who + ': the marks of ' + a.text + ' could not be applied' + (note ? ' (' + note + ')' : '') + ': drawn the shortest way.');
       if (!mr.plain) P = G.resample(mr.path, STEP);
     }
     if (!P && y === x) {
@@ -2614,8 +2788,8 @@
     var a = ai; ai = null;
     var gotPos = AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots), got = AI.gameKey(gotPos);
     if (a.remote) {                                // the other computer's move (v79): the drawn position must be the one sent (or its mirror image)
-      if (got === a.remote.key || got === a.remote.mkey) { log('    ' + a.who + ': ' + a.sent + ' drawn as on the other computer.'); a.done(true); return; }
-      log('    ' + a.who + ': the router drew ' + a.text + ' as another move than the one sent (' + a.sent + '); taken back, trying another way.');
+      if (got === a.remote.key || got === a.remote.mkey) { log('    ' + a.who + ': ' + a.sent + ' drawn as on the other computer' + (a.fresh ? ', in a picture drawn afresh' : '') + '.'); a.done(true); return; }
+      log('    ' + a.who + ': ' + a.text + ' was drawn as another move than the one sent (' + a.sent + '); taken back.');
       undoStep();                                  // (the move's own snapshot; the log line of the move stays, followed by this one)
       a.failed.push(a.text + ' (drawn as another move)');
       ai = a; aiNext();
@@ -2637,7 +2811,7 @@
         }
       });
       var drawn = other ? other + ', a legal move, not the one intended' : big ? 'another move (not identified: too many ways to enclose things here)' : 'NO LEGAL MOVE';
-      log('    ' + a.who + ' intended ' + a.text + ' (corners ' + a.move.i + ' → ' + a.move.i2 + '); the router drew ' + drawn + '; taken back.');
+      log('    ' + a.who + ' intended ' + a.text + ' (corners ' + a.move.i + ' → ' + a.move.i2 + '); ' + (a.fresh ? 'drawn afresh as ' : 'the router drew ') + drawn + '; taken back.');
       if (!other && !big) { log('    BUG: the drawn position is no legal move from ' + (a.move.x + 1) + ' to ' + (a.move.y + 1) + '. Please save the game.'); say('The computer\'s move was not drawn as a legal move (a bug: please save the game).', true); }
       undoStep();                                  // (the move's own snapshot; the log line of the move stays, followed by this one)
       a.failed.push(a.text + ' (drawn as another move)');
@@ -2646,7 +2820,7 @@
     }
     /* the exact verdict — not after the move that ends the game, where the game-over line says it (v100, Peter) */
     if (a.verdict && game.phase !== 'over') { log('    ' + a.who + ' ' + a.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + a.who + ' ' + a.verdict; }
-    log('    ' + a.who + ' intended ' + a.text + ': drawn as intended' + (got === a.expect ? '.' : ' (an equivalent position: the same canonical form).'));
+    log('    ' + a.who + ' intended ' + a.text + ': drawn as intended' + (a.fresh ? ', in a picture drawn afresh' : '') + (got === a.expect ? '.' : ' (an equivalent position: the same canonical form).'));
   }
   [1, 2].forEach(function (p) {
     var sel = document.getElementById('opt-player' + p), panel = sel.closest('.menu-panel');
@@ -2709,7 +2883,6 @@
   var net = null;        // { session, role (1 host, 2 guest), code, started, kinds (the Player menus before) } while connected
   var netAllow = false;  // the guest's newGame at the host's word (its own N is refused)
   var netRedo = null;    // what my undo took off, kept until it is acknowledged (the host's action may win and put it back)
-  var netRetry = null;   // the other computer's move waiting for R to finish: { msg, done }
   /* Backgammon's Firebase project (its web config is meant to be public; the database rules decide what may be written). */
   var FIREBASE_CONFIG = {
     apiKey: 'AIzaSyDhjX4ULNwwHs4etViXMEqmsoDImVR8UBw', authDomain: 'pabg-1b336.firebaseapp.com',
@@ -2729,7 +2902,7 @@
   function netBlock(anyTurn) {
     if (!net) return null;
     if (net.session.waiting) return 'Waiting for the other computer…';
-    if (net.session.busy || netRetry) return 'The other computer\'s move is being drawn here — a moment.';
+    if (net.session.busy || (aiResume && aiResume.remote)) return 'The other computer\'s move is being drawn here — a moment.';
     if (net.role === 2 && !net.started) return 'Waiting for the host to start a game.';
     if (!anyTurn && game.phase === 'play' && game.player !== net.role) return playerName(game.player) + ' on the other computer is to move.';
     return null;
@@ -2788,11 +2961,11 @@
     var who = playerName(game.player) + ' (the other computer)', sent = (msg.x + 1) + ' → ' + (msg.y + 1);
     if (!cands.length) { log('Net: no move ' + sent + ' here makes the position the other computer sent — the positions differ (a bug: please save the game on both computers).'); say('The other computer\'s move ' + sent + ' does not exist here (a bug: please save the game).', true); done(false, 'no such move here'); return; }
     marksUsed = null; pendingRoom = null; roomSnapshot = false; armed = null;
-    ai = { remote: msg, done: done, player: game.player, who: who, sent: sent, an: an, pos: pos, queue: cands, failed: [], plain: [] };
-    aiNext();
+    ai = { remote: msg, done: done, player: game.player, atMove: game.moves, who: who, sent: sent, an: an, pos: pos };
+    aiStart(ai, aiRungs(), cands);   // (v152: the computer's ladder — before, R once, then refused)
   }
   function whenIdle(fn) {
-    if (band || relaying || roomBusy || routeBusy || roomCheck || stroke || slideDrag || ai || netRetry) { setTimeout(function () { whenIdle(fn); }, AI_WATCH_MS); return; }
+    if (band || relaying || roomBusy || routeBusy || roomCheck || stroke || slideDrag || ai || aiResume) { setTimeout(function () { whenIdle(fn); }, AI_WATCH_MS); return; }
     fn();
   }
   function takeBackMove() { var was = game.moves; do undoStep(); while (history.length && game.moves === was); }
@@ -2897,7 +3070,8 @@
     if (!net) { say('Not connected.', true); return; }
     var kinds = net.kinds;
     net.session.leave();
-    net = null; netRedo = null; netRetry = null;
+    net = null; netRedo = null;
+    if (aiResume && aiResume.remote) aiResume = null;
     [1, 2].forEach(function (p) { var sel = document.getElementById('opt-player' + p); sel.disabled = false; sel.value = kinds[p]; sel.dispatchEvent(new Event('change')); });
     netTitle(); netStatus('Not connected.');
     log('Net: left the room.');

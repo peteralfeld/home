@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=151">
+<link rel="stylesheet" href="style.css?v=159">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,28 +12,26 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 151</span>
+  <span id="app-version">SPROUTS v. 159</span>
   <div class="menu">
-    <button class="menu-title" id="help-title">Help</button>
+    <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
-      <button class="item off" id="cmd-video" disabled>Introductory Video <span class="soon">coming soon</span></button>
-      <a class="item" href="manual.html" target="_blank">User&rsquo;s Guide</a>
-      <a class="item" href="technical.html" target="_blank">Technical Information</a>
-      <button class="item" id="cmd-keys">Keyboard Commands <kbd>K</kbd></button>
+      <a class="item" data-tip="help-guide" href="manual.html" target="_blank">User&rsquo;s Guide</a>
+      <a class="item" data-tip="help-technical" href="technical.html" target="_blank">Technical Information</a>
+      <button class="item" id="cmd-keys" data-tip="cmd-keys">Keyboard Commands <kbd>K</kbd></button>
     </div>
   </div>
   <div class="menu">
-    <button class="menu-title" id="workers-title">Workers</button>
+    <button class="menu-title" id="workers-title" data-tip="m-workers">Workers</button>
     <div class="menu-panel">
-      <label class="row">Workers <select id="opt-workers"></select></label>
-      <div class="row note">Parallel processes for the computer players (Monte Carlo, Parity search). The default is what this machine has.</div>
+      <label class="row" data-tip="opt-workers">Workers <select id="opt-workers"></select></label>
     </div>
   </div>
   <div class="menu">
-    <button class="menu-title">Game</button>
+    <button class="menu-title" data-tip="m-game">Game</button>
     <div class="menu-panel">
-      <label class="row">Spots <input id="opt-spots" type="number" min="1" value="5"></label>
-      <label class="row">Layout
+      <label class="row" data-tip="opt-spots">Spots <input id="opt-spots" type="number" min="1" value="5"></label>
+      <label class="row" data-tip="opt-layout">Layout
         <select id="opt-layout">
           <option value="ellipse" selected>Ellipse</option>
           <option value="circle">Circle</option>
@@ -42,24 +40,22 @@
           <option value="manual">Place by hand</option>
         </select>
       </label>
-      <label class="row">Rules
+      <label class="row" data-tip="opt-rules">Rules
         <select id="opt-rules">
           <option value="normal">Normal: last to move wins</option>
           <option value="misere">Mis&egrave;re: last to move loses</option>
         </select>
       </label>
-      <button class="item" id="cmd-new">New game <kbd>N</kbd></button>
-      <div class="row note"><kbd>1</kbd> … <kbd>9</kbd>: a new game with that many spots in the chosen layout (one spot in the center). <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
-      <button class="item" id="cmd-undo">Undo move <kbd>U</kbd></button>
-      <div class="row note"><kbd>&lt;</kbd> / <kbd>&gt;</kbd>: back / forward through the game one move at a time, the computer's moves too. Meanwhile the computer waits; make a move anywhere (also in the computer's place) and the game goes on from there.</div>
-      <button class="item" id="cmd-exit">Exit (close the page) <kbd>X</kbd></button>
+      <button class="item" id="cmd-new" data-tip="cmd-new">New game <kbd>N</kbd></button>
+      <button class="item" id="cmd-undo" data-tip="cmd-undo">Undo move <kbd>U</kbd></button>
+      <button class="item" id="cmd-exit" data-tip="cmd-exit">Exit (close the page) <kbd>X</kbd></button>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">Player 1</button>
+    <button class="menu-title" data-tip="m-player1">Player 1</button>
     <div class="menu-panel">
-      <label class="row">Plays
+      <label class="row" data-tip="opt-player">Plays
         <select id="opt-player1" class="player">
           <option value="human">Human</option>
           <option value="random">Random</option>
@@ -67,19 +63,18 @@
           <option value="parity">Parity search</option>
         </select>
       </label>
-      <button class="item" id="cmd-same1">Same as Player 2</button>
-      <label class="row montecarlo">Random games per move <input id="opt-trials1" type="number" min="1" value="100"></label>
-      <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec1" type="number" min="0.1" step="0.1"></label>
-      <label class="row parity">Search depth <input id="opt-depth1" type="number" min="1" value="6"></label>
-      <label class="row parity">&hellip; or seconds per move <input id="opt-parsec1" type="number" min="0.1" step="0.1"></label>
-      <div class="row note">Player 1 moves first. Random: any legal move. Monte Carlo: the move after which the set number of random games goes best. Parity search: the move that keeps the number of moves left at the parity it wants (odd; even in misère), looking the set number of moves ahead — or as far as the seconds allow, one move deeper at a time. Filling in one of a pair of fields empties the other. The computer moves as soon as it is its turn; <kbd>Space</kbd> interrupts its thinking, Human in its menu stops it. Between two computers <kbd>Space</kbd> stops the game after the move being drawn; <kbd>Space</kbd> again continues it, <kbd>N</kbd> starts a new game.</div>
+      <button class="item" id="cmd-same1" data-tip="cmd-same">Same as Player 2</button>
+      <label class="row montecarlo" data-tip="opt-trials">Random games per move <input id="opt-trials1" type="number" min="1" value="100"></label>
+      <label class="row montecarlo" data-tip="opt-mcsec">&hellip; or seconds per move <input id="opt-mcsec1" type="number" min="0.1" step="0.1"></label>
+      <label class="row parity" data-tip="opt-depth">Search depth <input id="opt-depth1" type="number" min="1" value="6"></label>
+      <label class="row parity" data-tip="opt-parsec">&hellip; or seconds per move <input id="opt-parsec1" type="number" min="0.1" step="0.1"></label>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">Player 2</button>
+    <button class="menu-title" data-tip="m-player2">Player 2</button>
     <div class="menu-panel">
-      <label class="row">Plays
+      <label class="row" data-tip="opt-player">Plays
         <select id="opt-player2" class="player">
           <option value="human">Human</option>
           <option value="random">Random</option>
@@ -87,91 +82,84 @@
           <option value="parity">Parity search</option>
         </select>
       </label>
-      <button class="item" id="cmd-same2">Same as Player 1</button>
-      <label class="row montecarlo">Random games per move <input id="opt-trials2" type="number" min="1" value="100"></label>
-      <label class="row montecarlo">&hellip; or seconds per move <input id="opt-mcsec2" type="number" min="0.1" step="0.1"></label>
-      <label class="row parity">Search depth <input id="opt-depth2" type="number" min="1" value="6"></label>
-      <label class="row parity">&hellip; or seconds per move <input id="opt-parsec2" type="number" min="0.1" step="0.1"></label>
+      <button class="item" id="cmd-same2" data-tip="cmd-same">Same as Player 1</button>
+      <label class="row montecarlo" data-tip="opt-trials">Random games per move <input id="opt-trials2" type="number" min="1" value="100"></label>
+      <label class="row montecarlo" data-tip="opt-mcsec">&hellip; or seconds per move <input id="opt-mcsec2" type="number" min="0.1" step="0.1"></label>
+      <label class="row parity" data-tip="opt-depth">Search depth <input id="opt-depth2" type="number" min="1" value="6"></label>
+      <label class="row parity" data-tip="opt-parsec">&hellip; or seconds per move <input id="opt-parsec2" type="number" min="0.1" step="0.1"></label>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title" id="net-title">Net</button>
+    <button class="menu-title" id="net-title" data-tip="m-net">Net</button>
     <div class="menu-panel">
-      <button class="item" id="cmd-host">Host a game</button>
-      <div class="row net-code">Code <input id="opt-code" type="text" inputmode="numeric" maxlength="3" autocomplete="off"><button class="item" id="cmd-guest" style="width:auto">Join as guest</button></div>
-      <button class="item" id="cmd-leave">Leave</button>
-      <div class="row note">Play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (U takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page has the Background while computing color (Colors menu) while it is not your turn.</div>
+      <button class="item" id="cmd-host" data-tip="cmd-host">Host a game</button>
+      <div class="row net-code" data-tip="opt-code">Code <input id="opt-code" type="text" inputmode="numeric" maxlength="3" autocomplete="off"><button class="item" id="cmd-guest" data-tip="cmd-guest" style="width:auto">Join as guest</button></div>
+      <button class="item" id="cmd-leave" data-tip="cmd-leave">Leave</button>
       <div class="row note" id="net-status">Not connected.</div>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">View</button>
+    <button class="menu-title" data-tip="m-view">View</button>
     <div class="menu-panel">
-      <button class="item" id="cmd-full">Full screen <kbd>F</kbd></button>
-      <button class="item" id="cmd-poly">Control polygons <kbd>C</kbd></button>
-      <button class="item" id="cmd-numbers">Spot numbers <kbd>S</kbd></button>
+      <label class="row" data-tip="opt-full">Full screen <kbd>F</kbd> <input id="opt-full" type="checkbox"></label>
+      <label class="row" data-tip="opt-poly">Control polygons <kbd>C</kbd> <input id="opt-poly" type="checkbox"></label>
+      <label class="row" data-tip="opt-numbers">Spot indices <kbd>S</kbd> <input id="opt-numbers" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-triangles">Initial seeds as triangles <kbd>T</kbd> <input id="opt-triangles" type="checkbox"></label>
+      <label class="row" data-tip="opt-deadnumbers">No indices at stumps <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-smalldead">Stumps half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
+      <button class="item" id="cmd-area" data-tip="cmd-area">Size of the drawing area <kbd>Q</kbd></button>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">Settings</button>
+    <button class="menu-title" data-tip="m-settings">Settings</button>
     <div class="menu-panel">
-      <label class="row">Minimum clearance <span class="val" id="val-d0"></span>
+      <label class="row" data-tip="opt-d0">Minimum clearance <span class="val" id="val-d0"></span>
         <input id="opt-d0" type="range" min="3" max="30" step="1" value="10"></label>
-      <label class="row">Comfort distance <span class="val" id="val-D"></span>
+      <label class="row" data-tip="opt-D">Comfort distance <span class="val" id="val-D"></span>
         <input id="opt-D" type="range" min="10" max="64" step="1" value="40"></label>
-      <label class="row">Room vs length <span class="val" id="val-lambda"></span>
+      <label class="row" data-tip="opt-lambda">Room vs length <span class="val" id="val-lambda"></span>
         <input id="opt-lambda" type="range" min="-1" max="1" step="0.1" value="0"></label>
-      <label class="row">Spot size <span class="val" id="val-spotsize"></span>
+      <label class="row" data-tip="opt-spotsize">Spot size <span class="val" id="val-spotsize"></span>
         <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="1.9"></label>
-      <label class="row">Curve thickness <span class="val" id="val-linewidth"></span>
+      <label class="row" data-tip="opt-linewidth">Curve thickness <span class="val" id="val-linewidth"></span>
         <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1.8"></label>
-      <label class="row">Number size <span class="val" id="val-numbersize"></span>
+      <label class="row" data-tip="opt-numbersize">Index size <span class="val" id="val-numbersize"></span>
         <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
-      <label class="row">Animate <input id="opt-animate" type="checkbox" checked></label>
-      <label class="row">Click to connect <input id="opt-click" type="checkbox" checked></label>
-      <label class="row">Original spots as triangles <kbd>T</kbd> <input id="opt-triangles" type="checkbox"></label>
-      <label class="row">No numbers on spots with no lives <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
-      <label class="row">Spots with no lives half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-animate">Animate <input id="opt-animate" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-click">Click to connect <input id="opt-click" type="checkbox" checked></label>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">Room</button>
+    <button class="menu-title" data-tip="m-room">Room</button>
     <div class="menu-panel">
-      <div class="row note">When a move does not fit, the status line says why and offers <kbd>M</kbd> to make room: by sliding spots along their curves, else by pushing curves apart. <kbd>Ctrl</kbd>+click where a spot fits adds one (no curves, 3 lives; not a move). <kbd>Ctrl</kbd>+drag moves a spot: along its curve, anywhere in its region (no curves), or back along / onward from its one curve.</div>
-      <label class="row">Shift spots automatically <input id="opt-shift-spots" type="checkbox" checked></label>
-      <label class="row">Shift curves automatically <input id="opt-shift-curves" type="checkbox" checked></label>
-      <button class="item" id="cmd-adjust">Adjust the drawing now <kbd>A</kbd></button>
-      <label class="row">Adjust the drawing after each move <input id="opt-adjust-after" type="checkbox"></label>
-      <div class="row note">Adjusting lays the curves out again with the spots where they are (a spot on its move's curve moves with it); <kbd>Space</kbd> stops it. Each region gets room in proportion to its lives; a region with no move left gets none.</div>
-      <button class="item" id="cmd-redraw">Rearrange the drawing <kbd>R</kbd></button>
-      <label class="row">Rearrange the drawing after each move <input id="opt-redraw-after" type="checkbox"></label>
-      <div class="row note">Rearranging moves the spots too. Same position; U undoes it. When a move cannot be made even after making room, <kbd>R</kbd> rearranges and tries it again.</div>
-      <button class="item" id="cmd-fresh">Draw the picture afresh <kbd>Z</kbd></button>
-      <div class="row note">Afresh: the picture is drawn anew from the position alone, without regard to how it looks now, then rearranged. Same position; U undoes it. When a move cannot be made even after rearranging, <kbd>Z</kbd> draws afresh and tries it again; the computer does the same by itself, with its move in the new picture.</div>
-      <label class="row">Heroic <input id="opt-heroic" type="checkbox"></label>
-      <div class="row note">Heroic: a curve you draw by hand is kept exactly as drawn, without smoothing; it only may not cross or touch anything. Curves made by clicking are routed and smoothed as before. Curves and spots are not moved locally (no M, no shifting, no Ctrl+drag); A and R still work.</div>
+      <div class="row auto-head" data-tip="room-head">Automatically, when a move does not fit:</div>
+      <table class="auto">
+        <tr><th></th><th data-tip="room-M">M</th><th data-tip="room-A">A</th><th data-tip="room-R">R</th><th data-tip="room-Z">Z</th></tr>
+        <tr id="auto-human-row"><td data-tip="room-human">Human</td><td data-tip="room-M"><input id="auto-human-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-human-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-human-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-human-Z" type="checkbox"></td></tr>
+        <tr><td data-tip="room-ai">Computer</td><td data-tip="room-M"><input id="auto-ai-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-ai-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-ai-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-ai-Z" type="checkbox"></td></tr>
+      </table>
+      <label class="row" data-tip="opt-heroic">Heroic <input id="opt-heroic" type="checkbox"></label>
     </div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">Colors</button>
+    <button class="menu-title" data-tip="m-colors">Colors</button>
     <div class="menu-panel" id="colour-panel"></div>
   </div>
 
   <div class="menu">
-    <button class="menu-title">File</button>
+    <button class="menu-title" data-tip="m-file">File</button>
     <div class="menu-panel">
-      <button class="item" id="cmd-load">Load game&hellip;</button>
-      <button class="item" id="cmd-png">Save picture as PNG <kbd>P</kbd></button>
-      <button class="item" id="cmd-save">Save game as JSON</button>
-      <button class="item" id="cmd-log">Save log as text</button>
-      <button class="item" id="cmd-log-prev">Save the log of the last session</button>
-      <div class="row note">The log is kept in this browser as it grows, so after a crash or a reload the last session's log can still be saved.</div>
-      <button class="item" id="cmd-position">Save position as text</button>
+      <button class="item" id="cmd-load" data-tip="cmd-load">Load game&hellip;</button>
+      <button class="item" id="cmd-png" data-tip="cmd-png">Save picture as PNG <kbd>P</kbd></button>
+      <button class="item" id="cmd-save" data-tip="cmd-save">Save game as JSON</button>
+      <button class="item" id="cmd-log" data-tip="cmd-log">Save log as text</button>
+      <button class="item" id="cmd-log-prev" data-tip="cmd-log-prev">Save the log of the last session</button>
+      <button class="item" id="cmd-position" data-tip="cmd-position">Save position as text</button>
     </div>
   </div>
 </div>
@@ -203,10 +191,10 @@
     <tr><th colspan="2">View</th></tr>
     <tr><td><kbd>F</kbd></td><td>Full screen</td></tr>
     <tr><td><kbd>C</kbd></td><td>Control polygons</td></tr>
-    <tr><td><kbd>S</kbd></td><td>Spot numbers</td></tr>
-    <tr><td><kbd>T</kbd></td><td>Original spots as triangles</td></tr>
-    <tr><td><kbd>G</kbd></td><td>No numbers on spots with no lives</td></tr>
-    <tr><td><kbd>H</kbd></td><td>Spots with no lives half size</td></tr>
+    <tr><td><kbd>S</kbd></td><td>Spot indices</td></tr>
+    <tr><td><kbd>T</kbd></td><td>Initial seeds as triangles</td></tr>
+    <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>
+    <tr><td><kbd>H</kbd></td><td>Stumps half size</td></tr>
     <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
     <tr><th colspan="2">File and Help</th></tr>
     <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
@@ -215,24 +203,118 @@
     <tr><td>Click, click</td><td>Connect two spots (Click to connect, Settings menu)</td></tr>
     <tr><td>Drag</td><td>Draw a curve by hand from spot to spot</td></tr>
     <tr><td>Right-click or <kbd>Shift</kbd>+click</td><td>After the first click: mark spots the curve is to enclose</td></tr>
-    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a spot where one fits</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a seed where one fits</td></tr>
     <tr><td><kbd>Ctrl</kbd>+drag</td><td>Move a spot</td></tr>
   </table>
   </div>
 </div>
 </div>
 
-<script src="geom.js?v=151"></script>
-<script src="relax.js?v=151"></script>
-<script src="route.js?v=151"></script>
-<script src="engine.js?v=151"></script>
-<script src="describe.js?v=151"></script>
-<script src="room.js?v=151"></script>
-<script src="moves.js?v=151"></script>
-<script src="redraw.js?v=151"></script>
-<script src="layout.js?v=151"></script>
-<script src="ai.js?v=151"></script>
-<script src="net.js?v=151"></script>
-<script src="ui.js?v=151"></script>
+<!-- v154 (Peter 10/11): the hover texts. Every control (menu titles too) carries data-tip="key"; after the pointer
+     has rested on it for two seconds, ui.js shows the entry data-tip-for="key" from here beside the menu.
+     The menus themselves carry no explanations. Keep these in step with what the controls do. -->
+<div id="tips" hidden>
+  <div data-tip-for="m-help"><b>Help.</b> The User&rsquo;s Guide, the Technical Information, and the list of keyboard commands. The guides open in a new tab, so the game in this one stays as it is.</div>
+  <div data-tip-for="help-guide"><b>User&rsquo;s Guide.</b> How to play Sprouts with this program: the rules, making moves with the mouse, the menus and the keys. Opens in a new tab.</div>
+  <div data-tip-for="help-technical"><b>Technical Information.</b> What the program does inside: how a position is read off the picture, how a curve is routed, smoothed and checked, the kinds of room-making, how the computer players think, and two-computer play &mdash; with links to the papers used. Opens in a new tab.</div>
+  <div data-tip-for="cmd-keys"><b>Keyboard Commands</b> <kbd>K</kbd> or <kbd>?</kbd>. A list of every key and mouse action, shown over the drawing. <kbd>Space</kbd>, <kbd>K</kbd> or <kbd>?</kbd> closes it; while it shows, the other keys are ignored.</div>
+
+  <div data-tip-for="m-workers"><b>Workers.</b> How many parallel processes the program uses for the computer players and for drawing the picture afresh (Z). The title shows the number chosen.</div>
+  <div data-tip-for="opt-workers"><b>Workers.</b> Parallel processes for the computer players (Monte Carlo, Parity search) and for Z, which tries a layout per region at the same time. The default is what this machine has (its logical processors). More let the computer look further in the same time; fewer leave more of the machine to other programs. Workers need the page to be opened through a web server (http://&hellip;); opened as a file, everything runs on the page itself.</div>
+
+  <div data-tip-for="m-game"><b>Game.</b> The number of spots, how they are laid out and the rules of a new game; new game, undo, exit.</div>
+  <div data-tip-for="opt-spots"><b>Spots.</b> How many spots a new game starts with. There is no upper limit; the program says when a move cannot be drawn in the room there is. Before the first move a change shows at once. The keys <kbd>1</kbd> &hellip; <kbd>9</kbd> set it and start a new game. Not used with Place by hand.</div>
+  <div data-tip-for="opt-layout"><b>Layout</b> of the spots of a new game.
+    <ul><li>Ellipse: evenly spaced around an ellipse shaped like the window (one spot: in the center).</li>
+    <li>Circle: evenly spaced around a circle.</li><li>Line: evenly spaced along a line through the middle of the window, the long way.</li>
+    <li>Random: anywhere, apart from each other.</li>
+    <li>Place by hand: a blank window; click to place the spots, then <kbd>Enter</kbd> or <kbd>N</kbd> starts the game (key <kbd>0</kbd>).</li></ul>
+    Before the first move a change shows at once.</div>
+  <div data-tip-for="opt-rules"><b>Rules.</b> Normal play: whoever cannot move loses, so the last to move wins. Mis&egrave;re: whoever cannot move wins, so the last to move loses. It can be changed during a game; the computer players use it from their next move.</div>
+  <div data-tip-for="cmd-new"><b>New game</b> <kbd>N</kbd>. Starts a new game with the Spots, Layout and Rules above. While spots are being placed by hand it starts the game from them instead.
+    <kbd>1</kbd> &hellip; <kbd>9</kbd>: a new game with that many spots in the chosen layout. <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
+  <div data-tip-for="cmd-undo"><b>Undo move</b> <kbd>U</kbd>. Takes back the last move, with any room made for it. Against the computer it goes back to your turn. Over the net either player may undo; it takes back the last move whoever made it, on both computers.
+    <kbd>&lt;</kbd> / <kbd>&gt;</kbd>: back / forward through the game one move at a time, the computer&rsquo;s moves too. Meanwhile the computer waits; make a move anywhere (also in the computer&rsquo;s place) and the game goes on from there.</div>
+  <div data-tip-for="cmd-exit"><b>Exit</b> <kbd>X</kbd>. Closes the page (and leaves a network game). A browser lets a page close itself only when it was opened on its own, e.g. from a desktop shortcut; otherwise the status line says how to close it.</div>
+
+  <div data-tip-for="m-player1"><b>Player 1</b> moves first; its curves have the color Colors &rarr; Player 1 curves. Human, or one of the computer players, with its settings.</div>
+  <div data-tip-for="m-player2"><b>Player 2</b> moves second; its curves have the color Colors &rarr; Player 2 curves. Human, or one of the computer players, with its settings.</div>
+  <div data-tip-for="opt-player"><b>Plays.</b> Who makes this player&rsquo;s moves.
+    <ul><li>Human: you, with the mouse.</li><li>Random: any legal move.</li>
+    <li>Monte Carlo: the move after which the set number of random games (or as many as the seconds allow) goes best for it.</li>
+    <li>Parity search: the move that keeps the number of moves left at the parity it wants (odd in normal play, even in mis&egrave;re), looking the set number of moves ahead &mdash; or as far as the seconds allow, one move deeper at a time. Near the end it plays exactly and says who has a winning position.</li></ul>
+    A computer player chooses its move from the position alone, then the drawing is made to fit it (Room menu). It moves as soon as it is its turn; <kbd>Space</kbd> interrupts its thinking, Human here stops it. Between two computers <kbd>Space</kbd> stops the game after the move being drawn; <kbd>Space</kbd> again continues it, <kbd>N</kbd> starts a new game. Over the net only humans play.</div>
+  <div data-tip-for="cmd-same"><b>Same as the other player.</b> Copies the other player&rsquo;s kind and settings (games or seconds, depth or seconds) to this one.</div>
+  <div data-tip-for="opt-trials"><b>Random games per move</b> (Monte Carlo). How many random games are played out after each candidate move; the move with the best results is chosen. More games: stronger, slower. Filling in this field empties the seconds below it, and the other way round.</div>
+  <div data-tip-for="opt-mcsec"><b>&hellip; or seconds per move</b> (Monte Carlo). Plays random games after the candidate moves for this long, instead of a fixed number of games. Filling in this field empties the number of games above it, and the other way round.</div>
+  <div data-tip-for="opt-depth"><b>Search depth</b> (Parity search). How many moves ahead the search looks. Deeper: stronger, and much slower in a large position. Filling in this field empties the seconds below it, and the other way round.</div>
+  <div data-tip-for="opt-parsec"><b>&hellip; or seconds per move</b> (Parity search). Searches one move deeper at a time for as long as this allows, and plays the best move of the deepest search finished. Filling in this field empties the depth above it, and the other way round.</div>
+
+  <div data-tip-for="m-net"><b>Net:</b> play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (<kbd>U</kbd> takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page has the Background while computing color (Colors menu) while it is not your turn.</div>
+  <div data-tip-for="cmd-host"><b>Host a game.</b> Opens a game room and shows its three-digit code in the Code field. Give the code to the other player, who joins as guest. As host you are Player 1 and start the games (<kbd>N</kbd>, Game menu); both players are human.</div>
+  <div data-tip-for="opt-code"><b>Code.</b> The room&rsquo;s three-digit number: shown here when you host; typed in here by the guest before Join as guest.</div>
+  <div data-tip-for="cmd-guest"><b>Join as guest.</b> Joins the host&rsquo;s game with the code typed in the field. The guest is Player 2; the host starts the games.</div>
+  <div data-tip-for="cmd-leave"><b>Leave.</b> Ends the connection to the other computer; the game stays on your screen and the player menus are free again.</div>
+
+  <div data-tip-for="m-view"><b>View.</b> Full screen; what the drawing shows besides the curves and spots (control polygons, spot indices); how initial seeds and stumps are drawn; the size of the drawing area. A checked box means the option is on.</div>
+  <div data-tip-for="opt-full"><b>Full screen</b> <kbd>F</kbd>. The page fills the screen; <kbd>F</kbd> again, unchecking the box or <kbd>Esc</kbd> leaves it. The box is checked whenever the page fills the screen &mdash; also when the browser itself is in full screen (<kbd>F11</kbd>, or started that way); then the status line says to press <kbd>F11</kbd> to leave it. The drawing scales with the window.</div>
+  <div data-tip-for="opt-poly"><b>Control polygons</b> <kbd>C</kbd>. Shows, in gray, the control polygon of every cubic piece of every curve &mdash; the points that define the spline curves.</div>
+  <div data-tip-for="opt-numbers"><b>Spot indices</b> <kbd>S</kbd>. Shows each spot&rsquo;s index, from 1 in the order the spots were made. The log and the status line name spots and curves by these indices (&ldquo;the curve 1-7-2&rdquo;).</div>
+
+  <div data-tip-for="cmd-area"><b>Size of the drawing area</b> <kbd>Q</kbd>. Shows the drawing area&rsquo;s width and height in pixels on the status line (W x H). The status line also says it whenever the window changes size. Useful when comparing games played in different windows: the larger the area, the more spots fit.</div>
+  <div data-tip-for="m-settings"><b>Settings.</b> How curves are drawn (clearance, comfort, room against length), the sizes of spots, curves and indices, animation, and clicking to connect. They are saved with a game, as are the View menu&rsquo;s spot options.</div>
+  <div data-tip-for="opt-d0"><b>Minimum clearance.</b> The least distance a new curve must keep from every other curve, every spot and the edge of the window. Larger: a roomier, clearer picture, but moves run out of room sooner. It counts for moves made from now on; when a move does not fit, the message compares the widest way there with it.</div>
+  <div data-tip-for="opt-D"><b>Comfort distance.</b> The distance at which a curve stops feeling its neighbors much. Curves are pushed apart more strongly closer than this, gently beyond it, so a new curve settles in the middle of the room it has. It also sets the spacing of the points used by A, R and Z.</div>
+  <div data-tip-for="opt-lambda"><b>Room vs length.</b> How much a curve&rsquo;s room counts against its length when it is shaped (the slider is the power of ten of the weight: 0 means equal weight, &minus;1 a tenth, 1 ten times). Higher: curves bow away from their neighbors into the middle of the space. Lower: shorter, straighter curves that pass closer to things.</div>
+  <div data-tip-for="opt-spotsize"><b>Spot size</b>, shown as the spots&rsquo; diameter. The spot is also the disc that curves keep clear of, so a change counts for moves made from now on; curves already drawn stay (A adjusts them).</div>
+  <div data-tip-for="opt-linewidth"><b>Curve thickness</b>, shown in pixels. Changes the picture at once.</div>
+  <div data-tip-for="opt-numbersize"><b>Index size</b> of the spot indices (View &rarr; Spot indices), shown in pixels.</div>
+  <div data-tip-for="opt-animate"><b>Animate.</b> On: you see a new curve settle into its shape, and A, R and Z at work, as it happens. Off: only the result is shown, a little sooner.</div>
+  <div data-tip-for="opt-click"><b>Click to connect.</b> On: a move can be made by clicking a spot and then the spot to connect it to (right-click or <kbd>Shift</kbd>+click in between marks spots the curve is to enclose). Off: moves are made only by dragging from spot to spot. Turning it off cancels a move begun by a click.</div>
+  <div data-tip-for="opt-triangles"><b>Initial seeds as triangles</b> <kbd>T</kbd>. Draws the spots the game started with (and any seeds added by hand) as triangles, whatever they have become, so they stand out from the spots made by moves.</div>
+  <div data-tip-for="opt-deadnumbers"><b>No indices at stumps</b> <kbd>G</kbd>. With spot indices shown, leaves them off the stumps: the spots that already have three curves (no lives left), which no longer matter for the game.</div>
+  <div data-tip-for="opt-smalldead"><b>Stumps half size</b> <kbd>H</kbd>. Draws stumps (spots with three curves, no lives) at half the size, so the live spots stand out. Only the drawing changes: curves keep clear of them as of full-size spots.</div>
+
+  <div data-tip-for="m-room"><b>Room:</b> what happens automatically when a move does not fit in the drawing as it is, for a human&rsquo;s moves and the computer&rsquo;s; and Heroic mode. <kbd>M</kbd>, <kbd>A</kbd>, <kbd>R</kbd> and <kbd>Z</kbd> can always be pressed by hand too.</div>
+  <div data-tip-for="room-head"><b>Automatically, when a move does not fit:</b> the checked steps are tried in the order M, A, R, Z (from the least to the most change to the picture), each once, until the move can be drawn. If none of them makes room, the program stops and says so; a human&rsquo;s move stays begun, and the keys can be used by hand. Defaults: M and R for a human, M, R and Z for the computer.</div>
+  <div data-tip-for="room-M"><b>M &mdash; make room.</b> Local changes where the move has to go: spots slide aside, then the curves in its way are pushed back, as long as no neighbor gets squeezed below its own clearance. The rest of the picture stays. Key <kbd>M</kbd>. Not in Heroic mode.</div>
+  <div data-tip-for="room-A"><b>A &mdash; adjust.</b> The whole drawing is reshaped for more room: curves move, while the initial seeds and seeds added by hand stay where they are (spots made by moves ride along with their curves). Key <kbd>A</kbd>.</div>
+  <div data-tip-for="room-R"><b>R &mdash; rearrange.</b> Like A, but every spot may move too, so the whole picture can spread out. Key <kbd>R</kbd>.</div>
+  <div data-tip-for="room-Z"><b>Z &mdash; draw the picture afresh.</b> Ignores the present drawing and draws the position from scratch (then polishes it as R does), trying each region as the outside, on the workers at once, until a picture is found at least as roomy as the old one. The slowest step; <kbd>Space</kbd> stops it and keeps the best so far. Key <kbd>Z</kbd>.</div>
+  <div data-tip-for="room-human"><b>Human:</b> the steps tried automatically when a move you make does not fit. Off (gray) in Heroic mode.</div>
+  <div data-tip-for="room-ai"><b>Computer:</b> the steps tried automatically when the move a computer player has chosen does not fit &mdash; also a move arriving from the other computer over the net. The computer never changes its move for one that is easier to draw: if no checked step makes room, the game stops and says so.</div>
+  <div data-tip-for="opt-heroic"><b>Heroic.</b> A curve you draw by hand is kept as drawn (straight pieces, corners and all) instead of being smoothed, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available). The computer&rsquo;s moves are drawn as usual.</div>
+
+  <div data-tip-for="m-colors"><b>Colors</b> of the background, the two players&rsquo; curves and the spots (seeds, sprouts, links and stumps). They are saved with a game.</div>
+  <div data-tip-for="colour-background"><b>Background</b> of the drawing area while it is a human&rsquo;s turn.</div>
+  <div data-tip-for="colour-busy"><b>Background while computing.</b> The background while you have to wait: the computer&rsquo;s turn, A, R or Z at work, room being made, or, over the net, the other player&rsquo;s turn. The default is Medium gray.</div>
+  <div data-tip-for="colour-player1"><b>Player 1 curves.</b> The color of the curves Player 1 draws; the players are named by it on the status line.</div>
+  <div data-tip-for="colour-player2"><b>Player 2 curves.</b> The color of the curves Player 2 draws; the players are named by it on the status line.</div>
+  <div data-tip-for="colour-deg0"><b>Seeds</b>: spots with no curve yet, three lives.</div>
+  <div data-tip-for="colour-deg1"><b>Sprouts</b>: spots with one curve, two lives.</div>
+  <div data-tip-for="colour-deg2"><b>Links</b>: spots with two curves, one life left. Every move makes a new link: the spot put on its curve.</div>
+  <div data-tip-for="colour-deg3"><b>Stumps</b>: spots with three curves and no lives; no curve may touch them again.</div>
+
+  <div data-tip-for="m-file"><b>File.</b> Load and save games, the picture, the log and the position.</div>
+  <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors and undo history, so it can be played on or taken back move by move. The players are not saved; the Player menus stay as they are. Not while connected to another computer.</div>
+  <div data-tip-for="cmd-png"><b>Save picture as PNG</b> <kbd>P</kbd>. Saves the drawing area as it is now as an image (in the browser&rsquo;s download folder).</div>
+  <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
+  <div data-tip-for="cmd-log"><b>Save log as text.</b> Saves this session&rsquo;s log: every move in words, the computer&rsquo;s thinking, room made or refused, with times and pixel figures &mdash; useful for reporting a problem.</div>
+  <div data-tip-for="cmd-log-prev"><b>Save the log of the last session.</b> The log is kept in this browser as it grows, so after a crash or a reload the last session&rsquo;s log can still be saved. Only the one session before this one is kept.</div>
+  <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
+</div>
+
+<script src="geom.js?v=159"></script>
+<script src="relax.js?v=159"></script>
+<script src="route.js?v=159"></script>
+<script src="engine.js?v=159"></script>
+<script src="describe.js?v=159"></script>
+<script src="room.js?v=159"></script>
+<script src="moves.js?v=159"></script>
+<script src="redraw.js?v=159"></script>
+<script src="layout.js?v=159"></script>
+<script src="ai.js?v=159"></script>
+<script src="net.js?v=159"></script>
+<script src="ui.js?v=159"></script>
 </body>
 </html>

@@ -67,3 +67,32 @@ h1[id], h2[id], h3[id] { scroll-margin-top: 12px; }
 #toc-list li { margin-bottom: 5px; }
 .to-top { text-decoration: none; font-size: 0.9em; margin-left: 8px; color: #6495ED; }
 .to-top:hover { text-decoration: none; color: #FFD700; }
+
+/* manual.html, The Control Row: each menu's subheading in white on the color of its menu's title in the
+   game's menu bar (--menu, set on the heading); the heading as wide as its text, like the menu title */
+h3.menu-head { display: table; color: #fff; background: var(--menu, #1b2a4a); padding: 3px 12px; border-radius: 4px; }
+h3.menu-head .to-top, h3.menu-head .to-top:hover { color: #fff; }
+
+/* manual.html (body.guide): the text indented from the headings — paragraphs, lists, tables and
+   figures by 2em, the subheadings by 1em; list numbers hang to the left of their text */
+body.guide > p, body.guide > ol, body.guide > ul:not(#toc-list), body.guide > table,
+body.guide > .keys-cols { margin-left: 2em; margin-right: 1em; }
+body.guide figure { margin-left: 2em !important; }   /* (over the figures' own inline margin) */
+body.guide > ol, body.guide > ul:not(#toc-list) { padding-inline-start: 1.8em; list-style-position: outside; }
+body.guide > ol > li, body.guide > ul:not(#toc-list) > li { margin-bottom: 4px; }
+body.guide > h3 { margin-left: 1em; }
+
+/* the kinds of spot: each color's name in white bold on that color, as in the game's Colors menu */
+table.spot-kinds { border-collapse: collapse; }
+table.spot-kinds th, table.spot-kinds td { padding: 4px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,.2); }
+table.spot-kinds td.swatch { background: var(--c); color: #fff; font-weight: bold; }
+
+/* Keyboard Commands: the game's own list (index.html #keys-overlay), two columns side by side */
+.keys-cols { display: flex; flex-wrap: wrap; gap: 8px 48px; align-items: flex-start; }
+.keys-cols table { border-collapse: collapse; max-width: 640px; }
+.keys-cols th { text-align: left; padding: 12px 0 4px; font-size: 1.1em; color: #FFD700; }
+.keys-cols tr:first-child th { padding-top: 0; }
+.keys-cols td { padding: 3px 16px 3px 0; vertical-align: top; }
+.keys-cols td:first-child { white-space: nowrap; }
+.keys-cols kbd { font: inherit; font-weight: bold; padding: 0 5px; border: 1px solid rgba(255,255,255,.6);
+                 border-radius: 3px; background: rgba(255,255,255,.12); }
