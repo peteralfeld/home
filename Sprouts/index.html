@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=163">
+<link rel="stylesheet" href="style.css?v=167">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 163</span>
+  <span id="app-version">SPROUTS v. 167</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -119,6 +119,7 @@
       <label class="row" data-tip="opt-deadnumbers">No indices at stumps <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
       <label class="row" data-tip="opt-smalldead">Stumps half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
       <button class="item" id="cmd-area" data-tip="cmd-area">Size of the drawing area <kbd>Q</kbd></button>
+      <label class="row" data-tip="cmd-window">Window of its own <kbd>Y</kbd> <input id="opt-window" type="checkbox"></label>
     </div>
   </div>
 
@@ -192,6 +193,7 @@
     <tr><td><kbd>X</kbd></td><td>Exit (close the page)</td></tr>
     <tr><th colspan="2">Drawing</th></tr>
     <tr><td><kbd>M</kbd></td><td>Make room for a move that does not fit</td></tr>
+    <tr><td><kbd>D</kbd></td><td>Draw a move refused for lack of room again, in the drawing as it is now</td></tr>
     <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
     <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
     <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
@@ -205,6 +207,7 @@
     <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>
     <tr><td><kbd>H</kbd></td><td>Stumps half size</td></tr>
     <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
+    <tr><td><kbd>Y</kbd></td><td>Window of its own (resizable by Game &rarr; Size) / back to a browser tab</td></tr>
     <tr><th colspan="2">File and Help</th></tr>
     <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
     <tr><td><kbd>K</kbd> or <kbd>?</kbd></td><td>This list</td></tr>
@@ -277,6 +280,7 @@
   <div data-tip-for="opt-numbers"><b>Spot indices</b> <kbd>S</kbd>. Shows each spot&rsquo;s index, from 1 in the order the spots were made. The log and the status line name spots and curves by these indices (&ldquo;the curve 1-7-2&rdquo;).</div>
 
   <div data-tip-for="cmd-area"><b>Size of the drawing area</b> <kbd>Q</kbd>. Shows the drawing area&rsquo;s width and height in pixels on the status line (W x H). The status line also says it whenever the window changes size. Useful when comparing games played in different windows: the larger the area, the more spots fit.</div>
+  <div data-tip-for="cmd-window"><b>Window of its own</b> <kbd>Y</kbd>. Switches between an ordinary browser tab and a window of the game&rsquo;s own, without the browser&rsquo;s tabs, toolbar and bookmarks (only its read-only address line). The game moves as it is &mdash; with its undo history, settings, colors, players and log &mdash; and the window or tab it leaves closes itself (or, where the browser does not allow that, shows a note). The box is checked while the game has a window of its own; there Game &rarr; Size can resize the window itself, which a tab does not allow. If the browser blocks pop-up windows for this page, allow them and press <kbd>Y</kbd> again.</div>
   <div data-tip-for="m-settings"><b>Settings.</b> How curves are drawn (clearance, comfort, room against length), the sizes of spots, curves and indices, animation, and clicking to connect. They are saved with a game, as are the View menu&rsquo;s spot options.</div>
   <div data-tip-for="opt-d0"><b>Minimum clearance.</b> The least distance a new curve must keep from every other curve, every spot and the edge of the window. Larger: a roomier, clearer picture, but moves run out of room sooner. It counts for moves made from now on; when a move does not fit, the message compares the widest way there with it.</div>
   <div data-tip-for="opt-D"><b>Comfort distance.</b> The distance at which a curve stops feeling its neighbors much. Curves are pushed apart more strongly closer than this, gently beyond it, so a new curve settles in the middle of the room it has. It also sets the spacing of the points used by A, R and Z.</div>
@@ -319,17 +323,17 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=163"></script>
-<script src="relax.js?v=163"></script>
-<script src="route.js?v=163"></script>
-<script src="engine.js?v=163"></script>
-<script src="describe.js?v=163"></script>
-<script src="room.js?v=163"></script>
-<script src="moves.js?v=163"></script>
-<script src="redraw.js?v=163"></script>
-<script src="layout.js?v=163"></script>
-<script src="ai.js?v=163"></script>
-<script src="net.js?v=163"></script>
-<script src="ui.js?v=163"></script>
+<script src="geom.js?v=167"></script>
+<script src="relax.js?v=167"></script>
+<script src="route.js?v=167"></script>
+<script src="engine.js?v=167"></script>
+<script src="describe.js?v=167"></script>
+<script src="room.js?v=167"></script>
+<script src="moves.js?v=167"></script>
+<script src="redraw.js?v=167"></script>
+<script src="layout.js?v=167"></script>
+<script src="ai.js?v=167"></script>
+<script src="net.js?v=167"></script>
+<script src="ui.js?v=167"></script>
 </body>
 </html>

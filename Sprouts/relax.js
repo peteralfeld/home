@@ -671,7 +671,7 @@
       var pts = [A, qa].concat(P.slice(lo, hi + 1), [qb, B]);
       if (polylineCrossesObstacle(rt.obs, pts) || polylineCrossesItself(pts)) { rt.error = 'The curve would cross something near a spot.'; rt.done = true; break; }
       var band2 = createBand(rt.obs, rt.ctx, pts, true, true, rt.params);
-      if (!band2) { rt.error = 'The curve passes through or touches something near a spot.'; rt.done = true; break; }
+      if (!band2) { rt.error = 'No room: the curve comes too close to something near a spot.'; rt.done = true; break; }
       rt.phase = 2; rt.band = band2; rt.pts = band2.pts; rt.state = band2.state;
       rt.dirA = pa.dir; rt.dirB = [-pb.dir[0], -pb.dir[1]];
     }

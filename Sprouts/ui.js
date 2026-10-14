@@ -8,6 +8,14 @@
    ========================================================================= */
 (function () {
   'use strict';
+  /* v166: the tab the game left for a window of its own (Y): a note only — nothing else starts here (no game,
+     no workers, and above all no log written into the store the game's new window uses) */
+  if (/[?&]moved(&|$)/.test(location.search)) {
+    document.title = 'Sprouts';
+    document.body.innerHTML = '<div style="color:#e8ecf5;font:18px Calibri, sans-serif;padding:2em">The game continues in another window. This one can be closed.' +
+      '<br><br><a style="color:#87CEEB" href="' + location.pathname + '">Open a new game in this tab</a></div>';
+    return;
+  }
   var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, Ly = SproutsLayout, AI = SproutsAI, Nt = SproutsNet;
   /* moves.js (v137): the router's pieces and making room, shared with the room worker. They read and
      write the page's own game, settings, spot size, note and hush through MS. */
@@ -836,9 +844,9 @@
      self-loops cut, crossing nothing. Returns false if it cannot. */
   function strokeRoute(st, b) {
     var A = game.spots[st.from], B = game.spots[b], pa = [A.x, A.y], pb = [B.x, B.y];
-    var keep = 0.6 * SNAP, lo = 0, hi = st.pts.length - 1;
-    while (lo <= hi && G.dist(st.pts[lo], pa) < keep) lo++;
-    while (hi >= lo && G.dist(st.pts[hi], pb) < keep) hi--;
+    var lo = 0, hi = st.pts.length - 1;          // (v165: the stroke cut where it leaves the end spots' discs — was 0.6·SNAP, a fixed 9.6 px)
+    while (lo <= hi && G.dist(st.pts[lo], pa) < SPOT_R) lo++;
+    while (hi >= lo && G.dist(st.pts[hi], pb) < SPOT_R) hi--;
     var mid = cutSelfLoops(st.pts.slice(lo, hi + 1));
     var P = G.resample([pa].concat(mid, [pb]), STEP);
     if (P.length < 3 || R.polylineCrossesObstacle(st.obs, P) || R.polylineCrossesItself(P)) return false;
@@ -1192,7 +1200,7 @@
      identity, the redraw keeps the position), the marks found again by their
      spots, then B as if clicked. The redraw and the move are one undo step,
      as when room is made (roomSnapshot). */
-  function retryMove(rt, failed) {   // (failed, v152: the redraw failed — the move armed again, on to the next rung)
+  function retryMove(rt, failed, again) {   // (failed, v152: the redraw failed — the move armed again, on to the next rung; again, v165: D — nothing was redrawn)
     var a = rt.a, A = game.spots[a], pa = [A.x, A.y], an = E.analyse(game.spots, game.edges), p = pa;
     if (A.deg === 2) {                             // a point just off A in that region (12 px, like the side probes)
       p = null;
@@ -1209,8 +1217,8 @@
     var re = armFor(game, a, armed.start, rt.ar, armed.obs);
     if (re && re.region.key === armed.region.key) { armed.marks = re.marks; armed.arcMarks = re.arcMarks; armed.markedSpots = rt.ar.markedSpots; }
     if (failed) { pendingRoom = { a: a, b: rt.b, room: null }; draw(); climbOn(); return; }
-    if (!armed.targets[rt.b]) { log('Redrawn, but there is still no room for ' + (a + 1) + ' → ' + (rt.b + 1) + '.'); explainBlocked(rt.b); return; }   // (v152: and the next rung)
-    roomSnapshot = true;                           // (finishBand takes no snapshot of its own; one U undoes both)
+    if (!armed.targets[rt.b]) { if (!again) log('Redrawn, but there is still no room for ' + (a + 1) + ' → ' + (rt.b + 1) + '.'); explainBlocked(rt.b); return; }   // (v152: and the next rung)
+    if (!again) roomSnapshot = true;               // (finishBand takes no snapshot of its own; one U undoes both)
     connectTo(rt.b);
   }
 
@@ -1733,9 +1741,9 @@
 
     /* Drop the wobble inside the two end spots, cut off any loops the stroke
        makes with itself, then pin the ends to the spot centres. */
-    var pa = [A.x, A.y], pb = [B.x, B.y], keep = 0.6 * SNAP, lo = 0, hi = st.pts.length - 1;
-    while (lo <= hi && G.dist(st.pts[lo], pa) < keep) lo++;
-    while (hi >= lo && G.dist(st.pts[hi], pb) < keep) hi--;
+    var pa = [A.x, A.y], pb = [B.x, B.y], lo = 0, hi = st.pts.length - 1;   // (v165: cut at the discs' edge, as strokeRoute — was 0.6·SNAP)
+    while (lo <= hi && G.dist(st.pts[lo], pa) < SPOT_R) lo++;
+    while (hi >= lo && G.dist(st.pts[hi], pb) < SPOT_R) hi--;
     var mid = cutSelfLoops(st.pts.slice(lo, hi + 1));
     if (loop && mid.length < 3) return reject('Too short to be a loop.');
     if (route.heroic) { heroicMove(a, b, [pa].concat(mid, [pb])); return; }   // Room → Heroic: as drawn
@@ -1764,13 +1772,39 @@
   }
 
   /* ---------------- the shared pipeline: polyline -> band -> spline -> move ---------------- */
+  /* A move refused for lack of room (v165, Peter 10/14: "We have to offer some actions"): the move armed
+     again, M, A, R, Z offered, and the Room menu's ladder climbed (roomWanted), as finishBand does for a band
+     that cannot keep the minimum clearance (v39) and a fitted curve that comes too close (v153). `clearance`
+     for the room-maker (null: unknown). Without anything to arm again: the message alone. */
+  function refuseForRoom(a, b, msg, detail, clearance) {
+    var tr = lastTry; lastTry = null;
+    if (roomSnapshot) { roomSnapshot = false; msg += ' (The drawing was changed for it, but not enough: U undoes that.)'; }
+    if (tr && (tr.ar ? (armed = tr.ar) : arm(tr.st))) {
+      pendingRoom = { a: a, b: b, room: { clearance: clearance } };
+      say(msg + roomOffer() + '   —   D: draw it again   —   or click another spot', true, detail);
+      draw();
+      roomWanted();
+      return;
+    }
+    say(msg, true, detail); draw();
+  }
+  /* D (v165, Peter): draw the move waiting for room again — as clicking its destination again, but in the
+     drawing as it is now (armed afresh, as after A or R: retryMove), e.g. after the minimum clearance was
+     lowered or a spot moved by hand. The ladder starts anew, as for a click. */
+  function drawAgain() {
+    if (!armed || !pendingRoom) { say('Nothing to draw again: D tries a move again after it was refused for lack of room.', true); return; }
+    climb = null;
+    retryMove({ a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) }, false, true);
+  }
 
 
   function startRoute(a, b, P, obs, tried) {
     lastTry = tried || null;
-    var reject = function (msg) { say(msg, true); draw(); };
     var rt = makeBand(a, b, P, obs);
-    if (typeof rt === 'string') return reject(rt);
+    if (typeof rt === 'string') {                  // (v165, Peter: offer what can be done — M, A, R, Z — and climb the ladder; a curve crossing something is not about room)
+      if (/^The curve crosses/.test(rt)) { lastTry = null; say(rt, true); draw(); return; }
+      return refuseForRoom(a, b, rt, null, null);
+    }
     band = rt;
     say('Relaxing…');
     if (route.animate) requestAnimationFrame(animateBand); else finishBand();
@@ -1790,7 +1824,7 @@
     /* the refusal for lack of room names no pixels; the log gets them (v63) */
     var TOO_CLOSE = 'No room: the curve would come too close to something.', detail = null;
     var reject = function (msg) { say(msg, true, detail && msg.replace(TOO_CLOSE, detail)); draw(); };
-    if (bd.error) return reject(bd.error);
+    if (bd.error) return refuseForRoom(mv.a, mv.b, bd.error, null, null);   // (v165: was a bare message)
     if (bd.state.rmin < route.d0 - 1e-6) {
       var msg = TOO_CLOSE;
       detail = 'No room: the closest approach is ' + bd.state.rmin.toFixed(0) + ' px, less than the minimum clearance ' + route.d0 + '.';
@@ -1917,9 +1951,12 @@
      undo history (version 2, 9/23: the positions before each move, oldest
      first), so a position can be sent along with a bug report, loaded back,
      and moves undone to replay them with a fix. */
+  function gameData() {
+    return { format: 'sprouts-game', version: 2, game: game, route: route, colours: colours,   // (colours: v42)
+             history: history.map(function (h) { return JSON.parse(h); }) };
+  }
   function saveGame() {
-    var text = JSON.stringify({ format: 'sprouts-game', version: 2, game: game, route: route, colours: colours,   // (colours: v42)
-                                history: history.map(function (h) { return JSON.parse(h); }) }, null, 1);
+    var text = JSON.stringify(gameData(), null, 1);
     download('sprouts-' + stamp() + '.json', new Blob([text], { type: 'application/json' }));
   }
   /* The undo history of a version-1 file, which has none: rebuilt by taking the
@@ -1948,18 +1985,23 @@
         var data;
         try { data = JSON.parse(text); } catch (e) { say('Not a JSON file.', true, null, true); return; }
         if (!data || data.format !== 'sprouts-game' || !data.game || !data.game.spots) { say('Not a Sprouts game file.', true, null, true); return; }
-        game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHalt = false; titleKey = null;
-        history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
-        if (data.route) applySettings(data.route);
-        if (data.colours) applyColours(data.colours);
-        if (game.rules) document.getElementById('opt-rules').value = game.rules;
-        resizeCanvas(); sayTurn();
-        statusEl.textContent += '   —   loaded ' + file.name;
-        logLoaded(file.name);
-        maybeAI();
+        useLoaded(data, file.name);
       });
     });
     input.click();
+  }
+  /* A game file's contents put in place (Load game; v166: also the game handed over by Y, `moved`) */
+  function useLoaded(data, name, moved) {
+    game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHalt = false; titleKey = null;
+    history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
+    if (data.route) applySettings(data.route);
+    if (data.colours) applyColours(data.colours);
+    if (game.rules) document.getElementById('opt-rules').value = game.rules;
+    resizeCanvas(); sayTurn();
+    if (moved) return;                            // (the caller goes on: the menus, the log, then the computer)
+    statusEl.textContent += '   —   loaded ' + name;
+    logLoaded(name);
+    maybeAI();
   }
   /* The log lines for a loaded game: its start and every move so far,
      from its history (rebuilt for a version-1 file). */
@@ -2054,7 +2096,7 @@
      window stays resizable either way. Max square: the largest square the screen has room for (the window's,
      where it cannot be resized). Full screen: as F. Before the first move the spots are laid out afresh for
      the new size (previewLayout); later the picture is only scaled, as by any resize. */
-  var fixedArea = null, sizing = false;
+  var fixedArea = null, sizing = false, sizeKeepsGame = false;   // (sizeKeepsGame, v166: Y's resize lays out nothing afresh)
   var sizeW = document.getElementById('opt-width'), sizeH = document.getElementById('opt-height'), statusbarEl = document.getElementById('statusbar');
   function showSize() {
     if (document.activeElement === sizeW || document.activeElement === sizeH) return;   // (not while one is being typed in)
@@ -2114,7 +2156,7 @@
         '   Window ' + window.outerWidth + ' x ' + window.outerHeight + ' at ' + window.screenX + ', ' + window.screenY + '; screen room ' + screen.availWidth + ' x ' + screen.availHeight +
         '; display mode ' + (['browser', 'standalone', 'minimal-ui', 'fullscreen'].filter(function (m) { return window.matchMedia('(display-mode: ' + m + ')').matches; })[0] || '?') + '.');
     showSize();
-    previewLayout(false);
+    if (sizeKeepsGame) sizeKeepsGame = false; else previewLayout(false);
     /* said after the new layout's turn message and the resize's own "Drawing area is …" (the ResizeObserver
        reports in the frame after the change), so that it is what stays on the status line */
     requestAnimationFrame(function () { requestAnimationFrame(function () {
@@ -2128,7 +2170,7 @@
      not one in full screen or maximized. */
   function whyFixed() {
     if (browserFull()) return 'Chrome is in full screen: F11 leaves it';
-    if (window.matchMedia('(display-mode: browser)').matches) return 'the game runs in an ordinary browser tab; in a window of its own (Chrome menu: Install page as app) it can be';
+    if (!ownWindow()) return 'the game runs in an ordinary browser tab: Y opens it in a window of its own, which can be';
     if (window.outerWidth >= screen.availWidth && window.outerHeight >= screen.availHeight) return 'the window is maximized: restore it first';
     return 'the browser refused';
   }
@@ -2179,7 +2221,7 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(); }, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(); }, d: drawAgain, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -3216,4 +3258,67 @@
   [].filter.call(document.querySelectorAll('.menu-title'), function (t) { return t.id !== 'help-title'; })
     .forEach(function (t, i) { t.style.setProperty('--menu-bg', menuColours[i % menuColours.length][1]); });
   newGame();
+  takeOver();
+
+  /* ---------------- Y: the game in a window of its own (v166, Peter 10/14) ----------------
+     A page cannot turn its tab into an app window, but it can open itself in a POPUP window — in any browser,
+     without a path to chrome.exe — and a popup is a window the page may resize (Game → Size). The popup has
+     no tabs, toolbar or bookmarks, only the browser's read-only address line. Y opens one at the drawing
+     area's present size and hands it everything: the game with its undo history, settings and colors (as a
+     game file has them), the menus' choices (players, workers, Room boxes …), the log so far and the
+     previous session's. The new window takes it over (takeOver) and tells the tab, which closes itself, or —
+     where the browser does not let it — becomes a note (?moved, at the top of this file). Checked in Chromium:
+     a popup reports toolbar.visible false (a tab true; an app window's display mode is 'standalone'). */
+  function ownWindow() { return window.matchMedia('(display-mode: standalone)').matches || !!(window.toolbar && !window.toolbar.visible); }
+  function menuValues() {
+    var out = {};
+    document.querySelectorAll('.menu-panel input[id], .menu-panel select[id]').forEach(function (el) {
+      if (el.id === 'opt-width' || el.id === 'opt-height' || el.id === 'opt-code' || el.id === 'opt-window') return;   // (opt-window: the switch itself)
+      out[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+    return out;
+  }
+  /* v167 (Peter): Y switches back and forth — in a window of its own it hands the game to an ordinary browser
+     tab (window.open without features: a tab, in the browser's last ordinary window) and closes the window. */
+  function openOwnWindow() {
+    closeMenus(); showWindowBox();
+    if (net) { say('Not while connected to another computer (Net → Leave first).', true, null, true); return; }
+    if (relaying || roomBusy || routeBusy || band) { say('Wait until the drawing is finished, then press Y again.', true, null, true); return; }
+    var toOwn = !ownWindow();
+    aiCancel();                                   // (the computer thinks again in the new window)
+    window.__sproutsHandoff = { data: gameData(), menus: menuValues(), log: logLines.slice(), previous: previousLog, area: [stage.clientWidth, stage.clientHeight], own: toOwn };
+    var w = toOwn ? window.open(location.pathname, 'sprouts', 'popup,width=' + stage.clientWidth + ',height=' + (stage.clientHeight + menubar.offsetHeight + statusbarEl.offsetHeight))
+                  : window.open(location.pathname, '_blank');
+    if (!w) { window.__sproutsHandoff = null; say('The browser did not open the new ' + (toOwn ? 'window' : 'tab') + ' (are pop-ups blocked for this page?).', true, null, true); maybeAI(); return; }
+    say(toOwn ? 'Opening the game in a window of its own…' : 'Moving the game to a browser tab…', false, null, true);
+  }
+  /* View → Window of its own: checked while the game has one (the box asks for the switch; it shows the state) */
+  var windowBox = document.getElementById('opt-window');
+  function showWindowBox() { windowBox.checked = ownWindow(); }
+  windowBox.addEventListener('change', function () { openOwnWindow(); });
+  showWindowBox();
+  /* called by the new window once it has the game */
+  window.__sproutsMoved = function () {
+    window.__sproutsHandoff = null;
+    window.close();                               // (allowed for a window the page opened, or a tab opened on its own: one entry in its history)
+    setTimeout(function () { location.replace(location.pathname + '?moved'); }, 300);   // else the note
+  };
+  function takeOver() {
+    var h = null;
+    try { h = window.opener && window.opener.__sproutsHandoff; } catch (e) { h = null; }   // (another origin: none)
+    if (!h) return;
+    Object.keys(h.menus).forEach(function (id) {   // the menus' choices first (each control's own handler does the rest; Spots or Layout
+      var el = document.getElementById(id);       // lay out a new game before the first move) — then the game itself
+      if (!el) return;
+      if (el.type === 'checkbox') { if (el.checked !== h.menus[id]) { el.checked = h.menus[id]; el.dispatchEvent(new Event('change')); } }
+      else if (el.value !== String(h.menus[id])) { el.value = h.menus[id]; el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); }
+    });
+    useLoaded(h.data, null, true);
+    logLines = h.log.slice(); previousLog = h.previous;   // the log goes on where the tab left it
+    try { if (previousLog) localStorage.setItem(LOG_PREV, previousLog); } catch (e) { /* nothing kept */ }
+    log(h.own ? 'The game moved to a window of its own (Y).' : 'The game moved back to a browser tab (Y).');
+    try { window.opener.__sproutsMoved(); } catch (e) { /* the tab is gone already */ }
+    if (h.own && (stage.clientWidth !== h.area[0] || stage.clientHeight !== h.area[1])) { sizeKeepsGame = true; applySize(h.area[0], h.area[1]); }   // (the browser's popup may come out a little different; the game is kept as it is. A tab: the drawing area fills it)
+    sayTurn(); maybeAI();
+  }
 })();

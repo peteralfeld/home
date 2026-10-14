@@ -418,11 +418,28 @@
        rule: the bisector of the sector used at a spot with two curves; otherwise
        the route's own direction, kept at least MIN_ANGLE from any curve already
        there. */
+    /* v164 (Peter's game of 10/14: 20 → 7 by clicking, "The curve passes through or touches something"):
+       the part of a route inside its end spots' discs is replaced by a straight piece from the spot to
+       where the route leaves the disc. Inside a disc the route means nothing (curves are drawn to the
+       spot's center), but a route turning there — leaving spot 20 westward and bending south toward 7 —
+       had its fourth point 22 px along it yet only 0.7 px outside spot 20's disc (30 px wide since v160),
+       which the band's rule against coming back to its own end spots (rSelf: dA < SELF_RATIO · s) counts
+       as clearance 0.7 < MIN_START: the band could not start. Kept only if the straight pieces cross
+       nothing (makeBand's checks below); else the route as it was. */
+    function leaveDiscs(P, pa, pb, r) {
+      var n = P.length - 1, i = 1, j = n - 1;
+      while (i < n && G.dist(P[i], pa) < r) i++;
+      while (j > i && G.dist(P[j], pb) < r) j--;
+      if (i >= n || j < i || (i === 1 && j === n - 1)) return P;   // (all of it inside, or nothing to cut)
+      return [P[0]].concat(P.slice(i, j + 1), [P[n]]);
+    }
     /* The elastic band for a move from a to b along the polyline P (in the
        current `game`), or a message string saying why not. */
     function makeBand(a, b, P, obs) {
       var A = S.game.spots[a], B = S.game.spots[b], pa = [A.x, A.y], pb = [B.x, B.y], loop = a === b;
       var ctx = { aIdx: a, bIdx: b, A: pa, B: pb, rho: S.route.D * Math.SQRT2, spotR: S.spotR };
+      var P1 = leaveDiscs(P, pa, pb, S.spotR);
+      if (P1 !== P && !R.polylineCrossesObstacle(obs, P1) && !R.polylineCrossesItself(P1)) P = P1;
       if (R.polylineCrossesObstacle(obs, P)) return 'The curve crosses something.';
       if (R.polylineCrossesItself(P)) return 'The curve crosses itself.';
       /* the sectors the curve leaves the spots through are those of P's first and
@@ -436,7 +453,7 @@
         if (!portB) return 'No room to arrive at spot ' + (b + 1) + ' from that side.';
         return { portA: portA, portB: portB };
       });
-      if (!rt) return 'The curve passes through or touches something.';
+      if (!rt) return 'No room: the curve comes too close to something to be smoothed.';   // (v165: was "The curve passes through or touches something." — a refusal for lack of room, ui.js startRoute)
       rt.move = { a: a, b: b, obs: obs, ctx: ctx };
       return rt;
     }
