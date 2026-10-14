@@ -3269,7 +3269,12 @@
      previous session's. The new window takes it over (takeOver) and tells the tab, which closes itself, or —
      where the browser does not let it — becomes a note (?moved, at the top of this file). Checked in Chromium:
      a popup reports toolbar.visible false (a tab true; an app window's display mode is 'standalone'). */
-  function ownWindow() { return window.matchMedia('(display-mode: standalone)').matches || !!(window.toolbar && !window.toolbar.visible); }
+  /* v169 (Peter's Chrome 138, 10/14: his home page's link opened the game in a popup, but Y and the View box did
+     nothing — toolbar.visible was true there, so the game took the popup for a tab, opened "its own window"
+     under the name 'sprouts' — the popup's OWN name, given by the link — and so reloaded itself, losing the
+     game). Now also by name: every window opened for the game (by Y, or by a link with window.open(…, 'sprouts',
+     …)) is called 'sprouts'; a tab Y opens has no name. */
+  function ownWindow() { return window.name === 'sprouts' || window.matchMedia('(display-mode: standalone)').matches || !!(window.toolbar && !window.toolbar.visible); }
   function menuValues() {
     var out = {};
     document.querySelectorAll('.menu-panel input[id], .menu-panel select[id]').forEach(function (el) {
