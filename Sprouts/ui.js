@@ -3287,7 +3287,8 @@
     var toOwn = !ownWindow();
     aiCancel();                                   // (the computer thinks again in the new window)
     window.__sproutsHandoff = { data: gameData(), menus: menuValues(), log: logLines.slice(), previous: previousLog, area: [stage.clientWidth, stage.clientHeight], own: toOwn };
-    var w = toOwn ? window.open(location.pathname, 'sprouts', 'popup,width=' + stage.clientWidth + ',height=' + (stage.clientHeight + menubar.offsetHeight + statusbarEl.offsetHeight))
+    var w = toOwn ? window.open(location.pathname, 'sprouts', 'popup,width=' + stage.clientWidth + ',height=' + (stage.clientHeight + menubar.offsetHeight + statusbarEl.offsetHeight) +
+                                ',left=' + window.screenX + ',top=' + window.screenY)   // (v168, Peter: where the browser window was — its upper left corner. The way back cannot: a tab goes where the browser puts it)
                   : window.open(location.pathname, '_blank');
     if (!w) { window.__sproutsHandoff = null; say('The browser did not open the new ' + (toOwn ? 'window' : 'tab') + ' (are pop-ups blocked for this page?).', true, null, true); maybeAI(); return; }
     say(toOwn ? 'Opening the game in a window of its own…' : 'Moving the game to a browser tab…', false, null, true);
