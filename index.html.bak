@@ -25,7 +25,18 @@ If you have any questions, suggestions, or comments on these pages, or you find 
 
 <p>    One of my first projects after retirement was to learn <e>JavaScript</e> which is universally used to create interactive web pages.   Virtually all browsers support JS and while it has its idiosyncrasies and weaknesses, its ubiquity makes it relevant and useful.    For JS codes no downloads are required. On the other hand, I learned, to my surprise and chagrin, that browsers actually limit the computational resources they make available to code that you run within your browser.   You don't get full access to the memory on your machine, or to the full number of threads it can run simultaneously, and computations turn to a crawl when you make your browser window invisible to work on something else. To me, this rules out JS as a general computing language.   It can be used in a stand alone fashion, but there are more powerful alternatives (e.g., Java, Python or C++).  <p> I also learned something I was unaware of for many years:   JavaScript is unrelated to Java!  According to my older son, JS relates to Java the same way a butterfly relates to butter!
 
-<p> Following are links to the individual project sites.  For me, following the links in the Legacy section is like an exercise in archeology.
+<p> Following are links to the individual project sites, in reverse chronological order.  For me, following the links in the Legacy section is like an exercise in archaeology.
+
+
+
+   <a href="https://peteralfeld.github.io/home/Sprouts/"
+      onclick="window.open(this.href, 'sprouts', 'popup,width=1024,height=1024'); return false;"><H2>The Game of Sprouts</H2></a>
+ 
+
+    <img src="flower.png" class="thumb" alt="A symmetric sprouts game board">
+
+<p>    <e>Sprouts</e> is a beautiful game with a topological flavor. It was invented by John Conway and Michael Paterson at the University of Cambridge, and popularized by Martin Gardner in his Scientific American column, all in 1967. About 20 years ago I tried to program it <e>Java</e>.  Major challenges include drawing smooth curves, making space for them, extracting the topolgy from the drawing, and getting an AI player to play sensibkly.  I got to the  stage where each player could draw curves on the board that connected properly, but I was unable to draw the curves smoothly, make space for new curves, or make the computer play against a human.  It was just too difficult, for me at that tome.  Now, with significant help from Claude AI evertything works.  Check it out!
+
 
     <A href="Backgammon/index.html"><H2>The Game of Backgammon</H2></a>
 

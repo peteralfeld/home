@@ -2096,7 +2096,7 @@
      window stays resizable either way. Max square: the largest square the screen has room for (the window's,
      where it cannot be resized). Full screen: as F. Before the first move the spots are laid out afresh for
      the new size (previewLayout); later the picture is only scaled, as by any resize. */
-  var fixedArea = null, sizing = false, sizeKeepsGame = false;   // (sizeKeepsGame, v166: Y's resize lays out nothing afresh)
+  var fixedArea = null, sizing = false, sizeKeepsGame = false, sizeQuiet = false;   // (sizeQuiet, v170: Y's own resize names no refusal)   // (sizeKeepsGame, v166: Y's resize lays out nothing afresh)
   var sizeW = document.getElementById('opt-width'), sizeH = document.getElementById('opt-height'), statusbarEl = document.getElementById('statusbar');
   function showSize() {
     if (document.activeElement === sizeW || document.activeElement === sizeH) return;   // (not while one is being typed in)
@@ -2157,11 +2157,12 @@
         '; display mode ' + (['browser', 'standalone', 'minimal-ui', 'fullscreen'].filter(function (m) { return window.matchMedia('(display-mode: ' + m + ')').matches; })[0] || '?') + '.');
     showSize();
     if (sizeKeepsGame) sizeKeepsGame = false; else previewLayout(false);
+    var quiet = sizeQuiet; sizeQuiet = false;
     /* said after the new layout's turn message and the resize's own "Drawing area is …" (the ResizeObserver
        reports in the frame after the change), so that it is what stays on the status line */
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       say('Drawing area is ' + a + ' x ' + b + (short ? '   —   ' + w + ' x ' + h + ' does not fit: this is the most there is room for' + (fixedArea ? ' in this window' : ' on this screen') : '') +
-          (fixedArea ? '   —   the window could not be resized (' + whyFixed() + '), so the drawing area is set inside it' : ''), short || !!fixedArea, null, true);
+          (fixedArea && !quiet ? '   —   the window could not be resized (' + whyFixed() + '), so the drawing area is set inside it' : ''), short || (!!fixedArea && !quiet), null, true);
     }); });
   }
   /* Why the browser refused to resize the window (v163, Peter 10/14: his game ran in an ordinary tab, opened by
@@ -3278,7 +3279,7 @@
   function menuValues() {
     var out = {};
     document.querySelectorAll('.menu-panel input[id], .menu-panel select[id]').forEach(function (el) {
-      if (el.id === 'opt-width' || el.id === 'opt-height' || el.id === 'opt-code' || el.id === 'opt-window') return;   // (opt-window: the switch itself)
+      if (el.id === 'opt-width' || el.id === 'opt-height' || el.id === 'opt-code' || el.id === 'opt-window' || el.id === 'opt-full') return;   // (opt-window: the switch itself; opt-full shows a state, its change would switch full screen, v170)
       out[el.id] = el.type === 'checkbox' ? el.checked : el.value;
     });
     return out;
@@ -3324,7 +3325,10 @@
     try { if (previousLog) localStorage.setItem(LOG_PREV, previousLog); } catch (e) { /* nothing kept */ }
     log(h.own ? 'The game moved to a window of its own (Y).' : 'The game moved back to a browser tab (Y).');
     try { window.opener.__sproutsMoved(); } catch (e) { /* the tab is gone already */ }
-    if (h.own && (stage.clientWidth !== h.area[0] || stage.clientHeight !== h.area[1])) { sizeKeepsGame = true; applySize(h.area[0], h.area[1]); }   // (the browser's popup may come out a little different; the game is kept as it is. A tab: the drawing area fills it)
+    /* v170 (Peter: "typing y changes the size of the drawing area … no options or settings should change"): the
+       drawing area keeps its size both ways — the window resized to it, or in a tab (which takes the browser
+       window's size) the area set inside it, as Size does there; resizing by hand lets it fill the window again */
+    if (stage.clientWidth !== h.area[0] || stage.clientHeight !== h.area[1]) { sizeKeepsGame = true; sizeQuiet = true; applySize(h.area[0], h.area[1]); }
     sayTurn(); maybeAI();
   }
 })();
