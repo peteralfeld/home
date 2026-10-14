@@ -112,3 +112,11 @@ kbd { opacity: .7; font: inherit; }
 #tip ul { margin: 4px 0; padding-left: 20px; }
 #tip kbd { opacity: 1; font-weight: bold; padding: 0 4px; border: 1px solid #999; border-radius: 3px; background: #f2f2f2; }
 .menu-panel :disabled { pointer-events: none; }
+
+/* v162: Game → Size of the drawing area — two number fields and Set on one row, the five sizes on another */
+.menu-panel .size-head { opacity: .8; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.2); margin-top: 4px; }
+.menu-panel .size-fields { justify-content: flex-start; }
+.menu-panel .size-fields label { display: flex; align-items: center; gap: 6px; }
+.menu-panel .size-fields input { width: 72px; }
+.menu-panel .size-fields .item, .menu-panel .size-presets .item { width: auto; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.3); }
+.menu-panel .size-presets { flex-wrap: wrap; justify-content: flex-start; gap: 6px; max-width: 330px; }

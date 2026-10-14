@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=159">
+<link rel="stylesheet" href="style.css?v=163">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 159</span>
+  <span id="app-version">SPROUTS v. 163</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -46,6 +46,15 @@
           <option value="misere">Mis&egrave;re: last to move loses</option>
         </select>
       </label>
+      <div class="row size-head" data-tip="size-head">Size</div>
+      <div class="row size-fields" data-tip="opt-size"><label>Width <input id="opt-width" type="number" min="1"></label><label>Height <input id="opt-height" type="number" min="1"></label><button class="item" id="cmd-size-set" data-tip="cmd-size-set">Set</button></div>
+      <div class="row size-presets">
+        <button class="item" id="cmd-size-1090" data-tip="size-preset">1090 x 607</button>
+        <button class="item" id="cmd-size-1280" data-tip="size-preset">1280 x 742</button>
+        <button class="item" id="cmd-size-1024" data-tip="size-preset">1024 x 1024</button>
+        <button class="item" id="cmd-size-square" data-tip="size-square">Max square</button>
+        <button class="item" id="cmd-size-full" data-tip="size-full">Full screen</button>
+      </div>
       <button class="item" id="cmd-new" data-tip="cmd-new">New game <kbd>N</kbd></button>
       <button class="item" id="cmd-undo" data-tip="cmd-undo">Undo move <kbd>U</kbd></button>
       <button class="item" id="cmd-exit" data-tip="cmd-exit">Exit (close the page) <kbd>X</kbd></button>
@@ -117,17 +126,17 @@
     <button class="menu-title" data-tip="m-settings">Settings</button>
     <div class="menu-panel">
       <label class="row" data-tip="opt-d0">Minimum clearance <span class="val" id="val-d0"></span>
-        <input id="opt-d0" type="range" min="3" max="30" step="1" value="10"></label>
+        <input id="opt-d0" type="range" min="3" max="30" step="1" value="6"></label>
       <label class="row" data-tip="opt-D">Comfort distance <span class="val" id="val-D"></span>
         <input id="opt-D" type="range" min="10" max="64" step="1" value="40"></label>
       <label class="row" data-tip="opt-lambda">Room vs length <span class="val" id="val-lambda"></span>
         <input id="opt-lambda" type="range" min="-1" max="1" step="0.1" value="0"></label>
       <label class="row" data-tip="opt-spotsize">Spot size <span class="val" id="val-spotsize"></span>
-        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="1.9"></label>
+        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="2.5"></label>
       <label class="row" data-tip="opt-linewidth">Curve thickness <span class="val" id="val-linewidth"></span>
-        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1.8"></label>
+        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="2.3"></label>
       <label class="row" data-tip="opt-numbersize">Index size <span class="val" id="val-numbersize"></span>
-        <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.6"></label>
+        <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="2"></label>
       <label class="row" data-tip="opt-animate">Animate <input id="opt-animate" type="checkbox" checked></label>
       <label class="row" data-tip="opt-click">Click to connect <input id="opt-click" type="checkbox" checked></label>
     </div>
@@ -231,6 +240,12 @@
     <li>Place by hand: a blank window; click to place the spots, then <kbd>Enter</kbd> or <kbd>N</kbd> starts the game (key <kbd>0</kbd>).</li></ul>
     Before the first move a change shows at once.</div>
   <div data-tip-for="opt-rules"><b>Rules.</b> Normal play: whoever cannot move loses, so the last to move wins. Mis&egrave;re: whoever cannot move wins, so the last to move loses. It can be changed during a game; the computer players use it from their next move.</div>
+  <div data-tip-for="size-head"><b>Size</b> of the drawing area, in pixels. The window grows or shrinks so that the drawing area gets the size chosen, and stays resizable by hand. A browser lets a page resize its own window only when the page has a window of its own &mdash; in Chrome, a shortcut made with <i>Install page as app</i> or <i>Create shortcut&hellip; (Open as window)</i> &mdash; and the window is neither maximized nor in full screen; in an ordinary tab the drawing area is set to the size inside the window instead, with the page&rsquo;s dark background around it, and resizing the window by hand lets the drawing area fill the window again. Before the first move a new size lays the spots out afresh; later the picture is only scaled.</div>
+  <div data-tip-for="opt-size"><b>Width and Height</b> of the drawing area, in pixels: they show its present size. Type a size and press <kbd>Enter</kbd> or click <b>Set</b>.</div>
+  <div data-tip-for="cmd-size-set"><b>Set.</b> Gives the drawing area the width and height typed in the two fields. If the screen has no room for it, it gets the most there is room for, and the status row says so.</div>
+  <div data-tip-for="size-preset"><b>A fixed size</b> of the drawing area, in pixels (width x height). 1090 x 607 is the size most of the program was developed and tested in.</div>
+  <div data-tip-for="size-square"><b>Max square.</b> The largest square drawing area there is room for: the screen&rsquo;s, when the window can be resized, else the window&rsquo;s.</div>
+  <div data-tip-for="size-full"><b>Full screen.</b> The page fills the screen, as with <kbd>F</kbd> (View menu); <kbd>F</kbd> or <kbd>Esc</kbd> leaves it.</div>
   <div data-tip-for="cmd-new"><b>New game</b> <kbd>N</kbd>. Starts a new game with the Spots, Layout and Rules above. While spots are being placed by hand it starts the game from them instead.
     <kbd>1</kbd> &hellip; <kbd>9</kbd>: a new game with that many spots in the chosen layout. <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
   <div data-tip-for="cmd-undo"><b>Undo move</b> <kbd>U</kbd>. Takes back the last move, with any room made for it. Against the computer it goes back to your turn. Over the net either player may undo; it takes back the last move whoever made it, on both computers.
@@ -304,17 +319,17 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=159"></script>
-<script src="relax.js?v=159"></script>
-<script src="route.js?v=159"></script>
-<script src="engine.js?v=159"></script>
-<script src="describe.js?v=159"></script>
-<script src="room.js?v=159"></script>
-<script src="moves.js?v=159"></script>
-<script src="redraw.js?v=159"></script>
-<script src="layout.js?v=159"></script>
-<script src="ai.js?v=159"></script>
-<script src="net.js?v=159"></script>
-<script src="ui.js?v=159"></script>
+<script src="geom.js?v=163"></script>
+<script src="relax.js?v=163"></script>
+<script src="route.js?v=163"></script>
+<script src="engine.js?v=163"></script>
+<script src="describe.js?v=163"></script>
+<script src="room.js?v=163"></script>
+<script src="moves.js?v=163"></script>
+<script src="redraw.js?v=163"></script>
+<script src="layout.js?v=163"></script>
+<script src="ai.js?v=163"></script>
+<script src="net.js?v=163"></script>
+<script src="ui.js?v=163"></script>
 </body>
 </html>

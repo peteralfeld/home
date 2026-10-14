@@ -23,7 +23,9 @@
 
 <p><!-- Introduction: what Sprouts is, what this page lets you do, and how to get to <a href="index.html">the game itself</a>. --></p>
 
-<p>The Table of Contents below takes you to any part of this page. Clicking on a symbol like this
+<p>Clicking on the headline of this page will open a new tab showing the <a href="index.html" target="_blank">Game Board</a>
+
+<p>The <e>Table of Contents</e> below takes you to any part of this page. Clicking on a symbol like this
 &nbsp;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a>&nbsp; anywhere on the
 page brings you back here.</p>
 
@@ -45,7 +47,7 @@ page brings you back here.</p>
 The easiest way to get started quickly on your first game is to do the <a href="#sec-tutorial">tutorial below</a>.
 
 
-<p> The rules of the game are simple. Two players start with a number of <i>spots</i> (also called <e>points</e> or <e>vertices</e>) and take turns connecting spots with <i>curves</i> (also called <e>edges</e>). The curves <i>must not touch or intersect</i>, and no spot can have <i>more than three curves</i> attached (a curve from a spot back to itself, a <i>loop</i>, counts twice). When drawing a new curve, from one spot to another, the player adds a new spot somewhere along the curve, usually the approximate center. The player who first is unable to draw a new curve <e>loses</e>. In another version, <e>misère</e>, that player <e>wins</e>.
+<p> The <e>rules of the game</e> are simple. Two players start with a number of <i>spots</i> (also called <e>points</e> or <e>vertices</e>) and take turns connecting spots with <i>curves</i> (also called <e>edges</e>). The curves <i>must not touch or intersect</i>, and no spot can have <i>more than three curves</i> attached (a curve from a spot back to itself, a <i>loop</i>, counts twice). When drawing a new curve, from one spot to another, the player adds a new spot somewhere along the curve, usually at the approximate center. The player who first is unable to draw a new curve <e>loses</e>. In another version, <e>misère</e>, that player <e>wins</e>.
 
 <p> The number of curves that still can be connected to a spot are the <i>lives</i> of that spot. That number equals 3 minus the number of curves already attached. It is convenient to have separate names for the
   different possible numbers of lives of a spot. We use the following terminology:
@@ -85,7 +87,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <H3>Game Essentials</H3>
 
-<p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link, so the total number of lives decreases by 1. At the end of the game there is at least one survivor left.
+<p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link with one liefe left, so the total number of lives <e>decreases by 1</e>x. At the end of the game there is at least one survivor left.
 
  <a href="index.html" target="_blank">
  <figure style="margin: 0 15px 15px 0; max-width: 100%;">
@@ -180,14 +182,14 @@ The easiest way to get started quickly on your first game is to do the <a href="
   <H3 class="menu-head" style="--menu: linear-gradient(90deg, #126c3f 50%, #51a27e 50%)">Player Settings</H3>
 
 
-<p> There are four possible settings for each player, players 1 and 2. There are four settings that can be invoked with the <e>Plays</e> submenu, one for human play, and three for AI play.  They are:
+<p> There are four possible settings for each player, players 1 and 2. They can be invoked with the <e>Plays</e> submenu, one for human play, and three for AI play.  They are:
 
   <OL>
     <LI><e>Human</e>: all moves are made by a human player.</LI>
     <LI><e>Random</e>: The system picks a region and a starting and an end spot at random.   If the two spots lie on the same boundary of the region, the new curve splits the region in two, and every other separate part of the drawing inside that region (a seed, or a group of spots connected to each other) can end up on either side: the system first picks at random how many of them go inside, then which ones.  There is no look ahead at all.</LI>
 
   <LI><e>Monte Carlo</e>: The system considers all possible moves and plays a number of random games after each move.   Then it picks the move that led to the most wins by the current player.   The number of games, 100 by default, or the amount of time available to the AI player, can be set by the user. Monte Carlo never switches to exact play, even as the game gets close to the end. </LI>
-  <LI><e>Parity search</e>: The AI examines the game tree to a certain depth. The user can specify the depth, or a certain amount of time available for the move.   If a time is specified depth 1 is always searched completely. At each stage the system increases the depth by 1  and continues the search if the remaining time exceeds the amount of time used for the previous level.   At the end of each line of the search (a <i>leaf</i>) the system computes the largest and the smallest number of moves the game can still last.   It assumes that the largest number will actually be played, and judges the position by whether that number has the parity the player wants (odd in normal play, even in misère), trusting this judgment more the closer the two numbers are.   It picks the move that does best by this judgment against the opponent&rsquo;s best replies, as deep as the search goes; when several moves tie, Monte Carlo games among them decide, and if they still tie, chance.  As the board divides into separate regions it considers each region by itself, and as the end of the game approaches the search becomes exact. </LI>
+  <LI><e>Parity search</e>: The AI examines the game tree to a certain depth. The user can specify the depth, or a certain amount of time available for the move.   If a time is specified then depth 1 is searched completely. At each stage the system increases the depth by 1  and continues the search if the remaining time exceeds the amount of time used for the previous level.   At the end of each line of the search (a <i>leaf</i>) the system computes the largest and the smallest number of moves the game can still last.   It assumes that the largest number will actually be played, and judges the position by whether that number has the parity the player wants (odd in normal play, even in misère), trusting this judgment more the closer the two numbers are.   It picks the move that does best by this judgment against the opponent&rsquo;s best replies, as deep as the search goes; when several moves tie, Monte Carlo games among them decide, and if they still tie, chance.  As the board divides into separate regions it considers each region by itself, and as the end of the game approaches the search becomes exact. </LI>
 </OL>
 
 <p> Monte Carlo and Parity search each have a pair of fields: a number (random games per move, or the search depth, 6 by default) or a number of seconds per move.   Filling in one field of a pair empties the other.   The button <e>Same as Player 2</e> (in Player 1&rsquo;s menu, and the other way round) copies the other player&rsquo;s kind and settings.

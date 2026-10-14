@@ -22,15 +22,15 @@
       trialMove = Mk.trialMove, armFor = Mk.armFor, loopStart = Mk.loopStart, markedRoute = Mk.markedRoute,
       segIntersection = Mk.segIntersection, cornerProbe = Mk.cornerProbe;
 
-  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 1.9, × 1.8 from Peter's game of 10/2, v146)
-  var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 1.6 from Peter's game of 9/26, v58)
+  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 2.5, × 2.3 from Peter's game of 10/14, v160)
+  var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 2 from Peter's game of 10/14, v160)
   var SPOT_R = 6;        // drawn radius of a spot — also what curves keep clear of (the disc), so a bigger spot needs more room
   var SNAP = 16;         // a stroke starts/ends at a spot if within this distance
   var STEP = Mv.STEP;    // arc-length spacing of the resampled stroke (moves.js)
   var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 10, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false }, autoAI: { M: true, A: false, R: true, Z: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 1.9, lineScale: 1.8, numberScale: 1.6 };   // the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false }, autoAI: { M: true, A: false, R: true, Z: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -2044,6 +2044,112 @@
   document.getElementById('opt-layout').addEventListener('change', function () { if (this.value !== 'manual') lastLayout = this.value; previewLayout(false); });
   document.getElementById('opt-spots').addEventListener('input', function () { previewLayout(true); });
 
+  /* ---------------- Game → Size of the drawing area (v162, Peter 10/14) ----------------
+     The drawing area made W x H. The window is resized so that the drawing area comes out that size
+     (window.resizeTo with the window's frame and the two bars added; Chrome allows it for a window of the
+     page's own — an app window, as from Peter's desktop shortcut — and refuses it in an ordinary tab:
+     checked in Chromium both ways). If the window did not change (refused, or the browser's own full screen),
+     the drawing area itself is given the size inside the window (`fixedArea`, centered, the page's dark
+     background around it); resizing the window by hand then lets the area fill the window again. The
+     window stays resizable either way. Max square: the largest square the screen has room for (the window's,
+     where it cannot be resized). Full screen: as F. Before the first move the spots are laid out afresh for
+     the new size (previewLayout); later the picture is only scaled, as by any resize. */
+  var fixedArea = null, sizing = false;
+  var sizeW = document.getElementById('opt-width'), sizeH = document.getElementById('opt-height'), statusbarEl = document.getElementById('statusbar');
+  function showSize() {
+    if (document.activeElement === sizeW || document.activeElement === sizeH) return;   // (not while one is being typed in)
+    sizeW.value = stage.clientWidth; sizeH.value = stage.clientHeight;
+  }
+  function setFixed(w, h) {
+    fixedArea = w ? { w: w, h: h } : null;
+    stage.style.flex = w ? '0 0 auto' : ''; stage.style.width = w ? w + 'px' : ''; stage.style.height = w ? h + 'px' : '';
+    stage.style.margin = w ? '0 auto' : '';
+  }
+  function windowRoom() { return { w: window.innerWidth, h: window.innerHeight - menubar.offsetHeight - statusbarEl.offsetHeight }; }
+  function applySize(w, h, square) {
+    closeMenus();                                 // (like the menus' other commands)
+    if (document.fullscreenElement) {             // the page's own full screen is left first
+      document.addEventListener('fullscreenchange', function again() { document.removeEventListener('fullscreenchange', again); applySize(w, h, square); });
+      document.exitFullscreen(); return;
+    }
+    setFixed(0);
+    var dW = window.outerWidth - stage.clientWidth, dH = window.outerHeight - stage.clientHeight;
+    var maxW = screen.availWidth - dW, maxH = screen.availHeight - dH;
+    if (square) w = h = Math.min(maxW, maxH);
+    var tw = Math.min(w, maxW), th = Math.min(h, maxH), before = [window.outerWidth, window.outerHeight];
+    sizing = true;
+    var x = Math.max(screen.availLeft || 0, Math.min(window.screenX, (screen.availLeft || 0) + screen.availWidth - (tw + dW)));
+    var y = Math.max(screen.availTop || 0, Math.min(window.screenY, (screen.availTop || 0) + screen.availHeight - (th + dH)));
+    if (x !== window.screenX || y !== window.screenY) window.moveTo(x, y);
+    window.resizeTo(tw + dW, th + dH);
+    afterResize(function () {
+      if (window.outerWidth === before[0] && window.outerHeight === before[1] && (stage.clientWidth !== tw || stage.clientHeight !== th)) {
+        var room = windowRoom();                  // refused: the size inside the window
+        if (square) w = h = Math.min(room.w, room.h);
+        tw = Math.min(w, room.w); th = Math.min(h, room.h);
+        setFixed(tw, th);
+      } else if (stage.clientWidth !== tw || stage.clientHeight !== th) {   // resized, but the frame came out a pixel or so other than measured: once more by the difference
+        window.resizeTo(window.outerWidth + tw - stage.clientWidth, window.outerHeight + th - stage.clientHeight);
+        afterResize(function () { sized(w, h, tw, th); }); return;
+      }
+      sized(w, h, tw, th);
+    });
+  }
+  /* the window's resizing takes effect asynchronously: done when no resize event has come for two frames
+     in a row after the first one, or when none came at all within the first few frames (refused) */
+  function afterResize(then) {
+    var quiet = 0, seen = false, frames = 0;
+    function onResize() { seen = true; quiet = 0; }
+    window.addEventListener('resize', onResize);
+    (function tick() {
+      frames++; quiet++;
+      if ((seen && quiet > 2) || (!seen && frames > 30)) { window.removeEventListener('resize', onResize); sizing = false; then(); return; }
+      requestAnimationFrame(tick);
+    })();
+  }
+  function sized(w, h, tw, th) {
+    var a = stage.clientWidth, b = stage.clientHeight;
+    var short = a < w || b < h;
+    log('Size: ' + w + ' x ' + h + ' asked, drawing area ' + a + ' x ' + b + (fixedArea ? ' (inside the window: ' + whyFixed() + ')' : ' (window resized)') + '.' +
+        '   Window ' + window.outerWidth + ' x ' + window.outerHeight + ' at ' + window.screenX + ', ' + window.screenY + '; screen room ' + screen.availWidth + ' x ' + screen.availHeight +
+        '; display mode ' + (['browser', 'standalone', 'minimal-ui', 'fullscreen'].filter(function (m) { return window.matchMedia('(display-mode: ' + m + ')').matches; })[0] || '?') + '.');
+    showSize();
+    previewLayout(false);
+    /* said after the new layout's turn message and the resize's own "Drawing area is …" (the ResizeObserver
+       reports in the frame after the change), so that it is what stays on the status line */
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      say('Drawing area is ' + a + ' x ' + b + (short ? '   —   ' + w + ' x ' + h + ' does not fit: this is the most there is room for' + (fixedArea ? ' in this window' : ' on this screen') : '') +
+          (fixedArea ? '   —   the window could not be resized (' + whyFixed() + '), so the drawing area is set inside it' : ''), short || !!fixedArea, null, true);
+    }); });
+  }
+  /* Why the browser refused to resize the window (v163, Peter 10/14: his game ran in an ordinary tab, opened by
+     an internet shortcut). Chrome resizes only a window of the page's own — an app window, whose display mode
+     is 'standalone' (a tab's is 'browser'; window.toolbar.visible is true in both: checked in Chromium) — and
+     not one in full screen or maximized. */
+  function whyFixed() {
+    if (browserFull()) return 'Chrome is in full screen: F11 leaves it';
+    if (window.matchMedia('(display-mode: browser)').matches) return 'the game runs in an ordinary browser tab; in a window of its own (Chrome menu: Install page as app) it can be';
+    if (window.outerWidth >= screen.availWidth && window.outerHeight >= screen.availHeight) return 'the window is maximized: restore it first';
+    return 'the browser refused';
+  }
+  window.addEventListener('resize', function () { if (!sizing && fixedArea) setFixed(0); });   // (the window resized by hand: the drawing area fills it again)
+  function sizeFromFields() {
+    var w = Math.round(Number(sizeW.value)), h = Math.round(Number(sizeH.value));
+    if (!(w >= 1 && h >= 1)) { say('Width and height must be whole numbers of pixels.', true, null, true); return; }
+    sizeW.blur(); sizeH.blur(); applySize(w, h);
+  }
+  [sizeW, sizeH].forEach(function (f) { f.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sizeFromFields(); } }); });
+  document.getElementById('cmd-size-set').addEventListener('click', sizeFromFields);
+  [['cmd-size-1090', 1090, 607], ['cmd-size-1280', 1280, 742], ['cmd-size-1024', 1024, 1024]].forEach(function (s) {
+    document.getElementById(s[0]).addEventListener('click', function () { sizeW.value = s[1]; sizeH.value = s[2]; applySize(s[1], s[2]); });
+  });
+  document.getElementById('cmd-size-square').addEventListener('click', function () { applySize(0, 0, true); });
+  document.getElementById('cmd-size-full').addEventListener('click', function () {
+    closeMenus(); setFixed(0);
+    if (!document.fullscreenElement && !browserFull()) document.documentElement.requestFullscreen();
+  });
+  showSize();
+
   /* Digit keys (Peter, 9/24, v49): 1 … 9 start a new game with that many spots in the Game menu's
      layout (v62, Peter 9/26; before: always a circle), and set its Spots, so N repeats it; 0 (v61; was
      10) a blank window — spots placed by clicking, Enter or N starts. v127 (Peter): 0 sets the menu's
@@ -3091,6 +3197,7 @@
   function sayArea() { say(areaText(), false, null, true); }
   new ResizeObserver(function () {
     resizeCanvas();
+    showSize();   // (v162: Game → Size's fields show the present size)
     var a = areaText();
     if (a === lastArea) return;
     say((lastArea ? '' : 'Welcome to Sprouts.   ') + a, false, null, true);
