@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=172">
+<link rel="stylesheet" href="style.css?v=176">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 172</span>
+  <span id="app-version">SPROUTS v. 176</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -70,7 +70,8 @@
           <option value="human">Human</option>
           <option value="random">Random</option>
           <option value="montecarlo">Monte Carlo</option>
-          <option value="parity">Parity search</option>
+          <option value="parity">Fast parity search</option>
+          <option value="sharp">Sharp parity search</option>
         </select>
       </label>
       <button class="item" id="cmd-same1" data-tip="cmd-same">Same as Player 2</button>
@@ -89,7 +90,8 @@
           <option value="human">Human</option>
           <option value="random">Random</option>
           <option value="montecarlo">Monte Carlo</option>
-          <option value="parity">Parity search</option>
+          <option value="parity">Fast parity search</option>
+          <option value="sharp">Sharp parity search</option>
         </select>
       </label>
       <button class="item" id="cmd-same2" data-tip="cmd-same">Same as Player 1</button>
@@ -234,7 +236,7 @@
   <div data-tip-for="cmd-keys"><b>Keyboard Commands</b> <kbd>K</kbd> or <kbd>?</kbd>. A list of every key and mouse action, shown over the drawing. <kbd>Space</kbd>, <kbd>K</kbd> or <kbd>?</kbd> closes it; while it shows, the other keys are ignored.</div>
 
   <div data-tip-for="m-workers"><b>Workers.</b> How many parallel processes the program uses for the computer players and for drawing the picture afresh (Z). The title shows the number chosen.</div>
-  <div data-tip-for="opt-workers"><b>Workers.</b> Parallel processes for the computer players (Monte Carlo, Parity search) and for Z, which tries a layout per region at the same time. The default is what this machine has (its logical processors). More let the computer look further in the same time; fewer leave more of the machine to other programs. Workers need the page to be opened through a web server (http://&hellip;); opened as a file, everything runs on the page itself.</div>
+  <div data-tip-for="opt-workers"><b>Workers.</b> Parallel processes for the computer players (Monte Carlo, parity search) and for Z, which tries a layout per region at the same time. The default is what this machine has (its logical processors). More let the computer look further in the same time; fewer leave more of the machine to other programs. Workers need the page to be opened through a web server (http://&hellip;); opened as a file, everything runs on the page itself.</div>
 
   <div data-tip-for="m-game"><b>Game.</b> The number of spots, how they are laid out and the rules of a new game; new game, undo, exit.</div>
   <div data-tip-for="opt-spots"><b>Spots.</b> How many spots a new game starts with. There is no upper limit; the program says when a move cannot be drawn in the room there is. Before the first move a change shows at once. The keys <kbd>1</kbd> &hellip; <kbd>9</kbd> set it and start a new game. Not used with Place by hand.</div>
@@ -262,13 +264,14 @@
   <div data-tip-for="opt-player"><b>Plays.</b> Who makes this player&rsquo;s moves.
     <ul><li>Human: you, with the mouse.</li><li>Random: any legal move.</li>
     <li>Monte Carlo: the move after which the set number of random games (or as many as the seconds allow) goes best for it.</li>
-    <li>Parity search: the move that keeps the number of moves left at the parity it wants (odd in normal play, even in mis&egrave;re), looking the set number of moves ahead &mdash; or as far as the seconds allow, one move deeper at a time. Near the end it plays exactly and says who has a winning position.</li></ul>
+    <li>Fast parity search: the move that keeps the number of moves left at the parity it wants (odd in normal play, even in mis&egrave;re), looking the set number of moves ahead &mdash; or as far as the seconds allow, one move deeper at a time. Where it stops looking it judges a position by an upper bound on the moves left. Near the end it plays exactly and says who has a winning position.</li>
+    <li>Sharp parity search: the same, but where it stops looking it judges a position by the longest game that can really be played from it (M in the title) &mdash; worked out as far as the seconds allow, else the bound. Truer judgments, at a cost; since the bound is usually exact already, the two mostly agree.</li></ul>
     A computer player chooses its move from the position alone, then the drawing is made to fit it (Room menu). It moves as soon as it is its turn; <kbd>Space</kbd> interrupts its thinking, Human here stops it. Between two computers <kbd>Space</kbd> stops the game after the move being drawn; <kbd>Space</kbd> again continues it, <kbd>N</kbd> starts a new game. Over the net only humans play.</div>
   <div data-tip-for="cmd-same"><b>Same as the other player.</b> Copies the other player&rsquo;s kind and settings (games or seconds, depth or seconds) to this one.</div>
   <div data-tip-for="opt-trials"><b>Random games per move</b> (Monte Carlo). How many random games are played out after each candidate move; the move with the best results is chosen. More games: stronger, slower. Filling in this field empties the seconds below it, and the other way round.</div>
   <div data-tip-for="opt-mcsec"><b>&hellip; or seconds per move</b> (Monte Carlo). Plays random games after the candidate moves for this long, instead of a fixed number of games. Filling in this field empties the number of games above it, and the other way round.</div>
-  <div data-tip-for="opt-depth"><b>Search depth</b> (Parity search). How many moves ahead the search looks. Deeper: stronger, and much slower in a large position. Filling in this field empties the seconds below it, and the other way round.</div>
-  <div data-tip-for="opt-parsec"><b>&hellip; or seconds per move</b> (Parity search). Searches one move deeper at a time for as long as this allows, and plays the best move of the deepest search finished. Filling in this field empties the depth above it, and the other way round.</div>
+  <div data-tip-for="opt-depth"><b>Search depth</b> (parity search). How many moves ahead the search looks. Deeper: stronger, and much slower in a large position. Filling in this field empties the seconds below it, and the other way round.</div>
+  <div data-tip-for="opt-parsec"><b>&hellip; or seconds per move</b> (parity search). Searches one move deeper at a time for as long as this allows, and plays the best move of the deepest search finished. Filling in this field empties the depth above it, and the other way round.</div>
 
   <div data-tip-for="m-net"><b>Net:</b> play against someone on another computer. One of you clicks Host; the three-digit code appears in the field, and the other types it in and clicks Join. The host is Player 1 and starts the games; either may undo (<kbd>U</kbd> takes back the last move, whoever made it). Only the moves travel: each computer draws its own picture, with its own settings, colors, A and R. Your page has the Background while computing color (Colors menu) while it is not your turn.</div>
   <div data-tip-for="cmd-host"><b>Host a game.</b> Opens a game room and shows its three-digit code in the Code field. Give the code to the other player, who joins as guest. As host you are Player 1 and start the games (<kbd>N</kbd>, Game menu); both players are human.</div>
@@ -325,17 +328,17 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=172"></script>
-<script src="relax.js?v=172"></script>
-<script src="route.js?v=172"></script>
-<script src="engine.js?v=172"></script>
-<script src="describe.js?v=172"></script>
-<script src="room.js?v=172"></script>
-<script src="moves.js?v=172"></script>
-<script src="redraw.js?v=172"></script>
-<script src="layout.js?v=172"></script>
-<script src="ai.js?v=172"></script>
-<script src="net.js?v=172"></script>
-<script src="ui.js?v=172"></script>
+<script src="geom.js?v=176"></script>
+<script src="relax.js?v=176"></script>
+<script src="route.js?v=176"></script>
+<script src="engine.js?v=176"></script>
+<script src="describe.js?v=176"></script>
+<script src="room.js?v=176"></script>
+<script src="moves.js?v=176"></script>
+<script src="redraw.js?v=176"></script>
+<script src="layout.js?v=176"></script>
+<script src="ai.js?v=176"></script>
+<script src="net.js?v=176"></script>
+<script src="ui.js?v=176"></script>
 </body>
 </html>

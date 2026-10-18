@@ -667,6 +667,30 @@ $m$ is to $M$, the surer the verdict, and when $m = M$ the value is $\pm1$. Valu
 they come from the end of the game or from solved parts (section <a href="#sec-parts">5.6</a>), hold at any depth,
 and are stored as such.</p>
 
+<p>The Player menus offer the search in two forms (v173). <e>Fast parity search</e> takes for $M$ the upper bound
+of the next section, which costs next to nothing. <e>Sharp parity search</e> takes the longest game that can
+really be played from the leaf (also next section) wherever it can be worked out in the move&rsquo;s time, and
+the bound where it cannot. Its judgments are truer, but each leaf costs more, so in the same time it may look
+fewer plies ahead.</p>
+
+<p>How much the difference matters depends on the bound. With the bound of v173, Sharp spent minutes at
+depth 1 on a position of Peter&rsquo;s (9 seeds, after 6 moves, 32 different moves; 32 workers): a few leaves
+had a bound that could not be reached, and proving it took the time while the other workers sat idle. With the
+pairs of v175 the bound is the longest game itself on 98% of the positions from 5 seeds, and on that position:</p>
+
+<table class="meas">
+<tr><th>Depth</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
+<tr><td>Fast, v175 (s)</td><td>0.04</td><td>0.07</td><td>0.10</td><td>0.57</td><td>2.7</td><td>4.5</td><td>12.8</td><td>23.4</td><td>30.9</td><td>25.7</td></tr>
+<tr><td>Sharp, v175 (s)</td><td>0.04</td><td>10.5</td><td>10.6</td><td>0.76</td><td>5.2</td><td>13.2</td><td>20.6</td><td>31.0</td><td>41.9</td><td>29.2</td></tr>
+<tr><td>Sharp, v173 (s)</td><td>124.6</td><td>195.0</td><td>150.5</td><td>93.6</td><td colspan="6">cut short at 10 minutes</td></tr>
+</table>
+
+<p>At depth 10 both see the whole game (a winning position for the player to move). The two choose the same move
+with the same value at every depth but 4. Time does not grow steadily with depth: deeper leaves are smaller
+positions, often split into parts, whose longest games are quick to find, and alpha&ndash;beta prunes differently
+at odd and even depths. The measurements were made with <code>bench.html</code>, which runs both searches depth by
+depth on a saved game with fresh workers for every calculation.</p>
+
 <div class="algo-title">The search</div>
 <pre class="algo">
 <span class="kw">function</span> negamax(pos, depth, alpha, beta, beside):   <span class="cmt">// beside: the solved parts (a nim heap, or misère trees)</span>
@@ -705,10 +729,51 @@ $L - s$, where $s$ is the number of lives that survive to the end; the whole gam
 
 <p><e>Upper bound.</e> A life is a <e>sure survivor</e> when no region its spot lies on has two lives: no move can
 ever use it, since regions only split and lose lives. At least one life survives (the last move leaves its new
-spot with one). And a region in play keeps at least one life to the end. Hence
-$$M = \min\Bigl(L - \max(\text{sure survivors},\, 1),\; \sum_{\text{regions}} (\text{lives} - 1)^+\Bigr).$$
+spot with one). A region with two lives that holds a <e>private</e> life &mdash; at a spot all of whose corners
+lie in that region, such as a seed inside it or a sprout on it &mdash; also keeps a survivor inside it: either that
+life is never used, or a move inside the region uses it and leaves a new spot with a life inside, which again only
+a move inside can use, and so on. These survivors are distinct from the sure ones and from each other. The same holds for a
+<e>pair</e> of regions joined by a link (a spot with one life whose two corners lie in the two regions) when
+neither region has a private life: the link&rsquo;s life can only be used by a move in one of the two, which
+leaves a new spot whose life again only a move in the pair can use. Pairs that share no region keep separate
+survivors, so the program counts a matching of such pairs (found greedily: any matching is a valid count). And a
+region in play keeps at least one life to the end. Hence
+$$M = \min\Bigl(L - \max(\text{sure survivors} + \text{regions with a private life} + \text{pairs},\, 1),\;
+\sum_{\text{regions}} (\text{lives} - 1)^+\Bigr).$$
 (A spot shared by two regions is counted in both, which makes the sum an over-count but still an upper
-bound.)</p>
+bound.) On the 34,831 positions reachable from 1 to 5 seeds (up to renumbering and mirror images) it is never
+below the longest game, and from 5 seeds it equals it on 31,407 of 32,140 positions; with private regions but
+without pairs it did on 13,840, with neither on 5,751.</p>
+
+<p><e>The longest game itself.</e> The bound is only a bound: in a ring of links, for instance, every move looks
+equally good to it. The program also works out the longest game exactly. The longest game of a position is the
+sum of those of its parts (section <a href="#sec-parts">5.6</a>), which share no live spot, so their moves do not
+interfere. For one part it asks whether a line of $M$ moves exists, $M$ the part&rsquo;s bound; if not, whether
+one of $M - 1$ does, and so on: the first yes is the answer.</p>
+
+<div class="algo-title">Is there a line of at least <i>need</i> moves from the part <i>p</i>?</div>
+<pre class="algo">
+<span class="kw">function</span> reach(p, need):
+    <span class="kw">if</span> need ≤ 0: <span class="kw">return</span> yes
+    <span class="kw">if</span> known[p] says so either way: <span class="kw">return</span> that      <span class="cmt">// lengths shown reachable / out of reach</span>
+    <span class="kw">if</span> bound(p) &lt; need: <span class="kw">return</span> no
+    <span class="kw">for</span> each move, small loops beside a boundary first:  <span class="cmt">// fewest enclosed, shortest stretch cut off</span>
+        q = the position after it, in parts
+        <span class="kw">if</span> the parts&rsquo; bounds add up to less than need − 1: skip it
+        the smaller parts exactly; the largest: reach(it, need − 1 − their sum)
+        <span class="kw">if</span> yes: record need as reachable for p; <span class="kw">return</span> yes
+    record need − 1 as the most for p; <span class="kw">return</span> no
+</pre>
+
+<p>A yes usually comes at once, down a single line; a no needs every move, which is affordable because a part is
+small, or splits into parts as moves are made. What has been shown is kept per part (by canonical form), so a
+game&rsquo;s later positions are mostly answered from what was learned for the earlier ones. Only proved facts are
+kept: when time runs out the answer is &ldquo;not known&rdquo; and the bound stands in. The page works it out in a
+worker of its own for the title and the status line, without a time limit; until the answer is in they show
+&ldquo;M&nbsp;&le;&nbsp;bound&rdquo;. It agrees with brute force on all 34,831 positions above. Most positions of the
+saved games are answered in milliseconds; a few, with one large part and a bound that cannot be reached, take
+minutes or longer &mdash; for those the &le; stays. (Before the pairs, v175, there were many more: on Peter&rsquo;s
+game of 10/18 the longest games after the 32 moves took over 100 seconds; with them, 43 milliseconds.)</p>
 
 <p><e>Lower bound.</e> At the end of a game every spot is either a stump or a <e>survivor</e> with one life, and a
 survivor&rsquo;s two curves lead to stumps (otherwise a move would remain). Counting spots and lives at the end

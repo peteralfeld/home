@@ -424,12 +424,25 @@
      Moves left = L − s: L the lives on the board (known), s the lives that
      survive to the end (what the game is about). A life is a SURE survivor
      when no region holding its spot has two lives — no move can ever use it,
-     since regions only split and lose lives. Bounds on the moves left:
-       M = min(L − max(sure survivors, 1), Σ over regions of (lives − 1)⁺)
+     since regions only split and lose lives. A region with two lives and a
+     PRIVATE life (at a spot all of whose corners are in that region: a seed
+     inside it, a sprout on it) keeps at least one life to the end, inside it
+     (v173, Peter's observation of 10/18): either that life is never used, or
+     a move inside uses it and leaves a new spot with a life inside, which
+     only a move inside can use, leaving a newer one inside, and so on. Those
+     survivors are distinct from the sure ones and from each other. Bounds on
+     the moves left (M over the spots of the position's own regions, so that
+     a part gets its own; m as before):
+       M = min(L − max(sure survivors + private regions + pairs, 1),
+               Σ over regions of (lives − 1)⁺)
            (the last move leaves a spot with a life, so at least one life
             survives — Peter, 9/27, v77; a region in play keeps at least one
             life; shared spots make the sum an over-count, still an upper
-            bound),
+            bound; pairs, v175: a link between two regions without private
+            lives keeps a survivor in the two — see the code; checked against
+            the true longest game on every position from 1–5 seeds: never
+            below it, equal on 31,407 of 32,140 from 5 seeds — 13,840 without
+            the pairs, 5,751 for the v77 M),
        m = ⌈(3L − V + p) / 4⌉, V the spots now, p the dead spots all of whose
            neighbours are dead (v76; the count behind "a game lasts at least
            2n moves": at the end every spot is a survivor — one life, two
@@ -458,12 +471,28 @@
         }
       });
     });
-    var p = 0;
+    var p = 0, own = {}, Lh = 0;
     for (s = 0; s < pos.n; s++) {
       if (!lives(pos, s)) { if (Object.keys(nb[s]).every(function (j) { return lives(pos, Number(j)) === 0; })) p++; continue; }
+      if (!regOf[s].length) continue;              // not on this position's regions (a spot of another part)
+      Lh += lives(pos, s);
       if (regOf[s].every(function (r) { return regionLives(pos, pos.regions[r]) < 2; })) sure += lives(pos, s);
+      else if (regOf[s].length === 1) own[regOf[s][0]] = 1;   // a private life of a region with two lives (v173)
     }
-    var M = Math.min(L - Math.max(sure, L > 0 ? 1 : 0), sum), m = Math.max(0, Math.ceil((3 * L - pos.n + p) / 4));   // (v77, Peter: the last move leaves a life, so M ≤ L − 1)
+    sure += Object.keys(own).length;
+    /* (v175) PAIRS: a link (one life) whose two corners lie in two different regions, neither of which has a
+       private life, keeps a survivor in that pair of regions by the same argument — its life can only go to a
+       move in one of the two, which leaves a new spot whose life again only a move in the pair (by then in
+       their parts) can use. Pairs that share no region count separately: a matching, made greedily (any
+       matching is a valid count; links whose regions have the fewest other links first). */
+    var used = {}, links = [], ldeg = {};
+    for (s = 0; s < pos.n; s++)
+      if (lives(pos, s) && regOf[s].length === 2 && !own[regOf[s][0]] && !own[regOf[s][1]] &&
+          !regOf[s].every(function (r) { return regionLives(pos, pos.regions[r]) < 2; })) links.push(regOf[s]);   // (a sure survivor is counted already)
+    links.forEach(function (e) { ldeg[e[0]] = (ldeg[e[0]] || 0) + 1; ldeg[e[1]] = (ldeg[e[1]] || 0) + 1; });
+    links.sort(function (x, y) { return Math.min(ldeg[x[0]], ldeg[x[1]]) - Math.min(ldeg[y[0]], ldeg[y[1]]); });
+    links.forEach(function (e) { if (!used[e[0]] && !used[e[1]]) { used[e[0]] = used[e[1]] = 1; sure++; } });
+    var M = Math.min(Lh - Math.max(sure, Lh > 0 ? 1 : 0), sum), m = Math.max(0, Math.ceil((3 * L - pos.n + p) / 4));   // (v77, Peter: the last move leaves a life, so M ≤ L − 1)
     return { L: L, M: M, m: Math.min(m, M), p: p };
   }
 
@@ -506,10 +535,12 @@
      loss in normal play (−2), a win in misère (+2); otherwise ±1/(1 + M − m):
      + when M has the parity the mover wants, and the nearer m is to M the
      surer it is. */
-  function evaluate(pos, misere) {
+  function evaluate(pos, misere, ctx) {
     if (!canMove(pos)) return misere ? 2 : -2;
-    var b = bounds(pos), want = misere ? 0 : 1;
-    return (b.M % 2 === want ? 1 : -1) / (1 + b.M - b.m);
+    var b = bounds(pos), want = misere ? 0 : 1, M = b.M;
+    if (ctx && ctx.sharp) { var x = maxMoves(pos, ctx); if (x >= 0) M = x; }   // (v173, Sharp parity search: the longest game itself where there is time, else the bound)
+    var m = Math.min(b.m, M);
+    return (M % 2 === want ? 1 : -1) / (1 + M - m);
   }
 
   /* The children of a position for the search: every move of every family,
@@ -588,6 +619,90 @@
     });
     return out;
   }
+  /* ---------------- the most moves left, exactly (v173) ----------------
+     Peter (10/18): M must be a number of moves that can really be made, not
+     only an upper bound. The longest game of a position is the sum of its
+     parts' (parts share no live spot, so their moves never interfere). For
+     a part: start at its bound M and ask whether a line of that many moves
+     exists (reach); if not, one fewer, and so on — the first yes is the
+     longest game. reach tries the moves whose positions have the largest
+     bounds first, so a line that reaches the bound is usually found at once
+     (a dive); a no needs every move, which is affordable because a part is
+     small or splits into parts as moves are made. What is learned is kept
+     for every part met, by canonical form: ctx.mxLo, a length shown
+     reachable, and ctx.mxHi, the most it can be (a length shown out of
+     reach, less one); they outlive a search like the other tables.
+     Time: ctx.mxDeadline (ms, as Date.now()); past it the answer is −1 (not
+     known) and the caller falls back to the bound. Only what was shown is
+     stored, so nothing wrong is ever kept. Memory: ctx.mxBudget (bytes, set
+     by the page from the browser's heap limit and the number of workers —
+     the page and its workers share one heap) bounds the tables: past it they
+     are emptied (a hard proof had 32 workers' tables crash Chrome, 10/18). */
+  function mxContext(deadline) { return { mxLo: new Map(), mxHi: new Map(), mxDeadline: deadline || Infinity, mxNodes: 0, mxBytes: 0, mxBudget: Infinity }; }
+  function mxTables(ctx) {
+    if (!ctx.mxLo) { ctx.mxLo = new Map(); ctx.mxHi = new Map(); ctx.mxNodes = 0; ctx.mxBytes = 0; }
+    if (ctx.mxDeadline === undefined) ctx.mxDeadline = Infinity;
+    if (ctx.mxBudget === undefined) ctx.mxBudget = Infinity;
+  }
+  function mxStore(ctx, map, key, v) {              // a table entry: the key's characters (two bytes each) and the Map's own share
+    if (!map.has(key)) { ctx.mxBytes += 2 * key.length + 80; if (ctx.mxBytes > ctx.mxBudget) { ctx.mxLo.clear(); ctx.mxHi.clear(); ctx.mxBytes = 0; ctx.mxCleared = (ctx.mxCleared || 0) + 1; } }
+    map.set(key, v);
+  }
+  function partHi(p, ctx, key) { var h = ctx.mxHi.get(key), b = bounds(p).M; return h === undefined || b < h ? b : h; }
+  /* The longest game from pos (any position: the sum over its parts), or −1 when time ran out. */
+  function maxMoves(pos, ctx) {
+    mxTables(ctx);
+    var t = 0, ps = parts(pos);
+    for (var i = 0; i < ps.length; i++) { var v = partMax(ps[i], ctx); if (v < 0) return -1; t += v; }
+    return t;
+  }
+  function partMax(p, ctx, key) {
+    key = key || canonical(p);
+    var lo = ctx.mxLo.get(key) || 0, hi = partHi(p, ctx, key);
+    while (hi > lo) {                              // the most first: a line of hi moves, or hi is one too many
+      var r = reach(p, hi, ctx, key);
+      if (r < 0) return -1;
+      if (r) lo = hi; else hi--;
+    }
+    return lo;
+  }
+  /* Is there a line of at least `need` moves from the part p? 1 yes, 0 no, −1 out of time. */
+  function reach(p, need, ctx, key) {
+    if (need <= 0) return 1;
+    key = key || canonical(p);
+    if ((ctx.mxLo.get(key) || 0) >= need) return 1;
+    if (partHi(p, ctx, key) < need) return 0;
+    ctx.mxNodes++;
+    if (Date.now() > ctx.mxDeadline) return -1;
+    /* the moves that enclose the fewest boundaries and cut off the shortest stretch of their boundary
+       (a small loop beside it) first — on a ring of links every move has the same bound, and this
+       order walks straight along a longest line; a move is followed only if its position's bound
+       (the sum of its parts') still allows need − 1 more moves. The positions are made one at a
+       time, as they are tried: the first usually does. */
+    var kids = children(p, Infinity).map(function (mv) {
+      var len = p.regions[mv.r].boundaries[mv.j].length, d = (mv.i2 - mv.i + len) % len;
+      return { mv: mv, enc: mv.S.length, cut: mv.two ? 0 : Math.min(d, len - d) };
+    });
+    kids.sort(function (a, b) { return a.enc - b.enc || a.cut - b.cut; });
+    for (var i = 0; i < kids.length; i++) {
+      var qs = parts(apply(p, kids[i].mv)), h = 0, r;
+      qs.forEach(function (x) { h += bounds(x).M; });
+      if (h < need - 1) continue;
+      if (qs.length === 1) r = reach(qs[0], need - 1, ctx);
+      else {                                       // several parts: the others exactly, the largest to what is left
+        var big = 0, j, rest = 0;
+        for (j = 1; j < qs.length; j++) if (bounds(qs[j]).M > bounds(qs[big]).M) big = j;
+        for (j = 0; j < qs.length && rest >= 0; j++) if (j !== big) { var v = partMax(qs[j], ctx); rest = v < 0 ? -1 : rest + v; }
+        r = rest < 0 ? -1 : reach(qs[big], need - 1 - rest, ctx);
+      }
+      if (r < 0) return -1;
+      if (r) { if ((ctx.mxLo.get(key) || 0) < need) mxStore(ctx, ctx.mxLo, key, need); return 1; }
+    }
+    var h0 = ctx.mxHi.get(key);
+    if (h0 === undefined || h0 > need - 1) mxStore(ctx, ctx.mxHi, key, need - 1);
+    return 0;
+  }
+
   /* The nimber of a position (the XOR of its parts'); −1 when the deadline
      cut the computation short (ctx.aborted). Every successor is needed (no
      pruning); equal successors meet in the memo. */
@@ -819,7 +934,7 @@
       heap = misere ? sp.list : sp.heap;
       if (!canMove(pos)) return over();
     }
-    if (depth <= 0) return evaluate(pos, misere);   // (the heap is not in the heuristic: a leaf with solved parts beside an unsolved part is judged by the part)
+    if (depth <= 0) return evaluate(pos, misere, ctx);   // (the heap is not in the heuristic: a leaf with solved parts beside an unsolved part is judged by the part)
     ctx.nodes++; late(ctx);
     if (ctx.aborted) return 0;
     var extra = misere ? (heap.length ? '+' + heap.join('.') : '') : (heap ? '+' + heap : '');
@@ -870,7 +985,7 @@
     return out;
   }
 
-  var api = { canonFallbacks: function () { return canonFallbacks; }, bounds: bounds, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
+  var api = { canonFallbacks: function () { return canonFallbacks; }, bounds: bounds, maxMoves: maxMoves, mxContext: mxContext, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
               newStore: newStore, mkTree: mkTree, treeSum: treeSum, heapTree: heapTree, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
               negamax: negamax, paritySearch: paritySearch, newContext: newContext, canonical: canonical, reduce: reduce,
               fromAnalysis: fromAnalysis, families: families, expand: expand, allMoves: allMoves, apply: apply, key: key, gameKey: gameKey,

@@ -262,13 +262,45 @@
   }
   /* "L=9  m=2  M=7  K=1" (Peter, 9/27, v75; L 9/28, v91): L the lives left on
      the board (all of them, also those no curve can reach any more), m and M
-     the least and most moves the game can still last (ai.js bounds: M exact,
-     m the pharisee count of v76), K the spots with one life and nowhere to go
+     the least and most moves the game can still last (m the pharisee count of v76, ai.js bounds; M the
+     longest game itself, v173 — see longest), K the spots with one life and nowhere to go
      (the rings). */
   function countsText() {
     if (game.phase !== 'play' && game.phase !== 'over') return '';
-    var b = AI.bounds(AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots));
-    return 'L=' + b.L + '  m=' + b.m + '  M=' + b.M + '  K=' + Object.keys(stuckSpots()).length;
+    var pos = AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots), b = AI.bounds(pos), x = longest(pos);
+    return 'L=' + b.L + '  m=' + b.m + '  ' + mText(b, x, '') + '  K=' + Object.keys(stuckSpots()).length;
+  }
+  /* M, the most moves the game can still last (v173, Peter 10/18: a number of moves that can really be
+     made). ai.js maxMoves works it out — the parts' longest games — in a worker of its own (maxWorker),
+     without a time limit; until the answer is in, the bound is shown as "M≤N". The answer is kept for
+     the position it belongs to (ai.js key); a new position takes the worker over (it works in slices and
+     keeps what it has shown for the next). Without workers (the page opened as a file) the bound stays. */
+  var maxWorker = null, maxFor = null, maxKnown = {}, maxIds = {}, maxId = 0;
+  /* the bytes a worker's longest-game tables may take: the page and all its workers share one heap (Chrome's
+     limit, performance.memory), so half of it shared out among the pool and the worker for M (v173) */
+  function mxBudget() { var m = performance.memory, lim = m && m.jsHeapSizeLimit ? m.jsHeapSizeLimit : 4294967296; return Math.floor(lim / (2 * (pool.length + 1))); }
+  function posSig() { return AI.key(AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots)); }
+  function mText(b, x, sp) { return x === null ? 'M' + sp + '≤' + sp + b.M : 'M' + sp + '=' + sp + x; }
+  function longest(pos) {
+    var sig = AI.key(pos);
+    if (maxKnown[sig] !== undefined) return maxKnown[sig];
+    if (noWorkers || maxFor === sig) return null;
+    if (!maxWorker) {
+      try { maxWorker = new Worker('sprouts-worker.js' + version()); } catch (e) { return null; }
+      maxWorker.onmessage = function (e) {
+        var s = maxIds[e.data.id]; delete maxIds[e.data.id];
+        if (s === maxFor) maxFor = null;
+        if (s === undefined || e.data.M < 0) return;
+        maxKnown[s] = e.data.M;
+        if (s !== posSig()) return;
+        if (titleFor === s) document.title = titleText = titleText.replace(/M ≤ \d+/, 'M = ' + e.data.M);   // (the title of this position, also while the page computes and updateTitle waits; document.title itself comes back with its spaces collapsed)
+        if (game.phase === 'play' || game.phase === 'over') statusEl.textContent = statusEl.textContent.replace(/M≤\d+/, 'M=' + e.data.M);
+      };
+      maxWorker.onerror = function (e) { log('Script error in the worker for M: ' + e.message); maxFor = null; };
+    }
+    maxFor = sig; maxIds[++maxId] = sig;
+    maxWorker.postMessage({ id: maxId, kind: 'maxmoves', pos: pos, mxBudget: mxBudget() });
+    return null;
   }
   /* The player to move has no move. Normal play: they lose; misère: they win. */
   /* (for the status line, `brief`: without the count of moves — say puts the move number in front) */
@@ -302,7 +334,7 @@
      R the regions (the outside included). Updated from draw, but not while the page computes, redraws or
      animates a move, so the numbers change with each move only; recomputed only when the position's
      signature changes. */
-  var titleKey = null;
+  var titleKey = null, titleText = '', titleFor = null;   // (v173: the title as written and the position it is for — longest's answer goes into it)
   function updateTitle() {
     if (computing() || band) return;
     var v = 'Sprouts v. ' + (document.getElementById('app-version').textContent.match(/[\d.]+$/) || [''])[0];
@@ -310,8 +342,9 @@
     var key = game.phase + '|' + game.moves + '|' + game.spots.length + '|' + game.edges.map(function (e) { return e.a + '-' + e.b; }).join(',');
     if (key === titleKey) return;
     titleKey = key;
-    var an = E.analyse(game.spots, game.edges), b = AI.bounds(AI.fromAnalysis(an, game.spots));
-    document.title = v + '   ' + (game.moves + 1) + ': P = ' + (game.spots.length - game.moves) + '  L = ' + b.L + '  m = ' + b.m + '  M = ' + b.M +
+    var an = E.analyse(game.spots, game.edges), pos = AI.fromAnalysis(an, game.spots), b = AI.bounds(pos), x = longest(pos);
+    titleFor = AI.key(pos);
+    document.title = titleText = v + '   ' + (game.moves + 1) + ': P = ' + (game.spots.length - game.moves) + '  L = ' + b.L + '  m = ' + b.m + '  ' + mText(b, x, ' ') +
       '  K = ' + Object.keys(stuckSpots()).length + '  R = ' + an.regions.length;
   }
   function draw() {
@@ -2430,7 +2463,7 @@
      arc with no spot on it; a plain loop enclosing an isolated spot) and the
      log says what was drawn instead; if it is no legal move at all, that is
      a bug and the status line says so. */
-  function kindName(k) { return { human: 'Human', random: 'Random', montecarlo: 'Monte Carlo', parity: 'Parity search' }[k] || k; }
+  function kindName(k) { return { human: 'Human', random: 'Random', montecarlo: 'Monte Carlo', parity: 'Fast parity search', sharp: 'Sharp parity search' }[k] || k; }
   function isAI(p) { return players[p].kind !== 'human'; }
   function aiCancel() {
     aiResume = null;
@@ -2517,7 +2550,7 @@
   }
   function aiScore(a, p, kind, cands) {
     var pl = players[p], secs = kind === 'montecarlo' ? pl.mcSeconds : pl.parSeconds;
-    var opt = { kind: kind, trials: pl.trials, depth: pl.depth, seconds: secs, cap: AI_CAP, misere: game.rules === 'misere', M: AI.bounds(a.pos).M };
+    var opt = { kind: kind, trials: pl.trials, depth: pl.depth, seconds: secs, cap: AI_CAP, misere: game.rules === 'misere', M: AI.bounds(a.pos).M, sharp: kind === 'sharp' };   // (v173: sharp = the longest game itself at the search's leaves)
     var label = kind === 'montecarlo' ? (secs ? secs + ' s of random games for ' : pl.trials + ' random games for each of ') + cands.length + ' moves'
                                       : (secs ? secs + ' s, ' : 'depth ' + pl.depth + ', ') + cands.length + ' moves';
     say(a.who + ' is thinking (' + label + ')…');
@@ -2611,10 +2644,11 @@
     if (!pool.length) {                            // no workers: on the page's thread, after the gray background has been painted
       setTimeout(function () {
         if (mc) { var r = deadline ? AI.monteCarloTimed(pos, cands, deadline, opt.misere) : AI.monteCarlo(pos, cands, opt.trials, opt.misere); done(ratio(r), mcInfo(r)); return; }
-        if (!deadline) { var sc0 = AI.paritySearch(pos, cands, opt.depth, opt.misere, opt.cap); done(sc0, solved(sc0, opt.depth) ? 'exact' : null, solved(sc0, opt.depth)); return; }
+        if (!deadline) { var c0 = AI.newContext(); c0.sharp = opt.sharp; var sc0 = AI.paritySearch(pos, cands, opt.depth, opt.misere, opt.cap, null, null, c0); done(sc0, solved(sc0, opt.depth) ? 'exact' : null, solved(sc0, opt.depth)); return; }
         var last = null, d = 1, lastD = 0, ctx = AI.newContext(deadline), took = 0;
+        ctx.sharp = opt.sharp;
         for (;;) {
-          ctx.deadline = d === 1 ? Infinity : deadline; ctx.aborted = false;   // (depth 1 always finishes: a move must be chosen — v123)
+          ctx.deadline = d === 1 ? Infinity : deadline; ctx.mxDeadline = deadline; ctx.aborted = false;   // (depth 1 always finishes: a move must be chosen — v123)
           var td = Date.now(), sc = AI.paritySearch(pos, cands, d, opt.misere, opt.cap, null, null, ctx);
           if (!sc) break;
           last = sc; lastD = d; took = Date.now() - td;
@@ -2657,7 +2691,7 @@
       sc.nodes = nodes; sc.hits = hits; sc.solved = solvedParts;
       return sc;
     };
-    var jobFor = function (depth) { return function (w) { return { kind: 'parity', cands: parts[w].map(function (i) { return cands[i]; }), misere: opt.misere, depth: depth, cap: opt.cap, deadline: depth === 1 ? null : deadline }; }; };   // (depth 1 always finishes: a move must be chosen — v123)
+    var jobFor = function (depth) { return function (w) { return { kind: 'parity', cands: parts[w].map(function (i) { return cands[i]; }), misere: opt.misere, depth: depth, cap: opt.cap, deadline: depth === 1 ? null : deadline, budget: deadline, sharp: opt.sharp, mxBudget: mxBudget() }; }; };   // (depth 1 always finishes: a move must be chosen — v123)
     var prog = parts.map(function () { return 0; }), onProg = function (w, k) { prog[w] = k; progress((deadline ? 'depth ' + depthNow + ', ' : '') + prog.reduce(function (t, x) { return t + x; }, 0) + ' of ' + cands.length); };
     var depthNow = opt.depth;
     if (!deadline) { round(n2, jobFor(opt.depth), onProg, function (res) { var sc = gather(res); done(sc || cands.map(function () { return 0; }), sc ? sc.nodes + ' nodes, ' + sc.hits + ' table hits, ' + sc.solved + ' parts solved' + (solved(sc, opt.depth) ? ' — exact' : '') : null, solved(sc, opt.depth)); }); return; }
@@ -2975,7 +3009,7 @@
     var sel = document.getElementById('opt-player' + p), panel = sel.closest('.menu-panel');
     var rows = function () {
       panel.querySelectorAll('.row.montecarlo').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'montecarlo'); });   // (v74: all the rows, not the first)
-      panel.querySelectorAll('.row.parity').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'parity'); });
+      panel.querySelectorAll('.row.parity').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'parity' && players[p].kind !== 'sharp'); });   // (v173: fast and sharp share the rows)
     };
     sel.addEventListener('change', function () {
       players[p].kind = sel.value; rows();
