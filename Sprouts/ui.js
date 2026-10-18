@@ -282,6 +282,7 @@
   function posSig() { return AI.key(AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots)); }
   function mText(b, x, sp) { return x === null ? 'M' + sp + '≤' + sp + b.M : 'M' + sp + '=' + sp + x; }
   function longest(pos) {
+    if (!AI.canMove(pos)) return 0;                // no move: nothing to work out (v177)
     var sig = AI.key(pos);
     if (maxKnown[sig] !== undefined) return maxKnown[sig];
     if (noWorkers || maxFor === sig) return null;
@@ -307,7 +308,8 @@
   function gameOverText(brief) {
     var stuck = playerName(game.player), other = playerName(3 - game.player);
     var misere = game.rules === 'misere';
-    return stuck + " can't move — " + (misere ? stuck + ' wins (misère).' : other + ' wins.') + (brief ? '   Game over.' : '   Game over after ' + game.moves + ' moves.');
+    return stuck + " can't move — " + (misere ? stuck + ' wins (misère).' : other + ' wins.') + (brief ? '   Game over.' : '   Game over after ' + game.moves + ' moves.') +
+      '   ' + countsText();   // (v177, Peter: L m M K in the game-over message too — L the lives left, K the survivors)
   }
   function sayGameOver() { say(gameOverText(true)); }
 
