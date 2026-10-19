@@ -377,6 +377,14 @@ joins, so it separates the two groups correctly. One Dijkstra run per tree and o
 no $2^k$ blow-up. (A loop, $a = b$, needs one extra bit of information, which side of the loop is its inside;
 that bit is found as in the second method.)</p>
 
+<p>The same bit is needed when $a$ and $b$ are so close that the neighborhoods kept free of the trees around them
+overlap &mdash; for instance when $b$ is the next spot along $a$&rsquo;s own curve (v178). The path could then slip
+straight from $a$ to $b$ between the trees and go round nothing. A ray from a marked boundary must then be crossed
+an odd number of times by the curve and the marked arc together (the curve&rsquo;s share is wanted odd or even as
+the arc&rsquo;s own crossings make it), and the strip beside the segment from $a$ to $b$ is closed to the path, so
+that it leaves $a$ away from $b$ and reaches $b$ from beyond it, instead of running out and back along the same
+narrow gap. Before this, such a move could only be drawn by drawing the whole picture afresh (Z).</p>
+
 <p>When the trees cannot be built (a long, snaking region can wall off the corner the curve must arrive at), the
 second method is a <e>parity search</e>: a ray is cut from each boundary that has to change sides, the grid states
 carry one bit per ray (whether the path has crossed it an odd number of times), and Dijkstra over (cell, bits)
@@ -851,11 +859,17 @@ computer then commits to that one move: it is never exchanged for another that h
 <a href="#sec-room-overview">4.1</a> with the computer&rsquo;s boxes of the Room menu:</p>
 <ol>
   <li>The move is given to the router (section <a href="#sec-drawing">3</a>) with its enclosed boundaries marked,
-  and room is made for it in place (M) if the computer&rsquo;s M is on. If its marks cannot be applied, it is
+  and room is made for it in place (M) if the computer&rsquo;s M is on. Which of several <e>interchangeable</e>
+  boundaries it encloses (loose seeds, say: the search decides only how many) is the drawing&rsquo;s choice
+  (v178): starting from the move&rsquo;s spots, the boundaries it must enclose and the straight way from its
+  first spot to each of them, the nearest boundary of a kind still wanted is added, then the next nearest to
+  everything chosen so far, and so on &mdash; a cluster round the move instead of seeds scattered over the
+  window. If its marks cannot be applied, it is
   drawn the shortest way, and kept only if that is the same move.</li>
   <li>If it cannot be drawn: the next of A and R switched on, after which the same move is found again in the new
-  picture (by the <code>gameKey</code> of the position it leads to: the spots keep their indices) and tried
-  again.</li>
+  picture (by its spots, which keep their indices: the boundaries made of the enclosed spots, on one side or
+  the other, whichever gives the intended position) and tried again, its interchangeable boundaries chosen
+  afresh for the new picture.</li>
   <li>Still not: Z, if it is on, with the move laid out as part of the fresh picture (section
   <a href="#sec-z">4.6</a>).</li>
   <li>Still not: the game stops, with a message. A, R or Z by hand lets the computer try the same move once more;

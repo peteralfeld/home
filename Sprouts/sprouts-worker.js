@@ -46,7 +46,7 @@ self.onmessage = function (e) {
     return;
   }
   if (d.kind === 'maxmoves') {                   // (v173) the M of the page's title and status line
-    var busy = !!mxWant; mxWant = d; if (d.mxBudget) ctx.mxBudget = d.mxBudget;
+    var busy = !!mxWant; mxWant = d; if (d.mxBudget) ctx.mxBudget = d.mxBudget;   // (no search here: its tables have the worker's whole share)
     if (!busy) mxSlice();
     return;
   }
@@ -55,7 +55,7 @@ self.onmessage = function (e) {
     ctx.mis.clear(); ctx.T = AI.newStore(); ctx.tt.clear();
   }
   if (ctx.tt.size > TT_MAX) ctx.tt.clear();
-  ctx.deadline = d.deadline || Infinity; ctx.mxDeadline = d.budget || ctx.deadline; ctx.sharp = !!d.sharp; if (d.mxBudget) ctx.mxBudget = d.mxBudget; ctx.aborted = false; ctx.nodes = 0; ctx.hits = 0; ctx.solved = 0;
+  ctx.deadline = d.deadline || Infinity; ctx.mxDeadline = d.budget || ctx.deadline; ctx.sharp = !!d.sharp; if (d.mxBudget) { ctx.mxBudget = d.mxBudget / 2; ctx.ttBudget = d.mxBudget / 2; ctx.ttBytes = ctx.tt.size ? ctx.ttBytes || 0 : 0; } ctx.aborted = false;   // (v180: the worker's share of the heap halved between the search's table and the longest games') ctx.nodes = 0; ctx.hits = 0; ctx.solved = 0;
   var scores = AI.paritySearch(d.pos, d.cands, d.depth, d.misere, d.cap, null, function (i) { self.postMessage({ id: d.id, progress: i + 1 }); }, ctx);
   self.postMessage({ id: d.id, scores: scores, nodes: ctx.nodes, hits: ctx.hits, solved: ctx.solved, entries: ctx.tt.size });
 };

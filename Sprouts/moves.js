@@ -27,6 +27,8 @@
   var E = root.SproutsEngine || require('./engine.js');
   var Rm = root.SproutsRoom || require('./room.js');
   var STEP = 4;          // arc-length spacing of a resampled polyline (ui.js uses it for strokes too)
+  var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline (ui.js uses it too)
+  var CERT = 0.6;        // the fitted spline must keep this share of the minimum clearance (ui.js finishBand, trialMove)
 
   function create(S) {
     /* The route from the armed start to spot b that puts the marked spots on
@@ -154,10 +156,55 @@
             if (!r0) return;
             rays = [r0]; wanted = [1];
           }
+        } else if (mh && G.dist(pa, pb) < 2 * keepR) {
+          /* (v178) A and B so close that their neighbourhoods (keep: no barrier there) meet — Peter's 60-seed
+             game, 27 → 63 with 63 the next spot along 27's curve: the shortest way slipped from A to B between
+             the trees, round nothing. As for a loop: the curve and the marked arc together must go round the
+             marked side, so a ray from a marked boundary crosses them an odd number of times — the curve's
+             share is wanted odd or even as the arc's own crossings make it. */
+          /* v182 (Peter's 60-seed game, 36 → 167 enclosing 140-21, 36-167-44 a short path in the middle of the
+             region bounded by 21-140): when the marked side holds the region's OUTER boundary (mRef), that side
+             is the outside of the closed curve (curve + marked arc) in the plane, and what must lie inside it is
+             the unmarked side — an unmarked boundary, else the other arc at its point farthest from both ends
+             (here 44: the curve goes round the stub 167-44). Before, the ray came from the outer boundary and
+             asked for it inside: no path, "could not route around the marks". The ray keeps away from the ends'
+             neighbourhoods (keep) if it can, else only from the parts of the curve the walk does not cover
+             (within the rings round A and B): 44 is 23 px from 167. */
+          var srcM = null;
+          (mRef ? U : M).some(function (pts) { if (pts.length) { srcM = pts[Math.floor(pts.length / 2)]; return true; } return false; });
+          if (!srcM && mRef) {
+            var far = -1;
+            uh.forEach(function (kh) { cycles[ownBd.cycle].halves[kh].pts.forEach(function (q) { var f = Math.min(G.dist(q, pa), G.dist(q, pb)); if (f > far) { far = f; srcM = q; } }); });
+          }
+          if (srcM) {
+            var r1 = null;
+            [keepR, pl.ring].forEach(function (away) {
+              for (var d1 = 0; d1 < 36 && !r1; d1++) {
+                var rr = Rt.ray(srcM, 2 * Math.PI * (d1 + 0.37) / 36);
+                if (G.distPointSeg(pa, rr[0], rr[1]) >= away && G.distPointSeg(pb, rr[0], rr[1]) >= away) r1 = rr;
+              }
+            });
+            if (!r1) return;
+            var arcCross = 0;
+            mh.forEach(function (kh) { var hp = cycles[ownBd.cycle].halves[kh].pts; for (var q = 0; q + 1 < hp.length; q++) if (G.segCross(hp[q], hp[q + 1], r1[0], r1[1])) arcCross++; });
+            rays = [r1]; wanted = [(1 + arcCross) % 2];
+            /* and the strip between A and B is closed to the curve: else it leaves A along the arc and has
+               to come back to B past A, within a few pixels of it (Peter's game: "No room: the curve comes too
+               close to something to be smoothed"). Cells beside the segment A–B whose foot lies between the
+               two, nearer it than the ends' neighbourhoods reach — except where the walk starts (beside A) and
+               the cells it may end in (B's ring): the curve leaves A away from B and reaches B from beyond it. */
+            var strip = new Uint8Array(n), abx = pb[0] - pa[0], aby = pb[1] - pa[1], ab2 = abx * abx + aby * aby;
+            for (var k12 = 0; k12 < n; k12++) {
+              strip[k12] = trees[k12];
+              var qc = [(k12 % grid.nx + 0.5) * c, (Math.floor(k12 / grid.nx) + 0.5) * c], tf = ((qc[0] - pa[0]) * abx + (qc[1] - pa[1]) * aby) / ab2;
+              if (tf > 0 && tf < 1 && G.distPointSeg(qc, pa, pb) < keepR && G.dist(qc, pl.start) > 2 * c && G.dist(qc, pb) > pl.ring) strip[k12] = 1;
+            }
+            trees = strip;
+          }
         }
         var path = Rt.pathWithParity(grid, obs, pl.start, pb, pl.ring, rays, wanted, ar.bside, trees);
         if (!path) return;
-        if (loop || rays.length) {
+        if (loop) {                                  // (v178: a curve A → B with a ray keeps its walk — the outline would lose the side B is reached by)
           enclosingCurves(Rt.inflate(grid, obs, [pl.start].concat(path, [pb])), pa, pb, loop, obs).forEach(function (cd) {
             if (!R.polylineCrossesObstacle(obs, cd) && !R.polylineCrossesItself(cd)) out.push(cd);
           });
@@ -386,24 +433,35 @@
       return out;
     }
 
-    /* The starting circle for a loop round nothing at spot a of gm (null: none crosses nothing). */
+    /* The starting circle for a loop round nothing at spot a of gm (null: every circle crosses something).
+       v181 (Peter's game of 10/19, 34 → 34 in a pocket 29–39 px wide): every size is tried, not a list
+       (it tried radii 1.5·D, D and 0.6·D only — even the smallest, 48 px across, crossed the pocket's
+       curves, and the computer's move went to R and Z for nothing). In each of 24 directions, the circle
+       through the spot of every whole-pixel radius up to 1.5·D (the largest tried before); a circle's
+       worth is the least of its clearance from everything else and the room inside it — its width less
+       the discs of the spot and of the new spot riding opposite (a bigger loop is no better once it is
+       roomy); the best of all is taken. A circle too tight
+       for the band to start from is returned all the same: makeBand refuses it for lack of room, and
+       room is made for it like any other move. */
     function loopStart(gm, a, obs) {
       var A = gm.spots[a], pa = [A.x, A.y];
       var ctx = { aIdx: a, bIdx: a, A: pa, B: pa, rho: S.route.D * Math.SQRT2, spotR: S.spotR };
-      var best = null, bestClear = -Infinity;
-      [1.5 * S.route.D, S.route.D, 0.6 * S.route.D].forEach(function (r) {
-        for (var k = 0; k < 24; k++) {
-          var ang = 2 * Math.PI * k / 24, cx = pa[0] + r * Math.cos(ang), cy = pa[1] + r * Math.sin(ang), pts = [];
+      var best = null, bestClear = -Infinity, top = Math.floor(1.5 * S.route.D);
+      for (var k = 0; k < 24; k++) {
+        var ang = 2 * Math.PI * k / 24;
+        for (var r = 1; r <= top; r++) {
+          var inside = 2 * (r - S.spotR);
+          if (!(inside > bestClear)) continue;    // (its worth cannot beat the best)
+          var cx = pa[0] + r * Math.cos(ang), cy = pa[1] + r * Math.sin(ang), pts = [];
           for (var m = 0; m <= 36; m++) { var t = ang + Math.PI + 2 * Math.PI * m / 36; pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); }
           pts[0] = pa; pts[36] = pa;
           if (R.polylineCrossesObstacle(obs, pts)) continue;
-          var clear = Infinity;
-          for (m = 3; m < 34; m++) clear = Math.min(clear, R.rObs(obs, ctx, pts[m]));
-          clear = Math.min(clear, r);              // a bigger loop is no better once it is roomy
+          var clear = inside;
+          for (m = 3; m < 34 && clear > bestClear; m++) clear = Math.min(clear, R.rObs(obs, ctx, pts[m]));
           if (clear > bestClear) { bestClear = clear; best = pts; }
         }
-      });
-      return best && bestClear >= 1 ? best : null;
+      }
+      return best;
     }
 
     function segIntersection(a, b, c, d) {
@@ -511,7 +569,17 @@
         var rt = makeBand(a, b, P, obs);
         if (typeof rt === 'string') return null;
         R.advance(rt, 2000);
-        return rt.error ? null : { E: rt.state.E, rmin: rt.state.rmin, pts: rt.pts };
+        if (rt.error) return null;
+        /* v183 (Peter's 60-seed game by hand, 26 → 26: the band kept 11 px, the fitted spline 1.5 px; making
+           room said "the move fits already" and did nothing, and R had to): the fitted spline is judged too, as
+           finishBand judges it — its clearance, scaled to the band's (÷ CERT), counts when it falls short */
+        var rmin = rt.state.rmin;
+        if (rmin >= S.route.d0) {
+          var fit = G.fitClamped(G.resample(rt.pts, STEP), rt.dirA, rt.dirB, TOL, { minPiece: 12 });
+          var cert = R.certify(obs, rt.move.ctx, fit.pieces, CERT * S.route.d0);
+          if (!cert.ok) rmin = Math.min(rmin, cert.clearance / CERT);
+        }
+        return { E: rt.state.E, rmin: rmin, pts: rt.pts };
       } finally { S.game = saved; S.route.d0 = savedD0; S.note = savedNote; S.hush--; if (savedCell === undefined) delete S.route.cellD0; }
     }
 
@@ -753,7 +821,7 @@
              choosePort: choosePort, cornerProbe: cornerProbe, roomFor: roomFor, jobOf: jobOf, armedOf: armedOf };
   }
 
-  var api = { create: create, STEP: STEP };
+  var api = { create: create, STEP: STEP, TOL: TOL, CERT: CERT };
   root.SproutsMoves = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

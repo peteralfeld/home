@@ -402,6 +402,41 @@
     return s;
   }
 
+  /* (v178) The same, short, for the status line: two or more seeds enclosed are counted, not listed
+     ("27 → 63 enclosing 61-16 and 15 seeds") — which seeds is the drawing's choice (ui.js easyEnclosure). */
+  function describeBrief(pos, mv) {
+    var s = (mv.x + 1) + ' → ' + (mv.y + 1);
+    if (mv.two) return s;
+    var reg = pos.regions[mv.r], seeds = [], names = [];
+    mv.S.forEach(function (k) {
+      var bd = reg.boundaries[k], seen = {}, out = [];
+      if (bd.length === 1 && pos.deg[bd[0]] === 0) { seeds.push(bd[0] + 1); return; }
+      bd.forEach(function (t) { if (!seen[t]) { seen[t] = 1; out.push(t + 1); } });
+      names.push(out.join('-'));
+    });
+    if (seeds.length === 1) names.push(String(seeds[0])); else if (seeds.length) names.push(seeds.length + ' seeds');
+    if (!names.length) return s + (reg.boundaries.length > 1 ? ' enclosing nothing' : '');
+    return s + ' enclosing ' + (names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names[0]);
+  }
+  /* (v178) A family's other boundaries in classes of interchangeable ones, as children() groups them:
+     { sig: [k, …] }, sig 'self:…' for boundaries whose spots are on no other region (e.g. the loose seeds)
+     with the same lives-string — enclosing any c of a class gives positions with the same canonical form;
+     'own:k' for a boundary of its own. */
+  function regionCounts(pos) {
+    var regCount = {};
+    pos.regions.forEach(function (rg) { var here = {}; rg.boundaries.forEach(function (bd) { bd.forEach(function (t) { here[t] = 1; }); }); Object.keys(here).forEach(function (t) { regCount[t] = (regCount[t] || 0) + 1; }); });
+    return regCount;
+  }
+  function classesOf(pos, fam, regCount) {
+    var classes = {}, reg = pos.regions[fam.r];
+    regCount = regCount || regionCounts(pos);
+    fam.others.forEach(function (k) {
+      var bd = reg.boundaries[k], sig = bd.every(function (t) { return regCount[t] === 1; }) ? 'self:' + livesString(pos, bd).str : 'own:' + k;
+      (classes[sig] = classes[sig] || []).push(k);
+    });
+    return classes;
+  }
+
   /* ---------------- players ---------------- */
 
   /* Random (Peter, 9/27): a family at random among all, then how many of the
@@ -677,27 +712,59 @@
     /* the moves that enclose the fewest boundaries and cut off the shortest stretch of their boundary
        (a small loop beside it) first — on a ring of links every move has the same bound, and this
        order walks straight along a longest line; a move is followed only if its position's bound
-       (the sum of its parts') still allows need − 1 more moves. The positions are made one at a
-       time, as they are tried: the first usually does. */
-    var kids = children(p, Infinity).map(function (mv) {
-      var len = p.regions[mv.r].boundaries[mv.j].length, d = (mv.i2 - mv.i + len) % len;
-      return { mv: mv, enc: mv.S.length, cut: mv.two ? 0 : Math.min(d, len - d) };
-    });
-    kids.sort(function (a, b) { return a.enc - b.enc || a.cut - b.cut; });
-    for (var i = 0; i < kids.length; i++) {
-      var qs = parts(apply(p, kids[i].mv)), h = 0, r;
-      qs.forEach(function (x) { h += bounds(x).M; });
-      if (h < need - 1) continue;
-      if (qs.length === 1) r = reach(qs[0], need - 1, ctx);
-      else {                                       // several parts: the others exactly, the largest to what is left
-        var big = 0, j, rest = 0;
-        for (j = 1; j < qs.length; j++) if (bounds(qs[j]).M > bounds(qs[big]).M) big = j;
-        for (j = 0; j < qs.length && rest >= 0; j++) if (j !== big) { var v = partMax(qs[j], ctx); rest = v < 0 ? -1 : rest + v; }
-        r = rest < 0 ? -1 : reach(qs[big], need - 1 - rest, ctx);
-      }
-      if (r < 0) return -1;
-      if (r) { if ((ctx.mxLo.get(key) || 0) < need) mxStore(ctx, ctx.mxLo, key, need); return 1; }
+       (the sum of its parts') still allows need − 1 more moves. The moves are MADE ONE AT A TIME, as
+       they are tried (v180): interchangeable boundaries (classesOf) by how many of each class, the
+       families by the stretch they cut off, and all of them first with nothing enclosed, then with one,
+       and so on; and the list of families is let go while a move is followed (made again if it fails) —
+       lists kept at every step of a long line took Chrome's memory with 60 seeds (a crash, Peter 10/18:
+       about 5,000 moves a step, 179 steps deep). */
+    var fams = null, maxE = 0;
+    function build() {                             // the families in trying order (the same each time for p)
+      var rc = regionCounts(p);
+      maxE = 0;
+      fams = families(p).map(function (fam) {
+        var len = p.regions[fam.r].boundaries[fam.j].length, d = (fam.i2 - fam.i + len) % len, cls = [];
+        if (fam.others.length) { var cc = classesOf(p, fam, rc); Object.keys(cc).forEach(function (sg) { cls.push(cc[sg]); }); }
+        if (fam.others.length > maxE) maxE = fam.others.length;
+        return { fam: fam, cut: fam.j !== fam.j2 ? 0 : Math.min(d, len - d), cls: cls, n: fam.others.length };
+      }).sort(function (u, v) { return u.cut - v.cut; });
     }
+    function vectors(F, e) {                       // every way to take e boundaries from F's classes, by how many of each
+      var out = [];
+      (function rec(ci, left, S) {
+        if (ci === F.cls.length) { if (!left) out.push(S); return; }
+        for (var k = 0; k <= Math.min(F.cls[ci].length, left); k++) rec(ci + 1, left - k, S.concat(F.cls[ci].slice(0, k)));
+      })(0, e, []);
+      return out;
+    }
+    build();
+    var result = 0, E = maxE;                      // result: 1 found, −1 out of time
+    for (var e = 0; e <= E && !result; e++) {
+      for (var fi = 0; !result; fi++) {
+        if (!fams) build();
+        if (fi >= fams.length) break;
+        if (fams[fi].n < e) continue;
+        var vs = vectors(fams[fi], e);
+        for (var vi = 0; vi < vs.length && !result; vi++) {
+          if (!fams) build();
+          var mv = expand(fams[fi].fam, vs[vi].slice().sort(function (u, v) { return u - v; }));
+          var qs = parts(apply(p, mv)), h = 0, r;
+          qs.forEach(function (x) { h += bounds(x).M; });
+          if (h < need - 1) continue;
+          fams = null;                             // (made again if this move fails: one list per step of a long line took the memory)
+          if (qs.length === 1) r = reach(qs[0], need - 1, ctx);
+          else {                                   // several parts: the others exactly, the largest to what is left
+            var big = 0, j, rest = 0;
+            for (j = 1; j < qs.length; j++) if (bounds(qs[j]).M > bounds(qs[big]).M) big = j;
+            for (j = 0; j < qs.length && rest >= 0; j++) if (j !== big) { var v = partMax(qs[j], ctx); rest = v < 0 ? -1 : rest + v; }
+            r = rest < 0 ? -1 : reach(qs[big], need - 1 - rest, ctx);
+          }
+          if (r) result = r;
+        }
+      }
+    }
+    if (result < 0) return -1;
+    if (result) { if ((ctx.mxLo.get(key) || 0) < need) mxStore(ctx, ctx.mxLo, key, need); return 1; }
     var h0 = ctx.mxHi.get(key);
     if (h0 === undefined || h0 > need - 1) mxStore(ctx, ctx.mxHi, key, need - 1);
     return 0;
@@ -965,6 +1032,10 @@
       if (v > best) best = v;
       if (v > alpha) alpha = v;
     }
+    if (!ctx.tt.has(key) && ctx.ttBudget) {         // (v180) the table's bytes, as the longest-game tables' (mxStore): past its share of the heap it is emptied
+      ctx.ttBytes = (ctx.ttBytes || 0) + 2 * key.length + 120;
+      if (ctx.ttBytes > ctx.ttBudget) { ctx.tt.clear(); ctx.ttBytes = 0; }
+    }
     ctx.tt.set(key, { d: Math.abs(best) === 2 && best > alpha0 && best < beta ? Infinity : depth, v: best, f: best <= alpha0 ? -1 : best >= beta ? 1 : 0 });
     return best;
   }
@@ -989,7 +1060,7 @@
               newStore: newStore, mkTree: mkTree, treeSum: treeSum, heapTree: heapTree, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
               negamax: negamax, paritySearch: paritySearch, newContext: newContext, canonical: canonical, reduce: reduce,
               fromAnalysis: fromAnalysis, families: families, expand: expand, allMoves: allMoves, apply: apply, key: key, gameKey: gameKey,
-              canMove: canMove, regionLives: regionLives, lives: lives, describe: describe, randomOf: randomOf, randomMove: randomMove };
+              canMove: canMove, regionLives: regionLives, lives: lives, describe: describe, describeBrief: describeBrief, classesOf: classesOf, randomOf: randomOf, randomMove: randomMove };
   root.SproutsAI = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);
