@@ -349,7 +349,7 @@
      of the drawing, cannot move: if the ghost passes one too closely, moving
      curves cannot make room there. */
   function inTheWay(g, gh, a, b, o) {
-    var q = 3 * o.d0, out = { units: [], spot: null, border: null };
+    var q = 3 * o.d0, out = { units: [], spot: null, border: null, seeds: [], runs: null };
     unitsOf(g).forEach(function (u) {
       var runs = ghostRuns(gh, g, u, a, b, o.rho), c = unitCurve(g, u), pts = G.refinedPolygon(c.pieces, 0.5, 8).pts, S = [0];
       for (var i = 1; i < pts.length; i++) S.push(S[i - 1] + G.dist(pts[i], pts[i - 1]));
@@ -357,10 +357,13 @@
       if (d < o.d0) out.units.push({ u: u, runs: runs, d: d });
     });
     var all = ghostRuns(gh, g, { a: a, b: b, z: -1 }, a, b, o.rho);   // (a phase-1 ghost is trusted only beyond rho of its ends)
+    out.runs = all;
     g.spots.forEach(function (sp, i) {
       if (i === a || i === b) return;
       var d = distToRuns([[sp.x, sp.y]], all) - o.spotR;
-      if (d < o.d0 && (!out.spot || d < out.spot.d)) out.spot = { idx: i, d: d };
+      if (!(d < o.d0)) return;
+      if (sp.deg === 0) { out.seeds.push({ idx: i, d: d }); return; }   // (v188: a seed can be moved — moveSeed)
+      if (!out.spot || d < out.spot.d) out.spot = { idx: i, d: d };
     });
     all.forEach(function (r) { (r.pts || r).forEach(function (p) {
       var d = Math.min(p[0], p[1], g.W0 - p[0], g.H0 - p[1]);
@@ -368,6 +371,74 @@
     }); });
     out.units.sort(function (x, y) { return x.d - y.d; });
     return out;
+  }
+  /* v188 (Peter's 100-seed game of 10/20: 211 → 5 had to pass between seeds 30 and 7, their discs 0.6 px
+     apart, and neither sliding nor moving curves could touch them — "which cannot move"): a SEED in the
+     ghost's way is moved straight away from the ghost's nearest point, as far as its disc needs to keep
+     d0 from the ghost; its new place must be in its own region, reached without crossing anything, and
+     keep at least the room it had, or d0, from everything else. If the full distance does not do, half
+     of it, a quarter, … (a search schedule, as lowerClearance). Moves g in place; the distance or null. */
+  function moveSeed(g, z, runs, o, an) {
+    var p = [g.spots[z].x, g.spots[z].y], best = Infinity, q = null, tan = null;
+    runs.forEach(function (r) {
+      r = r.pts || r;
+      for (var i = 1; i < r.length; i++) {
+        var A = r[i - 1], B = r[i], vx = B[0] - A[0], vy = B[1] - A[1], L2 = vx * vx + vy * vy;
+        var t = L2 > 0 ? Math.max(0, Math.min(1, ((p[0] - A[0]) * vx + (p[1] - A[1]) * vy) / L2)) : 0;
+        var c = [A[0] + t * vx, A[1] + t * vy], dd = G.dist(p, c);
+        if (dd < best) { best = dd; q = c; tan = [vx, vy]; }
+      }
+    });
+    if (!q) return null;
+    var need = o.d0 - (best - o.spotR);
+    if (!(need > 0)) return null;
+    var dir = [p[0] - q[0], p[1] - q[1]], dl = Math.hypot(dir[0], dir[1]);
+    if (dl > 0) dir = [dir[0] / dl, dir[1] / dl];
+    else { var tl = Math.hypot(tan[0], tan[1]) || 1; dir = [-tan[1] / tl, tan[0] / tl]; }
+    return shiftSeed(g, z, dir, need, o, an);
+  }
+  /* Seed z of g moved by s along the unit vector dir — s, s/2, s/4, … until a place will do (its own
+     region, reached crossing nothing, at least the room it had or d0 from everything else); the
+     distance moved, or null (v188) */
+  function shiftSeed(g, z, dir, need, o, an) {
+    var p = [g.spots[z].x, g.spots[z].y], reg = an.regionAt(p);
+    if (!reg) return null;
+    var g2 = copyGame(g);
+    g2.spots[z].x = -1e6; g2.spots[z].y = -1e6;
+    var obs = R.buildObstacles(g2, o.spotR), ctx = { aIdx: -1, bIdx: -1, A: p, B: p, rho: o.rho, spotR: o.spotR, scaleAll: true };
+    var floor = Math.min(R.rObs(obs, ctx, p), o.d0 + o.spotR);
+    for (var s = need; s > R.QUIET_MOVE; s /= 2) {
+      var np = [p[0] + s * dir[0], p[1] + s * dir[1]], r2 = an.regionAt(np);
+      if (!r2 || r2.key !== reg.key) continue;
+      if (np[0] < o.spotR || np[1] < o.spotR || np[0] > g.W0 - o.spotR || np[1] > g.H0 - o.spotR) continue;
+      if (R.polylineCrossesObstacle(obs, [p, np]) || R.rObs(obs, ctx, np) < floor) continue;
+      g.spots[z].x = np[0]; g.spots[z].y = np[1];
+      return s;
+    }
+    return null;
+  }
+  /* v188: seeds of the move's region too close to each other, or to another spot, for a curve to pass
+     between them — their discs less than 2·d0 apart, d0 on each side of a curve — are moved apart, each
+     seed by its share of what is missing (half when both are seeds). Used when no ghost can be found at
+     all (Peter's game: 30 and 7 were 0.6 px apart, and even at the band's least starting clearance there
+     was no way between them). The seeds moved, { idx: px }, or null if none could move. */
+  function spreadSeeds(g, a, b, start, o) {
+    var an = E.analyse(g.spots, g.edges), reg = an.regionAt(start), out = {}, any = false;
+    if (!reg) return null;
+    var ss = reg.spots.filter(function (i) { return i !== a && i !== b; });
+    for (var i1 = 0; i1 < ss.length; i1++) for (var j1 = i1 + 1; j1 < ss.length; j1++) {
+      var x = ss[i1], y = ss[j1], sx = g.spots[x], sy = g.spots[y];
+      if (sx.deg > 0 && sy.deg > 0) continue;
+      var d = G.dist([sx.x, sx.y], [sy.x, sy.y]), miss = 2 * o.d0 - (d - 2 * o.spotR);
+      if (!(miss > 0) || !(d > 0)) continue;
+      var u = [(sx.x - sy.x) / d, (sx.y - sy.y) / d], both = sx.deg === 0 && sy.deg === 0;
+      [[x, u, sx], [y, [-u[0], -u[1]], sy]].forEach(function (m) {
+        if (m[2].deg > 0) return;
+        var s = shiftSeed(g, m[0], m[1], both ? miss / 2 : miss, o, an);
+        if (s !== null) { any = true; out[m[0]] = (out[m[0]] || 0) + s; }
+      });
+    }
+    return any ? out : null;
   }
   /* The certified clearance of unit u from everything else in g (certify: refined
      control polygons; near u's own end spots by angle). */
@@ -484,12 +555,19 @@
      is the real move in position g — { E, rmin } or null — as for sliding.
      Returns { game, start, moved: [{name, px}], rounds } or { fail, reason, best }. */
   function moveCurvesFor(game, a, start, b, trial, o) {
-    var g = copyGame(game), key0 = positionKey(game), moved = {}, prevW = -Infinity, rounds = 0, best = -Infinity, floors = floorsOf(game, o);
+    var g = copyGame(game), key0 = positionKey(game), moved = {}, seedMoved = {}, prevW = -Infinity, rounds = 0, best = -Infinity, floors = floorsOf(game, o);
     var A0 = [game.spots[a].x, game.spots[a].y], off = [start[0] - A0[0], start[1] - A0[1]];
     function startIn(gm) { return [gm.spots[a].x + off[0], gm.spots[a].y + off[1]]; }   // a may ride on a moved curve
     for (;;) {
       var gh = rounds === 0 && o.ghost0 ? o.ghost0 : ghostFor(g, a, startIn(g), b, o, trial);   // (o.ghost0: the caller has found it already)
-      if (!gh) return { fail: true, reason: 'there is no way through at all', best: best };
+      if (!gh) {                                  // (v188: seeds too close together for any way between them: spread, then again)
+        var spread = spreadSeeds(g, a, b, startIn(g), o);
+        if (!spread) return { fail: true, reason: 'there is no way through at all', best: best };
+        Object.keys(spread).forEach(function (i) { seedMoved[i] = (seedMoved[i] || 0) + spread[i]; });
+        if (positionKey(g) !== key0) return { fail: true, reason: 'moving the spots would have changed the position (a bug: please save the game)', best: best };
+        rounds++;
+        continue;
+      }
       best = Math.max(best, gh.w);
       if (gh.fits) { if (rounds > 0) break; return { fail: true, reason: 'the move fits already', best: best }; }
       if (rounds > 0 && gh.w <= prevW + R.QUIET_MOVE) return { fail: true, reason: 'moving the curves stopped gaining room', best: best };
@@ -499,7 +577,19 @@
                              brief: 'the way passes too close to spot ' + (way.spot.idx + 1) + ', which cannot move', best: best };
       if (way.border !== null) return { fail: true, reason: 'the way passes ' + Math.max(0, Math.round(way.border)) + ' px from the edge of the drawing',
                                         brief: 'the way passes too close to the edge of the drawing', best: best };
-      if (!movers.length) return { fail: true, reason: 'the narrowest place is where curves meet at a spot', best: best };
+      var seedsMoved = false;
+      if (way.seeds.length) {                     // (v188) the seeds in the way, before the curves
+        var anS = E.analyse(g.spots, g.edges);
+        way.seeds.forEach(function (sd) {
+          var s = moveSeed(g, sd.idx, way.runs, o, anS);
+          if (s === null) return;
+          seedsMoved = true;
+          seedMoved[sd.idx] = (seedMoved[sd.idx] || 0) + s;
+        });
+        if (!seedsMoved && !movers.length) return { fail: true, reason: 'the way passes ' + Math.max(0, Math.round(way.seeds[0].d)) + ' px from spot ' + (way.seeds[0].idx + 1) + ', which has no room to move away',
+                                                    brief: 'the way passes too close to spot ' + (way.seeds[0].idx + 1) + ', which has no room to move away', best: best };
+      }
+      if (!movers.length && !seedsMoved) return { fail: true, reason: 'the narrowest place is where curves meet at a spot', best: best };
       /* v40 (Peter, 9/24: "push the room making facility as far as we can"):
          not only the curves in the way move, but every curve within the comfort
          distance D of the ghost — sweep after sweep until all are quiet — so a
@@ -522,11 +612,12 @@
         });
       }
       if (positionKey(g) !== key0) return { fail: true, reason: 'moving the curves would have changed the position (a bug: please save the game)', best: best };
-      if (!any) return { fail: true, reason: 'the curves in the way cannot move', best: best };
+      if (!any && !seedsMoved) return { fail: true, reason: 'the curves in the way cannot move', best: best };
       rounds++;
     }
     return { game: g, start: startIn(g), rounds: rounds, band: gh.band,   // (the move's band that fitted: the caller can start from it)
-             moved: Object.keys(moved).map(function (nm) { return { name: nm, px: moved[nm] }; }) };
+             moved: Object.keys(moved).map(function (nm) { return { name: nm, px: moved[nm] }; }),
+             seeds: Object.keys(seedMoved).map(function (i) { return { name: String(Number(i) + 1), px: seedMoved[i] }; }) };
   }
 
   /* Which sides of unit u's curve (along R.normalAt, +, and against it, −) face

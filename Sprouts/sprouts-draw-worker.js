@@ -18,7 +18,7 @@
    Out: { id, gap, it }                      now and then: the least gap between the polylines now (px) —
                                              how promising the job looks while it runs
         { id, picture, it }                  while shown: the polylines now
-        { id, done: true, error, game, clearance, corners, dense, moved, it, stages }
+        { id, done: true, error, game, clearance, corners, small, dense, moved, it, stages }   (small, v189: the spots drawn smaller)
    ========================================================================= */
 var q = self.location.search;
 importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'describe.js' + q,
@@ -46,7 +46,7 @@ function slice() {
   while (!done && Date.now() - t < SLICE_MS) done = Rd.stepRedraw(st, 1);
   if (done) {
     var r = Rd.finishRedraw(st);
-    self.postMessage({ id: j.id, done: true, error: r.error, game: r.game, clearance: r.clearance, corners: r.corners || 0,
+    self.postMessage({ id: j.id, done: true, error: r.error, game: r.game, clearance: r.clearance, corners: r.corners || 0, small: r.small || [],
                        dense: !!r.dense, moved: r.moved, it: st.it, stages: st.stages });
     job = null;
     return;

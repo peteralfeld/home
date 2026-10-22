@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Sprouts &mdash; Technical Information</title>
-    <link rel="stylesheet" href="manual.css?v=153">
+    <link rel="stylesheet" href="manual.css?v=202">
 
     <script>
       MathJax = {
@@ -53,33 +53,36 @@
 
 <h1>Technical Information</h1>
 
-<p>This page was mostly written by Claude (an AI by Anthropic), with the instructions to be technical and to
+<p>This page was mostly written by <e>Claude</e> (an AI by Anthropic), with the instructions to be technical and to
 include the information needed to program this software yourself. It is the technical companion to the
 <a href="manual.html">User&rsquo;s Guide</a>, which describes the controls. Where an algorithm is easier to state
-as a program than in prose it is given as pseudocode; the names in <code>this font</code> are those of the
+as a program than in prose it is given as pseudocode. The names in <code>this font</code> are those of the
 functions and files in the program, so that the source can be read alongside.</p>
 
-<p>Sprouts looks like a drawing game and is a combinatorial one. Two players take turns drawing a curve between
-two spots (or from a spot back to itself) and putting a new spot on it; no curve may cross another or itself, and
-no spot may have more than three curve ends. Whether a game is won depends only on the <e>topology</e> of the
-drawing &mdash; which spots lie on the boundary of which region &mdash; and not on its shape. The program is
-therefore built in two layers: a <e>combinatorial</e> one that knows the position and the moves, and a
-<e>geometric</e> one that draws them. Most of the code, and most of this page, is about the second layer: how to
-draw a move that the rules allow when the picture has become crowded. Section <a href="#sec-layers">1</a>
-describes the two layers, sections <a href="#sec-topology">2</a> to <a href="#sec-room">4</a> the drawing,
-section <a href="#sec-ai">5</a> the computer players, section <a href="#sec-net">6</a> play between two
-computers and section <a href="#sec-eng">7</a> how it all runs in a browser. The papers it draws on are listed
-in section <a href="#sec-refs">8</a>, with links to where they were published.</p>
 
-<p>The Table of Contents below takes you to any part of this page. Clicking on a symbol like this
+<p>Sprouts is a combinatorial drawing game. Two players take turns. At each turn one of them draws a curve from
+one spot to another (or back to the starting spot) and adds a new spot somewhere on the curve. Curves must not
+cross or touch. No spot may have more than three curves emanate from it. The first player who is unable to draw
+a new curve loses. The winner is determined entirely by the topology of the drawing, independently of the shape
+of the curves and regions. The program is therefore built in two layers: a <e>topological</e> one that
+determines the moves, and a <e>geometric</e> one that draws them.</p>
+
+<p>Most of the code, and most of this page, is about the second layer: how to draw a move that the rules allow
+when the picture has become crowded. Section <a href="#sec-layers">1</a> describes the two layers, sections
+<a href="#sec-topology">2</a> to <a href="#sec-room">4</a> the drawing, section <a href="#sec-ai">5</a> the
+computer players, section <a href="#sec-net">6</a> play between two computers and section
+<a href="#sec-eng">7</a> how it all runs in a browser. Section <a href="#sec-refs">8</a> contains a
+bibliography of the papers and books that were used in the design of this software.</p>
+
+<p>The Table of Contents below takes you to any part of this page. Clicking on this symbol
 &nbsp;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a>&nbsp; anywhere on the
-page brings you back here.</p>
+page takes you back here.</p>
 
 <h2 id="toc">Table of Contents</h2>
 <ul id="toc-list">
   <li><a href="#sec-layers">1. Two Layers and One Invariant</a>
     <ul>
-      <li><a href="#sec-rules">1.1. The rules, and what they imply</a></li>
+      <li><a href="#sec-rules">1.1. The rules and their consequences</a></li>
       <li><a href="#sec-invariant">1.2. The position is the authority</a></li>
       <li><a href="#sec-nocap">1.3. No limit on the number of spots</a></li>
     </ul>
@@ -143,135 +146,192 @@ page brings you back here.</p>
 
 <h1 id="sec-layers">1. Two Layers and One Invariant<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
-<h2 id="sec-rules">1.1. The rules, and what they imply</h2>
+<h2 id="sec-rules">1.1. The rules, and their consequences</h2>
 
-<p>The game starts with $n$ spots. A move draws a curve from a spot to a spot &mdash; possibly the same one &mdash;
-that crosses no curve and no spot, and puts a new spot somewhere on it. The number of curve ends at a spot is its
-<e>degree</e>; no spot may have degree above 3, and $3 - \text{degree}$ is called its <e>lives</e>. By degree 0, 1, 2 and 3 a spot is a <e>seed</e>, a <e>sprout</e>, a <e>link</e> or a <e>stump</e> &mdash; the terms of the User&rsquo;s Guide, used here too. In
-<e>normal</e> play the player who cannot move loses; in <e>misère</e> play that player wins. The game was
-invented by John Conway and Michael Paterson in 1967 and made known by Martin Gardner
-[<a href="#ref-gardner">1</a>].</p>
+<p>The game starts with $n$ spots. A <e>move</e> draws a curve from a spot to a spot, possibly the same one.
+That curve crosses no curve and no spot. Every move puts a new spot somewhere on the new curve. The program puts
+it near the middle of the curve, but the spot may be moved along the curve at a later stage. No spot may have
+more than three curves attached to it. The number of curves that can still be attached is the number of
+<e>lives</e> at that spot. Spots with 3, 2, 1 or 0 lives are called <e>seeds</e>, <e>sprouts</e>, <e>links</e>
+and <e>stumps</e>, respectively. In <e>normal</e> play the first player who cannot make a move loses. In
+<e>misère</e> play that player wins. The game was invented by John Conway and Michael Paterson in 1967 and made
+known by Martin Gardner [<a href="#ref-gardner">1</a>].</p>
 
-<p>Two facts follow at once and are used everywhere. First, every move uses two lives (its two ends) and creates a
-spot with one life (the new spot is a link), so the total number of lives on the board falls by exactly one per
-move. The game starts with $3n$ lives and the last move leaves at least one, so a game lasts <e>at most</e>
-$3n-1$ moves; a counting argument (section <a href="#sec-bounds">5.5</a>) shows it lasts <e>at least</e> $2n$.
-Second, a move is possible exactly when some region has at least two lives on its boundary: two different spots
-with a life each, or one spot with two lives (for a loop). So whether the game is over is a combinatorial
-question, answered without looking at the shapes.</p>
+<p>Two facts follow at once and are used everywhere. First, every move removes two lives, one at each end, and
+it creates a new spot with one life left, so the total number of lives on the board decreases by exactly 1 at
+each move. The game starts with $3n$ lives, and the last move leaves at least one link (the new spot added by
+the last move). Therefore a game lasts <e>at most</e> $3n-1$ moves. A counting argument (section
+<a href="#sec-bounds">5.5</a>) shows that it lasts <e>at least</e> $2n$ moves. Second, a move is possible
+exactly when some region has at least two lives on its boundary or in its interior. So whether the game is
+over is a topological question, and the answer is independent of the shape of the curves and regions.</p>
 
 <h2 id="sec-invariant">1.2. The position is the authority</h2>
 
-<p>The <e>position</e> is what the drawing means: the regions, the boundaries of each region, the spots on each
-boundary in order, and every spot&rsquo;s lives. The <e>picture</e> is one of infinitely many ways of drawing it.
-The program keeps both, and one rule governs their relation: <e>the picture may never change the position</e>.
-Every operation on the picture &mdash; drawing a move, sliding a spot, pushing curves apart, rearranging the
-whole drawing &mdash; is followed by recomputing the position from the picture from scratch
-(<code>engine.analyse</code>, section <a href="#sec-rotation">2.3</a>) and comparing it with what it should be.
-If it differs, the operation is rejected and the picture put back. The computer player goes further: it chooses
-its move in the combinatorial layer alone, and the drawing it gets back is accepted only if it produces the
-position the computer intended (section <a href="#sec-intend">5.9</a>).</p>
+<p>The <e>position</e> is the topological content of the game, the only thing the rules care about. It
+consists of the regions into which the curves cut the plane, and for each region its boundaries: the curves and
+spots that enclose it from the outside and the curves and spots that lie inside it. Each boundary is read as the
+cyclic sequence of the spots on it, and every spot carries its lives. (Section <a href="#sec-rotation">2.3</a>
+says precisely what is stored.) The <e>picture</e> is one of infinitely many ways of drawing a position: the
+same position can be drawn with the curves bent any way one likes, the spots anywhere, and any region as the
+outside.</p>
+
+<p>The program keeps both. The position is the authority and the picture serves it, under one rule: <e>an
+operation on the picture may never change the position</e>. Every such operation (drawing a move, sliding a
+spot, pushing curves apart, rearranging the whole drawing) is followed by a check. The position is read off the
+changed picture from scratch (<code>engine.analyse</code>, section <a href="#sec-rotation">2.3</a>) and
+compared with the position it should be. This is the position before the operation when the operation only
+rearranges, and the position after the intended move when the operation draws one. The operations are built
+so that they keep the position (the band of section <a href="#sec-band">3.4</a> can deform a curve but never
+pass it through anything, and the descent of section <a href="#sec-ar">4.5</a> caps every step so that nothing
+can cross). The check catches what the construction does not cover, such as the smooth curve laid through the
+polyline at the end of A, R and Z. If the check fails, the operation is rejected and the picture is put back.
+The computer player goes further: it chooses its move in the topological layer alone, and the drawing it gets
+back is accepted only if it produces the position the computer intended (section
+<a href="#sec-intend">5.9</a>).</p>
 
 <p>Three consequences shape the program:</p>
 <ol>
   <li>Bugs in the geometry cannot corrupt the game. They can only make a move fail to be drawn, and then the
   program says so.</li>
-  <li>Any amount of freedom may be taken with the picture &mdash; spots moved, curves reshaped, the outside region
-  swapped for another &mdash; as long as the check passes.</li>
-  <li>Network play needs to send only combinatorial moves; each computer draws its own picture (section
+  <li>Any amount of freedom may be taken with the picture (spots moved, curves reshaped, the outside region
+  swapped for another) as long as the check passes.</li>
+  <li>Network play needs to send only topological moves. Each computer draws its own picture (section
   <a href="#sec-net">6</a>).</li>
 </ol>
 
 <h2 id="sec-nocap">1.3. No limit on the number of spots</h2>
 
-<p>The program has no upper limit on the number of spots. The practical limit is the size of the window: a
-position with many regions needs room for its curves, and at some point a move the rules allow cannot be drawn
-with the minimum clearance the Settings ask for. When that happens the program says why (the widest way it found
-and what was needed), and offers the ways of making room described in section <a href="#sec-room">4</a>. Games
-with 30 and 40 spots have been played to the end, computer against computer, in a full-screen window.</p>
+<p>The program has no upper limit on the number of spots. Practical limits are imposed by the size of your
+drawing area and your computing resources. A position with many regions needs room for its curves, and at some
+point a move the rules allow cannot be drawn with the minimum clearance the Settings ask for. When that happens
+the program says why (the widest way it found and what was needed), and offers the ways of making room
+described in section <a href="#sec-room">4</a>. The largest games played during development had 100 seeds,
+computer against computer, in a drawing area of 2560 by 1383 pixels.</p>
 
 <h1 id="sec-topology">2. From Picture to Position<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <h2 id="sec-splines">2.1. Curves are splines</h2>
 
 <p>Every curve is a <e>piecewise cubic polynomial</e>, twice continuously differentiable (C²), stored in
-<e>B&eacute;zier form</e>: each cubic piece $i$ is given by its four control points $b_0, b_1, b_2, b_3$ and
+<e>B&eacute;zier form</e>. Each cubic piece $i$ is given by its four control points $b_0, b_1, b_2, b_3$, which
+are points of the plane (vectors with an $x$ and a $y$ coordinate), and it traces the plane curve
 $$p(t) = \sum_{k=0}^{3} \binom{3}{k} (1-t)^{3-k} t^k\, b_k, \qquad 0 \le t \le 1,$$
-together with its <e>parameter length</e> $h_i$, roughly its arc length. The knots need not be uniform:
-C² continuity holds with respect to this parametrization, so pieces may be long where a curve is straight and
-short where it bends. A curve is refined <e>locally</e> &mdash; one piece is cut in two by de Casteljau
-subdivision without changing the shape &mdash; never globally.</p>
+a point of the plane for each $t$. With the piece is stored its <e>parameter length</e> $h_i$, roughly its arc
+length. The knots need not be uniform. C² continuity holds with respect to this parameterization, so pieces may
+be long where a curve is straight and short where it bends. A curve is refined <e>locally</e>, one piece cut in
+two by de Casteljau subdivision without changing the shape, never globally.</p>
 
-<p>A move&rsquo;s curve from spot $x$ to spot $y$ is fitted as <e>one</e> spline and then cut at its middle
-(half its arc length), where the new spot $z$ goes. The program stores it as two curves, $x \to z$ and
-$z \to y$, but remembers that they were one spline: as long as $z$ has no third curve, the two can be treated
-as one again (to slide $z$ along them, section <a href="#sec-slide">4.3</a>, or to move them together,
-section <a href="#sec-push">4.4</a>).</p>
+<p>A move&rsquo;s curve from spot $x$ to spot $y$ is fitted as <e>one</e> spline and then cut near its middle,
+where the new spot $z$ goes. The cut is made where half the arc length is reached, except that an existing
+knot close to that point (within 15% of its piece&rsquo;s parameter length) is used instead, so that no very
+short piece is made. The new spot is therefore near the middle of the curve, not exactly at it, and it may be
+slid along the curve later (section <a href="#sec-slide">4.3</a>). The program stores the curve as two curves,
+$x \to z$ and $z \to y$, but remembers that they were one spline. As long as $z$ has no third curve, the two can
+be treated as one again, to slide $z$ along them (section <a href="#sec-slide">4.3</a>) or to move them
+together (section <a href="#sec-push">4.4</a>).</p>
 
 <h2 id="sec-polygons">2.2. Deciding touching and crossing</h2>
 
 <p>Whether two curves cross, or come closer than some distance, is never decided by sampling points on them.
-It is decided by their <e>control polygons</e>, which can be computed with exactly. A B&eacute;zier piece lies in
+It is decided by their <e>control polygons</e>, which can be computed exactly. A B&eacute;zier piece lies in
 the convex hull of its control points, and more precisely within a known distance of its control polygon. For a
 cubic, Nairn, Peters and Lutterkort [<a href="#ref-npl">2</a>] give the sharp bound
 $$\max_{0\le t\le 1} \bigl| p(t) - \ell(t) \bigr| \;\le\; \tfrac13 \max\bigl(|b_0 - 2b_1 + b_2|,\; |b_1 - 2b_2 + b_3|\bigr),$$
-where $\ell$ is the control polygon suitably parametrized. The program (<code>geom.refinedPolygon</code>)
+where $\ell$ is the control polygon suitably parameterized. The program (<code>geom.refinedPolygon</code>)
 subdivides each piece until this bound $\varepsilon$ is small enough and no polygon leg is too long, and then
-works with the refined polygon: if two refined polygons stay a distance $d$ apart, the curves stay at least
+works with the refined polygon. If two refined polygons stay a distance $d$ apart, the curves stay at least
 $d - 2\varepsilon$ apart. A test on polygons is therefore a <e>certificate</e> about the curves, not an
-estimate. The stored spline itself is never changed by this; refinement is done on copies for testing.</p>
+estimate. The stored spline itself is never changed by this. Refinement is done on copies for testing.</p>
 
 <h2 id="sec-rotation">2.3. The rotation system and the regions</h2>
 
 <p>The drawing is a planar map: spots are vertices and curves are edges, with loops and parallel edges
-allowed. <code>engine.analyse</code> recomputes the whole combinatorial structure from the curves after every
-move, in four steps.</p>
+allowed. Its topology is determined by three lists, and nothing else:</p>
+<ol>
+  <li>the spots, each with the number of curves at it (its degree, hence its lives);</li>
+  <li>the curves, each given by its two end spots $a$ and $b$;</li>
+  <li>at every spot, the <e>cyclic order</e> in which the curves leave it (the <e>rotation system</e>). This is
+  what the picture adds to the plain graph: a planar map with the same spots and curves but another cyclic order
+  at some spot is a different position.</li>
+</ol>
+<p>From these three lists everything else follows: the faces, which faces lie inside which, and so the regions
+with their boundaries and lives. The program does not store the regions as data to be updated with each move.
+It recomputes them from the curves after every operation on the picture (<code>engine.analyse</code>), which
+is both the way the position is read and the check of section <a href="#sec-invariant">1.2</a>. The
+computation runs in four steps.</p>
 
 <ol>
   <li><e>Half-edges.</e> Each curve $e$ from $a$ to $b$ gives two half-edges: $2e$ from $a$ to $b$ and $2e+1$
-  from $b$ to $a$.</li>
+  from $b$ to $a$ (its <e>twin</e>). The spot a half-edge leaves is its tail, the spot it reaches its head.</li>
   <li><e>Rotation system.</e> At each spot the half-edges leaving it are sorted by the direction of their first
-  refined-polygon leg. This cyclic order is all the topology a planar map has.</li>
-  <li><e>Faces.</e> Walking along a half-edge $h$ to its head and turning to the half-edge just before $h$&rsquo;s
-  twin in the rotation there keeps the face on one fixed side. Repeating traces the boundary cycles of the faces.
-  Within one connected component of the map, the cycle with negative signed area is the component&rsquo;s outer
-  cycle; the others bound its inner faces. (The screen&rsquo;s y axis points down, which flips the usual sign.)</li>
-  <li><e>Regions.</e> A region is an inner face of some component, or the unbounded outside. Each component&rsquo;s
-  outer cycle, and each spot with no curves, belongs to the smallest inner face of another component that contains
-  it, else to the outside (a point-in-polygon test). A region&rsquo;s lives are the lives of the <e>distinct</e>
-  spots on its boundaries.</li>
+  refined-polygon leg (section <a href="#sec-polygons">2.2</a>). Since the refined polygons of different curves
+  do not touch, two half-edges never have the same direction.</li>
+  <li><e>Faces.</e> A face is traced by walking: along a half-edge $h$ to its head, then on along the half-edge
+  that comes just before the twin of $h$ in the rotation at the head. This turn keeps the face on one fixed side,
+  and repeating it brings the walk back to $h$. The closed walk is a <e>cycle</e> of half-edges, and every
+  half-edge lies on exactly one cycle. A connected component of the map with $k$ cycles has $k - 1$ inner faces,
+  each bounded by one cycle, and one further cycle, its <e>outer cycle</e>, which goes round the whole component.
+  The outer cycle is the one with negative signed area (the screen&rsquo;s $y$ axis points down, which flips the
+  usual sign). A component that is a tree has one cycle, its outer cycle, and no inner face.</li>
+  <li><e>Regions.</e> A region is an inner face of some component, or the unbounded outside. A region can hold
+  further things: whole components, and spots with no curves. They are not nested regions but <e>boundaries</e>
+  of the region they lie in. For each component, a point just outside its outer cycle is tested against the
+  polygons of all inner faces, and the smallest inner face (by area) that contains the point is the region the
+  component lies in. If none does, it lies in the outside. The same test places each spot with no curves. A
+  region&rsquo;s lives are the lives of the <e>distinct</e> spots on its boundaries.</li>
 </ol>
 
-<p>The result is the list of regions, each with its boundaries (cycles of half-edges, or single spots) and its
-lives. It also gives <code>regionAt(p)</code>, the region containing a point, which the input code uses to know
-on which side of a spot the pointer is.</p>
+<div class="algo-title">The position read off the picture (<code>engine.analyse</code>)</div>
+<pre class="algo">
+<span class="kw">function</span> analyse(spots, curves):
+    <span class="kw">for</span> each curve e from a to b: half-edges 2e (a → b) and 2e+1 (b → a), each with its refined polygon
+    <span class="kw">for</span> each spot: sort the half-edges leaving it by the direction of their first polygon leg   <span class="cmt">// the rotation</span>
+    next(h) = the half-edge just before twin(h) in the rotation at head(h)
+    <span class="kw">for</span> each half-edge h not yet on a cycle:
+        walk h, next(h), next(next(h)), … until h comes back; this is a cycle, with its polygon and signed area
+    <span class="kw">for</span> each connected component: its cycle of least signed area is its outer cycle, the others bound inner faces
+    regions = { outside } ∪ { one region per inner face, with that face's cycle as its first boundary }
+    <span class="kw">for</span> each component: add its outer cycle as a boundary of the smallest inner face containing a point just outside it, else of the outside
+    <span class="kw">for</span> each spot with no curves: add it as a boundary of the smallest inner face containing it, else of the outside
+    <span class="kw">for</span> each region: lives = sum of the lives of the distinct spots on its boundaries
+    <span class="kw">return</span> regions                                          <span class="cmt">// a move exists iff some region has 2 lives or more</span>
+</pre>
+
+<p>So the answer to &ldquo;which regions does a region contain?&rdquo; is never stored, because it is never
+needed. What a move needs is the list of boundaries of its region: the cycle round it (for an inner face), the
+outer cycles of the components inside it, and the spots with no curves inside it. A region is nested in another
+exactly when the outer cycle of its component is a boundary of the other, and when that matters (for Z, section
+<a href="#sec-z">4.6</a>) it is read off the boundaries. The result of <code>analyse</code> is the list of
+regions, each with its boundaries (cycles of half-edges, or single spots) and its lives. It also gives
+<code>regionAt(p)</code>, the region containing a point, which the input code uses to know on which side of a
+spot the pointer is.</p>
 
 <h2 id="sec-setrep">2.4. The position as lists of corners</h2>
 
 <p>For the computer players the position is reduced to what Applegate, Jacobson and Sleator
 [<a href="#ref-ajs">3</a>] call the set representation (<code>ai.js</code>): a list of regions, each a list of
 boundaries, each boundary the cyclic list of spot <e>corners</e> met when walking once round it with the region
-on the same side. A spot with $d \ge 1$ curves has $d$ corners in all: a spot in the middle of a bare path
+on the same side. A spot with $d \ge 1$ curves has $d$ corners in all. A spot in the middle of a bare path
 appears twice on the same boundary, and a spot on a cycle appears once on each side. A spot with no curves is a
-boundary of its own. Which region is the outside is not recorded: the game is the same on the sphere, and the
+boundary of its own. Which region is the outside is not recorded. The game is the same on the sphere, and the
 drawing may make any region the outside (section <a href="#sec-z">4.6</a>).</p>
 
 <h2 id="sec-moves">2.5. The moves</h2>
 
-<p>A move goes from corner $i$ of boundary $j$ to corner $i_2$ of boundary $j_2$ in one region $r$; the new spot
+<p>A move goes from corner $i$ of boundary $j$ to corner $i_2$ of boundary $j_2$ in one region $r$. The new spot
 is $z$. There are two kinds.</p>
 
 <ul>
   <li><e>Two boundaries</e> ($j \neq j_2$): the curve joins them into one,
   $[x, \dots \text{round } B_j \dots, x, z, y, \dots \text{round } B_{j_2} \dots, y, z]$. Nothing else changes,
-  and the route taken does not matter: any curve between those two corners inside the region gives the same
+  and the route taken does not matter. Any curve between those two corners inside the region gives the same
   position.</li>
   <li><e>One boundary</e> ($j = j_2$): the curve splits the region in two. Reading $B_j$ from $x$&rsquo;s corner,
   with $y$ at offset $p$, the two new boundaries are $B_a = [x, \dots, y, z]$ and
   $B_b = [y, \dots, x, z]$ ($p = 0$ is a loop at one corner and needs two lives at $x$). The region&rsquo;s
-  <e>other</e> boundaries must go to one side or the other, and every choice is a different move: with $k$
+  <e>other</e> boundaries must go to one side or the other, and every choice is a different move. With $k$
   other boundaries that still have lives there are $2^k$ moves for the same pair of corners. Here the route
-  matters very much, and drawing such a move means drawing a curve that goes round exactly the chosen
+  matters very much. Drawing such a move means drawing a curve that goes round exactly the chosen
   boundaries (section <a href="#sec-marked">3.3</a>).</li>
 </ul>
 
@@ -289,25 +349,25 @@ most to the least particular:</p>
   <tr><td class="code">key</td><td>The exact position, spot indices included. Used to check that a drawing
   did not change anything.</td></tr>
   <tr><td class="code">gameKey</td><td>The same without boundaries that have no life left. Two pictures with the same
-  <code>gameKey</code> are the same move as far as the game is concerned; the computer&rsquo;s drawn move is
+  <code>gameKey</code> are the same move as far as the game is concerned. The computer&rsquo;s drawn move is
   accepted when its <code>gameKey</code> (or that of its mirror image) is the intended one.</td></tr>
   <tr><td class="code">canonical</td><td>A string that is the same for all positions that play the same, whatever
-  the spot indices: the key of the search&rsquo;s transposition table and of the stores of solved parts.</td></tr>
+  the spot indices. It is the key of the search&rsquo;s transposition table and of the stores of solved parts.</td></tr>
 </table>
 
 <p>The canonical form follows the paper [<a href="#ref-ajs">3</a>]. Regions with fewer than two lives are
-dropped, and so are stumps. A spot is written as its number of lives (1, 2 or 3); a one-life spot can
+dropped, and so are stumps. A spot is written as its number of lives (1, 2 or 3). A one-life spot can
 occur twice (on a bare path, or on a cycle between two regions), so it is given a letter that marks its two
 occurrences as one spot. Each boundary is read from the rotation that makes its string least, the boundaries of a
 region are sorted, the regions are sorted, letters are given in order of first appearance, the mirror image
-(every boundary reversed) is done too, and the lesser string wins. Ties &mdash; two boundaries with the same
-string &mdash; are where a naive version lets the spot indices decide, and then equal positions get different
+(every boundary reversed) is done too, and the lesser string wins. Ties (two boundaries with the same
+string) are where a naive version lets the spot indices decide, and then equal positions get different
 strings. The program settles ties by branch and bound over the orderings and rotations that matter (those that
 involve a spot shared with another boundary), so the form is a true canonical form. If the branch and bound exceeds
-a work budget, the form is finished greedily: still a correct name of this position, only possibly not the same
-name as an equal position&rsquo;s, which costs a missed table hit and never a wrong answer. A position made of
-independent <e>parts</e> (section <a href="#sec-parts">5.6</a>) is written as the sorted forms of its parts
-joined by &ldquo;+&rdquo;, each part named on its own.</p>
+a work budget, the form is finished greedily. The result is still a correct name of this position, only possibly
+not the same name as an equal position&rsquo;s, which costs a missed table hit and never a wrong answer. A
+position made of independent <e>parts</e> (section <a href="#sec-parts">5.6</a>) is written as the sorted forms
+of its parts joined by &ldquo;+&rdquo;, each part named on its own.</p>
 
 <h1 id="sec-drawing">3. Drawing a Move<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
@@ -331,15 +391,15 @@ a curve stops feeling its neighbors much.</p>
   <li>A spot with two curves has two sides, and only one of them may lead somewhere. The region under the pointer
   decides which side the curve leaves from, and the lit destinations follow it as the pointer moves. If the side
   pressed leads nowhere and the other side does lead somewhere, the other is taken.</li>
-  <li>Click or stroke is decided by where the pointer is <e>released</e>: nearer the start than to any lit
-  destination, it was a click (choose the destination with a second click); otherwise the nearest lit
+  <li>Click or stroke is decided by where the pointer is <e>released</e>. Nearer the start than to any lit
+  destination, it was a click (choose the destination with a second click). Otherwise the nearest lit
   destination is the end of the move. A release just outside a destination&rsquo;s disc also says from which side
   the curve should reach it.</li>
   <li>A stroke that is usable (it reaches the destination without touching anything) is itself the start of the
-  curve; otherwise the planner&rsquo;s shortest route is used. Either way the elastic band then smooths it, and the
+  curve. Otherwise the planner&rsquo;s shortest route is used. Either way the elastic band then smooths it, and the
   stroke&rsquo;s way round things is kept: the band can deform a curve but never pass it through an obstacle.</li>
-  <li>Right-click, or Shift+click, on spots between the two clicks <e>marks</e> them: the curve must enclose those
-  spots (more exactly, the boundaries they lie on) and not the others.</li>
+  <li>Right-click, or Shift+click, on spots between the two clicks <e>marks</e> them. The curve must then enclose
+  those spots (more exactly, the boundaries they lie on) and not the others.</li>
 </ul>
 
 <h2 id="sec-planner">3.2. The planner: a grid and Dijkstra</h2>
@@ -354,14 +414,14 @@ two curves at a destination stays open, as it will be for the band.</p>
 <p>Dijkstra&rsquo;s algorithm [<a href="#ref-dijkstra">4</a>] on the 8-connected grid, from the start, gives the
 distance to every free cell at once. That answers both questions the input needs: which spots can be reached from
 here (to light them up), and what the shortest way to $b$ is. The grid path is within a few percent of the true
-shortest path and, more importantly, in the right homotopy class; the band then tightens it into the true
+shortest path and, more importantly, in the right homotopy class. The band then tightens it into the true
 geodesic with clearance. An optional side test makes the path arrive at $b$ through a chosen corner.</p>
 
 <p>When no path exists, a <e>bottleneck</e> search (the path whose narrowest point is widest,
 <code>route.widest</code>) finds how much room the best way actually has, and the refusal says so: &ldquo;the widest
-way is too narrow here&rdquo;. The details go to the log, where it gives the clearance of that way and the clearance needed (the status line names the spots and
-curves involved and leaves out pixel numbers). The same widest way is the starting point for pushing curves
-apart (section <a href="#sec-push">4.4</a>).</p>
+way is too narrow here&rdquo;. The details go to the log, which gives the clearance of that way and the clearance
+needed (the status line names the spots and curves involved and leaves out pixel numbers). The same widest way
+is the starting point for pushing curves apart (section <a href="#sec-push">4.4</a>).</p>
 
 <h2 id="sec-marked">3.3. Enclosing chosen spots</h2>
 
@@ -369,54 +429,58 @@ apart (section <a href="#sec-push">4.4</a>).</p>
 path knows nothing of sides, so marked moves are routed differently (<code>moves.markedRoute</code>).</p>
 
 <p>The first method is the <e>barrier route</e>. The boundaries that must end up on the marked side are joined to
-each other by a <e>tree</e> of grid cells; the boundaries that must not are joined by a second tree that does not
+each other by a <e>tree</e> of grid cells. The boundaries that must not are joined by a second tree that does not
 touch the first. Each tree also holds what goes with its side: the arc of $a$&rsquo;s own boundary between the
 curve&rsquo;s two ends that belongs on that side, and, in the outside region, the window&rsquo;s edge (which goes
 with the unmarked side). A path from $a$ to $b$ that uses no cell of either tree cannot separate two things a tree
-joins, so it separates the two groups correctly. One Dijkstra run per tree and one for the path suffice; there is
-no $2^k$ blow-up. (A loop, $a = b$, needs one extra bit of information, which side of the loop is its inside;
-that bit is found as in the second method.)</p>
+joins, so it separates the two groups correctly. One Dijkstra run per tree and one for the path suffice. There is
+no $2^k$ blow-up. (A loop, $a = b$, needs one extra bit of information, which side of the loop is its inside.
+That bit is found as in the second method.)</p>
 
 <p>The same bit is needed when $a$ and $b$ are so close that the neighborhoods kept free of the trees around them
-overlap &mdash; for instance when $b$ is the next spot along $a$&rsquo;s own curve (v178). The path could then slip
+overlap, for instance when $b$ is the next spot along $a$&rsquo;s own curve (v178). The path could then slip
 straight from $a$ to $b$ between the trees and go round nothing. A ray from a marked boundary must then be crossed
 an odd number of times by the curve and the marked arc together (the curve&rsquo;s share is wanted odd or even as
-the arc&rsquo;s own crossings make it), and the strip beside the segment from $a$ to $b$ is closed to the path, so
+the arc&rsquo;s own crossings make it). The strip beside the segment from $a$ to $b$ is closed to the path, so
 that it leaves $a$ away from $b$ and reaches $b$ from beyond it, instead of running out and back along the same
-narrow gap. Before this, such a move could only be drawn by drawing the whole picture afresh (Z).</p>
+narrow gap. Before this, such a move could only be drawn by drawing the whole picture afresh (Z).
+When the marked side holds the region&rsquo;s own <e>outer</e> boundary, that side is the outside of the closed
+curve in the plane. The ray is then taken from the other side instead (an unmarked boundary, or else the point
+of the other arc farthest from $a$ and $b$), and it is that side the curve and the marked arc must go round
+(v182: a curve from a spot round the short stub hanging from its neighbor, in the middle of an empty region).</p>
 
 <p>When the trees cannot be built (a long, snaking region can wall off the corner the curve must arrive at), the
-second method is a <e>parity search</e>: a ray is cut from each boundary that has to change sides, the grid states
+second method is a <e>parity search</e>. A ray is cut from each boundary that has to change sides, the grid states
 carry one bit per ray (whether the path has crossed it an odd number of times), and Dijkstra over (cell, bits)
 looks for a path that reaches $b$ with the wanted bits. Rays are added only for the boundaries that the last
 candidate left on the wrong side. This costs $2^{\text{rays}}$ states per cell and is limited to seven rays. The
 search is an A* search (states are taken in order of their distance so far plus the straight distance to $b$, which no
-way on can beat), it stops as soon as no state left can lead to a shorter path, and it keeps states only for the cells
+way on can beat). It stops as soon as no state left can lead to a shorter path, and it keeps states only for the cells
 it actually reaches.</p>
 
-<p>Either way the answer is judged, not trusted: <code>engine.afterMove</code> performs the move virtually along the
+<p>Either way the answer is judged, not trusted. <code>engine.afterMove</code> performs the move virtually along the
 polyline and lists the spots that end up on each side. A route that would enclose the wrong spots is not drawn.
 If no method finds one, a hand move stays armed and says so (Enter then draws the shortest way, without the
-marks); the computer simply tries its next candidate.</p>
+marks). The computer simply tries its next candidate.</p>
 
 <h2 id="sec-band">3.4. The elastic band</h2>
 
-<p>The route &mdash; a stroke or a grid path, resampled at equal spacing &mdash; is tightened by minimizing a
+<p>The route (a stroke or a grid path, resampled at equal spacing) is tightened by minimizing a
 clearance energy over the polyline&rsquo;s vertices (<code>relax.js</code>):
 $$E = \int \Bigl(1 + \lambda \sum_{o} \varphi\bigl(r_o(s)\bigr)\Bigr)\, ds, \qquad
 \varphi(r) = \Bigl(\frac{D - d_h}{r - d_h}\Bigr)^2,$$
 where $s$ is arc length and $r_o$ the distance to obstacle $o$. The sum runs over <e>distinct</e> obstacles: each
 other curve, each spot, each side of the window, and the band&rsquo;s own far-away parts. The term $\varphi$ is 1 at
 the comfort distance $D$, decays like $1/r^2$ beyond it and never quite vanishes, so a curve keeps drifting towards
-the middle of whatever room there is; it becomes infinite at the <e>barrier</e> $d_h$, so the band can never pass
+the middle of whatever room there is. It becomes infinite at the <e>barrier</e> $d_h$, so the band can never pass
 through an obstacle and stays in the homotopy class it started in. $\lambda$ weighs room against length
 (Settings &rarr; Room vs length; the slider is $\log_{10}\lambda$, default $\lambda = 1$). Obstacles are found
 through a spatial grid of 64-pixel cells and are felt up to 256 pixels away.</p>
 
-<p>Near a spot, distance is the wrong measure for that spot&rsquo;s own curves: every curve leaving a spot is at
-distance zero from the others there. Within a radius $\rho = \sqrt2\,D$ of a spot, the distance to the spot&rsquo;s
-own curves is replaced by their angular separation, scaled as $\theta\,\rho$. Curves can then share a spot while
-still being pushed apart in angle.</p>
+<p>Near a spot, distance is the wrong measure for that spot&rsquo;s own curves, because every curve leaving a
+spot is at distance zero from the others there. Within a radius $\rho = \sqrt2\,D$ of a spot, the distance to
+the spot&rsquo;s own curves is replaced by their angular separation, scaled as $\theta\,\rho$. Curves can then
+share a spot while still being pushed apart in angle.</p>
 
 <p>The minimization is a preconditioned Newton iteration whose steps are projected across the band (moving a
 vertex along the band changes nothing but the spacing). The barrier starts low and is raised towards $d_0$ as the
@@ -426,26 +490,27 @@ band is drawn as it relaxes, a few steps per animation frame, which is the anima
 
 <h2 id="sec-ports">3.5. Leaving and reaching a spot</h2>
 
-<p>The band works in two phases. In the first, its ends are free near the end spots: the curves already at those
+<p>The band works in two phases. In the first, its ends are free near the end spots. The curves already at those
 spots are ignored close by, so the band finds its way without being blocked at the very place it must reach. Then
 the <e>ports</e> are fixed: the directions in which the new curve leaves $a$ and arrives at $b$. At a spot, the
 existing curves divide the full turn into sectors, and the new curve must use the sector facing the region of the
 move. If that sector is at least 60° wide, the band&rsquo;s own direction is kept, but at least 30° from the curves
-that bound the sector; otherwise the curve leaves along the sector&rsquo;s bisector. In the second phase the band
+that bound the sector. Otherwise the curve leaves along the sector&rsquo;s bisector. In the second phase the band
 relaxes between short fixed stubs in the port directions.</p>
 
 <h2 id="sec-fit">3.6. From polyline to spline, and the check</h2>
 
-<p>The relaxed polyline becomes a spline by a least-squares fit (<code>geom.fitClamped</code>): chord-length
-parameter, the port directions imposed as the end derivatives (a <e>clamped</e> spline), starting with a single
-piece and inserting one knot at a time in the worst-fitting piece until every point is within 1.5 pixels. The fit
+<p>The relaxed polyline becomes a spline by a least-squares fit (<code>geom.fitClamped</code>) with chord-length
+parameter and the port directions imposed as the end derivatives (a <e>clamped</e> spline). The fit starts with a
+single piece and inserts one knot at a time in the worst-fitting piece until every point is within 1.5 pixels. It
 is local by construction: a knot goes only where it is needed.</p>
 
 <p>The spline is then <e>certified</e> (<code>relax.certify</code>): its refined control polygon (section
-<a href="#sec-polygons">2.2</a>) must keep $0.6\,d_0$ from everything. The new spot is placed at half the arc
-length, the spline is cut there into the move&rsquo;s two curves, the position is recomputed
-(section <a href="#sec-rotation">2.3</a>), and the move is recorded: in the undo history, in the log
-(in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or joined) and, in network play, sent to the other computer.</p>
+<a href="#sec-polygons">2.2</a>) must keep $0.6\,d_0$ from everything. The new spot is placed near half the arc
+length (section <a href="#sec-splines">2.1</a>), the spline is cut there into the move&rsquo;s two curves, the
+position is recomputed (section <a href="#sec-rotation">2.3</a>), and the move is recorded: in the undo
+history, in the log (in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or
+joined) and, in network play, sent to the other computer.</p>
 
 <h1 id="sec-room">4. Making Room: Six Kinds of Rearranging<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
@@ -458,22 +523,27 @@ and cheap to the global and expensive, and each later one is tried only when the
 <table class="desc">
   <tr><th>What</th><th>How it is started</th><th>What moves</th><th>Section</th></tr>
   <tr><td>Resizing the window</td><td>the window, or <code>F</code> (full screen)</td><td>nothing in the game: the view is scaled</td><td><a href="#sec-window">4.2</a></td></tr>
-  <tr><td>Sliding spots</td><td><code>M</code></td><td>one spot, along its own curve</td><td><a href="#sec-slide">4.3</a></td></tr>
+  <tr><td>Sliding spots</td><td><code>M</code></td><td>one spot, along its own curve (a seed in the way is pushed aside)</td><td><a href="#sec-slide">4.3</a></td></tr>
   <tr><td>Pushing curves apart</td><td><code>M</code></td><td>the curves in the move&rsquo;s way</td><td><a href="#sec-push">4.4</a></td></tr>
   <tr><td>Adjusting</td><td><code>A</code></td><td>every curve; the spots stay (except those riding on a move&rsquo;s curve)</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Rearranging</td><td><code>R</code></td><td>every curve and every spot</td><td><a href="#sec-ar">4.5</a></td></tr>
-  <tr><td>Drawing afresh</td><td><code>Z</code></td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
+  <tr><td>Drawing afresh</td><td><code>Z</code> (<code>.</code>: with smaller spots where needed)</td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
 </table>
 
-<p><e>The ladder.</e> The four commands <code>M</code> (sliding spots, then pushing curves), <code>A</code>,
-<code>R</code> and <code>Z</code> are the rungs of a ladder of increasing cost. Each, pressed while a move is
-waiting for room, changes the picture and then tries the waiting move again. The Room menu has eight boxes, one
-per rung for a human&rsquo;s moves and one per rung for the computer&rsquo;s, saying which rungs are climbed
-<e>automatically</e> (by default M and R for a human, M, R and Z for the computer). When a move is refused for
-lack of room, the lowest rung switched on and not yet used for this move is run, and the move is tried again;
-each rung is used at most once for a move, in the order M, A, R, Z. When the rungs switched on are used up, the
-program stops, says so, and leaves the move waiting: the keys still work by hand. A new click on a destination
-starts the ladder anew; <code>Space</code> during a rung stops the climb. Heroic mode (section
+<p><e>The ladder.</e> The commands <code>M</code> (sliding spots, then pushing curves), <code>A</code>,
+<code>R</code> and <code>Z</code> are the rungs of a ladder of increasing cost, and above Z there is one more
+step, <code>&bull;</code> (key <code>.</code>): drawing afresh with the spots in tight places drawn smaller
+(section <a href="#sec-z">4.6</a>). Each, pressed while a move is waiting for room, changes the picture and then
+tries the waiting move again. The Room menu has a box per step for a human&rsquo;s moves and a box per step for
+the computer&rsquo;s, saying which steps are taken <e>automatically</e> (by default M and R for a human, M, R, Z
+and &bull; for the computer). Each step is taken at most once for a move, in the order M, A, R, Z, &bull;. For
+a human&rsquo;s move the ladder is climbed as far as the boxes are checked in a row. At the first box not
+checked it stops (an unchecked A is simply skipped), and the status row offers that step and the ones above it
+by hand. A step pressed by hand
+tries the move again, and the ladder then goes on from there by the same rule. For the computer&rsquo;s move
+the checked steps are taken in order and the unchecked ones skipped. When the steps are used up, the program
+stops and says so. A human&rsquo;s move stays waiting, and the keys still work by hand. A new click on a
+destination starts the ladder anew, and <code>Space</code> during a step stops the climb. Heroic mode (section
 <a href="#sec-heroic">4.7</a>) switches the human&rsquo;s boxes off. Each change of the picture is its own undo
 step, and the move that follows a change made for it shares that step. Every one of these operations ends with
 the check of section <a href="#sec-invariant">1.2</a>.</p>
@@ -491,17 +561,27 @@ world size and are shown scaled in any window.</p>
 <h2 id="sec-slide">4.3. Sliding spots along their curves</h2>
 
 <p>A spot made by a move sits on that move&rsquo;s spline (section <a href="#sec-splines">2.1</a>). While it has no
-third curve it can <e>slide</e> along the spline: the spline is simply cut at another parameter value (one
+third curve it can <e>slide</e> along the spline. The spline is simply cut at another parameter value (one
 de Casteljau split, or an existing knot if one is within a pixel). The shape of the curve does not change at all,
-so nothing can cross and no region changes: only where the spot is. Often a move is blocked only by a spot sitting
+so nothing can cross and no region changes, only where the spot is. Often a move is blocked only by a spot sitting
 in a narrow passage, and sliding it a little opens the way.</p>
 
 <p>The candidates are positions a minimum clearance apart, on the side of the curve facing the move&rsquo;s region,
 taken in order of how far the spot would slide, in both directions at once. A position whose estimated room (the
-widest way there, an upper bound) is too small gets no trial; the others are each <e>tried</e> with the real
-planner and band. Among the positions where the move fits, the one whose curve has the lowest band energy wins
-&mdash; the same measure of length against crowding by which every curve is judged. The search stops at the first
-valley: when, in some direction, the move has fitted and the energy then rises again.</p>
+widest way there, an upper bound) is too small gets no trial. The others are each <e>tried</e> with the real
+planner and band, and when the band keeps the minimum clearance, with the fitted spline too. Its certificate
+(section <a href="#sec-fit">3.6</a>) asks for 0.6 of the minimum clearance, so a shortfall counts as its clearance
+divided by 0.6 (v183: a loop whose band kept 11 px but whose spline came within 1.5 px was taken to fit
+already, and nothing was done). Among the positions where the move fits, the one whose curve has the lowest band
+energy wins, the same measure of length against crowding by which every curve is judged. The search stops at the
+first valley: when, in some direction, the move has fitted and the energy then rises again.</p>
+
+<p>A seed (a spot with no curves) has no curve to slide along, but it can be moved anywhere in its region. A seed
+in the way of the move is pushed straight away from the move&rsquo;s path by what its disc lacks of the minimum
+clearance, or by half that, or a quarter, the first push that crosses nothing and keeps the seed&rsquo;s own
+clearance (v188). When the move has no path at all, because two seeds are so close that nothing can pass
+between them, the seeds of the region that are closer together than two minimum clearances are spread apart
+first.</p>
 
 <h2 id="sec-push">4.4. Pushing curves apart</h2>
 
@@ -509,19 +589,19 @@ valley: when, in some direction, the move has fitted and the energy then rises a
 <ol>
   <li>The <e>ghost</e>: the way the move would take if there were room. It is the planner&rsquo;s path at the clearance
   that the widest way actually has, so it goes through the narrowest place the move cannot avoid, and is as short
-  as that allows; then it is relaxed by the band so that it lies in the middle of what room there is.</li>
+  as that allows. Then it is relaxed by the band so that it lies in the middle of what room there is.</li>
   <li>The curves closer to the ghost than $d_0$ are the ones to move. Each moves as <e>one</e> spline (a move&rsquo;s two
   curves while their spot has only those; the spot rides along at its knot). Its de Boor points (the B-spline
-  control points) relax under the band&rsquo;s energy with the ghost as an extra obstacle; its ends and end
+  control points) relax under the band&rsquo;s energy with the ghost as an extra obstacle. Its ends and end
   directions stay where they are. Where the ghost is near, pieces are first halved for more freedom.</li>
-  <li>The move itself is tried again. Rounds repeat &mdash; a new ghost through the widened place, the curves now too
-  close to it &mdash; as long as the room on the widest way keeps growing.</li>
+  <li>The move itself is tried again. Rounds repeat (a new ghost through the widened place, the curves now too
+  close to it) as long as the room on the widest way keeps growing.</li>
 </ol>
-<p>A spot or the window&rsquo;s edge in the way cannot be pushed, and the refusal names it. Neighbors are never
-squeezed below their own clearance to make room for the move.</p>
+<p>A spot with curves, or the window&rsquo;s edge, in the way cannot be pushed, and the refusal names it. Neighbors
+are never squeezed below their own clearance to make room for the move.</p>
 
 <p>Sliding and pushing can take seconds in a crowded picture, so they run in a separate thread (a Web Worker,
-section <a href="#sec-workers">7.1</a>); the page stays responsive and <code>Space</code> stops them.</p>
+section <a href="#sec-workers">7.1</a>). The page stays responsive and <code>Space</code> stops them.</p>
 
 <h2 id="sec-ar">4.5. A and R: one energy for the whole picture</h2>
 
@@ -539,8 +619,15 @@ $$E = \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{near}}
   <tr><td>crowding</td><td>for each point (weighted by $w$, its share of its curve&rsquo;s length) a term
   $\varphi(r) = \bigl((1/r - 1/H)/(1/c - 1/H)\bigr)^2$ for each nearby thing: each other curve once (its
   nearest point), the curve itself where it comes back, each spot, the window&rsquo;s sides. $\varphi$ is 1 at the
-  comfort distance $c$, like $(c/r)^2$ closer in, and falls smoothly to 0 at $H = 256$ pixels. $c = 2D$ across a
-  region that still has a move (room for a new curve with $D$ on each side), $D$ across one without.</td></tr>
+  comfort distance $c$, like $(c/r)^2$ closer in, and falls smoothly to 0 at the horizon $H = 2c$, beyond which
+  the thing is not felt (v190; before, $H$ was 256 pixels for every term, and a point felt everything within that
+  distance). $c = 2D$ across a region that still has a move (room for a new curve with $D$ on each side), and only
+  $2 d_0$ across one without, where nothing will ever be drawn and the curves need only stay apart (v200: with
+  $D$ there, the 25 nested dead rings of a 60-seed game took most of the window). Spots crowd each other too: every pair of spots has such a term with comfort $D$ (a spot
+  counts as a stretch $D$ of curve, and this is what places a spot with no curves). It is measured between the
+  discs when one of the two is a seed and between the centers otherwise (v190; measured between the centers, two
+  seeds whose discs touched were still a spot&rsquo;s width apart and hardly pushed, and in a 100-seed game two
+  of them had drifted together until no curve could pass between them).</td></tr>
   <tr><td>bending</td><td>$D^2 \sum \theta^2/\ell$ over the turns $\theta$ between legs of length $\ell$: the
   discrete elastic energy $\int \kappa^2 ds$. A bend tighter than $D$ costs more than its length.</td></tr>
   <tr><td>angles</td><td>at a spot with $k$ curves, equal angles $2\pi/k$ (straight through a spot with two, 120°
@@ -557,14 +644,14 @@ against finite differences) and a line search on $E$ itself. What makes it safe 
 Bertault&rsquo;s PrEd algorithm [<a href="#ref-pred">6</a>]: each vertex moves at most a third of its distance to
 anything it could hit (every segment not its own, and the window). No vertex can then reach a segment during a
 step, so <e>nothing ever crosses</e>, and the position cannot change. When a curve&rsquo;s length no longer suits
-its number of points it is re-spaced; the new spacing is kept only if the new polylines do not cross, because two
+its number of points it is re-spaced. The new spacing is kept only if the new polylines do not cross, because two
 curves crossing twice would leave the rotation system, and hence the position text, unchanged and could not be
 detected by the check. When no step lowers the energy any more, the points are jiggled at random within a sixth of
 their caps, a few times, to get out of shallow traps.</p>
 
 <p>The descent stops when the drawing no longer changes visibly: the last 24 steps moved no point by a pixel, or
 gained less than a pixel&rsquo;s worth of energy each. (Earlier versions ran to the rounding error of the
-arithmetic &mdash; thousands of steps that nobody could see.) The picture is shown as it goes, in 30 ms slices
+arithmetic, thousands of steps that nobody could see.) The picture is shown as it goes, in 30 ms slices
 per animation frame, and <code>Space</code> stops it where it is.</p>
 
 <p><e>A</e> keeps the original spots, and those added by hand, where they are, and moves the points of each curve
@@ -573,12 +660,13 @@ so otherwise the points drain out of crowded stretches and the smooth curve thro
 into a neighbor.) <e>R</e> moves everything.</p>
 
 <p>Finally each curve is the clamped C² spline <e>through</e> its points (<code>geom.interpolate</code>), a
-move&rsquo;s two curves as one, cut at the move&rsquo;s spot; where a third curve leaves that spot the spline is
+move&rsquo;s two curves as one, cut at the move&rsquo;s spot. Where a third curve leaves that spot the spline is
 made C¹ through it. If the smooth curves fail the certificate there are fallbacks: splines through the middles of
 the legs, points spread evenly on the polylines, and as a last resort a corner at the failing spot (logged). The
 result is refused if the position changed or the clearance is not positive. A curve whose pieces already suit its
 length keeps its knots as its points, so pressing <code>A</code> or <code>R</code> a second time starts where the
-first ended and changes next to nothing.</p>
+first ended and changes next to nothing. A spot that was drawn smaller than its size by an earlier Z (section
+<a href="#sec-z">4.6</a>) grows back to its size in A and R as soon as there is room for it.</p>
 
 <p>Tried and dropped: starting R from <e>Tutte&rsquo;s</e> barycentric embedding [<a href="#ref-tutte">7</a>] of the
 position&rsquo;s map, made into a triangulation. It is exact in theory and gives a genuinely fresh start, but
@@ -590,17 +678,17 @@ polynomial.</p>
 
 <p>A and R start from the present picture and can only improve it locally. When a move cannot be drawn even after
 R, <e>Z</e> draws the position from its combinatorial map alone (<code>layout.js</code>), with no regard to how it
-looks now; for the computer, the position <e>after</e> its intended move is drawn, so the move needs no router at
+looks now. For the computer, the position <e>after</e> its intended move is drawn, so the move needs no router at
 all.</p>
 
 <ol>
   <li><e>The map.</e> The rotation system and the faces are read off the present drawing through the engine
-  (<code>mapOf</code>); for the computer&rsquo;s move the move is then performed on the rotation system
+  (<code>mapOf</code>). For the computer&rsquo;s move the move is then performed on the rotation system
   (<code>withMove</code>), the same surgery as section <a href="#sec-moves">2.5</a> but on half-edges.</li>
   <li><e>A simple triangulation.</e> Every edge gets a midpoint (which removes parallel edges, such as a loop&rsquo;s
   two halves). The walks of each face are joined by <e>bridges</e>, and every vertex with fewer than two edges
   gets a bridge to another corner of its face, so the graph is connected and every face is one closed walk. Each
-  face then gets a <e>face vertex</e> $f$ and a <e>spoke</e> $f - d - u$ to every corner $u$ of its walk; the
+  face then gets a <e>face vertex</e> $f$ and a <e>spoke</e> $f - d - u$ to every corner $u$ of its walk, and the
   hexagons between consecutive spokes are cut into triangles by chords. Every added edge names something that
   exists once (a midpoint, a corner, a face), so no edge is doubled: the result is simple and every face a triangle,
   which Euler&rsquo;s formula confirms.</li>
@@ -612,27 +700,51 @@ all.</p>
   vertices and edges are removed, and each curve comes out as a two-leg polyline $u - m - v$ through its
   midpoint.</li>
   <li><e>Polish.</e> R&rsquo;s descent (section <a href="#sec-ar">4.5</a>) then turns the straight, crowded grid drawing
-  into a picture, in a variant for this start: the spots begin small (half the least spot-to-curve gap) and are
-  grown in stages, long legs are subdivided so that points cannot drain out of crowded stretches, and below one pixel the
-  crowding term is reshaped so that it stays finite inside a spot&rsquo;s disc while still growing without bound as the true distance goes to zero.</li>
+  into a picture, in a variant for this start. The spots begin small, each at half its own least gap to a curve
+  or another spot (v189; before, every spot started at half the least gap in the whole drawing), and are grown
+  in stages, each by its own room. Long legs are subdivided so that points cannot drain out of crowded
+  stretches. Below one pixel the crowding term is reshaped so that it stays finite inside a spot&rsquo;s disc
+  while still growing without bound as the true distance goes to zero. The jiggles of section
+  <a href="#sec-ar">4.5</a> are kept only while they give the spots more room.</li>
 </ol>
 
 <p>Which region should be outside is not known in advance, and the results differ a lot (on one 9-spot position
 the least clearance ranged from 0.5 to 22.6 pixels over its 17 regions). So Z runs one layout per region in
 parallel, on the drawing workers (section <a href="#sec-workers">7.1</a>), with the present outside first. The one
 the screen shows is the one with the widest gap at the moment, and it changes as they progress. The program
-stops at the <e>first</e> layout drawn with at least the least clearance the picture had before: the purpose is
-to draw the move, not to find the most beautiful picture. Stragglers are given up by comparison, not by a fixed
-time: once half the layouts are done, one still running after twice the time of the slowest finished one is
-stopped. <code>Space</code> stops Z and takes the best result so far.</p>
+stops at the <e>first</e> layout drawn with at least the least clearance the picture had before, provided that
+clearance was at least the minimum clearance of the Settings. The purpose is to draw the move, not to find the
+most beautiful picture. A picture whose least clearance, measured at its single tightest place, is already below
+the minimum is broken, and then the first layout that can be drawn at all is taken (v194: holding out for 3.0 px
+against a layout with 2.6 px once cost 38 minutes in a 100-seed game). A layout drawn with some spots smaller
+(below) counts when the &bull; box allows it. When a layout has been drawn but did not meet that bar, Z ends
+with the best so far as soon as one <e>round</e> is complete (as many layouts as there are workers), rather than
+running every region to the end. Stragglers are given up by comparison, not by a fixed time. Once half the
+layouts are done, one still running after twice the time of the median finished one (drawn or failed) is
+stopped. If a whole round fails (none of its layouts drawn), or every layout fails, Z gives up and says the
+picture has run out of room (v183: in a 60-seed game of about 160 spots every layout failed, each after minutes,
+because the smooth curves would cross where the drawing was too tight). More room then comes from smaller spots
+or a smaller minimum clearance. A larger drawing area helps only a new game, since during a game the picture is
+only scaled. The log names the reason each layout failed. <code>Space</code> stops Z and takes the best result
+so far.</p>
+
+<p><e>Spots drawn smaller where there is no room</e> (the &bull; box of the Room menu, key <code>.</code>, v189).
+A layout whose spots cannot all grow to the size the Settings ask for is a failure at full size. When Z runs for
+a move and the mover&rsquo;s &bull; box is checked (or when <code>.</code> is pressed), such a layout is kept
+aside instead: at the end each spot is tried at full size, then at the largest size its gap allows, and the
+layout keeps those spots smaller, never below the smallest size of the Settings&rsquo; slider. A layout kept
+aside that meets the bar above ends Z like one at full size. Otherwise, if no layout drew at full size, the one
+kept aside with the least shrinking (its smallest spot the largest, then the fewest spots shrunk) is taken. The size of a spot is part of the game object and is saved, loaded and undone with it.
+The router, the certificate and the room-making all see the spot at its smaller size, and the log names the
+spots drawn smaller. They grow back as soon as a later A, R or Z finds room for them.</p>
 
 <h2 id="sec-heroic">4.7. Heroic mode</h2>
 
 <p>Room &rarr; Heroic is for players who want to draw every curve exactly as they please. A curve drawn by hand is
-kept exactly as drawn (as straight pieces between the sampled points, not smoothed); it must merely not touch or
+kept exactly as drawn (as straight pieces between the sampled points, not smoothed). It must merely not touch or
 cross anything. Curves and spots are not moved locally (no sliding, no pushing, no Ctrl+drag, and no M for the
 computer either), and nothing is done automatically for a human&rsquo;s moves (the human row of the Room menu is
-greyed out); A, R and Z still work by hand.</p>
+grayed out). A, R and Z still work by hand.</p>
 
 <h1 id="sec-ai">5. The Computer Players<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
@@ -649,15 +761,15 @@ and Parity search.</p>
 
 <p>Random picks a family (a pair of corners) uniformly among all families, then <e>how many</e> of the
 region&rsquo;s other live boundaries go inside, uniformly from $0$ to $k$, then which ones. Choosing the number
-first makes small and large enclosures equally likely; choosing a subset uniformly would almost always enclose
+first makes small and large enclosures equally likely. Choosing a subset uniformly would almost always enclose
 about half.</p>
 
 <h2 id="sec-mc">5.3. Monte Carlo</h2>
 
 <p>For each candidate move, Monte Carlo plays a set number of random games (by default 100) to the end from the
 position after it, with Random&rsquo;s choices, and counts how often the mover wins. In normal play the mover
-made the last move, and so wins, exactly when the number of moves after its own is even; in misère, odd. The
-candidate with the highest share wins. Instead of a number of games, a number of seconds per move may be set; the
+made the last move, and so wins, exactly when the number of moves after its own is even (in misère, odd). The
+candidate with the highest share wins. Instead of a number of games, a number of seconds per move may be set. The
 candidates then get rounds of one game each until the time is up. With several workers, every worker plays games
 for all candidates and the counts are added.</p>
 
@@ -666,7 +778,7 @@ for all candidates and the counts are added.</p>
 <p>Since every move removes exactly one life, a game is decided by the <e>parity</e> of the number of moves left:
 in normal play the player to move wins if the number of moves left (including this one) is odd and the opponent
 cannot change that. Parity search is alpha&ndash;beta search in negamax form [<a href="#ref-knuth">10</a>] over
-the combinatorial positions, with a heuristic value at its leaves based on bounds on the number of moves left
+the topological positions, with a heuristic value at its leaves based on bounds on the number of moves left
 (next section). A leaf with no move is lost in normal play and won in misère (value $\mp 2$). Otherwise, with
 $M$ an upper and $m$ a lower bound on the moves left,
 $$v = \frac{\pm 1}{1 + M - m},$$
@@ -682,7 +794,7 @@ the bound where it cannot. Its judgments are truer, but each leaf costs more, so
 fewer plies ahead.</p>
 
 <p>How much the difference matters depends on the bound. With the bound of v173, Sharp spent minutes at
-depth 1 on a position of Peter&rsquo;s (9 seeds, after 6 moves, 32 different moves; 32 workers): a few leaves
+depth 1 on a position of Peter&rsquo;s (9 seeds, after 6 moves, 32 different moves, 32 workers): a few leaves
 had a bound that could not be reached, and proving it took the time while the other workers sat idle. With the
 pairs of v175 the bound is the longest game itself on 98% of the positions from 5 seeds, and on that position:</p>
 
@@ -724,7 +836,7 @@ depth on a saved game with fresh workers for every calculation.</p>
 the many orders in which the same position can be reached, and its mirror images, are searched once. Interchangeable
 boundaries (equal ones in the same region) are enumerated by how many of each kind go inside rather than by
 subsets. Inside the tree, a family with more than 64 ways of choosing the enclosed boundaries contributes 64 random
-distinct ones; at the root every move is considered (section <a href="#sec-root">5.8</a>).</p>
+distinct ones. At the root every move is considered (section <a href="#sec-root">5.8</a>).</p>
 
 <p>The search depth is set in the Player menu (default 6 plies), or a time per move (default 5 seconds for Player 2):
 then the search is <e>iterative deepening</e>, one ply deeper at a time as long as the time lasts, and the move of
@@ -733,12 +845,12 @@ the deepest completed search is played.</p>
 <h2 id="sec-bounds">5.5. Bounds on the number of moves left</h2>
 
 <p>Let $L$ be the number of lives on the board. Since each move removes one life, the number of moves left is
-$L - s$, where $s$ is the number of lives that survive to the end; the whole game is about $s$.</p>
+$L - s$, where $s$ is the number of lives that survive to the end. The whole game is about $s$.</p>
 
 <p><e>Upper bound.</e> A life is a <e>sure survivor</e> when no region its spot lies on has two lives: no move can
 ever use it, since regions only split and lose lives. At least one life survives (the last move leaves its new
-spot with one). A region with two lives that holds a <e>private</e> life &mdash; at a spot all of whose corners
-lie in that region, such as a seed inside it or a sprout on it &mdash; also keeps a survivor inside it: either that
+spot with one). A region with two lives that holds a <e>private</e> life (at a spot all of whose corners
+lie in that region, such as a seed inside it or a sprout on it) also keeps a survivor inside it. Either that
 life is never used, or a move inside the region uses it and leaves a new spot with a life inside, which again only
 a move inside can use, and so on. These survivors are distinct from the sure ones and from each other. The same holds for a
 <e>pair</e> of regions joined by a link (a spot with one life whose two corners lie in the two regions) when
@@ -750,14 +862,14 @@ $$M = \min\Bigl(L - \max(\text{sure survivors} + \text{regions with a private li
 \sum_{\text{regions}} (\text{lives} - 1)^+\Bigr).$$
 (A spot shared by two regions is counted in both, which makes the sum an over-count but still an upper
 bound.) On the 34,831 positions reachable from 1 to 5 seeds (up to renumbering and mirror images) it is never
-below the longest game, and from 5 seeds it equals it on 31,407 of 32,140 positions; with private regions but
+below the longest game, and from 5 seeds it equals it on 31,407 of 32,140 positions. With private regions but
 without pairs it did on 13,840, with neither on 5,751.</p>
 
 <p><e>The longest game itself.</e> The bound is only a bound: in a ring of links, for instance, every move looks
 equally good to it. The program also works out the longest game exactly. The longest game of a position is the
 sum of those of its parts (section <a href="#sec-parts">5.6</a>), which share no live spot, so their moves do not
-interfere. For one part it asks whether a line of $M$ moves exists, $M$ the part&rsquo;s bound; if not, whether
-one of $M - 1$ does, and so on: the first yes is the answer.</p>
+interfere. For one part it asks whether a line of $M$ moves exists, $M$ the part&rsquo;s bound. If not, it asks whether
+one of $M - 1$ does, and so on. The first yes is the answer.</p>
 
 <div class="algo-title">Is there a line of at least <i>need</i> moves from the part <i>p</i>?</div>
 <pre class="algo">
@@ -773,15 +885,15 @@ one of $M - 1$ does, and so on: the first yes is the answer.</p>
     record need − 1 as the most for p; <span class="kw">return</span> no
 </pre>
 
-<p>A yes usually comes at once, down a single line; a no needs every move, which is affordable because a part is
+<p>A yes usually comes at once, down a single line. A no needs every move, which is affordable because a part is
 small, or splits into parts as moves are made. What has been shown is kept per part (by canonical form), so a
 game&rsquo;s later positions are mostly answered from what was learned for the earlier ones. Only proved facts are
-kept: when time runs out the answer is &ldquo;not known&rdquo; and the bound stands in. The page works it out in a
-worker of its own for the title and the status line, without a time limit; until the answer is in they show
+kept. When time runs out the answer is &ldquo;not known&rdquo; and the bound stands in. The page works it out in a
+worker of its own for the title and the status line, without a time limit. Until the answer is in they show
 &ldquo;M&nbsp;&le;&nbsp;bound&rdquo;. It agrees with brute force on all 34,831 positions above. Most positions of the
-saved games are answered in milliseconds; a few, with one large part and a bound that cannot be reached, take
-minutes or longer &mdash; for those the &le; stays. (Before the pairs, v175, there were many more: on Peter&rsquo;s
-game of 10/18 the longest games after the 32 moves took over 100 seconds; with them, 43 milliseconds.)</p>
+saved games are answered in milliseconds. A few, with one large part and a bound that cannot be reached, take
+minutes or longer, and for those the &le; stays. (Before the pairs, v175, there were many more: on Peter&rsquo;s
+game of 10/18 the longest games after the 32 moves took over 100 seconds, with them 43 milliseconds.)</p>
 
 <p><e>Lower bound.</e> At the end of a game every spot is either a stump or a <e>survivor</e> with one life, and a
 survivor&rsquo;s two curves lead to stumps (otherwise a move would remain). Counting spots and lives at the end
@@ -796,10 +908,10 @@ and on average 0.9 moves below it.</p>
 <h2 id="sec-parts">5.6. Exact play by parts: nimbers</h2>
 
 <p>A position often falls apart into independent games. Its regions form <e>parts</e> when they share no spot with
-a life (a spot with lives on two regions joins them); a move in one part changes nothing in the others, and the
+a life (a spot with lives on two regions joins them). A move in one part changes nothing in the others, and the
 player to move chooses the part to play in. In normal play the Sprague&ndash;Grundy theory applies
 [<a href="#ref-ww">11</a>]: every part has a <e>nimber</e>, the least non-negative integer that is not the
-nimber of any position reachable in one move (the <e>mex</e> rule; a part with no move has nimber 0), the nimber of
+nimber of any position reachable in one move (the <e>mex</e> rule, and a part with no move has nimber 0), the nimber of
 a sum is the XOR of the nimbers of its parts, and the player to move loses exactly when it is 0.</p>
 
 <p>The search uses this whenever a position is a sum of two or more parts: each part whose upper bound $M$ is
@@ -818,11 +930,11 @@ happened between moves 47 and 65, in games of about 75 moves.</p>
 <h2 id="sec-misere">5.7. Misère play by parts</h2>
 
 <p>In misère play nimbers do not work: whether a part is won or lost on its own does not tell how it behaves next
-to another. What does is its <e>misère canonical tree</e> (Conway [<a href="#ref-onag">13</a>], chapter 12; Lemoine
+to another. What does is its <e>misère canonical tree</e> (Conway [<a href="#ref-onag">13</a>], chapter 12, and Lemoine
 and Viennot&rsquo;s &ldquo;reduced canonical trees&rdquo; [<a href="#ref-lv2">14</a>]): the game tree with equal
 options merged and <e>reversible</e> options removed. Two games have the same tree exactly when they are
 interchangeable in every sum. The program keeps a store of trees (each an id), computes a solved part&rsquo;s tree,
-and replaces the part by it; a position all of whose parts are solved is decided by the outcome of the sum of the
+and replaces the part by it. A position all of whose parts are solved is decided by the outcome of the sum of the
 trees. The rules used:</p>
 <ul>
   <li><e>Equality</e>: $G = H$ if and only if both have the same misère outcome, every option of $G$ equals an
@@ -838,9 +950,9 @@ trees. The rules used:</p>
 <h2 id="sec-root">5.8. The candidates and the clock</h2>
 
 <p>At the root, the computer considers <e>every</e> legal move, not a sample. Many of them lead to the same
-position, so their canonical forms are computed (on the workers) and duplicates dropped; what is left is the list
+position, so their canonical forms are computed (on the workers) and duplicates dropped. What is left is the list
 of truly different moves, from 16 at the first move of a 30-spot game to several hundred in the middle game. The
-parity search splits this list among the workers; each keeps its own transposition table and stores of solved
+parity search splits this list among the workers, and each keeps its own transposition table and stores of solved
 parts.</p>
 
 <p>The clock is read at every position the search visits, leaves included, so that a search with a time budget
@@ -850,7 +962,7 @@ whatever the budget.</p>
 <p><e>One move, from the position alone.</e> Several moves may tie for the best value (often all the winning
 moves, once the search is exact). The tie is broken without looking at the picture: random games are played from
 the tied moves alone (Monte Carlo, with the player&rsquo;s Monte Carlo settings), and the move that won most often
-is taken; a tie that remains is broken at random, which keeps games between two computers from repeating. The
+is taken. A tie that remains is broken at random, which keeps games between two computers from repeating. The
 computer then commits to that one move: it is never exchanged for another that happens to be easier to draw.</p>
 
 <h2 id="sec-intend">5.9. From intention to drawing</h2>
@@ -863,7 +975,7 @@ computer then commits to that one move: it is never exchanged for another that h
   boundaries it encloses (loose seeds, say: the search decides only how many) is the drawing&rsquo;s choice
   (v178): starting from the move&rsquo;s spots, the boundaries it must enclose and the straight way from its
   first spot to each of them, the nearest boundary of a kind still wanted is added, then the next nearest to
-  everything chosen so far, and so on &mdash; a cluster round the move instead of seeds scattered over the
+  everything chosen so far, and so on: a cluster round the move instead of seeds scattered over the
   window. If its marks cannot be applied, it is
   drawn the shortest way, and kept only if that is the same move.</li>
   <li>If it cannot be drawn: the next of A and R switched on, after which the same move is found again in the new
@@ -889,7 +1001,7 @@ games by computer in 1991:</p>
   <tr><td class="name">Normal play</td><td>L</td><td>L</td><td>W</td><td>W</td><td>W</td><td>L</td><td>L</td><td>L</td><td>W</td><td>W</td><td>W</td></tr>
   <tr><td class="name">Misère play</td><td>W</td><td>L</td><td>L</td><td>L</td><td>W</td><td>W</td><td>L</td><td>L</td><td>L</td><td></td><td></td></tr>
 </table>
-<p>(W: the first player wins; L: the first player loses.) They conjectured that in normal play the first player
+<p>(W: the first player wins. L: the first player loses.) They conjectured that in normal play the first player
 wins exactly when the number of spots is 3, 4 or 5 modulo 6. Lemoine and Viennot, using nimbers, extended the
 normal-play results to 32 spots and further individual cases [<a href="#ref-lv1">12</a>], all consistent with
 the conjecture, and the misère results to 17 spots with reduced canonical trees [<a href="#ref-lv2">14</a>].</p>
@@ -901,10 +1013,10 @@ with exact play late in the game, at the speed of a browser.</p>
 <h1 id="sec-net">6. Two Computers<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <p>Two people can play on two computers (menu Net, <code>net.js</code>). One <e>hosts</e> and gets a random
-three-digit room code; the other types it in and joins as the <e>guest</e>. The host is Player 1 and alone starts
+three-digit room code, and the other types it in and joins as the <e>guest</e>. The host is Player 1 and alone starts
 games. Only humans play over the network.</p>
 
-<p><e>What travels.</e> Only combinatorial moves, never pictures. Each computer draws its own picture with its
+<p><e>What travels.</e> Only topological moves, never pictures. Each computer draws its own picture with its
 own settings and colors, and either player may use A, R and Z without affecting the other&rsquo;s picture.
 Spot indices agree on both sides (both start from the same count and every move adds one), so a move is sent as
 its two end spots, the spots enclosed on one side for a one-boundary move, and the <code>gameKey</code> of the
@@ -921,7 +1033,7 @@ action the actor waits, its page grayed, until the other side acknowledges havin
 the last move, whoever made it. If both act at once, the host&rsquo;s action wins and the guest reverts its own. A
 message with a $k$ ahead of the receiver&rsquo;s means something was missed, and a <code>resend</code> is asked
 for. Heartbeats every 3 seconds carry the position&rsquo;s key, so a divergence between the two computers would be
-detected (and reported as a bug); if nothing has arrived for 10 seconds while the channel claims to be open, the
+detected (and reported as a bug). If nothing has arrived for 10 seconds while the channel claims to be open, the
 channel is rebuilt.</p>
 
 <p><e>The transport</e> is a Firebase Realtime Database used as a relay, the same as in the Backgammon program on
@@ -993,7 +1105,7 @@ can be rebuilt from it, which is how several problems were found.</p>
   <tr><td class="code">room.js</td><td>sliding spots and pushing curves apart (4.3&ndash;4.4)</td></tr>
   <tr><td class="code">redraw.js</td><td>A and R, and the polish after Z (4.5)</td></tr>
   <tr><td class="code">layout.js</td><td>Z: the map, the triangulation, the grid drawing (4.6)</td></tr>
-  <tr><td class="code">ai.js</td><td>the position as combinatorics, the moves, canonical forms, every computer player (2.4&ndash;2.6, 5)</td></tr>
+  <tr><td class="code">ai.js</td><td>the position&rsquo;s topology, the moves, canonical forms, every computer player (2.4&ndash;2.6, 5)</td></tr>
   <tr><td class="code">net.js</td><td>two-computer play (6)</td></tr>
   <tr><td class="code">sprouts-worker.js, sprouts-draw-worker.js, sprouts-room-worker.js</td><td>the workers (7.1)</td></tr>
 </table>

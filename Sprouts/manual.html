@@ -5,7 +5,7 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
  <title>Sprouts &mdash; User's Guide</title>
- <link rel="stylesheet" href="manual.css?v=159c">
+ <link rel="stylesheet" href="manual.css?v=202">
 <script>
   MathJax = {
     tex: {
@@ -23,7 +23,7 @@
 
 <p><!-- Introduction: what Sprouts is, what this page lets you do, and how to get to <a href="index.html">the game itself</a>. --></p>
 
-<p>Clicking on the headline of this page will open a new tab showing the <a href="index.html" target="_blank">Game Board</a>
+<p>Clicking on the headline of this page will open a new tab showing the <a href="index.html" target="_blank">Game Board</a>.</p>
 
 <p>The <e>Table of Contents</e> below takes you to any part of this page. Clicking on a symbol like this
 &nbsp;<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a>&nbsp; anywhere on the
@@ -87,7 +87,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <H3>Game Essentials</H3>
 
-<p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link with one life left, so the total number of lives <e>decreases by 1</e>x. At the end of the game there is at least one survivor left.
+<p>  Initially there are a total of $3n$ lives where $n$ is the initial number of spots. Every new curve reduces the number of lives by 2 (one each at its start and end) but it also adds a new link with one life left, so the total number of lives <e>decreases by 1</e>. At the end of the game there is at least one survivor left.
 
  <a href="index.html" target="_blank">
  <figure style="margin: 0 15px 15px 0; max-width: 100%;">
@@ -113,7 +113,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <p> Since the drawing may get crowded the layout of the game page is chosen so as to maximize the area in which you can draw. There are just two rows at the top of the page that are not used for drawing. The first row contains a number of menus that you can use to control the game. This is the <i>Control Row</i>. The second row gives you information about the game as it proceeds. This is the <i>Status Row</i>. Below it is the <i>Drawing Area</i>.
 
-<p> The size of the drawing area, <e>width x height</e>, is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. You can also give the drawing area an exact size with <e>Size</e> in the Game menu (see <a href="#sec-game-settings">Game Settings</a>). Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (available by typing <e>F</E>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3840x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
+<p> The size of the drawing area, <e>width x height</e>, is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. You can also give the drawing area an exact size with <e>Size</e> in the Game menu (see <a href="#sec-game-settings">Game Settings</a>). Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (typing <e>F</e>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3840x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
 
 <p> In an ordinary browser tab the browser keeps its own rows of tabs, address bar and bookmarks above the game, and it does not let the game change the size of the window. Typing <e>Y</e> moves the game, as it is, into a window of its own, without those rows; there the Size menu resizes the window itself. Typing <e>Y</e> again moves the game back into an ordinary tab (see <a href="#sec-viewing-options">Viewing Options</a>).
  
@@ -173,8 +173,9 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <LI>The number of spots. You can increase it or decrease it with the buttons to the right of the text field. You can also simply enter a number in the text field.  The default number of spots is 5.  There is no limit to the number of spots other than the size of your drawing field and your computer resources.   </LI>
     <LI>The layout of the spots.   The default is to have them equally spaced on an ellipse that matches the aspect ratio of your drawing area.   You can also place them on a circle, in a line, randomly, or by hand.   The keys <e>1</e> &hellip; <e>9</e> start a new game with that many spots in the chosen layout, even if a game is ongoing. Pressing <e>0</e> gives an empty drawing area in which you place the spots by clicking in the desired places with the left mouse button. When you are done, pressing <e>Enter</e> or <e>N</e> then starts the game.</LI>
     <LI>By default the player who makes the last possible move wins.   You can change this to the <e>misère</e> version where that player loses.  </LI>
-    <LI><e>Size</e> of the drawing area, in pixels.   The two fields show the present width and height. To change the current size replace these numbers and press <e>Enter</e> or click <e>Set</e>.   The buttons give 1090 x 607, 1280 x 742, 1024 x 1024, the largest square there is room for (<e>Max square</e>), and <e>Full screen</e>.   In a window of its own (<e>Y</e>) the window grows or shrinks so that the drawing area gets exactly that size, and stays resizable by hand; if the screen is too small, the drawing area gets the most there is room for, and the status row says so.   In an ordinary browser tab, which the game may not resize, the drawing area is given the size inside the tab, with the page&rsquo;s dark background around it; resizing the window by hand lets the drawing area fill it again.   Before the first move a new size lays the spots out afresh; later the picture is only scaled.</LI>
-    <LI>You can interrupt any ongoing game and start a new game. You can also do this by typing <e>N</e>. </LI>
+    <LI><e>Size</e> of the drawing area, in pixels.   The two fields show the present width and height. To change the current size replace these numbers and press <e>Enter</e> or click <e>Set</e>.   The buttons give 1090 x 607, 1280 x 742, 1024 x 1024, 512 x 512, the largest square there is room for (<e>Max square</e>), and <e>Full screen</e>.   In a window of its own (<e>Y</e>) the window grows or shrinks so that the drawing area gets exactly that size, and stays resizable by hand; if the screen is too small, the drawing area gets the most there is room for, and the status row says so.   In an ordinary browser tab, which the game may not resize, the drawing area is given the size inside the tab, with the page&rsquo;s dark background around it; resizing the window by hand lets the drawing area fill it again.   Before the first move a new size lays the spots out afresh; later the picture is only scaled.</LI>
+    <LI><e>Random seed</e>: left empty, the random layout, the Random player and the tie-breaks among equally good computer moves differ from game to game.   With a number in the field they are repeatable: the same seed, number of spots and settings give the same spots and the same moves every time (Monte Carlo&rsquo;s random games are not covered).   Useful for comparing versions of the program on the same game.</LI>
+    <LI>You can interrupt any ongoing game and start a new game. You can also do this by typing <e>N</e>.   With the Random and Place by hand layouts, and after a game was loaded from a file, the new game starts from the same seeds as the game before; to get a new random distribution change the number of spots or the layout, or type one of the keys <e>1</e> &hellip; <e>9</e>, and to place spots afresh type <e>0</e>.</LI>
     <LI>You can undo the last move.  If a human plays against a computer the last human move will be undone.  You can also use the keyboard command <e>U</e>.   The keys <e>&lt;</e> and <e>&gt;</e> step back and forward through the game one move at a time; meanwhile the computer waits, and a move made at any point continues the game from there.</LI>
     <LI>To close the game&rsquo;s tab click on <e>Exit</e> or type <e>X</e>.   A browser lets a page close itself only when it was opened in a tab of its own (for example from this guide, or from a desktop shortcut); otherwise the status row says how to close the tab.</LI>
     </OL>
@@ -216,14 +217,15 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
   <p>The following viewing options, listed by their keyboard shortcuts, are available.
   <OL>
-    <LI><e>F</e> turn full screen on or off.   Generally speaking, the larger you can make your drawing area, the better</LI>
+    <LI><e>F</e> turns full screen on or off.   Generally speaking, the larger you can make your drawing area, the better.</LI>
     <LI><e>C</e> shows the control polygons.   The curves are piecewise cubic B&eacute;zier curves. </LI>
     <LI><e>S</e>: Spots are numbered sequentially by indices.  This option turns drawing of the indices on or off.</LI>
 
     <LI><e>T</e>: Draw the initial seeds (and any seeds added by hand) as triangles (off by default).</LI>
-    <LI><e>G</e> omit the indices of stumps.   They are not participating in new curves (on by default).</LI>
-    <LI><e>H</e> Draw stumps half size, for the same reason (on by default).</LI>
-    <LI><e>Q</e> Show the size of the drawing area in the status row as width x height, in pixels.</LI>
+    <LI><e>G</e> omits the indices of stumps.   They are not participating in new curves (on by default).</LI>
+    <LI><e>/</e> omits the indices of seeds.   In a game with many seeds they are many, and a seed needs no name until a curve reaches it (off by default).</LI>
+    <LI><e>H</e> draws stumps half size, for the same reason (on by default).</LI>
+    <LI><e>Q</e> shows the size of the drawing area in the status row as width x height, in pixels.</LI>
     <LI><e>Y</e> switches between an ordinary browser tab and a window of its own, without the browser&rsquo;s tabs and toolbars, carrying the game, its settings and its log along; the drawing area keeps its size (in a tab larger than that, it sits in the middle until you resize the window by hand), and the tab or window it leaves closes itself. In a window of its own <e>Size</e> in the Game menu can resize the window itself, which an ordinary browser tab does not allow.</LI>
     </OL>
 
@@ -235,10 +237,11 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <LI><e>Minimum clearance</e> between curves, ranging from 3 px to 30 px (6 px by default).</LI>
     <LI><e>Comfort distance</e>: curves closer together than this push each other apart; beyond it they hardly affect each other.   It is the largest distance at which the system still cares how close curves come.   It ranges from 10 px to 64 px (40 px by default). </LI>
     <LI><e>Room vs length</e>: The system tries to make the curves short and also so that enough room is left for more curves. This slider, ranging from 0.1 to 10, lets you adjust the relative importance of these targets (1 by default, equal weight).  </LI>
-    <LI><e>Spot size</e>, the diameter of the spots, ranging from 6 to 36 px (30 px by default).   Curves keep clear of the spots, so a change applies to moves made from then on.</LI>
-    <LI><e>Curve thickness</e>, adjusts the thickness of curves, ranging from 1.25 to 7.5 px (5.8 px by default).</LI>
-    <LI><e>Index size</e> adjusts the size of the spot indices, ranging from 6.5 to 39 px (26 px by default). </LI>
-    <LI><e>Animate</e>, on by default, graphically shows each new curve settling into its shape, and the process of making room</LI>
+    <LI><e>Spot size</e>, the diameter of the spots, ranging from 6 to 36 px.   Curves keep clear of the spots, so a change applies to moves made from then on.</LI>
+    <LI><e>Curve thickness</e>, adjusts the thickness of curves, ranging from 1.25 to 7.5 px.</LI>
+    <LI><e>Index size</e> adjusts the size of the spot indices, ranging from 6.5 to 39 px. </LI>
+    <LI>The first new game in a drawing area of a given size sets the spot size and the index size to suit it: with <e>C</e> the mean of the area&rsquo;s width and height, the spot size is <e>C</e>/70 and the index size <e>C</e>/50, each held within its range (in a 1090 x 607 area: 12 and 16.9 px).   The curve thickness is never changed by a new game.   You can change all three afterwards, and further new games in the same area leave them as you set them; a loaded game keeps the sizes it was saved with.</LI>
+    <LI><e>Animate</e>, on by default, graphically shows each new curve settling into its shape, and the process of making room.</LI>
     <LI><e>Click to connect</e>, on by default, makes it possible to define new curves by clicking on the spots.</LI>
 
     </OL>
@@ -256,12 +259,32 @@ The easiest way to get started quickly on your first game is to do the <a href="
 <LI><e>Z</e> redraws the position from scratch.</LI>
   </OL>
 
-<p>  By default, the M and R options are invoked automatically for both human and AI players.   For AI players, the Z option is also invoked automatically.  The checkboxes can be used to turn the automatic options on and off.   When a move does not fit, the checked options are tried in the order M, A, R, Z, each once, until the move can be drawn; if none succeeds the game stops and the status row says so.   The keys <e>M</e>, <e>A</e>, <e>R</e> and <e>Z</e> can also be pressed at any time, and the space bar stops A, R or Z.
+<p>  By default, the M and R options are invoked automatically for both human and AI players.   For AI players, the Z option is also invoked automatically.  The checkboxes can be used to turn the automatic options on and off.   When a move does not fit, the options are tried in the order M, A, R, Z, &bull;, each once, until the move can be drawn.   For a human player the options are invoked automatically as long as their boxes are checked in a row: at the first unchecked box (other than A, which is simply skipped) the system stops and offers that option and the remaining ones in the status row.   Pressing one of them tries the move again, and the system then goes on from there by the same rule.   For an AI player the checked options are invoked in order and the unchecked ones skipped; if none succeeds the game stops and the status row says so.   The keys <e>M</e>, <e>A</e>, <e>R</e>, <e>Z</e> and <e>.</e> can also be pressed at any time, and the space bar stops A, R or Z.
 
-<p> When a move is refused for lack of room &mdash; there is no way through with the minimum clearance, or the curve would come too close to something &mdash; the status row says why, the move stays begun, and the message offers <e>M</e>, <e>A</e>, <e>R</e> and <e>Z</e>.   You can also click another spot instead.   The key <e>D</e> draws the refused move again in the drawing as it is now, as if you clicked its destination again: useful after you have lowered the minimum clearance, moved a spot by hand, or changed the Room boxes.
+<p>  The last column, headed by a bullet (<e>&bull;</e>), is the option after Z.   When it is checked and Z fails to draw a move with every spot at its full size, Z may draw some spots smaller &mdash; only those in tight places, and never smaller than the smallest spot size of the Settings menu.   The log names the spots drawn smaller, and they grow back to their size as soon as a later R or Z finds room for them.   It is off by default for human players and on for AI players; Heroic mode turns it off for human players.   At the end of a game the log says how many spots are still drawn smaller.   The key <e>.</e> (period) draws the picture afresh with smaller spots allowed, at any time.
+
+<p> When a move is refused for lack of room &mdash; there is no way through with the minimum clearance, or the curve would come too close to something &mdash; the status row says why, the move stays begun, and the message offers <e>M</e>, <e>A</e>, <e>R</e>, <e>Z</e> and <e>.</e>.   You can also click another spot instead.   The key <e>D</e> draws the refused move again in the drawing as it is now, as if you clicked its destination again: useful after you have lowered the minimum clearance, moved a spot by hand, or changed the Room boxes.
 
   <p> Selecting <e>Heroic Mode</e> turns the human space making options off and draws curves as they are drawn by a human player.   
-  <H3 class="menu-head" style="--menu: #fc2dfc">Colors</H3>
+<h3 id="sec-games-played-to-the-end">Games Played to the End</h3>
+
+<p> How far can the drawing be pushed?   The table below records games of Random against Random, each played to the end from $n$ seeds placed at random, with every setting at its default except that the spot indices are not shown, in a drawing area of 2560 x 1331 pixels (my screen, less a line the browser kept for itself), with version 200 of the program &mdash; except for the game of 60 seeds, whose conditions differed a little and are given below.   The columns count how often the program made room for a move (<e>M</e>, successful or not), rearranged the drawing (<e>R</e>), drew the picture afresh (<e>Z</e>), and drew spots smaller for lack of room (<e>&bull;</e>); then the number of moves of the game and the time it took, from the first move to the last.   Clicking a picture shows it at half size.
+
+<table class="games">
+  <tr><th>$n$</th><th>M</th><th>R</th><th>Z</th><th>&bull;</th><th>Moves</th><th>Time</th><th>Final picture</th></tr>
+    <tr><td>10</td><td>0</td><td>2</td><td>0</td><td>0</td><td>24</td><td>0:31</td><td><a href="games/view.html?n=10" target="_blank"><img src="games/n10-thumb.jpg" alt="the final picture of the game of 10 seeds"></a></td></tr>
+    <tr><td>20</td><td>0</td><td>3</td><td>1</td><td>0</td><td>51</td><td>1:25</td><td><a href="games/view.html?n=20" target="_blank"><img src="games/n20-thumb.jpg" alt="the final picture of the game of 20 seeds"></a></td></tr>
+    <tr><td>30</td><td>1</td><td>4</td><td>2</td><td>0</td><td>74</td><td>2:13</td><td><a href="games/view.html?n=30" target="_blank"><img src="games/n30-thumb.jpg" alt="the final picture of the game of 30 seeds"></a></td></tr>
+    <tr><td>40</td><td>7</td><td>7</td><td>2</td><td>1</td><td>98</td><td>10:01</td><td><a href="games/view.html?n=40" target="_blank"><img src="games/n40-thumb.jpg" alt="the final picture of the game of 40 seeds"></a></td></tr>
+    <tr><td>50</td><td>10</td><td>10</td><td>6</td><td>1</td><td>127</td><td>13:24</td><td><a href="games/view.html?n=50" target="_blank"><img src="games/n50-thumb.jpg" alt="the final picture of the game of 50 seeds"></a></td></tr>
+    <tr><td>60</td><td>6</td><td>8</td><td>3</td><td>1</td><td>150</td><td>98:05</td><td><a href="games/view.html?n=60" target="_blank"><img src="games/n60-thumb.jpg" alt="the final picture of the game of 60 seeds"></a></td></tr>
+</table>
+
+<p> The game of 60 seeds is at the edge of what the drawing can carry.   The run in the table was played with version 201, from the fixed random seed 1, in a drawing area of 2560 x 1383 pixels (the same screen, without the line the browser had kept for itself); it reached the end of the game at move 150.   Two earlier 60 seed games, each from seeds drawn afresh, stopped short &mdash; at move 114 with version 199, and at move 88 with version 200 &mdash; when the computer could not draw its move even after M, R and Z (a whole round of 32 fresh layouts failed).   What uses up the room is not the number of spots but the Random player&rsquo;s taste for enclosing most of the board: the picture ends up as a nest of rings, each a region of its own with two or three lives on a boundary thousands of pixels long, and each keeps room for a curve along its whole length.
+
+<p> Not every Z is for lack of room: a Random player likes to enclose a dozen or more of the things in a region at once, and when there are too many separate things in a region to route a curve around the chosen ones, the move is drawn afresh instead.
+
+<H3 class="menu-head" style="--menu: #fc2dfc">Colors</H3>
 
 <p>The sub-menus let you change the colors of the various parts of the drawing.   You can save your favorite scheme by setting up a game as you like and download it as a JSON file, using the File menu.   To start afresh from the same position import the position, again using the File menu.
 
@@ -271,7 +294,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
   <OL>
     <LI><e>Load game</e> lets you import a JSON file with a saved game. It opens the regular file selection menu on your computer.</LI>
     <LI><e>Save picture as PNG</e> puts a PNG image of the current position into your download directory, so you can send it to your friends.</LI>
-    <LI><e>Save game as JSON</e> lets you save your current status (including all selected options) for reloading at a later stage.</LI>
+    <LI><e>Save game as JSON</e> lets you save your current status (including all selected options, the players and the size of the drawing area) for reloading at a later stage.</LI>
     <LI><e>Save log as text</e> downloads the program&rsquo;s log of the session &mdash; every move, the computer&rsquo;s thinking, room made or refused &mdash; as a text file.   Its primary use is for debugging.</LI>
     <LI><e>Save the log of the last session</e> is another debugging tool.  The system keeps and updates a copy of the current log in the browser&rsquo;s storage.  If the page crashes you can start a new Sprouts session and immediately select this option.  </lI>
 
@@ -289,7 +312,8 @@ The easiest way to get started quickly on your first game is to do the <a href="
 <LI><e>Blue to move   L=9  m=2  M=7  K=1</e>: whose turn it is, and four numbers about the position: <e>L</e> the lives left on the board, <e>m</e> a lower bound on the number of moves the game can still last, <e>M</e> the largest number of moves that can actually still be played, and <e>K</e> the number of survivors.   When $m = M$ the length of the game is settled, however it is played.   <e>M</e> is worked out in the background, usually within a fraction of a second; until it is known the row shows the upper bound as <e>M&le;7</e>, and in a few complicated positions that may stay.</LI>
 <LI><e>Click the destination spot (4 possible) &mdash; right-click marks spots to enclose &mdash; click just outside a spot to choose its side &mdash; Space cancels</e>: after the first click of a move.   It also lists the spots marked to be enclosed, and destinations that can be reached in principle but have no room for a curve.</LI>
 <LI><e>Green (Fast parity search) is thinking &hellip;</e>: the computer&rsquo;s progress.   When its search has seen the whole rest of the game, the message after its move adds a verdict: <e>Green has a winning position</e> or <e>Green is lost against best play</e>.</LI>
-<LI><e>No room to reach spot 7 &hellip;</e> or <e>No room: the curve comes too close to something to be smoothed</e>: a move that does not fit.   The message offers the ways to make room (M, A, R, Z) and <e>D</e> to draw the move again; the ways to make room are also tried automatically as the Room menu says, and <e>Still no room &hellip;</e> means none of them worked.</LI>
+<LI><e>No room to reach spot 7 &hellip;</e> or <e>No room: the curve comes too close to something to be smoothed</e>: a move that does not fit.   The message offers the ways to make room (M, A, R, Z and the period) and <e>D</e> to draw the move again; the ways to make room are also tried automatically as the Room menu says, and <e>Still no room &hellip;</e> says which were tried and which remain to be tried by hand.</LI>
+<LI><e>Not drawn afresh: the first 32 layouts (one round, one for each worker) all failed &hellip; the picture has run out of room</e>: Z could not draw the position in the room there is.   Z takes the first picture at least as roomy as the one before; when the picture before is already below the minimum clearance, it takes the first that can be drawn at all.   More room comes from smaller spots or a smaller minimum clearance (Settings); a larger drawing area helps only a new game, because during a game a new size only scales the picture.</LI>
 <LI><e>Drawing area is 1090 x 607 &mdash; the window could not be resized &hellip;</e>: Size in the Game menu, used in an ordinary browser tab; the message says why (for example, that <e>Y</e> gives the game a window of its own, which can be resized).</LI>
 <LI><e>Blue can&rsquo;t move &mdash; Green wins.   Game over.   L=8  m=0  M=0  K=8</e>: the end of the game, with the same four numbers as during play: <e>L</e> the lives left, <e>m</e> = <e>M</e> = 0, and <e>K</e> the survivors (at the end every life left belongs to a survivor, so <e>K</e> = <e>L</e>).</LI>
 <LI><e>Click to place the spots (3 so far), then press Enter or N to start</e>: when you place the spots by hand.</LI>
@@ -310,7 +334,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <tr><th colspan="2">Game</th></tr>
     <tr><td><kbd>1</kbd> &hellip; <kbd>9</kbd></td><td>New game with that many spots, in the Game menu&rsquo;s layout</td></tr>
     <tr><td><kbd>0</kbd></td><td>Blank window: place the spots by clicking</td></tr>
-    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them)</td></tr>
+    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them; with the Random or Place by hand layout, or after Load game: the same seeds as before)</td></tr>
     <tr><td><kbd>Enter</kbd></td><td>Start the game from the spots placed; draw a move the shortest way when its marks cannot be applied</td></tr>
     <tr><td><kbd>U</kbd></td><td>Undo the last move</td></tr>
     <tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Back / forward through the game one move at a time</td></tr>
@@ -324,6 +348,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
     <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
     <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
+    <tr><td><kbd>.</kbd></td><td>Draw the picture afresh, spots smaller where there is no room</td></tr>
   </table>
   <table>
     <tr><th colspan="2">View</th></tr>
@@ -332,6 +357,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <tr><td><kbd>S</kbd></td><td>Spot indices</td></tr>
     <tr><td><kbd>T</kbd></td><td>Initial seeds as triangles</td></tr>
     <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>
+    <tr><td><kbd>/</kbd></td><td>No indices at seeds</td></tr>
     <tr><td><kbd>H</kbd></td><td>Stumps half size</td></tr>
     <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
     <tr><td><kbd>Y</kbd></td><td>Window of its own (resizable by Game &rarr; Size) / back to a browser tab</td></tr>
@@ -353,7 +379,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <H2>AI Assisted Programming</H2>
 
-<p> I have been programming computers for more than 50 years, and this project has been different from all preceding ones.   My first project after retiring in July of 2025 consisted of writing a <a href="https://peteralfeld.github.io/home/financial/FI.html"> financial calculator</a> in a language new to me, i.e., <a href="https://www.javascript.com/">JavaScript</a>.   I proceeded as I had many times before: I bought a book on JavaScript, read much of it,  and proceeded to write the code all by myself, debugging it laboriously as I went on.  In subsequent projects, I relied increasingly on AI help, first from <a href="https://gemini.google.com/"> Gemini</a>, and then from <a href="https://claude.ai/"> Claude</a>.   About 20 years ago, I had tried to program Sprouts in <a href="https://www.java.com/en/">Java</a>.   Then, I got to a stage where you could draw curves by hand, and two players could play a game on the same computer, taking turns. There was no curve smoothing, space making, or AI play. I gave up eventually because the project was just too difficult, for me at that time.  Developing this new software (comprising more than 11,000 lines of JavaScript code so far) to the stage that everything works and I am producing the introductory video as the last step took just four weeks!   Moreover, except for a couple of times when I was curious, I never looked at the code!   At each stage I just told Claude what the software should do, and Claude wrote it, tested it, and debugged it.   The world of computer programming has changed profoundly!   Moreover, it continues to change extremely rapidly.  Claude of October 2026 is vastly more powerful than Gemini of August 2025, or even Claude before the release of Claude Fable in June of 2026, or Claude Fable 5.1 in September 2026.   Beyond coding, I had many conversations with Claude about algorithmic details, and Claude was helpful in writing the documentation.   I wrote this User's Guide and Claude helped with formatting, and checking for completeness and correctness.   By contrast, Claude wrote the <a href="technical.html">technical description</a> almost entirely by itself and I edited it only in minor ways, with a view towards clarity and appropriate emphasis.  There is of course a great deal of discussion currently of where AI is taking us. I don't know where we are going, but we are going somewhere awfully fast! 
+<p> I have been programming computers for more than 50 years, and this project has been different from all preceding ones.   My first project after retiring in July of 2025 consisted of writing a <a href="https://peteralfeld.github.io/home/financial/FI.html"> financial calculator</a> in a language new to me, i.e., <a href="https://www.javascript.com/">JavaScript</a>.   I proceeded as I had many times before: I bought a book on JavaScript, read much of it,  and proceeded to write the code all by myself, debugging it laboriously as I went on.  In subsequent projects, I relied increasingly on AI help, first from <a href="https://gemini.google.com/"> Gemini</a>, and then from <a href="https://claude.ai/"> Claude</a>.   About 20 years ago, I had tried to program Sprouts in <a href="https://www.java.com/en/">Java</a>.   Then, I got to a stage where you could draw curves by hand, and two players could play a game on the same computer, taking turns. There was no curve smoothing, space making, or AI play. I gave up eventually because the project was just too difficult, for me at that time.  Developing this new software (comprising more than 10,000 lines of JavaScript code so far) to the stage that everything works and I am producing the introductory video as the last step took just four weeks!   Moreover, except for a couple of times when I was curious, I never looked at the code!   At each stage I just told Claude what the software should do, and Claude wrote it, tested it, and debugged it.   The world of computer programming has changed profoundly!   Moreover, it continues to change extremely rapidly.  Claude of October 2026 is vastly more powerful than Gemini of August 2025, or even Claude before the release of Claude Fable in June of 2026, or Claude Fable 5.1 in September 2026.   Beyond coding, I had many conversations with Claude about algorithmic details, and Claude was helpful in writing the documentation.   I wrote this User's Guide and Claude helped with formatting, and checking for completeness and correctness.   By contrast, Claude wrote the <a href="technical.html">technical description</a> almost entirely by itself and I edited it only in minor ways, with a view towards clarity and appropriate emphasis.  There is of course a great deal of discussion currently of where AI is taking us. I don't know where we are going, but we are going somewhere awfully fast! 
 
 <script>
 /* The Table of Contents and the section numbers, made from the headings after it (h1, h2, h3): the

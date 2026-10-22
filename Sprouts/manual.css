@@ -96,3 +96,9 @@ table.spot-kinds td.swatch { background: var(--c); color: #fff; font-weight: bol
 .keys-cols td:first-child { white-space: nowrap; }
 .keys-cols kbd { font: inherit; font-weight: bold; padding: 0 5px; border: 1px solid rgba(255,255,255,.6);
                  border-radius: 3px; background: rgba(255,255,255,.12); }
+/* the table of games played to the end (Making Room) */
+table.games { border-collapse: collapse; margin: 0.5em 0 1em 2em; }
+table.games th, table.games td { padding: 4px 14px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.2); }
+table.games th { color: #FFD700; }
+table.games td:last-child { text-align: left; }
+table.games td img { height: 60px; width: auto; vertical-align: middle; border: 1px solid #6495ED; }

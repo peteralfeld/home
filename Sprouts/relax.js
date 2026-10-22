@@ -27,6 +27,9 @@
   /* scene: { W0, H0, spots: [{x,y}], edges: [{a, b, pieces}] }, spotR = drawn spot radius.
      Curves become refined control polygons: segments {a, b, eps, s0, s1} where the
      true curve is within eps of the segment chain and s0, s1 are the edge's end spots. */
+  /* A spot's radius: the Settings' spotR, or less for a spot drawn smaller to make room (v189: s.f, its share
+     of spotR, set where a picture drawn afresh had no room for it at full size — Room menu's • column) */
+  function spotRadius(s, spotR) { return s.f > 0 && s.f < 1 ? s.f * spotR : spotR; }
   function buildObstacles(scene, spotR, extra) {
     var obs = { segs: [], spots: [], cells: new Map(), spotR: spotR };
     function cellList(cx, cy) {
@@ -58,7 +61,7 @@
       for (i = 1; i < pts.length; i++) addSeg(pts[i - 1], pts[i], poly.eps, e.a, e.b, 4 + ei, cum[i - 1], L - cum[i]);
     });
     scene.spots.forEach(function (s, idx) {
-      var sp = { p: [s.x, s.y], idx: idx, id: 4 + scene.edges.length + idx };
+      var sp = { p: [s.x, s.y], idx: idx, id: 4 + scene.edges.length + idx, r: spotRadius(s, spotR) };
       obs.spots.push(sp);
       cellList(Math.floor(s.x / CELL), Math.floor(s.y / CELL)).spots.push(sp);
     });
@@ -161,12 +164,12 @@
           for (i = 0; i < c.spots.length; i++) {
             var sp = c.spots[i];
             if (sp.idx === ctx.aIdx || sp.idx === ctx.bIdx) continue;
-            var ds = G.dist(p, sp.p) - obs.spotR;
+            var ds = G.dist(p, sp.p) - sp.r;
             if (ds < best) best = ds;
             if (byId && ds < byId[sp.id]) {
               if (touched && byId[sp.id] === Infinity) touched.push(sp.id);
               byId[sp.id] = ds;
-              if (byDir) { var dl = ds + obs.spotR || 1e-9; byDir[2 * sp.id] = (p[0] - sp.p[0]) / dl; byDir[2 * sp.id + 1] = (p[1] - sp.p[1]) / dl; }
+              if (byDir) { var dl = ds + sp.r || 1e-9; byDir[2 * sp.id] = (p[0] - sp.p[0]) / dl; byDir[2 * sp.id + 1] = (p[1] - sp.p[1]) / dl; }
             }
           }
         }
@@ -961,7 +964,7 @@
 
   var api = { normalAt: normalAt, energyNow: function (sb) { return evaluateSpline(sb, sb.pts, 0, true).E; }, _evaluateSpline: function (sb, pts, dh) { return evaluateSpline(sb, pts, dh, true); }, MIN_START: MIN_START, QUIET_E: QUIET_E, QUIET_MOVE: QUIET_MOVE,
     createSplineBand: createSplineBand, iterateSpline: iterateSpline, splinePieces: splinePieces,
-    CELL: CELL, buildObstacles: buildObstacles, rObs: rObs,
+    CELL: CELL, buildObstacles: buildObstacles, spotRadius: spotRadius, rObs: rObs,
     polylineCrossesObstacle: polylineCrossesObstacle, polylineCrossesItself: polylineCrossesItself,
     createBand: createBand, iterate: iterate, createRoute: createRoute, advance: advance, certify: certify
   };

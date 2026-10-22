@@ -762,8 +762,11 @@
         else {
           g2 = mc.game; start = mc.start; fitted = mc.band;
           var mv = mc.moved.filter(function (m) { return m.px >= 0.5; }).sort(function (x, y) { return y.px - x.px; });
-          what.push('moved curve' + (mv.length > 1 ? 's ' : ' ') + mv.map(function (m) { return m.name + ' (up to ' + Math.round(m.px) + ' px)'; }).join(', ') +
-                    (mc.rounds > 1 ? ', in ' + mc.rounds + ' rounds' : ''));
+          var ms = (mc.seeds || []).filter(function (m) { return m.px >= 0.5; }).sort(function (x, y) { return y.px - x.px; });   // (v188: seeds moved out of the way)
+          var parts = [];
+          if (ms.length) parts.push('moved spot' + (ms.length > 1 ? 's ' : ' ') + ms.map(function (m) { return m.name + ' (' + Math.round(m.px) + ' px)'; }).join(', '));
+          if (mv.length) parts.push('moved curve' + (mv.length > 1 ? 's ' : ' ') + mv.map(function (m) { return m.name + ' (up to ' + Math.round(m.px) + ' px)'; }).join(', '));
+          what.push(parts.join(' and ') + (mc.rounds > 1 ? ', in ' + mc.rounds + ' rounds' : ''));
         }
       }
       if (!g2) return { fail: true, brief: brief, why: why };

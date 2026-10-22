@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=183">
+<link rel="stylesheet" href="style.css?v=202">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 183</span>
+  <span id="app-version">SPROUTS v. 202</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -47,12 +47,14 @@
           <option value="misere">Mis&egrave;re: last to move loses</option>
         </select>
       </label>
+      <label class="row" data-tip="opt-seed">Random seed <input id="opt-seed" type="text" size="6" placeholder="none"></label>
       <div class="row size-head" data-tip="size-head">Size</div>
       <div class="row size-fields" data-tip="opt-size"><label>Width <input id="opt-width" type="number" min="1"></label><label>Height <input id="opt-height" type="number" min="1"></label><button class="item" id="cmd-size-set" data-tip="cmd-size-set">Set</button></div>
       <div class="row size-presets">
         <button class="item" id="cmd-size-1090" data-tip="size-preset">1090 x 607</button>
         <button class="item" id="cmd-size-1280" data-tip="size-preset">1280 x 742</button>
         <button class="item" id="cmd-size-1024" data-tip="size-preset">1024 x 1024</button>
+        <button class="item" id="cmd-size-512" data-tip="size-preset">512 x 512</button>
         <button class="item" id="cmd-size-square" data-tip="size-square">Max square</button>
         <button class="item" id="cmd-size-full" data-tip="size-full">Full screen</button>
       </div>
@@ -120,6 +122,7 @@
       <label class="row" data-tip="opt-numbers">Spot indices <kbd>S</kbd> <input id="opt-numbers" type="checkbox" checked></label>
       <label class="row" data-tip="opt-triangles">Initial seeds as triangles <kbd>T</kbd> <input id="opt-triangles" type="checkbox"></label>
       <label class="row" data-tip="opt-deadnumbers">No indices at stumps <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-seednumbers">No indices at seeds <kbd>/</kbd> <input id="opt-seednumbers" type="checkbox"></label>
       <label class="row" data-tip="opt-smalldead">Stumps half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
       <button class="item" id="cmd-area" data-tip="cmd-area">Size of the drawing area <kbd>Q</kbd></button>
       <label class="row" data-tip="cmd-window">Window of its own <kbd>Y</kbd> <input id="opt-window" type="checkbox"></label>
@@ -151,9 +154,9 @@
     <div class="menu-panel">
       <div class="row auto-head" data-tip="room-head">Automatically, when a move does not fit:</div>
       <table class="auto">
-        <tr><th></th><th data-tip="room-M">M</th><th data-tip="room-A">A</th><th data-tip="room-R">R</th><th data-tip="room-Z">Z</th></tr>
-        <tr id="auto-human-row"><td data-tip="room-human">Human</td><td data-tip="room-M"><input id="auto-human-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-human-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-human-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-human-Z" type="checkbox"></td></tr>
-        <tr><td data-tip="room-ai">Computer</td><td data-tip="room-M"><input id="auto-ai-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-ai-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-ai-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-ai-Z" type="checkbox"></td></tr>
+        <tr><th></th><th data-tip="room-M">M</th><th data-tip="room-A">A</th><th data-tip="room-R">R</th><th data-tip="room-Z">Z</th><th data-tip="room-S">&bull;</th></tr>
+        <tr id="auto-human-row"><td data-tip="room-human">Human</td><td data-tip="room-M"><input id="auto-human-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-human-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-human-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-human-Z" type="checkbox"></td><td data-tip="room-S"><input id="auto-human-S" type="checkbox"></td></tr>
+        <tr><td data-tip="room-ai">Computer</td><td data-tip="room-M"><input id="auto-ai-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-ai-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-ai-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-ai-Z" type="checkbox"></td><td data-tip="room-S"><input id="auto-ai-S" type="checkbox"></td></tr>
       </table>
       <label class="row" data-tip="opt-heroic">Heroic <input id="opt-heroic" type="checkbox"></label>
     </div>
@@ -188,7 +191,7 @@
     <tr><th colspan="2">Game</th></tr>
     <tr><td><kbd>1</kbd> &hellip; <kbd>9</kbd></td><td>New game with that many spots, in the Game menu&rsquo;s layout</td></tr>
     <tr><td><kbd>0</kbd></td><td>Blank window: place the spots by clicking</td></tr>
-    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them)</td></tr>
+    <tr><td><kbd>N</kbd></td><td>New game (while placing spots: start the game from them; with the Random or Place by hand layout, or after Load game: the same seeds as before)</td></tr>
     <tr><td><kbd>Enter</kbd></td><td>Start the game from the spots placed; draw a move the shortest way when its marks cannot be applied</td></tr>
     <tr><td><kbd>U</kbd></td><td>Undo the last move</td></tr>
     <tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Back / forward through the game one move at a time</td></tr>
@@ -200,6 +203,7 @@
     <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
     <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
     <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
+    <tr><td><kbd>.</kbd></td><td>Draw the picture afresh, spots smaller where there is no room</td></tr>
   </table>
   <table>
     <tr><th colspan="2">View</th></tr>
@@ -208,6 +212,7 @@
     <tr><td><kbd>S</kbd></td><td>Spot indices</td></tr>
     <tr><td><kbd>T</kbd></td><td>Initial seeds as triangles</td></tr>
     <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>
+    <tr><td><kbd>/</kbd></td><td>No indices at seeds</td></tr>
     <tr><td><kbd>H</kbd></td><td>Stumps half size</td></tr>
     <tr><td><kbd>Q</kbd></td><td>Show the size of the drawing area (in pixels) on the status line</td></tr>
     <tr><td><kbd>Y</kbd></td><td>Window of its own (resizable by Game &rarr; Size) / back to a browser tab</td></tr>
@@ -246,6 +251,7 @@
     <li>Random: anywhere, apart from each other.</li>
     <li>Place by hand: a blank window; click to place the spots, then <kbd>Enter</kbd> or <kbd>N</kbd> starts the game (key <kbd>0</kbd>).</li></ul>
     Before the first move a change shows at once.</div>
+  <div data-tip-for="opt-seed"><b>Random seed.</b> Empty: the random layout, the Random player and the tie-breaks among equally good moves are different every time. A number: they are repeatable &mdash; the same seed, number of spots and settings give the same spots and the same moves, game after game (the generator starts afresh with every new game). Monte Carlo&rsquo;s random games are not covered, so a Monte Carlo player can still vary.</div>
   <div data-tip-for="opt-rules"><b>Rules.</b> Normal play: whoever cannot move loses, so the last to move wins. Mis&egrave;re: whoever cannot move wins, so the last to move loses. It can be changed during a game; the computer players use it from their next move.</div>
   <div data-tip-for="size-head"><b>Size</b> of the drawing area, in pixels. The window grows or shrinks so that the drawing area gets the size chosen, and stays resizable by hand. A browser lets a page resize its own window only when the page has a window of its own &mdash; in Chrome, a shortcut made with <i>Install page as app</i> or <i>Create shortcut&hellip; (Open as window)</i> &mdash; and the window is neither maximized nor in full screen; in an ordinary tab the drawing area is set to the size inside the window instead, with the page&rsquo;s dark background around it, and resizing the window by hand lets the drawing area fill the window again. Before the first move a new size lays the spots out afresh; later the picture is only scaled.</div>
   <div data-tip-for="opt-size"><b>Width and Height</b> of the drawing area, in pixels: they show its present size. Type a size and press <kbd>Enter</kbd> or click <b>Set</b>.</div>
@@ -253,7 +259,7 @@
   <div data-tip-for="size-preset"><b>A fixed size</b> of the drawing area, in pixels (width x height). 1090 x 607 is the size most of the program was developed and tested in.</div>
   <div data-tip-for="size-square"><b>Max square.</b> The largest square drawing area there is room for: the screen&rsquo;s, when the window can be resized, else the window&rsquo;s.</div>
   <div data-tip-for="size-full"><b>Full screen.</b> The page fills the screen, as with <kbd>F</kbd> (View menu); <kbd>F</kbd> or <kbd>Esc</kbd> leaves it.</div>
-  <div data-tip-for="cmd-new"><b>New game</b> <kbd>N</kbd>. Starts a new game with the Spots, Layout and Rules above. While spots are being placed by hand it starts the game from them instead.
+  <div data-tip-for="cmd-new"><b>New game</b> <kbd>N</kbd>. Starts a new game with the Spots, Layout and Rules above. With the Random and Place by hand layouts, and after a game was loaded from a file, the game starts from the same seeds as the game before (a change of the Spots or Layout fields, or the keys <kbd>1</kbd> &hellip; <kbd>9</kbd> and <kbd>0</kbd>, lay them out anew). While spots are being placed by hand it starts the game from them instead.
     <kbd>1</kbd> &hellip; <kbd>9</kbd>: a new game with that many spots in the chosen layout. <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
   <div data-tip-for="cmd-undo"><b>Undo move</b> <kbd>U</kbd>. Takes back the last move, with any room made for it. Against the computer it goes back to your turn. Over the net either player may undo; it takes back the last move whoever made it, on both computers.
     <kbd>&lt;</kbd> / <kbd>&gt;</kbd>: back / forward through the game one move at a time, the computer&rsquo;s moves too. Meanwhile the computer waits; make a move anywhere (also in the computer&rsquo;s place) and the game goes on from there.</div>
@@ -290,21 +296,23 @@
   <div data-tip-for="opt-d0"><b>Minimum clearance.</b> The least distance a new curve must keep from every other curve, every spot and the edge of the window. Larger: a roomier, clearer picture, but moves run out of room sooner. It counts for moves made from now on; when a move does not fit, the message compares the widest way there with it.</div>
   <div data-tip-for="opt-D"><b>Comfort distance.</b> The distance at which a curve stops feeling its neighbors much. Curves are pushed apart more strongly closer than this, gently beyond it, so a new curve settles in the middle of the room it has. It also sets the spacing of the points used by A, R and Z.</div>
   <div data-tip-for="opt-lambda"><b>Room vs length.</b> How much a curve&rsquo;s room counts against its length when it is shaped (the slider is the power of ten of the weight: 0 means equal weight, &minus;1 a tenth, 1 ten times). Higher: curves bow away from their neighbors into the middle of the space. Lower: shorter, straighter curves that pass closer to things.</div>
-  <div data-tip-for="opt-spotsize"><b>Spot size</b>, shown as the spots&rsquo; diameter. The spot is also the disc that curves keep clear of, so a change counts for moves made from now on; curves already drawn stay (A adjusts them).</div>
-  <div data-tip-for="opt-linewidth"><b>Curve thickness</b>, shown in pixels. Changes the picture at once.</div>
-  <div data-tip-for="opt-numbersize"><b>Index size</b> of the spot indices (View &rarr; Spot indices), shown in pixels.</div>
+  <div data-tip-for="opt-spotsize"><b>Spot size</b>, shown as the spots&rsquo; diameter. The spot is also the disc that curves keep clear of, so a change counts for moves made from now on; curves already drawn stay (A adjusts them). A new game in a drawing area of a new size sets it to 1/70 of the area&rsquo;s mean size (width plus height, halved), within the slider&rsquo;s range; a new game in the same area leaves it as you set it.</div>
+  <div data-tip-for="opt-linewidth"><b>Curve thickness</b>, shown in pixels. Changes the picture at once. Stays as you set it; a new game does not change it.</div>
+  <div data-tip-for="opt-numbersize"><b>Index size</b> of the spot indices (View &rarr; Spot indices), shown in pixels. A new game in a drawing area of a new size sets it to 1/50 of the area&rsquo;s mean size (width plus height, halved), within the slider&rsquo;s range; a new game in the same area leaves it as you set it.</div>
   <div data-tip-for="opt-animate"><b>Animate.</b> On: you see a new curve settle into its shape, and A, R and Z at work, as it happens. Off: only the result is shown, a little sooner.</div>
   <div data-tip-for="opt-click"><b>Click to connect.</b> On: a move can be made by clicking a spot and then the spot to connect it to (right-click or <kbd>Shift</kbd>+click in between marks spots the curve is to enclose). Off: moves are made only by dragging from spot to spot. Turning it off cancels a move begun by a click.</div>
   <div data-tip-for="opt-triangles"><b>Initial seeds as triangles</b> <kbd>T</kbd>. Draws the spots the game started with (and any seeds added by hand) as triangles, whatever they have become, so they stand out from the spots made by moves.</div>
   <div data-tip-for="opt-deadnumbers"><b>No indices at stumps</b> <kbd>G</kbd>. With spot indices shown, leaves them off the stumps: the spots that already have three curves (no lives left), which no longer matter for the game.</div>
+  <div data-tip-for="opt-seednumbers"><b>No indices at seeds</b> <kbd>/</kbd>. With spot indices shown, leaves them off the seeds: the spots with no curves yet, which in a game with many seeds are many and need no name until a curve reaches them (when room is made, the seeds of a region are all alike).</div>
   <div data-tip-for="opt-smalldead"><b>Stumps half size</b> <kbd>H</kbd>. Draws stumps (spots with three curves, no lives) at half the size, so the live spots stand out. Only the drawing changes: curves keep clear of them as of full-size spots.</div>
 
-  <div data-tip-for="m-room"><b>Room:</b> what happens automatically when a move does not fit in the drawing as it is, for a human&rsquo;s moves and the computer&rsquo;s; and Heroic mode. <kbd>M</kbd>, <kbd>A</kbd>, <kbd>R</kbd> and <kbd>Z</kbd> can always be pressed by hand too.</div>
-  <div data-tip-for="room-head"><b>Automatically, when a move does not fit:</b> the checked steps are tried in the order M, A, R, Z (from the least to the most change to the picture), each once, until the move can be drawn. If none of them makes room, the program stops and says so; a human&rsquo;s move stays begun, and the keys can be used by hand. Defaults: M and R for a human, M, R and Z for the computer.</div>
+  <div data-tip-for="m-room"><b>Room:</b> what happens automatically when a move does not fit in the drawing as it is, for a human&rsquo;s moves and the computer&rsquo;s; and Heroic mode. <kbd>M</kbd>, <kbd>A</kbd>, <kbd>R</kbd>, <kbd>Z</kbd> and <kbd>.</kbd> can always be pressed by hand too.</div>
+  <div data-tip-for="room-head"><b>Automatically, when a move does not fit:</b> the steps are taken in the order M, A, R, Z, &bull; (from the least to the most change to the picture), each once, until the move can be drawn. For a human&rsquo;s move the ladder stops at the first box not checked (an unchecked A is simply skipped): the status row offers that step and the ones after it by hand (their keys), each of which tries the move again and then lets the ladder go on by the same rule. For the computer&rsquo;s move only the checked steps are taken; if none of them makes room, the game stops and says so. Defaults: M and R for a human, M, R, Z and &bull; for the computer. &bull; lets Z, when the picture does not fit at full size, draw some spots smaller.</div>
   <div data-tip-for="room-M"><b>M &mdash; make room.</b> Local changes where the move has to go: spots slide aside, then the curves in its way are pushed back, as long as no neighbor gets squeezed below its own clearance. The rest of the picture stays. Key <kbd>M</kbd>. Not in Heroic mode.</div>
   <div data-tip-for="room-A"><b>A &mdash; adjust.</b> The whole drawing is reshaped for more room: curves move, while the initial seeds and seeds added by hand stay where they are (spots made by moves ride along with their curves). Key <kbd>A</kbd>.</div>
   <div data-tip-for="room-R"><b>R &mdash; rearrange.</b> Like A, but every spot may move too, so the whole picture can spread out. Key <kbd>R</kbd>.</div>
-  <div data-tip-for="room-Z"><b>Z &mdash; draw the picture afresh.</b> Ignores the present drawing and draws the position from scratch (then polishes it as R does), trying each region as the outside, on the workers at once, until a picture is found at least as roomy as the old one. The slowest step; <kbd>Space</kbd> stops it and keeps the best so far. Key <kbd>Z</kbd>.</div>
+  <div data-tip-for="room-Z"><b>Z &mdash; draw the picture afresh.</b> Ignores the present drawing and draws the position from scratch (then polishes it as R does), trying each region as the outside, on the workers at once, until a picture is found at least as roomy as the old one (any picture that can be drawn, when the old one is below the minimum clearance). The slowest step; <kbd>Space</kbd> stops it and keeps the best so far. Key <kbd>Z</kbd>.</div>
+  <div data-tip-for="room-S"><b>&bull; &mdash; spots drawn smaller where there is no room.</b> Only when Z has failed for a move: the fresh picture is accepted with some spots drawn smaller than Settings &rarr; Spot size (those in tight places only, never below the slider&rsquo;s smallest size), and the log names them. They grow back to their size as soon as an R or a Z finds room. Defaults: off for a human, on for the computer; Heroic turns it off for a human. Key <kbd>.</kbd> (Z with smaller spots allowed, by hand).</div>
   <div data-tip-for="room-human"><b>Human:</b> the steps tried automatically when a move you make does not fit. Off (gray) in Heroic mode.</div>
   <div data-tip-for="room-ai"><b>Computer:</b> the steps tried automatically when the move a computer player has chosen does not fit &mdash; also a move arriving from the other computer over the net. The computer never changes its move for one that is easier to draw: if no checked step makes room, the game stops and says so.</div>
   <div data-tip-for="opt-heroic"><b>Heroic.</b> A curve you draw by hand is kept as drawn (straight pieces, corners and all) instead of being smoothed, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available). The computer&rsquo;s moves are drawn as usual.</div>
@@ -320,25 +328,25 @@
   <div data-tip-for="colour-deg3"><b>Stumps</b>: spots with three curves and no lives; no curve may touch them again.</div>
 
   <div data-tip-for="m-file"><b>File.</b> Load and save games, the picture, the log and the position.</div>
-  <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors and undo history, so it can be played on or taken back move by move. The players are not saved; the Player menus stay as they are. Not while connected to another computer.</div>
+  <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors, players, drawing area size and undo history, so it can be played on or taken back move by move. The drawing area is given the saved size as Game &rarr; Size gives it. Not while connected to another computer.</div>
   <div data-tip-for="cmd-png"><b>Save picture as PNG</b> <kbd>P</kbd>. Saves the drawing area as it is now as an image (in the browser&rsquo;s download folder).</div>
-  <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
+  <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors, the players, the drawing area&rsquo;s size and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
   <div data-tip-for="cmd-log"><b>Save log as text.</b> Saves this session&rsquo;s log: every move in words, the computer&rsquo;s thinking, room made or refused, with times and pixel figures &mdash; useful for reporting a problem.</div>
   <div data-tip-for="cmd-log-prev"><b>Save the log of the last session.</b> The log is kept in this browser as it grows, so after a crash or a reload the last session&rsquo;s log can still be saved. Only the one session before this one is kept.</div>
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=183"></script>
-<script src="relax.js?v=183"></script>
-<script src="route.js?v=183"></script>
-<script src="engine.js?v=183"></script>
-<script src="describe.js?v=183"></script>
-<script src="room.js?v=183"></script>
-<script src="moves.js?v=183"></script>
-<script src="redraw.js?v=183"></script>
-<script src="layout.js?v=183"></script>
-<script src="ai.js?v=183"></script>
-<script src="net.js?v=183"></script>
-<script src="ui.js?v=183"></script>
+<script src="geom.js?v=202"></script>
+<script src="relax.js?v=202"></script>
+<script src="route.js?v=202"></script>
+<script src="engine.js?v=202"></script>
+<script src="describe.js?v=202"></script>
+<script src="room.js?v=202"></script>
+<script src="moves.js?v=202"></script>
+<script src="redraw.js?v=202"></script>
+<script src="layout.js?v=202"></script>
+<script src="ai.js?v=202"></script>
+<script src="net.js?v=202"></script>
+<script src="ui.js?v=202"></script>
 </body>
 </html>

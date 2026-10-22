@@ -33,12 +33,22 @@
   var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 2.5, × 2.3 from Peter's game of 10/14, v160)
   var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 2 from Peter's game of 10/14, v160)
   var SPOT_R = 6;        // drawn radius of a spot — also what curves keep clear of (the disc), so a bigger spot needs more room
+  /* v201 (Peter 10/21: two runs of the same n gave different games — "start with the same seed in future runs"):
+     every random choice the page makes (the random layout, the Random player's move, the tie-breaks among equally
+     good moves, the shuffle of the candidates) comes from rng(). Game → Random seed empty: Math.random, as before;
+     a number: a seeded generator (mulberry32), started afresh by every new game, so the same seed, number of spots
+     and settings give the same seeds and the same moves. The Monte Carlo games on the workers are not seeded (each
+     worker draws its own), so a Monte Carlo player's choice can still differ between runs. */
+  var seeded = null;
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function rng() { return seeded ? seeded() : Math.random(); }
+  function reseed() { var v = document.getElementById('opt-seed').value.trim(); seeded = v === '' || !isFinite(Number(v)) ? null : mulberry32(Math.floor(Number(v))); return seeded ? Math.floor(Number(v)) : null; }
   var SNAP = 16;         // a stroke starts/ends at a spot if within this distance
   var STEP = Mv.STEP;    // arc-length spacing of the resampled stroke (moves.js)
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false }, autoAI: { M: true, A: false, R: true, Z: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false, S: false }, autoAI: { M: true, A: false, R: true, Z: true, S: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -433,10 +443,10 @@
       } else if (orig[i]) {                      // View → Initial seeds as triangles (v98; named so v159): the disc's area, point up; hollow where the disc would be a ring
         var tr = TRI * sr;
         triangle(sp.x, sp.y, tr); ctx.fill();
-        if (stuck[i]) { triangle(sp.x, sp.y, Math.max(0, tr - 2 * LINE_W)); ctx.fillStyle = background(); ctx.fill(); }
-      } else if (stuck[i]) {                     // lives left, no other spot to reach: a ring as thick as a curve, the background inside
+        if (stuck[i]) { triangle(sp.x, sp.y, tr - 2 * RING * sr); ctx.fillStyle = background(); ctx.fill(); }
+      } else if (stuck[i]) {                     // lives left, no other spot to reach: a ring (RING of the radius), the background inside
         ctx.beginPath(); ctx.arc(sp.x, sp.y, sr, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, Math.max(0, sr - LINE_W), 0, 2 * Math.PI); ctx.fillStyle = background(); ctx.fill();
+        ctx.beginPath(); ctx.arc(sp.x, sp.y, (1 - RING) * sr, 0, 2 * Math.PI); ctx.fillStyle = background(); ctx.fill();
       } else {
         ctx.beginPath(); ctx.arc(sp.x, sp.y, sr, 0, 2 * Math.PI); ctx.fill();
       }
@@ -446,6 +456,7 @@
       ctx.textBaseline = 'bottom';
       for (i = 0; i < game.spots.length; i++) {
         if (!route.deadNumbers && game.spots[i].deg >= 3) continue;   // View → No indices at stumps (G, v133; named so v157; on by default, over S)
+        if (!route.seedNumbers && game.spots[i].deg === 0) continue;   // View → No indices at seeds (/, v191; off by default since v193 — Peter wants it for making room, where the seeds of a region are all alike)
         var r = spotRadius(i), label = String(i + 1), lx = game.spots[i].x + r + 2, ly = game.spots[i].y - r + 2;
         ctx.lineWidth = 3 * NUMBER_PX / NUMBER_PX0; ctx.strokeStyle = background(); ctx.strokeText(label, lx, ly);
         ctx.fillStyle = shownColour(i); ctx.fillText(label, lx, ly);
@@ -455,9 +466,12 @@
 
   /* An equilateral triangle, point up, centered on (x, y), R the distance from
      the center to a corner (v98). TRI: the R that gives a disc's area
-     (3√3/4 R² = π r²); the band of a hollow one is LINE_W wide (the inner
-     triangle's R is 2·LINE_W less: its sides are LINE_W in). */
-  var TRI = Math.sqrt(4 * Math.PI / (3 * Math.sqrt(3)));
+     (3√3/4 R² = π r²). A hollow spot (a ring: lives left, no other spot to reach) keeps RING of its radius
+     as the ring, the opening inside it in proportion (v187, Peter: with the spot size from the drawing area,
+     v186, a ring as thick as a curve left almost no opening — 5.8 px curves on a 12 px spot); 3/8 is the look
+     of his defaults of 10/14 (a 5.8 px ring on a 30 px spot). A hollow triangle's band is as wide: the inner
+     triangle's R is 2·RING·r less. */
+  var TRI = Math.sqrt(4 * Math.PI / (3 * Math.sqrt(3))), RING = 3 / 8;
   function triangle(x, y, R) {
     ctx.beginPath();
     for (var k = 0; k < 3; k++) { var t = -Math.PI / 2 + 2 * Math.PI * k / 3; ctx[k ? 'lineTo' : 'moveTo'](x + R * Math.cos(t), y + R * Math.sin(t)); }
@@ -477,9 +491,9 @@
   /* Settings → Dead spots half size (v130, Peter; on by default): a spot of degree 3 drawn at half the
      diameter. Drawing only — curves still keep clear of the full disc. */
   function spotRadius(i) {
-    var t = armed ? armed.targets : stroke ? stroke.targets : null;
-    if (t && t[i]) return 2 * SPOT_R;
-    return route.smallDead && game.spots[i].deg >= 3 ? SPOT_R / 2 : SPOT_R;
+    var t = armed ? armed.targets : stroke ? stroke.targets : null, own = R.spotRadius(game.spots[i], SPOT_R);   // (v189: a spot drawn smaller to make room)
+    if (t && t[i]) return 2 * own;
+    return route.smallDead && game.spots[i].deg >= 3 ? own / 2 : own;
   }
   function isMarked(i) { return !!(armed && armed.markedSpots[i]); }
 
@@ -531,7 +545,7 @@
     for (var i = 0; i < n; i++) {
       var placed = false;
       for (var tries = 0; tries < 2000 && !placed; tries++) {
-        var p = [margin + Math.random() * (W - 2 * margin), margin + Math.random() * (H - 2 * margin)];
+        var p = [margin + rng() * (W - 2 * margin), margin + rng() * (H - 2 * margin)];
         placed = pts.every(function (q) { return G.dist(p, q) >= MIN_SEP; });
         if (placed) pts.push(p);
       }
@@ -541,27 +555,67 @@
   }
 
   /* layout: the Game menu's unless given (key 0 asks for 'manual' without changing the menu).
-     preview (v102): the new game only shows the menu's layout — a computer to move first waits for N */
-  function newGame(layout, preview) {
+     preview (v102): the new game only shows the menu's layout — a computer to move first waits for N.
+     afresh (v193): lay the spots out anew even with the Random or Place-by-hand layout — by default N and
+     Game → New game keep the present game's initial seeds with those layouts (Peter 10/20: "use the existing
+     point distribution and not create or wait for a new one"); the keys 1–9 and 0, and a change in the menu,
+     lay out anew. The seeds kept are the spots the game started with and those added by hand (originalSpots),
+     scaled to the drawing area if its size changed; the Spots field is set to their number. */
+  /* v185 (Peter 10/19): a new game's sizes follow its drawing area — with C the mean of its width and
+     height, spot size (the diameter) C/70 and index size C/50, each held to its slider's range. A loaded game
+     keeps the sizes saved with it; the sliders can still be moved by hand.
+     v195 (Peter 10/21, his game of 13-57-53 in 1456 x 937: "the default line thickness now is the maximum
+     available … when I type N the system changes the line thickness to max size"): the curve thickness no
+     longer follows the area — C/150 gave 8 px there and the slider's 7.5 px maximum from 1300 px up, while he
+     draws with 4.5–5.8 px whatever the area; the slider's own value stays (default × 2.3 = 5.8 px). And the
+     sizes are set from the area ONLY WHEN THE AREA HAS CHANGED since they were last set from it (sizedFor):
+     N in the same area leaves the sliders as the player set them. */
+  var sizedFor = null;
+  var seedsLoaded = false;   // the present game's seeds came from a file (useLoaded) or are kept from one: N keeps them (v196)
+  function sizesFor(W, H) {
+    var key = W + 'x' + H;
+    if (key === sizedFor) return;
+    sizedFor = key;
+    var C = (W + H) / 2;
+    [['opt-spotsize', C / 70 / (2 * SPOT_R0)], ['opt-numbersize', C / 50 / NUMBER_PX0]].forEach(function (s) {
+      var el = document.getElementById(s[0]), v = Math.min(Number(el.max), Math.max(Number(el.min), s[1]));
+      el.value = v; el.dispatchEvent(new Event('input'));
+    });
+  }
+  function newGame(layout, preview, afresh) {
     if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true, null, true); return; }   // (v79)
     var nb = net && !netAllow ? netBlock(true) : null;
     if (nb) { say(nb, true, null, true); return; }
     if (typeof layout !== 'string') layout = document.getElementById('opt-layout').value;
     var n = Math.floor(Number(document.getElementById('opt-spots').value));
-    var W = stage.clientWidth, H = stage.clientHeight, pts = [];
-    if (layout !== 'manual') {
+    var W = stage.clientWidth, H = stage.clientHeight, pts = [], kept = null;
+    sizesFor(W, H);
+    var seed = reseed();                           // (v201: a seeded run starts afresh with every new game)
+    if (seed !== null) afresh = true;              // (with a seed the layout is repeatable anyway, and the kept seeds may have been moved by R: lay out anew)
+    /* (v196, Peter 10/21: after Load game, N went back to 5 spots in an ellipse) a loaded game's seeds are kept by
+       N too, whatever the Layout menu says, until a layout is asked for (a digit key, 0, or a change of Spots or Layout) */
+    if (!preview && !afresh && (layout === 'random' || layout === 'manual' || seedsLoaded) && game.phase !== 'place' && game.spots.length) {
+      var orig = originalSpots(), sx = W / game.W0, sy = H / game.H0;
+      kept = game.spots.filter(function (sp, i) { return orig[i]; }).map(function (sp) { return [sp.x * sx, sp.y * sy]; });
+      /* (v198) a Spots field that asks for another number than the seeds kept asks for a new layout — with a game under way
+         the field's change previews nothing, so this was the only way left to a new random layout of another size */
+      if (kept.length && (!(n >= 1) || n === kept.length)) { pts = kept; n = kept.length; document.getElementById('opt-spots').value = n; } else kept = null;
+    }
+    if (kept) layout = layout + ' kept';
+    else if (layout !== 'manual') {
+      seedsLoaded = false;
       if (!(n >= 1)) { say('The number of spots must be at least 1.', true, null, true); return; }
       pts = layout === 'ellipse' ? layoutEllipse(n, W, H) : layout === 'circle' ? layoutCircle(n, W, H) : layout === 'line' ? layoutLine(n, W, H) : layoutRandom(n, W, H);
       if (!pts) { say('Unable to fit ' + n + ' spots in a window this size.', true, null, true); return; }
     }
     game = {
       W0: W, H0: H, edges: [], player: 1, moves: 0, added: 0,
-      phase: layout === 'manual' ? 'place' : 'play', rules: document.getElementById('opt-rules').value,
+      phase: layout === 'manual' ? 'place' : 'play', rules: document.getElementById('opt-rules').value,   // ('manual kept' plays at once)
       spots: pts.map(function (p) { return { x: p[0], y: p[1], deg: 0 }; })
     };
     history = []; historyWhy = {}; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = !!preview; aiHalt = false; titleKey = null; browsing = false; redoList = [];
     log(layout === 'manual' ? 'New game: spots to be placed by hand, ' + rulesName(game.rules) + '.'
-                            : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + layout + '), ' + rulesName(game.rules) + '.');
+                            : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + (kept ? 'the same seeds as before' : layout) + '), ' + rulesName(game.rules) + (seed === null ? '' : ', random seed ' + seed) + '.');
     resizeCanvas();
     netGameStarted();
     sayTurn();
@@ -1009,19 +1063,23 @@
      With workers (v118) Z draws the position once for EVERY region as the outer one, side by side
      (freshParallel), and keeps the drawing with the most room; without them (a page opened as a
      file) only with the present outside, on the page's own thread as A and R. */
-  function relayDrawing(kind, fresh) {
+  function relayDrawing(kind, fresh, smallByHand) {
     if (relaying || band || game.phase === 'place' || !game.spots.length || (kind === 'adjust' && !game.edges.length)) return;
     /* A, R or Z while a move waits for room (v50, Peter 9/24: offer R when the move cannot be made otherwise; A too, v136):
        redraw, then try that move again — from the same region, the marks kept */
     var retry = !fresh && pendingRoom && armed ?   // (A too since v136, Peter)
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
-    var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2 }, from = game;
+    var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
+              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min) }, from = game;
+    /* (v189) Z for a move — the computer's (fresh) or a human's waiting for room (retry) — may draw spots in
+       tight places smaller if that player's • box in the Room menu is on; Z by itself only by the key . (v191, smallByHand) */
+    var small = kind === 'fresh' && (smallByHand || (fresh ? !!fresh.mv && route.autoAI.S : !!retry && route.autoHuman.S && !route.heroic));
     if (kind === 'fresh') {
       o.tight = true; o.keepKnots = true;
       ensurePool();                               // (finds out whether workers can be had at all)
       if (!noWorkers) {
-        relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(),
+        relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(), small: small,
                      before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
         freshParallel(relaying, o);
         say(relayWord() + '…   Space stops');
@@ -1031,7 +1089,7 @@
       from = Ly.freshGame(game, fresh ? fresh.mv : null, fresh ? fresh.player : game.player, -1, route.D);   // (the present outside stays outside)
       if (!from) return;
     }
-    relaying = { kind: kind, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(),
+    relaying = { kind: kind, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(), small: small,
                  before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
     say(relayWord() + '…   Space stops');
     draw();                                       // the gray background at once, also when not animated
@@ -1041,9 +1099,15 @@
      (v181, Peter 10/19: "the first with at least 0 px is taken" said nothing — the picture before is
      measured at its single tightest place, often 0–1 px or less in a crowded picture, and a layout with
      no room is refused anyway): with no room before, the bar is drawing the position at all. */
+  /* (v194, Peter's 100-seed game of 10/20: a 38-minute Z at move 116 — the picture before had 3 px against a minimum
+     clearance of 6; the best full-size layout had 2.6 px and the bar of 3 was never met, so all 51 layouts were run)
+     The bar is the room before only when that is at least the minimum clearance; a picture already below it is
+     broken, and the first layout that draws the position at all is taken (zBarOf). */
+  function zBarOf(before) { return before >= route.d0 ? before : 0; }
   function zBar(before) {
-    if (!(before > 0) || !isFinite(before)) return 'that draws the position';
-    return 'with at least the room before (' + (before < 1 ? before.toFixed(1) : Math.round(before)) + ' px)';
+    var bar = zBarOf(before);
+    if (!(bar > 0) || !isFinite(bar)) return 'that draws the position';
+    return 'with at least the room before (' + (bar < 1 ? bar.toFixed(1) : Math.round(bar)) + ' px)';
   }
   /* Z on the workers (v118): one job per region of the position (after the move), that region
      outside; each worker takes the next region when it is done. When all are done, or Space stops
@@ -1054,8 +1118,9 @@
      as it goes: the least distance of a point to anything it could hit) — a comparison, no rule of
      its own; the final smooth drawings are not shown until the best is chosen.
      STRAGGLERS (v120, Peter): once half the layouts are done, a layout still running when it has
-     taken as long again as the slowest finished one did is given up (its worker is replaced) — a
-     comparison with the others, no time limit of its own. (On his 30-spot game of 9/30, 14 of 50
+     taken twice as long as the median finished one did (drawn or failed, v185; the median since v194 — the
+     slowest let one layout run 10 minutes alone) is given up (its worker is replaced) — a comparison with
+     the others, no time limit of its own. (On his 30-spot game of 9/30, 14 of 50
      layouts ran on for 25 minutes; the cause, a spot pressed onto a curve, is fixed in redraw.js,
      but a layout can still be far slower than the rest.) */
   var drawPool = [];     // the workers that draw afresh (sprouts-draw-worker.js), started on demand, as many as the Workers menu says
@@ -1074,20 +1139,42 @@
     while (drawPool.length > n) drawPool.pop().terminate();
     while (drawPool.length < n) drawPool.push(new Worker('sprouts-draw-worker.js' + version()));
     var par = rl.par = { order: order, outer: F.outer, next: 0, done: 0, results: [], best: null, workers: n,
-                         running: {}, shown: F.outer, shows: 1, slowest: 0, givenUp: 0 };   // running: face → { w, gap, t0 }
+                         running: {}, shown: F.outer, shows: 1, times: [], givenUp: 0 };   // running: face → { w, gap, t0 }; times: of the finished layouts (not those given up)
+    var bar = zBarOf(rl.before);
+    par.over = function () { return par.early || par.roundFailed || par.roundDone || par.done === order.length; };
     function finished(m) {
       var j = par.running[m.face];
       if (j) m.secs = (Date.now() - j.t0) / 1000;
-      if (j && !m.error) par.slowest = Math.max(par.slowest, Date.now() - j.t0);
+      /* v185 (Peter 10/19): the stragglers' comparison counts every layout that came back, drawn or failed — with
+         only drawn ones counted, a Z where all failed had nothing to compare with, and one layout ran on for 4
+         minutes after the other 19 had failed within 35 s. A layout given up as too slow does not count (its
+         time is the limit itself, and would raise it). v194: the times are kept, the comparison is with their
+         MEDIAN (was: the slowest — with finished times from 138 to 1754 s the limit was 58 minutes). */
+      if (j && !/^given up/.test(m.error || '')) par.times.push(Date.now() - j.t0);
       par.done++; par.results.push(m); delete par.running[m.face];
+      /* (v194) a round complete (one layout per worker) with a layout drawn — at full size, or with smaller spots
+         where • allows it — ends Z with the best so far: the others are not waited for (before, once any full-size
+         layout had drawn below the bar, every layout was run to the end for the roomiest) */
+      var drawn = function () { return par.best || (rl.small && par.bestSmall); };
+      /* (v189) a layout drawn only with some spots smaller (m.small) is no success at full size: it is kept
+         aside, the one with the least shrinking (its smallest spot the largest, then the fewest small
+         spots), and taken only when no layout is drawn at full size and • allows it (freshResult) */
+      if (!m.error && m.small && m.small.length) {
+        m.least = Math.min.apply(null, m.small.map(function (q) { return q.f; }));
+        if (!par.bestSmall || m.least > par.bestSmall.least || (m.least === par.bestSmall.least && m.small.length < par.bestSmall.small.length)) par.bestSmall = m;
+        if (rl.small && !(m.clearance < bar)) { par.early = m; return; }   // (v194: with • on, a layout with smaller spots meets the bar too)
+        if (par.done >= par.workers && par.done < order.length) { if (drawn()) par.roundDone = true; else par.roundFailed = true; }
+        if (m.face === par.shown) showNext();
+        return;
+      }
       if (!m.error && (!par.best || m.clearance > par.best.clearance)) par.best = m;
       /* DONE as soon as a layout is drawn with at least the room of the picture before (v121, Peter:
          "all we wish to accomplish is to draw the picture") — the others are not waited for */
-      if (!m.error && !(m.clearance < rl.before)) { par.early = m; return; }
+      if (!m.error && !(m.clearance < bar)) { par.early = m; return; }
       /* v183 (Peter 10/19): a whole round failed — as many layouts as there are workers, none drawn — and Z
          gives up: in his 60-seed game every layout failed, 51 of them over 21 minutes (and 79 over 98 the
          night before); the others are not waited for. The comparison is with the round, no time limit. */
-      if (!par.best && par.done >= par.workers && par.done < order.length) par.roundFailed = true;
+      if (par.done >= par.workers && par.done < order.length) { if (drawn()) par.roundDone = true; else par.roundFailed = true; }
       if (m.face === par.shown) showNext();
     }
     function showNext() {                         // the running job with the widest gap now goes on screen
@@ -1111,7 +1198,7 @@
         if (m.gap !== undefined) { if (par.running[face]) par.running[face].gap = m.gap; return; }
         if (m.picture) { if (par.shown === face) { game = m.picture; draw(); } return; }
         m.face = face; finished(m);
-        if (par.early || par.roundFailed || par.done === order.length) { finishRelaying(false); return; }
+        if (par.over()) { finishRelaying(false); return; }
         sayProgress(); give(w);
         if (par.shown === null) showNext();       // (a job just started while none was on screen)
       };
@@ -1120,7 +1207,7 @@
         if (relaying !== rl) return;
         log('Script error in a drawing worker: ' + e.message);
         finished({ face: face, error: 'a script error (' + e.message + ')' });
-        if (par.early || par.roundFailed || par.done === order.length) finishRelaying(false); else give(w);
+        if (par.over()) finishRelaying(false); else give(w);
       };
       w.postMessage({ id: face, game: base, mv: mv, player: player, outerFace: face, o: o, show: face === par.shown });
     }
@@ -1132,17 +1219,18 @@
           false, null, false);
     }
     function stragglers() {                       // (see above)
-      if (relaying !== rl || 2 * par.done < order.length || !par.slowest) return;
+      if (relaying !== rl || 2 * par.done < order.length || !par.times.length) return;
+      var sorted = par.times.slice().sort(function (a, b) { return a - b; }), median = sorted[Math.floor(sorted.length / 2)];
       Object.keys(par.running).forEach(function (k) {
         if (relaying !== rl) return;
         var j = par.running[k], face = Number(k);
-        if (Date.now() - j.t0 <= 2 * par.slowest) return;
+        if (Date.now() - j.t0 <= 2 * median) return;
         j.w.terminate();
         var w = new Worker('sprouts-draw-worker.js' + version()), at = drawPool.indexOf(j.w);
         if (at >= 0) drawPool[at] = w;
         par.givenUp++;
-        finished({ face: face, error: 'given up: it took as long again as the slowest finished layout' });
-        if (par.early || par.roundFailed || par.done === order.length) { finishRelaying(false); return; }
+        finished({ face: face, error: 'given up: it took twice as long as the typical finished layout' });
+        if (par.over()) { finishRelaying(false); return; }
         give(w);
         if (par.shown === null) showNext();
       });
@@ -1166,21 +1254,47 @@
     drawPool.forEach(function (w) { w.terminate(); }); drawPool = [];   // (v141: always — idle, they kept their memory from the thinking workers)
     var fails = par.results.filter(function (m) { return m.error; }), running = Object.keys(par.running).length;
     par.summary = par.results.slice().sort(function (a, b) { return (b.error ? -Infinity : b.clearance) - (a.error ? -Infinity : a.clearance); }).map(function (m) {
-      return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '')) +
+      return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '') +
+                                                                                   (m.small && m.small.length ? ', ' + m.small.length + ' spot' + (m.small.length > 1 ? 's' : '') + ' smaller (down to ' + Math.round(2 * m.least * SPOT_R) + ' px)' : '')) +
              (m.secs !== undefined ? ' in ' + Math.round(m.secs) + ' s' : '');
     }).join('; ') + (running ? '; still running when it ended: ' + running + (all - par.next > 0 ? '; not started: ' + (all - par.next) : '') : all - par.next > 0 ? '; not started: ' + (all - par.next) : '');
     /* (v183) why they failed, each reason once with how many layouts gave it — it was not logged at all */
     var whys = {};
     fails.forEach(function (m) { var w = /^given up/.test(m.error) ? 'given up as too slow' : m.error; whys[w] = (whys[w] || 0) + 1; });
     if (fails.length) par.summary += '\n    Why they failed: ' + Object.keys(whys).sort(function (u, v) { return whys[v] - whys[u]; }).map(function (w) { return w + ' (' + whys[w] + ')'; }).join('; ') + '.';
+    if (par.early) return par.early;                      // (v194: may be a layout with smaller spots)
     if (par.best) return par.best;
-    if (par.roundFailed) return { error: 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried — the picture has run out of room. ' +
+    if (rl.small && par.bestSmall) return par.bestSmall;   // (v189: • — some spots drawn smaller)
+    /* v185: every layout failed (as in a game where there are no more regions than workers, so the round is all of
+       them) is the same news as a failed round, and gets the same message */
+    if (par.roundFailed || par.done === all) return { error: (par.roundFailed ? 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried'
+                                                                               : 'all ' + all + ' layouts (each region outside in turn) failed') + ' — the picture has run out of room. ' +
                                          'More room: smaller spots (Settings → Spot size) or a smaller Minimum clearance (Settings); for the next game, a larger drawing area (Game → Size: during a game the picture is only scaled)', clearance: -Infinity, outOfRoom: true };
-    return { error: par.done < all ? (par.done ? 'none of the ' + par.done + ' layouts finished so far could be drawn' : 'stopped before any layout was finished')
-                                   : 'none of the ' + all + ' layouts (each region outside in turn) could be drawn: ' + (fails[0] ? fails[0].error : ''),
+    return { error: par.done ? 'none of the ' + par.done + ' layouts finished so far could be drawn' : 'stopped before any layout was finished',
              clearance: -Infinity };
   }
-  function relayWord() { return relaying.kind === 'adjust' ? 'Adjusting the drawing' : relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') : 'Rearranging the drawing'; }
+  /* (v189, Peter: "a summary at the end of the log") the spots still drawn smaller when the game ends */
+  function logSmallAtEnd() {
+    var small = [];
+    game.spots.forEach(function (s, i) { if (s.f) small.push(i); });
+    log(small.length ? 'At the end ' + small.length + ' of ' + game.spots.length + ' spots are drawn smaller than their size (' + Math.round(2 * SPOT_R) + ' px): ' +
+                       small.map(function (i) { return (i + 1) + ' (' + Math.round(2 * R.spotRadius(game.spots[i], SPOT_R)) + ' px)'; }).join(', ') + '.'
+                     : 'At the end every spot is drawn at its size (' + Math.round(2 * SPOT_R) + ' px).');
+  }
+  /* (v189) the spots drawn smaller or grown back between pictures g0 and g1, in the log */
+  function logSizes(g0, g1) {
+    var smaller = [], back = [];
+    g1.spots.forEach(function (s, i) {
+      var f0 = i < g0.spots.length && g0.spots[i].f ? g0.spots[i].f : 1, f1 = s.f || 1;
+      if (f1 < f0 - 1e-6) smaller.push(i); else if (f1 > f0 + 1e-6) back.push(i);
+    });
+    var px = function (i) { return Math.round(2 * R.spotRadius(g1.spots[i], SPOT_R)); };
+    if (smaller.length) log('    Spot' + (smaller.length > 1 ? 's ' : ' ') + smaller.map(function (i) { return (i + 1) + ' (' + px(i) + ' px)'; }).join(', ') +
+                            ' drawn smaller to make room (Room menu: •; their size is ' + Math.round(2 * SPOT_R) + ' px).');
+    if (back.length) log('    Spot' + (back.length > 1 ? 's ' : ' ') + back.map(function (i) { return (i + 1) + (g1.spots[i].f ? ' (' + px(i) + ' px)' : ''); }).join(', ') +
+                         ' grown back' + (back.some(function (i) { return g1.spots[i].f; }) ? ' (those in brackets not yet to full size)' : ' to full size') + '.');
+  }
+  function relayWord() { return relaying.kind === 'adjust' ? 'Adjusting the drawing' : relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') + (relaying.small ? ' (spots smaller where there is no room)' : '') : 'Rearranging the drawing'; }
   function relayFrame() {
     if (!relaying) return;
     var st = relaying.st;
@@ -1198,6 +1312,9 @@
     relaying = null;
     var r = par ? freshResult(rl) : Rd.finishRedraw(st), not = adjust ? 'Not adjusted: ' : fresh ? 'Not drawn afresh: ' : 'Not rearranged: ';
     game = JSON.parse(rl.start);
+    /* (v189) a fresh picture with spots smaller than their size only where • allows it (A and R keep what spots
+       had: they only grow spots made smaller before) */
+    if (!r.error && fresh && !par && r.small && r.small.length && !rl.small) r.error = 'there is room only with some spots drawn smaller (Room menu: • is off)';
     if (r.error) {
       say(not + r.error, true, not + r.error + (par ? '' : ' (least clearance ' + r.clearance.toFixed(1) + ' px)') + (par && par.summary ? '\n    ' + par.summary : '')); draw();
       if (rl.fresh) rl.fresh.onFail(); else if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
@@ -1208,9 +1325,9 @@
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
     var what = adjust ? 'Adjusted the drawing' : fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing';
     log(what +
-        ((par ? par.done === par.order.length || par.early : st.done) ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
+        ((par ? par.done === par.order.length || par.early || par.roundDone : st.done) ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s' +
-        (par ? ' (' + (par.early ? 'the first layout ' + zBar(rl.before) + ', after ' + par.done + ' of ' + par.order.length : par.done + ' of ' + par.order.length + ' layouts') +
+        (par ? ' (' + (par.early ? 'the first layout ' + zBar(rl.before) + ', after ' + par.done + ' of ' + par.order.length : (par.roundDone ? 'the best of the first round, ' : '') + par.done + ' of ' + par.order.length + ' layouts') +
                ' on ' + par.workers + ' workers, each region outside in turn' +
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
                (r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
@@ -1218,6 +1335,7 @@
         (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
     if (par) log('    The layouts (each with another region outside), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
+    logSizes(JSON.parse(rl.start), game);
     if (rl.fresh) {                               // the computer's move, made in the new picture (the two curves are R's, certified)
       var f = rl.fresh;
       marksUsed = null; note = null; browsing = false; redoList = [];   // (the router's leftovers; a move ends browsing, as in commitMove)
@@ -1461,20 +1579,43 @@
      gray (v65): the work starts after the next frame is painted (a timeout
      from inside requestAnimationFrame runs after that frame's paint). */
   /* What a refusal for lack of room offers by hand: M (not in Heroic mode, v68: no local room-making), A, R, Z. */
-  function roomOffer() { return route.heroic ? '   A, R or Z: redraw and try again' : '   M: make room   —   A, R or Z: redraw and try again'; }
-  /* ---- THE LADDER (v152, Peter 10/7) ----
+  function roomOffer() { return (route.heroic ? '   A, R or Z: redraw and try again' : '   M: make room   —   A, R or Z: redraw and try again') + '   —   .: afresh with smaller spots'; }
+  /* ---- THE LADDER (v152, Peter 10/7; v191, Peter 10/20) ----
      The four ways of making room for a move that does not fit, in increasing complexity: M (slide spots,
-     push curves: makeRoom), A (adjust the drawing), R (rearrange it), Z (draw the picture afresh). The Room
+     push curves: makeRoom), A (adjust the drawing), R (rearrange it), Z (draw the picture afresh); and
+     after Z the step • (Z allowing spots in tight places to be drawn smaller; by hand the key .). The Room
      menu says, separately for a human's moves and the computer's (route.autoHuman, route.autoAI), which of
-     them are used AUTOMATICALLY: when a move is refused for lack of room, the next one switched on is
-     run, then the move is tried again — each at most once for the move, in that order. When those switched
-     on are used up, it stops and says so; the move stays armed, and M, A, R and Z by hand still try it
-     again (then without the automatic ones). Heroic switches the human's off (and the computer's M: the
-     curves drawn by hand have corners, which moving curves cannot handle). The computer's ladder: aiClimb. */
+     them are used AUTOMATICALLY. A human's move (climbOn): when it is refused for lack of room, the steps
+     are taken in the order M, A, R, Z, •, each at most once for the move, as long as their boxes are
+     checked; at the first box NOT checked the ladder stops and offers that step and the ones after it by
+     hand (v191: before, unchecked steps were skipped) — except A, which is skipped when unchecked (v193). A step pressed by hand tries the move again, and the
+     ladder goes on from there by the same rule. Heroic switches the human's off (and the computer's M: the
+     curves drawn by hand have corners, which moving curves cannot handle). The computer's ladder (aiClimb)
+     is unchanged: its checked rungs in order, the unchecked ones skipped. */
   var LADDER = ['M', 'A', 'R', 'Z'];
-  var LADDER_NAME = { M: 'making room', A: 'adjusting', R: 'rearranging', Z: 'drawing afresh' };
-  var climb = null;      // the human's ladder for the move waiting for room: { a, b, moves, next (index into LADDER), used, stopped } — new for every click on a destination
-  function ladderText(used) { return used.map(function (k) { return LADDER_NAME[k] + ' (' + k + ')'; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
+  var LADDER_NAME = { M: 'making room', A: 'adjusting', R: 'rearranging', Z: 'drawing afresh', S: 'spots drawn smaller' };
+  var LADDER_OFFER = { M: 'make room', A: 'adjust', R: 'rearrange', Z: 'draw afresh', S: 'afresh with smaller spots' };
+  /* the Room menu's boxes: the rungs, and • (v189, Peter 10/20: S here — when Z fails for a move, its fresh
+     picture may draw spots in tight places smaller; off for a human, on for the computer) */
+  var AUTO_KEYS = LADDER.concat(['S']);
+  function autoLabel(k) { return k === 'S' ? '•' : k; }
+  function autoKey(k) { return k === 'S' ? '.' : k; }
+  var climb = null;      // the human's ladder for the move waiting for room: { a, b, moves, next (index into AUTO_KEYS), used, stopped } — new for every click on a destination
+  function ladderText(used) { return used.map(function (k) { return LADDER_NAME[k] + ' (' + autoLabel(k) + ')'; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
+  /* the steps from index i on, offered by hand: "A (adjust), R (rearrange), Z (draw afresh) or . (afresh with smaller spots)" */
+  function ladderOffer(i) {
+    var rest = AUTO_KEYS.slice(i).filter(function (k) { return !(k === 'M' && route.heroic); });
+    return rest.map(function (k) { return autoKey(k) + ' (' + LADDER_OFFER[k] + ')'; }).join(', ').replace(/, ([^,]*)$/, ' or $1');
+  }
+  /* A step pressed by hand (M, A, R, Z or .) while a move waits for room: the ladder goes on after it
+     (v191, Peter: "when the user enters an option it should try the last chosen move again" — and then the
+     next checked boxes as before). Never back down: a step is used at most once for the move. */
+  function byHand(k) {
+    if (!climb || !armed || !pendingRoom || climb.a !== armed.a || climb.b !== pendingRoom.b || climb.moves !== game.moves) return;
+    climb.next = Math.max(climb.next, AUTO_KEYS.indexOf(k) + 1);
+    if (climb.used.indexOf(k) < 0) climb.used.push(k);
+    climb.stopped = false;
+  }
   /* A refusal for lack of room, the move armed again (armed, pendingRoom): the computer's move makes room
      here if its M is on (once for the move: aiTry's first round — its other rungs are aiClimb's); a human's
      move climbs the ladder. */
@@ -1486,10 +1627,12 @@
     if (!armed || !pendingRoom || route.heroic) return;
     var a = armed.a, b = pendingRoom.b;
     if (!climb || climb.a !== a || climb.b !== b || climb.moves !== game.moves) climb = { a: a, b: b, moves: game.moves, next: 0, used: [] };
-    if (climb.stopped) return;                     // (used up, or stopped with Space: only by hand now)
-    while (climb.next < LADDER.length) {
-      var k = LADDER[climb.next++];
-      if (!route.autoHuman[k]) continue;
+    if (climb.stopped) return;                     // (used up, or stopped with Space: a step by hand goes on, byHand)
+    while (climb.next < AUTO_KEYS.length) {
+      var k = AUTO_KEYS[climb.next];
+      if (!route.autoHuman[k]) { if (k === 'A') { climb.next++; continue; } break; }   // (v191: the first box not checked stops the ladder; it and the rest are offered below — except A, which is simply skipped: v193, Peter never uses it)
+      climb.next++;
+      if (k === 'S') { if (climb.used.indexOf('Z') >= 0 && climb.used.indexOf('S') < 0) climb.used.push('S'); continue; }   // (• went with Z: relayDrawing's small)
       climb.used.push(k);
       log('No room for ' + (a + 1) + ' → ' + (b + 1) + ': ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
       if (k === 'M') { makeRoom(); if (roomBusy) return; continue; }
@@ -1498,8 +1641,9 @@
       if (!armed) { climb.stopped = true; return; }   // (Z could not lay the position out: it said why)
     }
     climb.stopped = true;
-    if (!climb.used.length) return;                // (none switched on: the refusal's own message stands)
-    say('Still no room for ' + (a + 1) + ' → ' + (b + 1) + ', even after ' + ladderText(climb.used) + '.' + roomOffer().replace(/try again$/, 'try again by hand') + '   —   or click another spot', true);
+    if (!climb.used.length) return;                // (stopped at the first box: the refusal's own message offers every step)
+    var rest = climb.next < AUTO_KEYS.length ? '   By hand: ' + ladderOffer(climb.next) + ', each tries the move again' : roomOffer().replace(/try again$/, 'try again by hand');
+    say('Still no room for ' + (a + 1) + ' → ' + (b + 1) + ', even after ' + ladderText(climb.used) + '.' + rest + '   —   or click another spot', true);
     draw();
   }
   /* Making room (M by hand, or as the first rung of the ladder — climbOn, roomWanted): in a
@@ -1954,7 +2098,7 @@
     line += '\n    ' + countsText().replace(/  /g, ', ') + '.';
     log(line);
     marksUsed = null;
-    if (game.phase === 'over') log(gameOverText().replace(/\s{2,}/g, ' '));
+    if (game.phase === 'over') { log(gameOverText().replace(/\s{2,}/g, ' ')); logSmallAtEnd(); }
     if (net && !(ai && ai.remote)) net.session.moved(game.moves - 1, netDescribe(mv.a, mv.b));   // (v79: my move goes to the other computer; sayTurn says so)
     sayTurn(); draw();
     if (note) { statusEl.textContent += '   —   ' + note; statusEl.classList.add('warn'); note = null; }
@@ -1987,6 +2131,7 @@
   function toggleNumbers() { showNumbers = !showNumbers; document.getElementById('opt-numbers').checked = showNumbers; draw(); }
   function toggleTriangles() { var el = document.getElementById('opt-triangles'); el.checked = !el.checked; route.triangles = el.checked; draw(); }   // T (v132)
   function toggleDeadNumbers() { var el = document.getElementById('opt-deadnumbers'); el.checked = !el.checked; route.deadNumbers = !el.checked; draw(); }   // G (v133)
+  function toggleSeedNumbers() { var el = document.getElementById('opt-seednumbers'); el.checked = !el.checked; route.seedNumbers = !el.checked; draw(); }   // / (v191)
   function toggleSmallDead() { var el = document.getElementById('opt-smalldead'); el.checked = !el.checked; route.smallDead = el.checked; draw(); }   // H (v131)
   function savePNG() {
     canvas.toBlob(function (blob) { download('sprouts-' + stamp() + '.png', blob); }, 'image/png');
@@ -2006,6 +2151,7 @@
      and moves undone to replay them with a fix. */
   function gameData() {
     return { format: 'sprouts-game', version: 2, game: game, route: route, colours: colours,   // (colours: v42)
+             players: players, area: { w: stage.clientWidth, h: stage.clientHeight },   // (v185, Peter: the players and the drawing area's size too)
              history: history.map(function (h) { return JSON.parse(h); }) };
   }
   function saveGame() {
@@ -2050,10 +2196,16 @@
     if (data.route) applySettings(data.route);
     if (data.colours) applyColours(data.colours);
     if (game.rules) document.getElementById('opt-rules').value = game.rules;
+    if (!moved && data.players) applyPlayers(data.players);   // (v185: before, the players were not saved)
     resizeCanvas(); sayTurn();
     if (moved) return;                            // (the caller goes on: the menus, the log, then the computer)
     statusEl.textContent += '   —   loaded ' + name;
     logLoaded(name);
+    if (data.players) log('Players from the file: ' + [1, 2].map(function (p) { return 'Player ' + p + ' (' + playerName(p) + ') ' + playerText(p); }).join(', ') + '.');
+    /* (v185) the drawing area's size saved with it, as Game → Size sets it (in a tab: inside the window) */
+    if (data.area && data.area.w > 0 && data.area.h > 0 && (data.area.w !== stage.clientWidth || data.area.h !== stage.clientHeight)) { sizeKeepsGame = true; applySize(Math.round(data.area.w), Math.round(data.area.h)); }   // (the loaded game is kept, not laid out afresh)
+    sizedFor = (data.area && data.area.w > 0 ? Math.round(data.area.w) + 'x' + Math.round(data.area.h) : stage.clientWidth + 'x' + stage.clientHeight);   // (v195: the loaded sizes count as set for this area — a new game here keeps them)
+    seedsLoaded = true; document.getElementById('opt-spots').value = Object.keys(originalSpots()).length;   // (v196: N starts a new game from the file's seeds; the Spots field shows their number)
     maybeAI();
   }
   /* The log lines for a loaded game: its start and every move so far,
@@ -2102,12 +2254,13 @@
     if (typeof r.animate === 'boolean') { document.getElementById('opt-animate').checked = r.animate; route.animate = r.animate; }
     if (typeof r.click === 'boolean') { document.getElementById('opt-click').checked = r.click; route.click = r.click; }
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
+    if (typeof r.seedNumbers === 'boolean') { document.getElementById('opt-seednumbers').checked = !r.seedNumbers; route.seedNumbers = r.seedNumbers; }
     if (typeof r.smallDead === 'boolean') { document.getElementById('opt-smalldead').checked = r.smallDead; route.smallDead = r.smallDead; }
     if (typeof r.triangles === 'boolean') { document.getElementById('opt-triangles').checked = r.triangles; route.triangles = r.triangles; }
     /* the Room menu's eight boxes (v152); a file from before has Shift spots / curves automatically, which were M for both */
     var oldM = typeof r.shiftSpots === 'boolean' || typeof r.shiftCurves === 'boolean' ? r.shiftSpots === true || r.shiftCurves === true : null;
     ['autoHuman', 'autoAI'].forEach(function (set) {
-      LADDER.forEach(function (k) {
+      AUTO_KEYS.forEach(function (k) {
         if (r[set] && typeof r[set][k] === 'boolean') route[set][k] = r[set][k];
         else if (k === 'M' && oldM !== null) route[set].M = oldM;
       });
@@ -2236,7 +2389,7 @@
   }
   [sizeW, sizeH].forEach(function (f) { f.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sizeFromFields(); } }); });
   document.getElementById('cmd-size-set').addEventListener('click', sizeFromFields);
-  [['cmd-size-1090', 1090, 607], ['cmd-size-1280', 1280, 742], ['cmd-size-1024', 1024, 1024]].forEach(function (s) {
+  [['cmd-size-1090', 1090, 607], ['cmd-size-1280', 1280, 742], ['cmd-size-1024', 1024, 1024], ['cmd-size-512', 512, 512]].forEach(function (s) {
     document.getElementById(s[0]).addEventListener('click', function () { sizeW.value = s[1]; sizeH.value = s[2]; applySize(s[1], s[2]); });
   });
   document.getElementById('cmd-size-square').addEventListener('click', function () { applySize(0, 0, true); });
@@ -2254,10 +2407,10 @@
   var lastLayout = 'ellipse';
   function quickGame(n) {
     var sel = document.getElementById('opt-layout');
-    if (!n) { if (sel.value !== 'manual') lastLayout = sel.value; sel.value = 'manual'; newGame('manual'); return; }
+    if (!n) { if (sel.value !== 'manual') lastLayout = sel.value; sel.value = 'manual'; newGame('manual', false, true); return; }
     if (sel.value === 'manual') sel.value = lastLayout;
     document.getElementById('opt-spots').value = n;
-    newGame();
+    newGame(undefined, false, true);
   }
   /* N and Game → New game (v127, Peter): while spots are being placed by hand, they start the game
      from those spots (as Enter does); otherwise a new game. */
@@ -2275,7 +2428,7 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { makeRoom(); }, d: drawAgain, a: function () { relayDrawing('adjust'); }, r: function () { relayDrawing('redraw'); }, z: function () { relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: function () { byHand('A'); relayDrawing('adjust'); }, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); }, '.': function () { byHand('S'); relayDrawing('fresh', null, true); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -2418,6 +2571,7 @@
   ['opt-spotsize', 'opt-linewidth', 'opt-numbersize'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { draw(); }); });
   document.getElementById('opt-animate').addEventListener('change', function (e) { route.animate = e.target.checked; });
   document.getElementById('opt-deadnumbers').addEventListener('change', function (e) { route.deadNumbers = !e.target.checked; draw(); });
+  document.getElementById('opt-seednumbers').addEventListener('change', function (e) { route.seedNumbers = !e.target.checked; draw(); });
   document.getElementById('opt-smalldead').addEventListener('change', function (e) { route.smallDead = e.target.checked; draw(); });
   /* v158 (Peter): every View option a checkbox — C, S and F too (before, menu items without a visible state) */
   document.getElementById('opt-poly').addEventListener('change', function (e) { showPolygons = e.target.checked; draw(); });
@@ -2439,7 +2593,7 @@
      corners) — they keep their values, used again when Heroic is off. M, A, R and Z by hand stay available
      (M not in Heroic mode). */
   function showAuto() {
-    LADDER.forEach(function (k) {
+    AUTO_KEYS.forEach(function (k) {
       var h = document.getElementById('auto-human-' + k), c = document.getElementById('auto-ai-' + k);
       h.checked = route.autoHuman[k]; h.disabled = route.heroic;
       c.checked = route.autoAI[k];
@@ -2453,11 +2607,11 @@
     if (!quiet) log('Room: heroic (hand-drawn curves kept as drawn; no local room-making; nothing automatic for a human\'s moves) ' + (on ? 'on' : 'off') + '.');
   }
   document.getElementById('opt-heroic').addEventListener('change', function (e) { setHeroic(e.target.checked); });
-  LADDER.forEach(function (k) {
+  AUTO_KEYS.forEach(function (k) {
     [['autoHuman', 'auto-human-', 'a human'], ['autoAI', 'auto-ai-', 'the computer']].forEach(function (t) {
       document.getElementById(t[1] + k).addEventListener('change', function (e) {
         route[t[0]][k] = e.target.checked;
-        log('Room: ' + LADDER_NAME[k] + ' (' + k + ') automatically for ' + t[2] + ' ' + (e.target.checked ? 'on' : 'off') + '.');
+        log('Room: ' + LADDER_NAME[k] + ' (' + autoLabel(k) + ') automatically for ' + t[2] + ' ' + (e.target.checked ? 'on' : 'off') + '.');
       });
     });
   });
@@ -2519,7 +2673,7 @@
     a.an = E.analyse(game.spots, game.edges); a.pos = AI.fromAnalysis(a.an, game.spots);
     var fams = AI.families(a.pos);
     if (!fams.length) { ai = null; log(a.who + ' has no move.'); sayTurn(); return; }   // (cannot happen: the game would be over)
-    var kind = players[p].kind, shuffle = function (list) { for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; } return list; };
+    var kind = players[p].kind, shuffle = function (list) { for (var i = list.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)), t = list[i]; list[i] = list[j]; list[j] = t; } return list; };
     a.player = p; a.atMove = game.moves; a.here = game.moves + ':' + AI.gameKey(a.pos);
     if (aiStopped && aiStopped.here === a.here) {  // its ladder ran out here before (aiStops): the same move, tried once more in the drawing as it is now
       var s0 = aiStopped;
@@ -2528,7 +2682,7 @@
       aiStart(a, [], null);
       return;
     }
-    if (kind === 'random') { aiCommit(a, AI.randomOf(fams[Math.floor(Math.random() * fams.length)])); return; }   // (v152: one move, as for the other players)
+    if (kind === 'random') { aiCommit(a, AI.randomOf(fams[Math.floor(rng() * fams.length)], rng)); return; }   // (v152: one move, as for the other players)
     /* Monte Carlo / parity search: EVERY move (v138: before, one random enclosure per family — Peter's
        11-spot game of 9/30 was lost at move 23, where the one winning move, 8 → 8 enclosing 6, was not
        among the six looked at; and "lost against best play" meant only "every move looked at loses").
@@ -2580,7 +2734,7 @@
     }, function (scores, info, exact) {
       if (ai !== a) return;                        // cancelled meanwhile
       a.thinking = false;
-      var order = cands.map(function (mv, i) { return i; }).sort(function (u, v) { return scores[v] - scores[u] || Math.random() - 0.5; });
+      var order = cands.map(function (mv, i) { return i; }).sort(function (u, v) { return scores[v] - scores[u] || rng() - 0.5; });
       var best = scores[order[0]], ties = order.filter(function (i) { return scores[i] === best; });
       log(a.who + ' thought for ' + ((Date.now() - a.t0) / 1000).toFixed(1) + ' s (' + label + ', ' + poolSize() + ' worker' + (poolSize() > 1 ? 's' : '') + (noWorkers ? ' wanted, none: on the page' : '') + (info ? '; ' + info : '') + '): best ' +
           (kind === 'montecarlo' ? Math.round(100 * best) + ' % won' : 'value ' + best.toFixed(3)) + (ties.length > 1 ? ', ' + ties.length + ' moves tie' : '') +
@@ -2610,7 +2764,7 @@
       if (ai !== a) return;
       a.thinking = false;
       var top = Math.max.apply(null, sc), best = tied.filter(function (mv, i) { return sc[i] === top; });
-      var pick = best[Math.floor(Math.random() * best.length)];
+      var pick = best[Math.floor(rng() * best.length)];
       log('    ' + tied.length + ' moves tied for the best (' + label + '); random games among them (' + (info || what) + '): ' +
           tied.map(function (mv, i) { return AI.describe(a.pos, mv) + ' ' + Math.round(100 * sc[i]) + '%'; }).join(', ') +
           (best.length > 1 ? '; ' + best.length + ' still tied, one taken at random' : '') + ': ' + AI.describe(a.pos, pick) + '.');
@@ -3109,12 +3263,42 @@
     if (a.verdict && game.phase !== 'over') { log('    ' + a.who + ' ' + a.verdict + ' (the search saw the whole game).'); statusEl.textContent += '   —   ' + a.who + ' ' + a.verdict; }
     log('    ' + a.who + ' intended ' + a.text + ': drawn as intended' + (a.fresh ? ', in a picture drawn afresh' : '') + (got === a.expect ? '.' : ' (an equivalent position: the same canonical form).'));
   }
+  function showPlayerRows(p) {
+    var panel = document.getElementById('opt-player' + p).closest('.menu-panel');
+    panel.querySelectorAll('.row.montecarlo').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'montecarlo'); });   // (v74: all the rows, not the first)
+    panel.querySelectorAll('.row.parity').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'parity' && players[p].kind !== 'sharp'); });   // (v173: fast and sharp share the rows)
+  }
+  /* A player's kind and parameters into `players` and the Player menu, without the menu's own logging
+     (v185: Load game; the caller lets a computer move) */
+  function showPlayerFields(p) {
+    var o = players[p];
+    document.getElementById('opt-player' + p).value = o.kind;
+    document.getElementById('opt-trials' + p).value = o.mcSeconds ? '' : o.trials;
+    document.getElementById('opt-mcsec' + p).value = o.mcSeconds || '';
+    document.getElementById('opt-depth' + p).value = o.parSeconds ? '' : o.depth;
+    document.getElementById('opt-parsec' + p).value = o.parSeconds || '';
+    showPlayerRows(p);
+  }
+  function applyPlayers(ps) {
+    var kinds = ['human', 'random', 'montecarlo', 'parity', 'sharp'];
+    [1, 2].forEach(function (p) {
+      var o = ps[p];
+      if (!o || kinds.indexOf(o.kind) < 0) return;
+      var num = function (v, least) { return typeof v === 'number' && v >= least ? v : null; };
+      players[p] = { kind: o.kind, trials: Math.floor(num(o.trials, 1) || players[p].trials), depth: Math.floor(num(o.depth, 1) || players[p].depth),
+                     mcSeconds: num(o.mcSeconds, 0.1), parSeconds: num(o.parSeconds, 0.1) };
+      showPlayerFields(p);
+    });
+  }
+  function playerText(p) {
+    var o = players[p];
+    if (o.kind === 'montecarlo') return kindName(o.kind) + (o.mcSeconds ? ', ' + o.mcSeconds + ' s' : ', ' + o.trials + ' games') + ' per move';
+    if (o.kind === 'parity' || o.kind === 'sharp') return kindName(o.kind) + (o.parSeconds ? ', ' + o.parSeconds + ' s per move' : ', depth ' + o.depth);
+    return kindName(o.kind);
+  }
   [1, 2].forEach(function (p) {
-    var sel = document.getElementById('opt-player' + p), panel = sel.closest('.menu-panel');
-    var rows = function () {
-      panel.querySelectorAll('.row.montecarlo').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'montecarlo'); });   // (v74: all the rows, not the first)
-      panel.querySelectorAll('.row.parity').forEach(function (r) { r.classList.toggle('hidden', players[p].kind !== 'parity' && players[p].kind !== 'sharp'); });   // (v173: fast and sharp share the rows)
-    };
+    var sel = document.getElementById('opt-player' + p);
+    var rows = function () { showPlayerRows(p); };
     sel.addEventListener('change', function () {
       players[p].kind = sel.value; rows();
       log('Player ' + p + ' (' + playerName(p) + '): ' + kindName(sel.value) + '.');
@@ -3381,7 +3565,12 @@
     showSize();   // (v162: Game → Size's fields show the present size)
     var a = areaText();
     if (a === lastArea) return;
-    say((lastArea ? '' : 'Welcome to Sprouts.   ') + a, false, null, true);
+    /* v202 (Peter): the size is the least of what the status line can be saying, and it is always in the
+       log and on Q — so it does not take the place of a message the player still needs: the game's last
+       word, or a refusal. Chrome's debugging bar appearing and disappearing resizes the area, and the
+       result of a finished game was lost that way. */
+    if (!(game && game.phase === 'over') && !statusEl.classList.contains('warn'))
+      say((lastArea ? '' : 'Welcome to Sprouts.   ') + a, false, null, true);
     lastArea = a;
     /* and in the log (v144, Peter): at the start and after each change. While a window edge is dragged
        the size changes many times in a row: a new size replaces the line of the one before when nothing
