@@ -808,8 +808,8 @@ pairs of v175 the bound is the longest game itself on 98% of the positions from 
 <p>At depth 10 both see the whole game (a winning position for the player to move). The two choose the same move
 with the same value at every depth but 4. Time does not grow steadily with depth: deeper leaves are smaller
 positions, often split into parts, whose longest games are quick to find, and alpha&ndash;beta prunes differently
-at odd and even depths. The measurements were made with <code>bench.html</code>, which runs both searches depth by
-depth on a saved game with fresh workers for every calculation.</p>
+at odd and even depths. The measurements were made with a timing harness that ran both searches depth by
+depth on a saved game, with fresh workers for every calculation.</p>
 
 <div class="algo-title">The search</div>
 <pre class="algo">
