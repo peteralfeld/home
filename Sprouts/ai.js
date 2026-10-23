@@ -364,7 +364,7 @@
     try { regions([], ''); }
     catch (e) {
       if (e !== STOP) throw e;
-      greedy = true; unname(0); canonFallbacks++;
+      greedy = true; unname(0);
       regions([], '');
     }
     return best === null ? '' : best;
@@ -376,7 +376,7 @@
      (all "11", "111"…) took seconds on some 30-spot positions — on Peter's game of 10/1 the page
      froze for minutes while the computer's candidates were sorted out. A position of one part is
      written as before, so a part's form is the same alone or in a sum. */
-  var CANON_WORK = (typeof process !== 'undefined' && process.env && Number(process.env.CANON_WORK)) || 20000, canonFallbacks = 0;     // (see canonicalOf; canonFallbacks counts the greedy ones, for tests)
+  var CANON_WORK = (typeof process !== 'undefined' && process.env && Number(process.env.CANON_WORK)) || 20000;
   function canonical(pos) {
     var ps = parts(pos);
     if (ps.length <= 1) return canonicalPart(pos);
@@ -1056,7 +1056,7 @@
     return out;
   }
 
-  var api = { canonFallbacks: function () { return canonFallbacks; }, bounds: bounds, maxMoves: maxMoves, mxContext: mxContext, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
+  var api = { bounds: bounds, maxMoves: maxMoves, mxContext: mxContext, parts: parts, nimber: nimber, solveParts: solveParts, misTree: misTree, solvePartsMisere: solvePartsMisere, listWins: listWins, normList: normList,
               newStore: newStore, mkTree: mkTree, treeSum: treeSum, heapTree: heapTree, playout: playout, monteCarlo: monteCarlo, monteCarloTimed: monteCarloTimed, evaluate: evaluate, children: children,
               negamax: negamax, paritySearch: paritySearch, newContext: newContext, canonical: canonical, reduce: reduce,
               fromAnalysis: fromAnalysis, families: families, expand: expand, allMoves: allMoves, apply: apply, key: key, gameKey: gameKey,

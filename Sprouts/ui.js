@@ -2206,6 +2206,15 @@
     if (data.area && data.area.w > 0 && data.area.h > 0 && (data.area.w !== stage.clientWidth || data.area.h !== stage.clientHeight)) { sizeKeepsGame = true; applySize(Math.round(data.area.w), Math.round(data.area.h)); }   // (the loaded game is kept, not laid out afresh)
     sizedFor = (data.area && data.area.w > 0 ? Math.round(data.area.w) + 'x' + Math.round(data.area.h) : stage.clientWidth + 'x' + stage.clientHeight);   // (v195: the loaded sizes count as set for this area — a new game here keeps them)
     seedsLoaded = true; document.getElementById('opt-spots').value = Object.keys(originalSpots()).length;   // (v196: N starts a new game from the file's seeds; the Spots field shows their number)
+    /* v205 (Peter 10/23): a game loaded in play between two computers used to start
+       moving the moment it was loaded, leaving no chance to look at the position. It
+       waits instead, and N starts it FROM THE POSITION AS LOADED. (In that one state N
+       does not make a new game from the file's seeds, as it does otherwise: there is a
+       game in progress to get on with, and the seeds are a key press away after it.) */
+    if (bothAI() && game.phase === 'play' && game.moves > 0) {
+      aiHalt = true;
+      log('Loaded in play, both players computers: waiting — N goes on from this position.');
+    }
     maybeAI();
   }
   /* The log lines for a loaded game: its start and every move so far,
@@ -2414,7 +2423,13 @@
   }
   /* N and Game → New game (v127, Peter): while spots are being placed by hand, they start the game
      from those spots (as Enter does); otherwise a new game. */
-  function newOrStart() { if (game.phase === 'place') startPlay(); else newGame(); }
+  function newOrStart() {
+    /* v205: a loaded game that is waiting (see useLoaded) goes on from where it is */
+    if (aiHalt && bothAI() && game.phase === 'play' && game.moves > 0) {
+      aiHalt = false; log('Went on from the loaded position (N).'); maybeAI(); return;
+    }
+    if (game.phase === 'place') startPlay(); else newGame();
+  }
   /* X (v99, Peter): close the page. A browser lets a page close itself only
      when the tab was opened straight at it (a desktop shortcut, a link that
      opens a new tab — one entry in its history); otherwise it silently

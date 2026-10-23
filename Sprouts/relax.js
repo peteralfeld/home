@@ -962,9 +962,9 @@
     return sb.done;
   }
 
-  var api = { normalAt: normalAt, energyNow: function (sb) { return evaluateSpline(sb, sb.pts, 0, true).E; }, _evaluateSpline: function (sb, pts, dh) { return evaluateSpline(sb, pts, dh, true); }, MIN_START: MIN_START, QUIET_E: QUIET_E, QUIET_MOVE: QUIET_MOVE,
+  var api = { normalAt: normalAt, MIN_START: MIN_START, QUIET_E: QUIET_E, QUIET_MOVE: QUIET_MOVE,
     createSplineBand: createSplineBand, iterateSpline: iterateSpline, splinePieces: splinePieces,
-    CELL: CELL, buildObstacles: buildObstacles, spotRadius: spotRadius, rObs: rObs,
+    buildObstacles: buildObstacles, spotRadius: spotRadius, rObs: rObs,
     polylineCrossesObstacle: polylineCrossesObstacle, polylineCrossesItself: polylineCrossesItself,
     createBand: createBand, iterate: iterate, createRoute: createRoute, advance: advance, certify: certify
   };

@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts &mdash; a finished game</title>
-<link rel="stylesheet" href="../manual.css?v=202">
+<link rel="stylesheet" href="../manual.css?v=205">
 <style>
   body { text-align: center; }
-  img { width: 50%; height: auto; border: 1px solid #6495ED; }
+  img { height: auto; border: 1px solid #6495ED; max-width: 100%; }
   p { margin: 0.6em 0; }
 </style>
 </head>
@@ -19,7 +19,12 @@
 <script>
   /* games/view.html?n=30 shows games/n30.png at half size (the manual's table of games played to the end) */
   var n = Number(new URLSearchParams(location.search).get('n')) || 10, src = 'n' + n + '.png';
-  document.getElementById('picture').src = src;
+  var img = document.getElementById('picture');
+  /* v205: half size means half of each dimension, a quarter of the pixels (Peter).
+     `width: 50%` was half the WINDOW, so a 3840 px picture came out at a third of
+     its size on a 2560 px screen, and changed as the window was resized. */
+  img.addEventListener('load', function () { img.style.width = (img.naturalWidth / 2) + 'px'; });
+  img.src = src;
   document.getElementById('full').href = src;
   document.getElementById('caption').textContent = 'A game of ' + n + ' seeds, Random against Random, played to the end';
   document.title = 'Sprouts — a game of ' + n + ' seeds';

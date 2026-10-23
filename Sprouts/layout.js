@@ -270,29 +270,6 @@
      ring (its walk goes round an outer cycle, down a path, round an inner cycle and back) has the faces inside the
      inner cycle deeper — nothing a tree of components would see (10/22: the 60-seed rings are faces of ONE
      component); a ring cut into two crescents by two paths has them too, from both. Per face: own (corner
-     occurrences), inside (the faces reached by inward steps, repeatedly), N = own + their own, depth. */
-  function nesting(m0, outer, extraOwn) {
-    var nF = m0.faces.length, adj = [], i;
-    for (i = 0; i < nF; i++) adj.push([]);
-    var side = [];
-    m0.faces.forEach(function (F, fi) { F.walks.forEach(function (w) { if (w.halves) w.halves.forEach(function (h) { side[h] = fi; }); }); });
-    m0.edges.forEach(function (e, ei) { var a = side[2 * ei], b = side[2 * ei + 1]; if (a !== b) { adj[a].push(b); adj[b].push(a); } });
-    var depth = new Int32Array(nF).fill(-1), q = [outer]; depth[outer] = 0;
-    for (i = 0; i < q.length; i++) adj[q[i]].forEach(function (g) { if (depth[g] < 0) { depth[g] = depth[q[i]] + 1; q.push(g); } });
-    for (i = 0; i < nF; i++) if (depth[i] < 0) throw new Error('layout: face ' + i + ' is not reached from the outside');
-    var info = [];
-    for (i = 0; i < nF; i++) {
-      var corners = 0; m0.faces[i].walks.forEach(function (w) { corners += w.halves ? w.halves.length : 1; });
-      var own = corners + (extraOwn && extraOwn[i] ? extraOwn[i] : 0);   // own: the corners and what is placed inside later
-      info.push({ own: own, corners: corners, inside: [], N: own, depth: depth[i], dom: {} });
-    }
-    for (i = 0; i < nF; i++) {
-      var seen = {}, st = [i];
-      while (st.length) { var f = st.pop(); adj[f].forEach(function (g) { if (!seen[g] && depth[g] > depth[f]) { seen[g] = 1; st.push(g); } }); }
-      for (var g in seen) { g = +g; info[i].inside.push(g); info[i].dom[g] = true; info[i].N += info[g].own; }
-    }
-    return info;
-  }
 
   /* A ladder of rungs across the face walk w between its stretch A (positions aFrom..aTo in walk order) and the
      rest B: the polygon is split by the most balanced valid chord from A to B (a chord is valid when its ends
@@ -300,111 +277,11 @@
      until every piece is a triangle; when no A – B chord is valid, any valid chord. Each chord is put in the
      right corners (at each end after the half leaving it in the piece being split; the two pieces then leave
      the ends by the chord's halves), so the map stays a map. Returns false (nothing added) when a piece has no
-     valid chord at all. */
-  function ladder(m, w, fi, aFrom, aTo) {
-    var n = w.length, P = [], k;
-    for (k = aFrom; ; k = (k + 1) % n) { P.push({ v: m.half[w[k]].tail, leave: w[k], side: 0 }); if (k === aTo) break; }
-    for (k = (aTo + 1) % n; k !== aFrom; k = (k + 1) % n) P.push({ v: m.half[w[k]].tail, leave: w[k], side: 1 });
-    var has = {}; m.edges.forEach(function (e) { has[Math.min(e.a, e.b) + '-' + Math.max(e.a, e.b)] = 1; });
-    var added = [];
-    function key(u, v) { return Math.min(u, v) + '-' + Math.max(u, v); }
-    function chord(P, i, j) {                       // the chord between entries i and j of P: splits P into two pieces
-      var u = P[i], v = P[j], e = addEdge(m, u.v, u.leave, v.v, v.leave, -1);
-      tag(m, e, 'rung', fi); has[key(u.v, v.v)] = 1; added.push(e);
-      var P1 = [], P2 = [], t;
-      for (t = i; t !== j; t = (t + 1) % P.length) P1.push(P[t]);
-      P1.push({ v: v.v, leave: 2 * e + 1, side: v.side });
-      for (t = j; t !== i; t = (t + 1) % P.length) P2.push(P[t]);
-      P2.push({ v: u.v, leave: 2 * e, side: u.side });
-      return [P1, P2];
-    }
-    function split(P) {
-      if (P.length <= 3) return true;
-      var L = P.length, i, j, best = null, score = Infinity;
-      /* candidates: pairs not adjacent in P; A – B pairs first, the most balanced first */
-      var nA = 0, nB = 0; P.forEach(function (x) { if (x.side) nB++; else nA++; });
-      var ia = 0, ib = 0, fa = [], fb = [];
-      P.forEach(function (x, t) { if (x.side) fb[t] = nB > 1 ? ib++ / (nB - 1) : 0.5; else fa[t] = nA > 1 ? ia++ / (nA - 1) : 0.5; });
-      for (i = 0; i < L; i++) for (j = i + 2; j < L; j++) {
-        if (i === 0 && j === L - 1) continue;
-        var u = P[i], v = P[j];
-        if (u.v === v.v || has[key(u.v, v.v)]) continue;
-        var sc = u.side !== v.side ? Math.abs((u.side ? fb[i] : fa[i]) - (1 - (v.side ? fb[j] : fa[j]))) : 10 + Math.abs(j - i - L / 2);
-        if (sc < score) { score = sc; best = [i, j]; }
-      }
-      if (!best) return false;
-      var two = chord(P, best[0], best[1]);
-      return split(two[0]) && split(two[1]);
-    }
-    if (split(P)) return true;
-    added.reverse().forEach(function (e) {           // undo: the chords are the last edges added
-      var h = 2 * e, ed = m.edges[e];
-      m.rot[ed.a].splice(m.rot[ed.a].indexOf(h), 1); m.rot[ed.b].splice(m.rot[ed.b].indexOf(h + 1), 1);
-      m.edges.pop(); m.half.pop(); m.half.pop();
-    });
-    if (band.debug) band.debug('ladder fails in face ' + fi + ' (' + n + ' halves)');
-    return false;
-  }
 
   /* The band triangulation with face `outer` outside: every region with faces inside it (nesting) is cut by a
      ladder between the stretch of its walk that holds no edge towards its content (A, the outer side) and the rest
      (B: the paths, the inner cycles, the bridges and the components inside); a region without content is a star.
      The outer region is a band between a RING of new vertices, one per vertex of its walk (to be pinned on a
-     convex curve), and the walk. { t, mid, ring: [vertices], info: nesting, stars: faces drawn as stars }. */
-  function band(m0, outer, extraOwn, outerStar) {
-    var pr = prepare(m0, outer);
-    if (!pr) return null;
-    var m = pr.m, info = nesting(m0, outer, extraOwn), walks = allWalks(m), ring = null, stars = 0, ladders = 0, outerTri = null;
-    /* the outer region's walk: the longest with that side (a leaf spot's second bridge cuts a pocket off a face) */
-    var ow = null;
-    walks.forEach(function (w) { if (m.side[w[0]] === outer && (!ow || w.length > ow.length)) ow = w; });
-    walks.forEach(function (w) {
-      var fi = m.side[w[0]], n = w.length, k;
-      if (w === ow && outerStar) {                 // for FPP: the outer region a star, its first two corners and face vertex the outer triangle
-        var st = star(m, w, fi); stars++;
-        outerTri = [m.half[st.spokes[0]].head, m.half[st.spokes[1]].head, st.fv];
-        return;
-      }
-      if (w === ow) {
-        /* the ring: R_k – R_{k+1}, R_k – v_k and R_{k+1} – v_k (v_k the tail of w[k]); rotations as derived 10/22:
-           at v_k: w[k], (v_k → R_{k+1}), (v_k → R_k), twin(w[k−1]); at R_k: R_{k−1}, v_{k−1}, v_k, R_{k+1} */
-        ring = []; for (k = 0; k < n; k++) ring.push(addVertex(m));
-        var rr = [], rv = [], rvn = [];
-        for (k = 0; k < n; k++) rr.push(tag(m, addEdge(m, ring[k], null, ring[(k + 1) % n], null, -1), 'ring', fi));
-        for (k = 0; k < n; k++) {
-          rv.push(tag(m, addEdge(m, m.half[w[k]].tail, w[k], ring[k], null, -1), 'orung', fi));
-          rvn.push(tag(m, addEdge(m, m.half[w[k]].tail, w[k], ring[(k + 1) % n], null, -1), 'orung', fi));
-        }
-        for (k = 0; k < n; k++) {
-          var kp = (k - 1 + n) % n;
-          m.rot[ring[k]] = [2 * rr[kp] + 1, 2 * rvn[kp] + 1, 2 * rv[k] + 1, 2 * rr[k]];
-        }
-        return;
-      }
-      /* the positions of w whose other side is inside this face, and those walked on both sides (a path or a
-         chain of moves hanging into the face, a bridge): a stretch that hangs by one spot has no extent in a
-         Tutte drawing unless rungs pull it across the face */
-      var hole = [], doubled = [];
-      for (k = 0; k < n; k++) {
-        var h = w[k], e = m.edges[m.half[h].edge];
-        if (e.kind === 'real' && m.side[h ^ 1] !== fi && info[fi].dom[m.side[h ^ 1]]) hole.push(k);
-        else if (m.side[h ^ 1] === fi) doubled.push(k);
-      }
-      /* an inner cycle is paired with the WHOLE outer cycle (a dangle on the outer cycle gets its rungs from where
-         it is); only a face with no content pairs its dangles against the rest */
-      if (!hole.length) hole = doubled;
-      if (hole.length) {
-        /* A = the longest stretch between two hole positions (cyclically) */
-        var best = -1, gap = -1;
-        for (k = 0; k < hole.length; k++) { var g = (hole[(k + 1) % hole.length] - hole[k] + n) % n; if (g > gap) { gap = g; best = k; } }
-        var aFrom = (hole[best] + 1) % n, aTo = (hole[(best + 1) % hole.length] - 1 + n) % n;
-        if (gap >= 2 && ladder(m, w, fi, aFrom, aTo)) { ladders++; info[fi].kind = 'ladder'; info[fi].A = gap - 1; info[fi].B = n - gap + 1; info[fi].holes = hole.length; info[fi].doubled = doubled.length; return; }
-      }
-      star(m, w, fi); stars++; info[fi].kind = (info[fi].kind || '') + 'star';
-    });
-    if (!ring && !outerTri) throw new Error('layout: the outer region was not found among the faces');
-    return { t: m, mid: pr.mid, ring: ring, outerTri: outerTri, info: info, stars: stars, ladders: ladders };
-  }
   /* ---------------- FPP ---------------- */
 
   /* The canonical ordering of a simple triangulation with outer face
@@ -477,9 +354,8 @@
   /* A straight-line drawing of the map with face `outer` outside, fitted into
      W × H with a margin: { spots: [[x, y]], curves: [ [u, m, v] per real edge ] }
      — or null for a lone spot. */
-  function draw(m, outer, W, H, margin, mode) {
-    if (mode === undefined) mode = api.mode;         // (tests compare the two starts; the page uses the stars)
-    var tr = mode === 'band' ? band(m, outer, null, true) : triangulate(m, outer);
+  function draw(m, outer, W, H, margin) {
+    var tr = triangulate(m, outer);
     if (!tr) return null;
     var order = canonicalOrder(tr.t, tr.outerTri), P = shiftPlace(tr.t, order);
     var spots = [], curves = [], xs = [], ys = [];
@@ -545,7 +421,7 @@
   }
   var MARGIN = 40;                                 // the layout keeps this far from the window's sides (R fills the window)
 
-  var api = { mapOf: mapOf, withMove: withMove, triangulate: triangulate, band: band, nesting: nesting, prepare: prepare, canonicalOrder: canonicalOrder, shiftPlace: shiftPlace, draw: draw, allWalks: allWalks, freshGame: freshGame, faces: faces };
+  var api = { mapOf: mapOf, withMove: withMove, triangulate: triangulate, canonicalOrder: canonicalOrder, shiftPlace: shiftPlace, draw: draw, allWalks: allWalks, freshGame: freshGame, faces: faces };
   root.SproutsLayout = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);

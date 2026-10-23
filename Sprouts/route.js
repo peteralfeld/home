@@ -293,17 +293,6 @@
   /* A cut ray from p in the direction of angle `ang`, as a segment. */
   function ray(p, ang) { return [p, [p[0] + RAY_LEN * Math.cos(ang), p[1] + RAY_LEN * Math.sin(ang)]]; }
 
-  /* Crossing parity of the polyline pts with each cut ray (rays = segments). */
-  function crossings(pts, rays) {
-    var mask = 0;
-    for (var i = 1; i < pts.length; i++) {
-      for (var c = 0; c < rays.length; c++) {
-        if (G.segCross(pts[i - 1], pts[i], rays[c][0], rays[c][1])) mask ^= (1 << c);
-      }
-    }
-    return mask;
-  }
-
   /* Shortest grid path from `start` to near p whose crossing parity with the
      cut rays is one of `wanted` (an array of masks). Returns the polyline of
      cell centres, or null. */
@@ -748,7 +737,7 @@
 
   var api = { buildGrid: buildGrid, distances: distances, planner: planner, widest: widest,
               widestField: widestField, widestTo: widestTo,
-              ray: ray, crossings: crossings, pathWithParity: pathWithParity, MAX_CUTS: MAX_CUTS, inflate: inflate,
+              ray: ray, pathWithParity: pathWithParity, MAX_CUTS: MAX_CUTS, inflate: inflate,
               regionMask: regionMask, anchorCells: anchorCells, sideCells: sideCells, edgeCells: edgeCells, barrierTree: barrierTree, around: around, stem: stem,
               setReporter: setReporter };
   root.SproutsRoute = api;
