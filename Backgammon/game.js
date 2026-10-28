@@ -894,6 +894,24 @@ rollDice(d1 = null, d2 = null) {
     this.playedMovesThisTurn = [];
   }
 
+  // Auto Skip (Peter's design, 10/28): the side on roll cannot play ANY die (hasAnyLegalMove is
+  // false), so instead of a roll that could only dance, the UI gives it an ARTIFICIAL ROLL OF
+  // 0-0 and ends the turn at once. It is recorded exactly like a dance — a turn of its own with
+  // dice 0-0 and no moves — so the move list, the game record and its loader all show it.
+  // ⚠ A doubling-accept is ALSO stored as a [0,0]-dice snapshot (acceptDouble, taken before the
+  // proposer rolls); the two differ in `hasRolled`, which is TRUE here and FALSE there. Every
+  // history reader that folds the accept into the next row ("DC=n") tests both. No move is
+  // generated for a 0 die (movesLeft is left empty), so nothing downstream ever sees one.
+  skipTurn() {
+    this.dice = [0, 0];
+    this.movesLeft = [];
+    this.hasRolled = true;
+    this.turnHistory = [];
+    this.playedMovesThisTurn = [];
+    this.turnCount++;
+    BackgammonGame.prototype.endTurn.call(this);   // the raw snapshot + hand-over; the UI wraps this method itself
+  }
+
   /**
    * Determines if the player has any legal moves left.
    * Useful to auto-end turn if blocked (no moves possible).
@@ -909,7 +927,9 @@ rollDice(d1 = null, d2 = null) {
   // CURRENT board — i.e. the player is not permanently stuck (independent of what's actually
   // rolled). Non-destructive (the generator deep-copies before mutating). Used to detect a total
   // deadlock where NEITHER side can ever move — possible only in a hand-set-up position, where it
-  // would otherwise leave both players rolling forever.
+  // would otherwise leave both players rolling forever — and, since Auto Skip, to pass a turn
+  // without a roll. A single die is the right test: every legal turn begins with a one-die move,
+  // so a side that can play no single die can play no roll.
   hasAnyLegalMove(player) {
     for (let d = 1; d <= 6; d++) {
       const states = this.generateAllCompleteTurnMoves(player, [d]);

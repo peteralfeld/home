@@ -152,7 +152,7 @@
   <!-- Combined Config & Network Station -->
   <div class="glass-card config-station">
     <div style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 0.5rem;">
-      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 156</a></h2>
+      <h2 id="app-version" style="margin: 0;"><a href="manual.html" target="_blank" title="Open the documentation and user's guide" style="color: inherit; text-decoration: none; cursor: pointer;">Backgammon v. 159</a></h2>
       <div style="display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0;">
         <label for="num-workers" style="font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase;">Workers:</label>
         <input type="number" id="num-workers" min="1" value="1" title="Number of background Web Workers for the parallel search. Defaults to your CPU core count. Requires running over http:// (not file://)." style="width: 3rem; text-align: center; background: #facc15; color: #111; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; font-weight: bold; font-family: inherit;">
@@ -183,11 +183,11 @@
 
     <!-- Game Controls Row (Start, Restart, Defaults, Exit) -->
     <div style="display: flex; flex-direction: row; align-items: center; gap: 0.4rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0;">
-      <button id="btn-start-game" title="Start a new game" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
+      <button id="btn-start-game" title="Start a game; while a game is paused this button reads RESUME and continues it" class="btn" style="flex: 1.2; padding: 0.8rem 0.2rem !important; background: #14532d; color: #facc15; font-size: 1.1rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">START</button>
 
       <button id="btn-stop" title="Pause the AI (or stop a run)" class="btn" style="flex: 1; padding: 0.8rem 0.2rem !important; background: #991b1b; color: #ffffff; font-size: 0.9rem !important; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);">STOP</button>
 
-      <button id="btn-restart" title="Start the next game (alternates the opener)" class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">RESTART</button>
+      <button id="btn-restart" title="Begin the next game of the match from the same starting position: the opener alternates, the scores are kept. After a game launched from a set-up position it begins again from that position, same opener, same dice." class="btn btn-secondary" style="flex: 1; padding: 0.4rem 0.1rem; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; white-space: nowrap; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2); background: rgba(255,255,255,0.1);">New Game</button>
       
       <button id="btn-duplo" title="DUPLO: replay the game just played with the SAME dice, but with the board mirrored and every roll given to the other colour. Duplicate-bridge style &mdash; the players keep their seats and each now plays the game the other one played. Works in network games too (the host runs it)." class="btn" style="flex: 1; padding: 0.4rem 0.1rem; background: #dbeafe; color: #1e3a8a; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">DUPLO</button>
 
@@ -206,7 +206,7 @@
           <option value="human">Human</option>
           <option value="ai" selected>AI</option>
         </select>
-        <input id="p1-score" type="number" value="0" title="White's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
+        <input id="p1-score" type="number" value="0" title="White's running score (game points). Z zeros it; Start zeros both scores, New Game keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
         <button id="p1-scorereset" title="Reset White's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.95rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p1-depth" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p1-depth" title="White AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when White is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
@@ -224,7 +224,7 @@
           <option value="human" selected>Human</option>
           <option value="ai">AI</option>
         </select>
-        <input id="p2-score" type="number" value="0" title="Red's running score (game points). Z zeros it; Start zeros both scores, Restart keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
+        <input id="p2-score" type="number" value="0" title="Red's running score (game points). Z zeros it; Start zeros both scores, New Game keeps them." style="width: 4rem; flex-shrink: 0; background: #bbf7d0; color: #1e3a8a; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.1rem; text-align: center; font-family: inherit; font-size: 1.1rem; font-weight: 800; outline: none;">
         <button id="p2-scorereset" title="Reset Red's score to 0" style="flex-shrink: 0; background: #93c5fd; color: #dc2626; border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 0.2rem 0.4rem; font-family: inherit; font-size: 0.95rem; font-weight: 800; cursor: pointer;">Z</button>
         <label for="p2-depth" style="font-size: 0.95rem; color: #ffffff; font-weight: 800; text-transform: uppercase; flex-shrink: 0; margin-left: auto;">Depth:</label>
         <select id="p2-depth" title="Red AI search depth in plies (expectimax). 0 = play the first legal move (no evaluation). Applies only when Red is an AI." style="flex-shrink: 0; background: #1e3a8a; color: #86efac; border: 1px solid rgba(255,255,255,0.1); padding: 0.3rem 0.2rem; border-radius: 4px; font-family: inherit; font-size: 0.95rem; font-weight: 800; outline: none; cursor: pointer;">
@@ -460,6 +460,10 @@
         <div class="settings-item" id="setting-automove" data-setting="automove">
           <span class="settings-item-label">Auto Move</span>
           <span class="settings-item-badge" id="badge-automove">OFF</span>
+        </div>
+        <div class="settings-item" id="setting-autoskip" data-setting="autoskip" title="A player who could not move with any roll at all is passed over without rolling: the turn is recorded as an artificial roll of 0-0 with no move, and the opponent is on roll at once. Turn OFF to roll (and dance) every turn.">
+          <span class="settings-item-label">Auto Skip</span>
+          <span class="settings-item-badge" id="badge-autoskip">ON</span>
         </div>
         <div class="settings-item" id="setting-doubling" data-setting="doubling">
           <span class="settings-item-label">Doubling</span>

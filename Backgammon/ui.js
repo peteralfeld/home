@@ -103,6 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
         updateUI();
         isProcessingQueue = false;
         processNetworkQueue();
+    } else if (action.type === 'skip_turn') {
+        // The opponent's Auto Skip passed their turn without a roll (see game.skipTurn).
+        game.skipTurn();
+        if (action.data.nextPlayer !== undefined) game.currentPlayer = action.data.nextPlayer;
+        if (action.data.turnCount !== undefined) game.turnCount = action.data.turnCount;
+        updateUI();
+        isProcessingQueue = false;
+        processNetworkQueue();
     } else if (action.type === 'end_turn') {
         game.endTurn();
         // Reconcile to the sender's authoritative board (self-healing against any desync).
@@ -265,6 +273,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let highlightOn = false;
   let autoRollOn  = false;
   let autoRollTimeout = null;
+  // Auto Skip: a side that cannot play ANY die is passed over without rolling (game.skipTurn).
+  // skipNote is the status-line reminder of the skip, shown until the opponent rolls.
+  let autoSkipOn  = true;
+  let skipNote    = '';
 
   // ── Board Setup & Analysis mode ───────────────────────────────────────
   // setupMode reroutes the board to free placement (drag/click, no legality),
@@ -699,12 +711,13 @@ function sysLog(msg) {
     let displayTurn = 0;
     let pendingDC = null;
     game.gameHistory.forEach((snap) => {
-      const isDouble = !snap.isInitial && !snap.dice[0] && !snap.dice[1];
+      // (An Auto Skip turn is ALSO [0,0], but with hasRolled TRUE — that one is a real row, "0-0".)
+      const isDouble = !snap.isInitial && !snap.hasRolled && !snap.dice[0] && !snap.dice[1];
       if (isDouble) { pendingDC = snap.doublingCubeValue; return; }   // fold into the next row
 
       const turnNum = String(displayTurn++).padStart(4, ' '); // idx 0 is initial → Turn 0
       const pCode   = snap.currentPlayer === 1 ? 'White' : 'Red  ';
-      const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0] || '-'}-${snap.dice[1] || '-'}`.padEnd(5, ' ');
+      const diceStr = snap.isInitial ? ' -   ' : `${snap.dice[0]}-${snap.dice[1]}`.padEnd(5, ' ');
 
       let movesText = '-';
       if (snap.playedMoves?.length > 0) {
@@ -984,7 +997,8 @@ function sysLog(msg) {
 
       g.hasRolled = true;
       g.dice = [t.d1, t.d2];
-      g.movesLeft = (t.d1 === t.d2) ? [t.d1, t.d1, t.d1, t.d1] : [t.d1, t.d2];
+      // A "0-0" row is an Auto Skip turn: no dice to play, as skipTurn() leaves it.
+      g.movesLeft = (t.d1 === 0) ? [] : (t.d1 === t.d2) ? [t.d1, t.d1, t.d1, t.d1] : [t.d1, t.d2];
 
       for (const mv of t.moves) {
         if (!g.makeMove(mv.from, mv.to, false)) {
@@ -1238,6 +1252,7 @@ function sysLog(msg) {
   updateSettingBadge('badge-highlight',  highlightOn);
   updateSettingBadge('badge-autoroll',   autoRollOn);
   updateSettingBadge('badge-automove',   autoMoveOn);
+  updateSettingBadge('badge-autoskip',   autoSkipOn);
 
   // Header click → open / close panel
   if (settingsHeader) {
@@ -1291,6 +1306,17 @@ function sysLog(msg) {
       autoMoveOn = !autoMoveOn;
       updateSettingBadge('badge-automove', autoMoveOn);
       sysLog(`[System] Auto Move toggled to ${autoMoveOn ? 'ON' : 'OFF'}`);
+    });
+  }
+
+  // Auto Skip row
+  const settingAutoskipEl = document.getElementById('setting-autoskip');
+  if (settingAutoskipEl) {
+    settingAutoskipEl.addEventListener('click', () => {
+      autoSkipOn = !autoSkipOn;
+      updateSettingBadge('badge-autoskip', autoSkipOn);
+      sysLog(`[System] Auto Skip toggled to ${autoSkipOn ? 'ON' : 'OFF'}`);
+      updateUI();   // if a stuck side is on roll right now, the skip (or the roll prompt) follows at once
     });
   }
 
@@ -1433,6 +1459,7 @@ function sysLog(msg) {
    * Main render loop.
    */
   function updateUI() {
+    let skipping = false;   // set when Auto Skip is passing the on-roll side this render
     sysLog("[Update] Board state logical: " + game.points.map((p, idx) => p.count > 0 ? `${idx}:${p.player}(${p.count})` : '').filter(Boolean).join(', '));
 
     // Per-turn state fingerprint (network games only) for cross-machine post-mortem diffing.
@@ -1655,10 +1682,36 @@ renderBorneOff();
         ? "Wait for the host to make the initial roll."
         : "Click the dice to decide who starts!";
     } else if (!game.hasRolled) {
-	gameMessageEl.textContent = waitingForOpponent()
-        ? thinkingMessage()
-        : `${game.currentPlayer === 1 ? 'White' : 'Red'}: Click the dice to roll.`;
+      const onRoll = game.currentPlayer;
+      if (autoSkipOn && !pendingDouble && !game.hasAnyLegalMove(onRoll)) {
+        // Auto Skip: no die can move this side, so rolling could only dance. Pass the turn
+        // without a roll — unless the OTHER side is stuck too, which would skip back and
+        // forth forever: that is the deadlock the dance branch below also freezes on.
+        if (!game.hasAnyLegalMove(opponentOf(onRoll))) {
+          gameMessageEl.textContent = "No player can play.  Very clever!";
+          if (turnEndTimer)    { clearTimeout(turnEndTimer);    turnEndTimer    = null; }
+          if (aiActionTimeout) { clearTimeout(aiActionTimeout); aiActionTimeout = null; }
+          aiStopped = true; isAIPlaying = false;
+          return;
+        }
+        skipping = true;   // no AI roll, no auto-roll this render
+        gameMessageEl.textContent = `${onRoll === 1 ? 'White' : 'Red'} cannot move with any roll — turn skipped.`;
+        // Only the active machine skips; the other learns of it from the skip_turn message.
+        if (!(isNetworkGame && onRoll !== localPlayerRole)) {
+          // Scheduled ONCE and re-validated, like the two auto-ends below.
+          if (!turnEndTimer) turnEndTimer = setTimeout(() => {
+            turnEndTimer = null;
+            if (!game.hasRolled && !game.winner && !pendingDouble && game.currentPlayer === onRoll
+                && !game.hasAnyLegalMove(onRoll)) { game.skipTurn(); updateUI(); }
+          }, 100);
+        }
+      } else {
+        gameMessageEl.textContent = (skipNote + (waitingForOpponent()
+          ? thinkingMessage()
+          : `${onRoll === 1 ? 'White' : 'Red'}: Click the dice to roll.`));
+      }
 } else {
+      skipNote = '';   // the opponent has rolled — the reminder has done its job
       if (game.movesLeft.length === 0) {
         gameMessageEl.textContent = "Turn completed! Switching players...";
 
@@ -1707,6 +1760,20 @@ renderBorneOff();
       }
     }
 
+    // PAUSED (after STOP or after travelling back in the move list): say so, and name the button.
+    // Before 10/28 the line kept telling a paused AI's opponent to "click the dice" when the dice
+    // were the AI's to roll and only RESUME would move things on. Placed after the message block so
+    // it wins over the roll prompt; the two deadlock freezes above `return` before reaching it.
+    if (gameStarted && aiStopped && !game.winner && !setupMode && !isNetworkGame
+        && !pendingDouble && !initialRollOff && !skipping) {
+      const who = game.currentPlayer === 1 ? 'White' : 'Red';
+      if (game.playerTypes[game.currentPlayer] === 'ai') {
+        gameMessageEl.textContent = `Paused — ${who} (AI) is on roll. Press RESUME to continue.`;
+      } else if (!game.hasRolled) {
+        gameMessageEl.textContent = `${skipNote}${who}: Press RESUME or click the dice to roll.`;
+      }
+    }
+
     // Speak important lines aloud (doubling offer, game over). Never speak a doubling
     // prompt aimed at an AI responder — the AI answers on its own.
     if (game.winner) {
@@ -1722,13 +1789,14 @@ renderBorneOff();
       speakImportant(null);
     }
 
-    if (gameStarted) {
+    if (gameStarted && !skipping) {
       checkAndTriggerAITurn();
       checkAndAutoRoll();
     }
 
-    // Keep nav buttons in sync with current state
+    // Keep nav buttons and the START/RESUME label in sync with current state
     updateNavButtons();
+    refreshStartLabel();
   }
 
   /**
@@ -2577,7 +2645,8 @@ let handleRollClick;
       let displayTurn = 0;
       let pendingDC = null;
       game.gameHistory.forEach((snapshot, idx) => {
-        const isDouble = !snapshot.isInitial && !snapshot.dice[0] && !snapshot.dice[1];
+        // (An Auto Skip turn is ALSO [0,0], but with hasRolled TRUE — that one is a real row, "0-0".)
+        const isDouble = !snapshot.isInitial && !snapshot.hasRolled && !snapshot.dice[0] && !snapshot.dice[1];
         if (isDouble) { pendingDC = snapshot.doublingCubeValue; return; }  // fold into next row
         const rowNum = displayTurn++;
 
@@ -2617,7 +2686,7 @@ let handleRollClick;
           pendingDC = null;
         }
 
-        let displayDice = snapshot.isInitial ? '-' : `${snapshot.dice[0] || '-'}-${snapshot.dice[1] || '-'}`;
+        let displayDice = snapshot.isInitial ? '-' : `${snapshot.dice[0]}-${snapshot.dice[1]}`;
         let displayPCode = snapshot.isInitial ? '-' : pCode;
 
         let scoreCell = '';
@@ -2736,6 +2805,18 @@ let handleRollClick;
     updateNavButtons();
   }
 
+  // The START button says what it will do. While a game is in progress and paused — after STOP,
+  // after travelling back in the move list, or a game just loaded from a record — it reads RESUME,
+  // because pressing it continues from the current position; the word START made people reach for
+  // NEW GAME instead (Peter, 10/28). Everywhere else (idle, game over, examination mode) it is START.
+  function refreshStartLabel() {
+    const btn = document.getElementById('btn-start-game');
+    if (!btn) return;
+    const paused = gameStarted && !game.winner && !setupMode && aiStopped;
+    const label = paused ? 'Resume' : 'Start';
+    if (btn.textContent !== label) btn.textContent = label;
+  }
+
   /**
    * Pause AI play. Cancels any in-progress AI timer and re-enables
    * the START button so the player can resume.
@@ -2749,8 +2830,9 @@ let handleRollClick;
     // Re-enable START so the player has a way to resume AI
     const btnStart = document.getElementById('btn-start-game');
     if (btnStart) { btnStart.disabled = false; btnStart.style.opacity = '1'; }
+    refreshStartLabel();   // → RESUME now, not at the next render
     clockPause();      // don't bank the pause as time the player spent on this turn
-    sysLog('[System] AI paused. Click START to resume.');
+    sysLog('[System] AI paused. Click RESUME to continue.');
   }
 
   /**
@@ -2854,7 +2936,7 @@ document.getElementById('btn-start-game').addEventListener('click', () => {
         return;                       // there is no interactive game to pause underneath
       }
       stopAI();
-      if (gameStarted && !game.winner) gameMessageEl.textContent = "Game Stopped.  Press the Start button to continue.";
+      if (gameStarted && !game.winner) gameMessageEl.textContent = "Game Stopped.  Press RESUME to continue.";
       if (e.isTrusted && localPlayerRole === 1) {
         netSend({ type: 'stop_ai' });
       }
@@ -6131,7 +6213,7 @@ connection.on('data', (data) => {
       }
 
       // --- PUSH ALL BOARD MUTATIONS TO THE QUEUE ---
-      else if (data.type === 'move' || data.type === 'undo' || data.type === 'end_turn') {
+      else if (data.type === 'move' || data.type === 'undo' || data.type === 'end_turn' || data.type === 'skip_turn') {
           networkQueue.push({ type: data.type, data: data });
           processNetworkQueue();
       }
@@ -6394,6 +6476,21 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     return result;
   };
 
+  // Auto Skip's counterpart of the endTurn wrapper: bank the (momentary) turn onto its 0-0
+  // snapshot, set the status-line reminder, and send the skip across as its own message — the
+  // receiver must run skipTurn too, since a bare end_turn would record a [0,0] snapshot with
+  // hasRolled false, i.e. a doubling-accept.
+  game.skipTurn = function() {
+    const skipped = this.currentPlayer;
+    BackgammonGame.prototype.skipTurn.apply(this);
+    bankTurn(skipped, this.gameHistory[this.gameHistory.length - 1]);
+    skipNote = `${skipped === 1 ? 'White' : 'Red'} could not move and was skipped. `;
+    sysLog(`[System] ${skipped === 1 ? 'White' : 'Red'} cannot move with any roll — turn skipped (Auto Skip).`);
+    if (isNetworkGame && skipped === localPlayerRole) {
+      netSend({ type: 'skip_turn', nextPlayer: this.currentPlayer, turnCount: this.turnCount });
+    }
+  };
+
   function startGame(isRemote = false) {
     if (gameStarted) {
       // If AI was stopped, START re-enables it and triggers the AI turn
@@ -6402,8 +6499,17 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
         clockRun();
         const btnStart = document.getElementById('btn-start-game');
         if (btnStart) { btnStart.disabled = true; btnStart.style.opacity = '0.5'; }
-        sysLog('[System] AI resumed by START.');
+        sysLog('[System] AI resumed by RESUME.');
         updateUI(); // triggers checkAndTriggerAITurn
+        // RESUME with a HUMAN on roll used to do nothing visible (the AI was not the one waiting).
+        // Peter, 10/28: it should roll for the human too — after a time-travel jump that is the
+        // recorded roll (handleRollClick replays futureRolls), so the game continues at once.
+        // The dice themselves still work as before, and a double can still be offered first by
+        // clicking the dice route instead of RESUME.
+        if (!isNetworkGame && !initialRollOff && !game.hasRolled && !pendingDouble && !game.winner
+            && game.playerTypes[game.currentPlayer] === 'human') {
+          handleRollClick();
+        }
       }
       return;
     }
@@ -6814,11 +6920,15 @@ const originalEndTurn = BackgammonGame.prototype.endTurn;
     } else {
       const { player, dice, faces } = resolveMoverAndDice();
       initialRollOff = false;
-      game.currentPlayer = player;
+      // Record the "Start of Game" snapshot FIRST, exactly as Restart does for this same game
+      // (handleRestartClick) and as the roll-off does for an all-blank launch. Until 10/28 this
+      // branch set the first turn up directly, so the history had no initial row: the opener's
+      // first move was row 0, the game record numbered it turn 0, and the loader — which treats
+      // turn 0 as the initial position — dropped that move on re-import.
+      game.beginGameWithStarter(player);
       game.dice = [faces[0], faces[1]];
       game.movesLeft = dice.slice();
       game.hasRolled = true;
-      game.turnCount = 1;
       lastStarter = player;                 // record the opener so Restart takes the replay path
       setupOriginBoard.starter = player;    // replay the SAME opener + dice on Restart
       setupOriginBoard.dice = [faces[0], faces[1]];
