@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false, S: false }, autoAI: { M: true, A: false, R: true, Z: true, S: true }, heroic: false, triangles: false, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false, S: false }, autoAI: { M: true, A: false, R: true, Z: true, S: true }, heroic: false, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -432,6 +432,17 @@
         var q = game.spots[k];
         ctx.beginPath(); ctx.arc(q.x, q.y, 2 * SPOT_R, 0, 2 * Math.PI); ctx.strokeStyle = shownColour(Number(k)); ctx.stroke();
       });
+      ctx.setLineDash([]);
+    }
+    /* View → Mark a move that could not be drawn (v206, Peter 10/29): the computer's ladder ran out
+       (aiStops) and the game stopped — its move's start spot ringed and its destination dashed, as a
+       human's armed move is, until the game changes (a snapshot or an undo: history.length) */
+    if (route.markStopped && aiStopped && aiStopped.hist === history.length && aiStopped.atMove === game.moves && !computing()) {
+      var sm = game.spots[aiStopped.mx], dm = game.spots[aiStopped.my];
+      ctx.strokeStyle = game.player === 1 ? colours.player1 : colours.player2; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(sm.x, sm.y, 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.arc(dm.x, dm.y, aiStopped.mx === aiStopped.my ? 2 * SPOT_R : 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
       ctx.setLineDash([]);
     }
     var stuck = stuckSpots(), orig = route.triangles ? originalSpots() : {};
@@ -2265,6 +2276,7 @@
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
     if (typeof r.seedNumbers === 'boolean') { document.getElementById('opt-seednumbers').checked = !r.seedNumbers; route.seedNumbers = r.seedNumbers; }
     if (typeof r.smallDead === 'boolean') { document.getElementById('opt-smalldead').checked = r.smallDead; route.smallDead = r.smallDead; }
+    if (typeof r.markStopped === 'boolean') { document.getElementById('opt-markstopped').checked = r.markStopped; route.markStopped = r.markStopped; }
     if (typeof r.triangles === 'boolean') { document.getElementById('opt-triangles').checked = r.triangles; route.triangles = r.triangles; }
     /* the Room menu's eight boxes (v152); a file from before has Shift spots / curves automatically, which were M for both */
     var oldM = typeof r.shiftSpots === 'boolean' || typeof r.shiftCurves === 'boolean' ? r.shiftSpots === true || r.shiftCurves === true : null;
@@ -2588,6 +2600,7 @@
   document.getElementById('opt-deadnumbers').addEventListener('change', function (e) { route.deadNumbers = !e.target.checked; draw(); });
   document.getElementById('opt-seednumbers').addEventListener('change', function (e) { route.seedNumbers = !e.target.checked; draw(); });
   document.getElementById('opt-smalldead').addEventListener('change', function (e) { route.smallDead = e.target.checked; draw(); });
+  document.getElementById('opt-markstopped').addEventListener('change', function (e) { route.markStopped = e.target.checked; draw(); });
   /* v158 (Peter): every View option a checkbox — C, S and F too (before, menu items without a visible state) */
   document.getElementById('opt-poly').addEventListener('change', function (e) { showPolygons = e.target.checked; draw(); });
   document.getElementById('opt-numbers').addEventListener('change', function (e) { showNumbers = e.target.checked; draw(); });
@@ -3073,7 +3086,7 @@
       return;
     }
     var t0 = a.text || a.text0 || (a.mx + 1) + ' → ' + (a.my + 1);
-    aiStopped = { here: a.here, key: a.key, mx: a.mx, my: a.my, enc: a.enc, canon: a.canon, text: t0, brief: a.brief || a.brief0 || t0, verdict: a.verdict };
+    aiStopped = { here: a.here, key: a.key, mx: a.mx, my: a.my, enc: a.enc, canon: a.canon, text: t0, brief: a.brief || a.brief0 || t0, verdict: a.verdict, atMove: game.moves, hist: history.length };
     log(a.who + ' cannot draw its move ' + aiStopped.text + ' as intended' + after + ': ' + a.failed.join('; ') + '. The game stops here.');
     say(a.who + ' cannot draw its move ' + aiStopped.brief + ' as intended' + after + ': the game stops here.   A, R or Z: redraw, and it tries again — or set ' + playerName(game.player) + ' to Human and draw a move by hand', true);
     draw();

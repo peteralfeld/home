@@ -610,20 +610,21 @@ whole drawing (<code>redraw.js</code>). The idea is that every curve should be d
 it were drawn last, all at the same time. Every curve becomes a polyline through its end spots and points about $D$
 apart along it (a move&rsquo;s two curves form one unit, so bending is charged through the move&rsquo;s spot). The
 spots and the points then move together to a minimum of
-$$E = \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{near}} \varphi(r)
+$$E = 10 \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{near}} \varphi(r)
 \;+\; D^2 \sum \frac{\theta^2}{\ell} \;+\; D \sum (\theta - 2\pi/k)^2 \;+\; D\sum (t\cdot n)^2
-\;-\; \pi D^2 \sum_{\text{live regions}} \text{lives} \cdot \log(\text{area}).$$</p>
+\;-\; \pi (D/2)^2 \sum_{\text{live regions}} \text{lives} \cdot \log(\text{area}).$$</p>
 
 <table class="desc">
-  <tr><td>length</td><td>the total length of all curves: the tension that keeps them short.</td></tr>
+  <tr><td>length</td><td>the total length of all curves, weighted 10: the tension that keeps them short (v207;
+  weight 1 before &mdash; see below).</td></tr>
   <tr><td>crowding</td><td>for each point (weighted by $w$, its share of its curve&rsquo;s length) a term
   $\varphi(r) = \bigl((1/r - 1/H)/(1/c - 1/H)\bigr)^2$ for each nearby thing: each other curve once (its
   nearest point), the curve itself where it comes back, each spot, the window&rsquo;s sides. $\varphi$ is 1 at the
   comfort distance $c$, like $(c/r)^2$ closer in, and falls smoothly to 0 at the horizon $H = 2c$, beyond which
   the thing is not felt (v190; before, $H$ was 256 pixels for every term, and a point felt everything within that
-  distance). $c = 2D$ across a region that still has a move (room for a new curve with $D$ on each side), and only
-  $2 d_0$ across one without, where nothing will ever be drawn and the curves need only stay apart (v200: with
-  $D$ there, the 25 nested dead rings of a 60-seed game took most of the window). Spots crowd each other too: every pair of spots has such a term with comfort $D$ (a spot
+  distance). $c = 2 d_0$ everywhere: the curves need only stay apart, each keeping the minimum clearance from
+  the middle between them (v207; before, $c$ was $2D$ across a region that still has a move, room for a new curve
+  with $D$ on each side, and $2 d_0$ only across a dead one &mdash; see below). Spots crowd each other too: every pair of spots has such a term with comfort $D$ (a spot
   counts as a stretch $D$ of curve, and this is what places a spot with no curves). It is measured between the
   discs when one of the two is a seed and between the centers otherwise (v190; measured between the centers, two
   seeds whose discs touched were still a spot&rsquo;s width apart and hardly pushed, and in a 100-seed game two
@@ -635,9 +636,25 @@ $$E = \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{near}}
   <tr><td>tees</td><td>where a third curve leaves a move&rsquo;s spot, it leaves at right angles ($t$ the curve&rsquo;s
   tangent, $n$ the third curve&rsquo;s direction).</td></tr>
   <tr><td>room by lives</td><td>$-\pi D^2 \sum \text{lives}\cdot\log(\text{area})$ over the regions that still have a
-  move: each region pushes outwards in proportion to its lives, each life worth a disc of radius $D$. A region
-  with no move left gets no room.</td></tr>
+  move: each region pushes outwards in proportion to its lives, each life worth a disc of radius $D/2$ (v207;
+  $D$ before). A region with no move left gets no room.</td></tr>
 </table>
+
+<p><b>The compact energy (v207).</b> Until v206 the comfort across a live region was $2D$ = 80 pixels, with the
+horizon at 160, length had weight 1 and each life was worth a disc of radius $D$. The drawings this produced
+were far longer than the position required: in a 60-seed game stopped at move 87 the curves measured 43,000
+pixels, with long tongues and nested rings 80 pixels apart. The reasons are in the energy itself. With a
+comfort of 80 pixels nearly every point of a large picture lies within several curves&rsquo; repulsion at once,
+and the descent finds no step that lowers the total &mdash; R moved that picture by 1.8 pixels in 266 steps and
+gave up. Length has no gradient along a straight stretch, and at weight 1 against a crowding of $\lambda D$ per
+point it was little more than a tie-breaker. And the bending term $D^2\theta^2/\ell$ rewards <em>longer</em>
+legs at a turn whose angle is fixed, as it is at the tip of a tongue, so tongues grew rather than shrank.
+Measured on that position (the scripts are in <code>.z/compact-1029</code>): a shorter comfort alone or a
+heavier length alone changes nothing; together, R finishes with 9 pixels of clearance, the curves measure
+27,600 pixels, and the move the game had stopped on fits with 22 pixels to spare. The room-by-lives term is what
+keeps the live regions open: at a quarter of its former weight it still does, at zero the splines cross. Played
+on from that drawing by two Random players, the old energy ran out of room again at move 97; the new one played
+the game to its end at move 147, with M needed eight times, R twice and Z never.</p>
 
 <p>The descent is L-BFGS [<a href="#ref-lbfgs">5</a>] (eight correction pairs) with the exact gradient (checked
 against finite differences) and a line search on $E$ itself. What makes it safe is a cap on every step taken from

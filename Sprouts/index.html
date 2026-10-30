@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=205">
+<link rel="stylesheet" href="style.css?v=207">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 205</span>
+  <span id="app-version">SPROUTS v. 207</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -124,6 +124,7 @@
       <label class="row" data-tip="opt-deadnumbers">No indices at stumps <kbd>G</kbd> <input id="opt-deadnumbers" type="checkbox" checked></label>
       <label class="row" data-tip="opt-seednumbers">No indices at seeds <kbd>/</kbd> <input id="opt-seednumbers" type="checkbox"></label>
       <label class="row" data-tip="opt-smalldead">Stumps half size <kbd>H</kbd> <input id="opt-smalldead" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-markstopped">Mark a move that could not be drawn <input id="opt-markstopped" type="checkbox" checked></label>
       <button class="item" id="cmd-area" data-tip="cmd-area">Size of the drawing area <kbd>Q</kbd></button>
       <label class="row" data-tip="cmd-window">Window of its own <kbd>Y</kbd> <input id="opt-window" type="checkbox"></label>
     </div>
@@ -305,6 +306,7 @@
   <div data-tip-for="opt-deadnumbers"><b>No indices at stumps</b> <kbd>G</kbd>. With spot indices shown, leaves them off the stumps: the spots that already have three curves (no lives left), which no longer matter for the game.</div>
   <div data-tip-for="opt-seednumbers"><b>No indices at seeds</b> <kbd>/</kbd>. With spot indices shown, leaves them off the seeds: the spots with no curves yet, which in a game with many seeds are many and need no name until a curve reaches them (when room is made, the seeds of a region are all alike).</div>
   <div data-tip-for="opt-smalldead"><b>Stumps half size</b> <kbd>H</kbd>. Draws stumps (spots with three curves, no lives) at half the size, so the live spots stand out. Only the drawing changes: curves keep clear of them as of full-size spots.</div>
+  <div data-tip-for="opt-markstopped"><b>Mark a move that could not be drawn</b>. When the computer's move cannot be drawn even after the Room menu's automatic steps and the game stops, its two spots are marked in the mover's color — a ring at the start, a dashed ring at the destination (one dashed ring for a loop) — until the picture changes. A human's refused move is marked the same way while it waits.</div>
 
   <div data-tip-for="m-room"><b>Room:</b> what happens automatically when a move does not fit in the drawing as it is, for a human&rsquo;s moves and the computer&rsquo;s; and Heroic mode. <kbd>M</kbd>, <kbd>A</kbd>, <kbd>R</kbd>, <kbd>Z</kbd> and <kbd>.</kbd> can always be pressed by hand too.</div>
   <div data-tip-for="room-head"><b>Automatically, when a move does not fit:</b> the steps are taken in the order M, A, R, Z, &bull; (from the least to the most change to the picture), each once, until the move can be drawn. For a human&rsquo;s move the ladder stops at the first box not checked (an unchecked A is simply skipped): the status row offers that step and the ones after it by hand (their keys), each of which tries the move again and then lets the ladder go on by the same rule. For the computer&rsquo;s move only the checked steps are taken; if none of them makes room, the game stops and says so. Defaults: M and R for a human, M, R, Z and &bull; for the computer. &bull; lets Z, when the picture does not fit at full size, draw some spots smaller.</div>
@@ -336,17 +338,17 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=205"></script>
-<script src="relax.js?v=205"></script>
-<script src="route.js?v=205"></script>
-<script src="engine.js?v=205"></script>
-<script src="describe.js?v=205"></script>
-<script src="room.js?v=205"></script>
-<script src="moves.js?v=205"></script>
-<script src="redraw.js?v=205"></script>
-<script src="layout.js?v=205"></script>
-<script src="ai.js?v=205"></script>
-<script src="net.js?v=205"></script>
-<script src="ui.js?v=205"></script>
+<script src="geom.js?v=207"></script>
+<script src="relax.js?v=207"></script>
+<script src="route.js?v=207"></script>
+<script src="engine.js?v=207"></script>
+<script src="describe.js?v=207"></script>
+<script src="room.js?v=207"></script>
+<script src="moves.js?v=207"></script>
+<script src="redraw.js?v=207"></script>
+<script src="layout.js?v=207"></script>
+<script src="ai.js?v=207"></script>
+<script src="net.js?v=207"></script>
+<script src="ui.js?v=207"></script>
 </body>
 </html>

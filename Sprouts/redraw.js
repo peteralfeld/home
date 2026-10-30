@@ -8,7 +8,7 @@
    apart. Spots and points then move together to the MINIMUM of one energy —
    the energy a curve minimises when it is drawn (the band, relax.js), for all
    curves at once (v51; Peter, 9/24: A and R should work like the curves do):
-     E = Σ length                          + λ Σ_points w · Σ_near φ   (+ room by lives, below)
+     E = LENGTH Σ length                   + λ Σ_points w · Σ_near φ   (+ room by lives, below)
        + D² Σ θ²/ℓ                           bending (the elastic energy ∫κ² ds:
                                              a bend tighter than D costs more
                                              than its length)
@@ -25,16 +25,29 @@
    in, falling smoothly to 0 at the horizon H = HORIZON · c (v190; v51–v189: H = 256 px for
    every c, where most of the work went to distances that barely counted). With HORIZON 1:
    φ(r) = (c/r − 1)², 0 at c.
-   c = 2 D across a region that still has a move (room for a new curve with D
-   on each side), D across one without; the window's sides 2 D if the outside
-   has a move, else D (Peter, 9/24: keep space round the drawing for new
-   curves). A spot counts as a stretch D of curve (this places a spot with no
-   curves).
-       − π D² Σ lives · log(area)            ROOM BY LIVES (v52): each region with a
+   c = 2 d0 everywhere — the curves need only stay apart, each keeping the minimum
+   clearance from the middle between them — and the window's sides the same
+   (v207; v51–v206: 2 D across a region that still has a move and along the window's
+   sides when the outside has one, D, later 2 d0, across a dead one). A spot
+   counts as a stretch D of curve (this places a spot with no curves).
+       − π (D/2)² Σ lives · log(area)        ROOM BY LIVES (v52): each region with a
                                              move left pushes out in proportion to its
-                                             lives; each life is worth a disc of radius D
+                                             lives; each life is worth a disc of radius
+                                             D/2 (v207; D before)
    (v45–v50 had this pressure against a weak tension, κ = 0.03: curves wound
    into mazes to gain area; v51 dropped it and live regions were squeezed.)
+   THE COMPACT ENERGY (v207, Peter 10/29: "having short curves will use space more
+   efficiently"): LENGTH = 10, comfort 2 d0 everywhere, room by lives a quarter.
+   Before, comfort across a live region was 2 D = 80 px with the horizon at 160, so
+   in a big picture nearly every point sat in several curves' repulsion at once:
+   the drawings inflated (43,000 px of curve in the 60-seed game at move 87, tongues
+   that grew — the bending term rewards longer segments at a fixed turn — and R could
+   find no descending step at all, 266 steps for 1.8 px). Measured on that position
+   (.z/compact-1029): neither a heavier length nor the short comfort alone moves it;
+   together R finishes (9 px) with 27,600 px of curve and the stuck move fits with 22
+   px to spare; the room term at a quarter keeps live regions open (at 0 the splines
+   cross). Played on from there, Random vs Random: the page's energy stuck at move 97,
+   this one played to the end (147 moves, M 6 of 8, R 2 of 2, Z never).
    Descent: L-BFGS with a line search on E itself, run until the drawing no
    longer changes visibly — the last stretch of steps moved nothing by a pixel,
    or gained less than a pixel's worth of energy a step (v54; v51–v53 ran
@@ -82,6 +95,7 @@
   var RAMP = 0.9;             // … fully; the crowding fades out between RAMP and 1 of that ratio (smooth, not a switch:
                               //  the descent stuck on the switch — Z, 9/30; v53 had found the same)
   var ONE = [1, 0, 0];
+  var LENGTH = 10;            // the weight of a curve's length against the rest (v207: see the top; 1 before)
   /* the weight of a self term at distance d with arc `sig` between: 1 below RAMP · SELF_RATIO · sig, 0 above
      SELF_RATIO · sig, a smoothstep between; returns [ψ, ∂ψ/∂d, ∂ψ/∂sig] */
   function selfWeight(d, sig) {
@@ -157,31 +171,16 @@
       if (u.edges.length === 2) ln = ln.concat(paths[u.edges[1]].slice(1));
       return ln;
     });
-    /* the room each curve wants on each side (v51): 2 D where the region there still has a move —
-       room for a new curve with D on each side of it (the loop rule of v17, now for every curve) —
-       and only 2 d0 where it has none: nothing will ever be drawn there, the curves need only stay
-       apart (each keeping the minimum clearance from the middle between them). (v200: the code had given
-       dead regions D since v51 while this comment said d0 — in Peter's 60-seed game of 10/21 some 25
-       nested dead rings 40 px apart took 1000 of the window's 1331 px and the game ran out of room at
-       move 114. d0 itself was tried: Z's fixtures then came out with curves 0.5 px apart in dead regions,
-       under the drawn thickness.) The window's sides: 2 D if the outside region has a move, else 2 d0
-       (Peter, 9/24: keep space for new curves round the drawing). */
-    var comfort = game.edges.map(function (e) {        // (read 1 px off the curve itself, a → b: a point 1 px off a
-      var q = G.refinedPolygon(e.pieces, 0.25, 4).pts;  //  chord of it can lie across the curve — v52)
-      var m = Math.max(1, Math.floor(q.length / 2)), A = q[m - 1], B = q[m];
-      var mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2, tx = B[0] - A[0], ty = B[1] - A[1], tl = Math.sqrt(tx * tx + ty * ty) || 1;
-      return [1, -1].map(function (sg) { var r = an.regionAt([mx - sg * ty / tl, my + sg * tx / tl]); return r && r.canMove ? 2 * o.D : 2 * o.d0; });
-    });
-    var borderComfort = an.regions.some(function (r) { return r.key === -1 && r.canMove; }) ? 2 * o.D : 2 * o.d0;
-    /* for each point inside a curve: its line u, its place k there, its edge e; for each segment its
+    var comfort = 2 * o.d0;                             // the room each curve wants on each side (v207: see the top; v51–v206 by the region there)
+    /* for each point inside a curve: its line u and its place k there; for each segment its
        line and place; for each line where its own spots lie on it */
-    var vinfo = new Array(P.length), segLine = [], segK = [], segEdge = [], segs2 = [], spotAt = [];
+    var vinfo = new Array(P.length), segLine = [], segK = [], segs2 = [], spotAt = [];
     lines.forEach(function (ln, u) {
-      var un = units[u], zk = un.edges.length === 2 ? paths[un.edges[0]].length - 1 : Infinity, at = {};
+      var at = {};
       ln.forEach(function (v, k) {
         if (v < nS) (at[v] = at[v] || []).push(k);
-        else vinfo[v] = { u: u, k: k, e: un.edges[k < zk ? 0 : 1] };
-        if (k > 0) { segs2.push([ln[k - 1], v]); segLine.push(u); segK.push(k - 1); segEdge.push(un.edges[k <= zk ? 0 : 1]); }
+        else vinfo[v] = { u: u, k: k };
+        if (k > 0) { segs2.push([ln[k - 1], v]); segLine.push(u); segK.push(k - 1); }
       });
       spotAt.push(at);
     });
@@ -226,7 +225,7 @@
       nb.sort(function (u, v) { return Math.atan2(P[u][1] - P[i][1], P[u][0] - P[i][0]) - Math.atan2(P[v][1] - P[i][1], P[v][0] - P[i][0]); });
       corners.push({ s: i, nb: nb });
     }
-    var st = { game: game, o: o, key0: Rm.positionKey(game), corners: corners, regions: regions, fixSpots: !!fixSpots, comfort: comfort, borderComfort: borderComfort, vinfo: vinfo, segLine: segLine, segK: segK, segEdge: segEdge, spotAt: spotAt, P: P, nS: nS, paths: paths, segs: segs, lines: lines, units: units, fixed: fixed, tees: tees,
+    var st = { game: game, o: o, key0: Rm.positionKey(game), corners: corners, regions: regions, fixSpots: !!fixSpots, comfort: comfort, vinfo: vinfo, segLine: segLine, segK: segK, spotAt: spotAt, P: P, nS: nS, paths: paths, segs: segs, lines: lines, units: units, fixed: fixed, tees: tees,
                box: [0, 0, game.W0, game.H0], it: 0, done: false, spotR: o.spotR || 0, stages: 0 };
     /* EACH SPOT ITS OWN RADIUS (v189): st.rad[i], at most the Settings' o.spotR — less for a spot drawn
        smaller to make room (its share f, kept in the game: Room menu's • column, after Z failed).
@@ -307,12 +306,13 @@
       }
     }
     /* ROOM BY LIVES: −W Σ lives · log(area) over the regions that still have a move (the outside's
-       area also gets the window's), W = π D² — each life is worth a disc of radius D: a region's
+       area also gets the window's), W = π (D/2)² — each life is worth a disc of radius D/2 (v207; D
+       before, against the 2 D comfort — see the top): a region's
        pressure, W · lives / area per unit of boundary, meets the pull of its curves' length where
        its area is about W · lives. (v45–v50 had it against a weak tension, κ = 0.03, and curves
        wound into mazes to gain area; v51 dropped it and live regions got squeezed — Peter, 9/24:
        "shouldn't that region be much larger? It has three lives left!") */
-    var PW = Math.PI * D * D;
+    var PW = Math.PI * D * D / 4;
     for (var ri = 0; ri < st.regions.length; ri++) {
       var rg = st.regions[ri];
       if (!rg.lives) continue;
@@ -344,10 +344,10 @@
       }
       var mu = L / m, v2 = 0;
       for (t = 0; t < m; t++) v2 += (ls[t] - mu) * (ls[t] - mu);
-      E += L + v2 / mu;
+      E += LENGTH * L + v2 / mu;
       if (!g) return;
       for (t = 0; t < m; t++) {
-        var c = 1 + 2 * (ls[t] - mu) / mu - v2 / (mu * mu * m);
+        var c = LENGTH + 2 * (ls[t] - mu) / mu - v2 / (mu * mu * m);
         push(p[t + 1], c * us[t][0], c * us[t][1]); push(p[t], -c * us[t][0], -c * us[t][1]);
       }
     });
@@ -367,7 +367,7 @@
        (v54: v45–v53 reset the marks after every point, O(points × segments) per evaluation) */
     var seen = st.seen || (st.seen = new Float64Array(segs.length)), stampBase = (st.evals = (st.evals || 0) + 1) * n;
     var nL = lines.length, bestD = new Float64Array(nL), bestK = new Int32Array(nL), bestT = new Float64Array(nL), bestW = new Array(nL), bestA = new Array(nL), bestS = new Float64Array(nL), mark = new Int32Array(nL).fill(-1), touched = [];
-    var RING = 1, cB = st.borderComfort;
+    var RING = 1, cB = st.comfort;
     for (var y = 0; y < n; y++) {
       var X = Math.floor(P[y][0] / CELL), Y = Math.floor(P[y][1] / CELL), vi = vinfo[y], u = vi ? vi.u : -1, Su = vi ? S[u] : null, sy = vi ? Su[vi.k] : 0;
       touched.length = 0;
@@ -417,13 +417,12 @@
       }
       if (!vi) {
         /* a SPOT against the curves near it (not its own), each once: λ D φ — a spot counts as a
-           stretch D of curve — with the comfort of the side of that curve it lies on */
+           stretch D of curve */
         for (var tj = 0; tj < touched.length; tj++) {
           v = touched[tj]; k = bestK[v]; t = bestT[v]; a = segs[k][0]; b = segs[k][1];
           var rr = bestD[v] - rad[y];             // (inside the disc, rr ≤ 0: see phi — a fresh layout (Z)
           if (!(bestD[v] > 0)) return Infinity;  //  starts with curves through spots' discs)
-          var sxv = P[b][0] - P[a][0], syv = P[b][1] - P[a][1], qx0 = P[a][0] + t * sxv, qy0 = P[a][1] + t * syv;
-          var cc = st.comfort[st.segEdge[k]][(P[y][0] - qx0) * -syv + (P[y][1] - qy0) * sxv >= 0 ? 0 : 1];
+          var sxv = P[b][0] - P[a][0], syv = P[b][1] - P[a][1], qx0 = P[a][0] + t * sxv, qy0 = P[a][1] + t * syv, cc = st.comfort;
           var wS = bestW[v];
           E += lam * D * wS[0] * phi(rr, cc, rad[y]);
           if (!g) continue;
@@ -434,16 +433,13 @@
         continue;
       }
       /* CROWDING at this point: λ w Σ φ over what is near — each other curve once (its nearest
-         point), its own where it comes back, each spot, the window's sides — with the comfort of
-         the side it lies on */
+         point), its own where it comes back, each spot, the window's sides */
       var ln = lines[u], pv = P[ln[vi.k - 1]], nx = P[ln[vi.k + 1]], py = P[y];
       var la = G.dist(py, pv), lb = G.dist(nx, py), w = (la + lb) / 2;
-      var tx = nx[0] - pv[0], ty = nx[1] - pv[1], tl = Math.sqrt(tx * tx + ty * ty) || 1e-12, nX = -ty / tl, nY = tx / tl;
-      var cf = st.comfort[vi.e], Phi = 0;
-      function side(qx, qy) { return (qx - py[0]) * nX + (qy - py[1]) * nY >= 0 ? cf[0] : cf[1]; }
+      var c = st.comfort, Phi = 0;
       for (var ti = 0; ti < touched.length; ti++) {
         v = touched[ti]; var r = bestD[v]; k = bestK[v]; t = bestT[v]; a = segs[k][0]; b = segs[k][1];
-        var qx = P[a][0] + t * (P[b][0] - P[a][0]), qy = P[a][1] + t * (P[b][1] - P[a][1]), c = side(qx, qy);
+        var qx = P[a][0] + t * (P[b][0] - P[a][0]), qy = P[a][1] + t * (P[b][1] - P[a][1]);
         var wC = bestW[v];
         Phi += wC[0] * phi(r, c);
         if (!g) continue;
@@ -466,7 +462,6 @@
           if (!wP[0]) continue;
         }
         if (!(ds > 0)) return Infinity;
-        c = side(P[s][0], P[s][1]);
         Phi += wP[0] * phi(rs, c, pad);
         if (!g) continue;
         f = lam * w * (wP[0] * phi1(rs, c, pad) + wP[1] * phi(rs, c, pad)) / ds; fx = -f * sx; fy = -f * sy2;   // (drs/dy = dds/dy)
@@ -769,7 +764,7 @@
     st.counts = st.counts || {};
     if (st.counts[counts]) return false;
     st.counts[counts] = true;
-    ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'borderComfort', 'vinfo', 'segLine', 'segK', 'segEdge', 'spotAt'].forEach(function (k) { st[k] = ns[k]; });
+    ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'vinfo', 'segLine', 'segK', 'spotAt'].forEach(function (k) { st[k] = ns[k]; });
     if (st.fixSpots) st.game.spots.forEach(function (s, i) { if (st.fixed[i]) { st.P[i][0] = s.x; st.P[i][1] = s.y; } });
     st.g = null; st.seen = null; st.hist = null; st.confirmed = false; st.respaced = (st.respaced || 0) + 1;
     return true;
@@ -802,7 +797,7 @@
   /* st takes over the points and everything built on them from ns (a createRedraw of the same drawing's
      curves with other points); the descent starts afresh. */
   function adopt(st, ns) {
-    ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'borderComfort', 'vinfo', 'segLine', 'segK', 'segEdge', 'spotAt'].forEach(function (k) { st[k] = ns[k]; });
+    ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'vinfo', 'segLine', 'segK', 'spotAt'].forEach(function (k) { st[k] = ns[k]; });
     st.g = null; st.seen = null; st.hist = null; st.confirmed = false;
   }
 
