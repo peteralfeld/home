@@ -85,6 +85,7 @@
   var G = root.SproutsGeom || require('./geom.js');
   var E = root.SproutsEngine || require('./engine.js'), Eng = E;
   var Rm = root.SproutsRoom || require('./room.js');
+  var Rx = root.SproutsRelax || require('./relax.js');
 
   /* (v190, Peter 10/20: "set the horizon to the comfort distance rather than 256 px") HORIZON comfort distances:
      a term with comfort c reaches out to HORIZON · c, and the grid's cells are HORIZON · 2 D (the largest comfort),
@@ -135,13 +136,98 @@
     var e = game.edges, m = ei - ei % 2;
     return m + 1 < e.length && e[m].b === e[m + 1].a && e[m].a === e[m + 1].b ? 1 : 0;
   }
+  /* THE START MUST BE THE POSITION (Peter 10/31, his thin-branch game: R refused "would not be the same
+     position" — measured: at step 0 already two loops crossed what they enclosed): a curve's points are
+     taken about D apart along it, and where it winds closer to something than its chords cut corners, a
+     chord crosses a neighbour, or passes a spot on its other side, and the descent (which keeps the
+     polylines apart, never brings them back) cannot undo it. So the start is checked — no two chords cross,
+     and the position of the polylines is the drawing's — and a chord at fault gets a point halfway along the
+     curve between its ends (a first try with every curve's points twice as dense measured 2380 points, too
+     many for the descent); where the polygon the points are taken on is itself too coarse for that (no vertex
+     of it between the chord's ends), the polygon is made four times closer to its curve, down to 1e-9 px (the
+     arithmetic, as in thin.js). A curve that winds through no tight place keeps its points as before. */
   function createRedraw(game, o, fixSpots) {
+    var spec = game.edges.map(function () { return null; }), st = createAt(game, o, fixSpots, spec);
+    for (;;) {
+      var bad = startFaults(st), changed = false;
+      if (!bad) return st;
+      var byEdge = {};
+      bad.forEach(function (c) { (byEdge[c[0]] = byEdge[c[0]] || {})[c[1]] = 1; });
+      Object.keys(byEdge).forEach(function (k) {
+        var ei = Number(k), sp = spec[ei];
+        if (!sp) {                                  // (from now on by fractions of its length: as many as it has points now)
+          var n = st.paths[ei].length - 2, F = [];
+          for (var q = 1; q <= n; q++) F.push(q / (n + 1));
+          sp = spec[ei] = { lv: 0, F: F };
+        }
+        var all = [0].concat(sp.F, [1]), poly = polyOf(game.edges[ei], sp.lv), raise = false, out = [0];
+        for (var jj = 0; jj + 1 < all.length; jj++) {
+          if (byEdge[ei][jj]) {
+            var f0 = all[jj], f1 = all[jj + 1], inside = poly.S.some(function (x) { return x > f0 * poly.L && x < f1 * poly.L; });
+            if (inside) { out.push((f0 + f1) / 2); changed = true; } else raise = true;
+          }
+          out.push(all[jj + 1]);
+        }
+        sp.F = out.slice(1, -1);
+        if (raise && START_EPS / Math.pow(4, sp.lv + 1) >= 1e-9) { sp.lv++; changed = true; }
+      });
+      if (!changed) return st;                      // (as before: the descent and the check at the end tell)
+      st = createAt(game, o, fixSpots, spec);
+    }
+  }
+  var START_EPS = 0.5;                              // the polygon a curve's points are taken along, at first
+  function polyOf(e, lv) {                          // the polygon, its arc length at each vertex, its length
+    var pts = G.refinedPolygon(e.pieces, START_EPS / Math.pow(4, lv), 16).pts, S = [0];
+    for (var i = 1; i < pts.length; i++) S.push(S[i - 1] + G.dist(pts[i], pts[i - 1]));
+    return { pts: pts, S: S, L: S[S.length - 1] };
+  }
+  /* null if the start is the drawing's position with no chords crossing; else the chords to cut, [edge, k]
+     (the k-th chord of the edge's path): those that cross another chord — or, if the position differs
+     without a crossing, every chord */
+  function startFaults(st) {
+    var P = st.P, segs = st.segs, cells = new Map(), CELL = 2 * st.o.D, bad = [];
+    function chordOf(k) {
+      var u = st.units[st.segLine[k]], e0 = u.edges[0], n0 = st.paths[e0].length - 1;
+      return u.edges.length === 2 && st.segK[k] >= n0 ? [u.edges[1], st.segK[k] - n0] : [e0, st.segK[k]];
+    }
+    for (var k = 0; k < segs.length; k++) {
+      var a = segs[k][0], b = segs[k][1];
+      var x0 = Math.floor(Math.min(P[a][0], P[b][0]) / CELL), x1 = Math.floor(Math.max(P[a][0], P[b][0]) / CELL);
+      var y0 = Math.floor(Math.min(P[a][1], P[b][1]) / CELL), y1 = Math.floor(Math.max(P[a][1], P[b][1]) / CELL);
+      for (var cx = x0; cx <= x1; cx++) for (var cy = y0; cy <= y1; cy++) {
+        var ck = cx * 65536 + cy, lst = cells.get(ck);
+        if (!lst) { cells.set(ck, [k]); continue; }
+        for (var i = 0; i < lst.length; i++) {
+          var c = segs[lst[i]][0], d = segs[lst[i]][1];
+          if (a === c || a === d || b === c || b === d) continue;
+          if (G.segCross(P[a], P[b], P[c], P[d])) { bad.push(chordOf(k)); bad.push(chordOf(lst[i])); }
+        }
+        lst.push(k);
+      }
+    }
+    if (bad.length) return bad;
+    if (Rm.positionKey(redrawCurrent(st)) === st.key0) return null;
+    for (k = 0; k < segs.length; k++) bad.push(chordOf(k));
+    return bad;
+  }
+  function createAt(game, o, fixSpots, spec) {
     var nS = game.spots.length, an = E.analyse(game.spots, game.edges), i;
     var P = game.spots.map(function (s) { return [s.x, s.y]; });
-    /* paths[e]: the vertex indices along edge e, from e.a to e.b */
+    /* paths[e]: the vertex indices along edge e, from e.a to e.b (spec[e]: its points at these fractions of
+       its length, on its polygon of that level — see createRedraw) */
     var paths = game.edges.map(function (e, ei) {
-      var pts = G.refinedPolygon(e.pieces, 0.5, 16).pts, S = [0];
-      for (i = 1; i < pts.length; i++) S.push(S[i - 1] + G.dist(pts[i], pts[i - 1]));
+      var sp = spec[ei], pl = polyOf(e, sp ? sp.lv : 0), pts = pl.pts, S = pl.S;
+      if (sp) {
+        var pth = [e.a], q0 = 1;
+        sp.F.forEach(function (f) {
+          var at = f * pl.L;
+          while (q0 < S.length - 1 && S[q0] < at) q0++;
+          var t0 = (at - S[q0 - 1]) / ((S[q0] - S[q0 - 1]) || 1), a0 = pts[q0 - 1], a1 = pts[q0];
+          pth.push(P.length); P.push([a0[0] + t0 * (a1[0] - a0[0]), a0[1] + t0 * (a1[1] - a0[1])]);
+        });
+        pth.push(e.b);
+        return pth;
+      }
       var L = S[S.length - 1], x = L / o.D, path = [e.a], q = 1, least = leastPoints(game, ei);
       /* a curve whose pieces already number one of the two counts nearest L / D (as every curve R
          or A drew does: it goes through its points) keeps its knots as its points — so a second
@@ -194,8 +280,11 @@
       });
       return out;
     }
-    var regions = an.regions.map(function (r) {
-      return { lives: r.canMove ? r.lives : 0, outside: r.key === -1,
+    /* (o.lives, zgrow.js: a PARTIAL drawing's region is weighted by what it still has to receive, not by
+       its lives — the caller's function of the analysis and the region's index decides, here and after
+       every re-spacing, which builds the state anew) */
+    var regions = an.regions.map(function (r, ri) {
+      return { lives: o.lives ? o.lives(an, ri) : r.canMove ? r.lives : 0, outside: r.key === -1,
                cycles: r.boundaries.filter(function (bd) { return bd.cycle !== undefined; }).map(function (bd) { return cycleVerts(bd.cycle); }) };
     });
     var fixed = new Uint8Array(P.length);
@@ -227,6 +316,22 @@
     }
     var st = { game: game, o: o, key0: Rm.positionKey(game), corners: corners, regions: regions, fixSpots: !!fixSpots, comfort: comfort, vinfo: vinfo, segLine: segLine, segK: segK, spotAt: spotAt, P: P, nS: nS, paths: paths, segs: segs, lines: lines, units: units, fixed: fixed, tees: tees,
                box: [0, 0, game.W0, game.H0], it: 0, done: false, spotR: o.spotR || 0, stages: 0 };
+    /* KEEP THE SHAPE (v211, o.keepShape — R unless Room → "R spreads to the whole area" is on; Peter 10/30: R
+       spread the picture sideways in a wide drawing area, "it often looks weird"). Nothing in the energy
+       stretches: the live regions' room pushes outward and the area's sides are the only limit, so in a wide
+       area the picture grows sideways. Here the limit is a box of the PICTURE'S OWN width-to-height ratio
+       instead — the picture's bounding box with the comfort the sides ask for (plus a spot's radius), enlarged
+       evenly as far as the drawing area allows, centered on the picture and moved into the area where it
+       sticks out (a side longer than the area's is cut to it). The picture lies inside it as it lies inside
+       the area: R may enlarge it evenly, not stretch it. */
+    if (o.keepShape && P.length) {
+      var bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity, mg = comfort + (o.spotR || 0);
+      P.forEach(function (q) { if (q[0] < bx0) bx0 = q[0]; if (q[0] > bx1) bx1 = q[0]; if (q[1] < by0) by0 = q[1]; if (q[1] > by1) by1 = q[1]; });
+      var bw = bx1 - bx0 + 2 * mg, bh = by1 - by0 + 2 * mg, sc = Math.max(1, Math.min(game.W0 / bw, game.H0 / bh));
+      bw = Math.min(game.W0, sc * bw); bh = Math.min(game.H0, sc * bh);
+      var cx = Math.min(Math.max((bx0 + bx1) / 2, bw / 2), game.W0 - bw / 2), cy = Math.min(Math.max((by0 + by1) / 2, bh / 2), game.H0 - bh / 2);
+      st.box = [cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2];
+    }
     /* EACH SPOT ITS OWN RADIUS (v189): st.rad[i], at most the Settings' o.spotR — less for a spot drawn
        smaller to make room (its share f, kept in the game: Room menu's • column, after Z failed).
        A TIGHT start (o.tight — Z, 9/30: a fresh layout has curves a few px apart, through spots'
@@ -236,14 +341,15 @@
        they have their size. (v116–v189 shrank every spot to half the LEAST gap of all: one crowded
        spot kept all of them small.) A spot that is smaller than o.spotR also grows back in A and R
        as far as there is room (restage with o.restaging), and keeps what it has where there is none. */
+    /* each spot's full radius (st.full: the Settings' size, half for a stump with Stumps half size, v212 — relax.js
+       fullRadius) and the radius it has now (st.rad: less for a spot drawn smaller) */
     var target = o.spotR || 0;
-    st.rad = new Float64Array(nS);
-    for (i = 0; i < nS; i++) st.rad[i] = spotRad(game.spots[i], target);
-    if (o.tight && !o.restaging) { var gp0 = spotGaps(st); for (i = 0; i < nS; i++) st.rad[i] = Math.min(target, gp0[i] / 2); }
-    else if (o.restaging) { var gp1 = spotGaps(st); for (i = 0; i < nS; i++) if (st.rad[i] < target) st.rad[i] = Math.max(st.rad[i], Math.min(target, gp1[i] / 2)); }
+    st.rad = new Float64Array(nS); st.full = new Float64Array(nS);
+    for (i = 0; i < nS; i++) { st.full[i] = Rx.fullRadius(game.spots[i], target); st.rad[i] = Rx.spotRadius(game.spots[i], target); }
+    if (o.tight && !o.restaging) { var gp0 = spotGaps(st); for (i = 0; i < nS; i++) st.rad[i] = Math.min(st.full[i], gp0[i] / 2); }
+    else if (o.restaging) { var gp1 = spotGaps(st); for (i = 0; i < nS; i++) if (st.rad[i] < st.full[i]) st.rad[i] = Math.max(st.rad[i], Math.min(st.full[i], gp1[i] / 2)); }
     return st;
   }
-  function spotRad(s, target) { return s.f > 0 && s.f < 1 ? s.f * target : target; }   // (relax.js spotRadius)
   /* For each spot the least distance to a segment of another curve or to another spot's centre */
   function spotGaps(st) {
     var P = st.P, out = new Float64Array(st.nS).fill(Infinity), s, k;
@@ -262,7 +368,7 @@
     return out;
   }
   function leastSpotGap(st) { var gp = spotGaps(st), m = Infinity; for (var s = 0; s < gp.length; s++) if (gp[s] < m) m = gp[s]; return m; }
-  function smallSpots(st) { var t = st.o.spotR || 0; for (var s = 0; s < st.nS; s++) if (st.rad[s] < t * (1 - 1e-9)) return true; return false; }
+  function smallSpots(st) { for (var s = 0; s < st.nS; s++) if (st.rad[s] < st.full[s] * (1 - 1e-9)) return true; return false; }
   function restage(st) {                           // false when no spot could grow: the descent is stuck (Peter's
     var n2 = createRedraw(redrawCurrent(st), Object.assign({}, st.o, { restaging: true }), st.fixSpots);   //  30-spot game, 9/30: the page restarted for ever)
     var grew = false;
@@ -891,7 +997,7 @@
   /* Each spot's radius into game g as its share f of the Settings' (none at full size) */
   function sizesInto(st, g) {
     var t = st.o.spotR || 0;
-    g.spots.forEach(function (s, i) { if (t > 0 && st.rad[i] < t * (1 - 1e-9)) s.f = st.rad[i] / t; else delete s.f; });
+    g.spots.forEach(function (s, i) { if (t > 0 && st.rad[i] < st.full[i] * (1 - 1e-9)) s.f = st.rad[i] / t; else delete s.f; });
   }
 
   function unit(v) { var l = Math.sqrt(v[0] * v[0] + v[1] * v[1]) || 1; return [v[0] / l, v[1] / l]; }
@@ -928,11 +1034,11 @@
      then as the descent left them. The first that can be drawn is taken. */
   function finishRedraw(st) {
     if (!smallSpots(st)) return finishSized(st);
-    var t = st.o.spotR || 0, keep = st.rad, gp = spotGaps(st), r;
-    st.rad = new Float64Array(st.nS).fill(t);
+    var keep = st.rad, gp = spotGaps(st), r;
+    st.rad = Float64Array.from(st.full);
     r = finishSized(st);
     if (r.error) {
-      st.rad = keep.map(function (x, i) { return Math.max(x, Math.min(t, gp[i] - st.o.d0)); });
+      st.rad = keep.map(function (x, i) { return Math.max(x, Math.min(st.full[i], gp[i] - st.o.d0)); });
       r = finishSized(st);
     }
     if (r.error) { st.rad = keep; r = finishSized(st); }

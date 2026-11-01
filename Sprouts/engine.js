@@ -34,10 +34,10 @@
     /* half-edges: 2e = edge e from a to b, 2e+1 = the reverse */
     var half = [];
     edges.forEach(function (e, ei) {
-      var pts = G.refinedPolygon(e.pieces, 0.5, 16).pts;
+      var rp = G.refinedPolygon(e.pieces, 0.5, 16), pts = rp.pts;
       var rev = pts.slice().reverse();
-      half.push({ id: 2 * ei, edge: ei, tail: e.a, head: e.b, pts: pts, angle: Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]) });
-      half.push({ id: 2 * ei + 1, edge: ei, tail: e.b, head: e.a, pts: rev, angle: Math.atan2(rev[1][1] - rev[0][1], rev[1][0] - rev[0][0]) });
+      half.push({ id: 2 * ei, edge: ei, tail: e.a, head: e.b, pts: pts, eps: rp.eps, angle: Math.atan2(pts[1][1] - pts[0][1], pts[1][0] - pts[0][0]) });
+      half.push({ id: 2 * ei + 1, edge: ei, tail: e.b, head: e.a, pts: rev, eps: rp.eps, angle: Math.atan2(rev[1][1] - rev[0][1], rev[1][0] - rev[0][0]) });
     });
 
     /* rotation system: the half-edges leaving each spot, by angle */
@@ -62,12 +62,14 @@
     edges.forEach(function (e) { parent[find(e.a)] = find(e.b); });
 
     /* the boundary cycles */
-    var seen = new Uint8Array(half.length), cycles = [];
+    var seen = new Uint8Array(half.length), cycles = [], halfCycle = new Array(half.length);
     half.forEach(function (h0) {
       if (seen[h0.id]) return;
-      var cyc = { halves: [], poly: [], spots: {}, comp: find(h0.tail) }, h = h0;
+      var cyc = { halves: [], poly: [], spots: {}, comp: find(h0.tail), eps: 0 }, h = h0;
       do {
         seen[h.id] = 1;
+        halfCycle[h.id] = cycles.length;
+        if (h.eps > cyc.eps) cyc.eps = h.eps;
         cyc.halves.push(h);
         cyc.spots[h.tail] = true;
         for (var k = 0; k + 1 < h.pts.length; k++) cyc.poly.push(h.pts[k]);
@@ -88,12 +90,32 @@
     var faces = [];                               // inner faces = regions with an outer boundary
     cycles.forEach(function (c, ci) { if (outerOf[c.comp] !== ci) faces.push(ci); });
 
-    /* the region a point lies in: the smallest inner face containing it, else the outside (-1) */
-    function regionOf(p) {
+    /* Whether p is inside cycle c — of the CURVES, not of their polygons (thin branch, 10/30: curves may pass
+       as close to a spot as the arithmetic allows): the polygon decides when p is farther from it than the
+       curves can be (its eps); nearer, the cycle's polygon is refined until it is (or eps reaches 1e-12). */
+    function insideCycle(p, c) {
+      var poly = c.poly, eps = c.eps;
+      for (;;) {
+        var d = Infinity;
+        for (var i = 0, j = poly.length - 1; i < poly.length && d > eps; j = i++) d = Math.min(d, G.distPointSeg(p, poly[j], poly[i]));
+        if (d > eps || eps < 1e-12) return G.pointInPolygon(p, poly);
+        var np = [], ne = 0;
+        c.halves.forEach(function (h) {
+          var rp = G.refinedPolygon(edges[h.edge].pieces, eps / 16, 16), q = h.id & 1 ? rp.pts.slice().reverse() : rp.pts;
+          if (rp.eps > ne) ne = rp.eps;
+          for (var k = 0; k + 1 < q.length; k++) np.push(q[k]);
+        });
+        if (ne >= c.eps) return G.pointInPolygon(p, np);   // (the polygons cannot be refined further)
+        poly = np; eps = ne; c = { poly: np, eps: ne, halves: c.halves };
+      }
+    }
+    /* the region a point lies in: the smallest inner face containing it, else the outside (-1); faces of
+       component `comp` are skipped (a spot of that component lies on them) */
+    function regionOf(p, comp) {
       var best = -1, bestArea = Infinity;
       faces.forEach(function (ci) {
         var c = cycles[ci];
-        if (Math.abs(c.area) < bestArea && G.pointInPolygon(p, c.poly)) { best = ci; bestArea = Math.abs(c.area); }
+        if (c.comp !== comp && Math.abs(c.area) < bestArea && insideCycle(p, c)) { best = ci; bestArea = Math.abs(c.area); }
       });
       return best;
     }
@@ -110,29 +132,20 @@
       r.boundaries.push({ cycle: ci, spots: Object.keys(cycles[ci].spots).map(Number) });
       Object.keys(cycles[ci].spots).forEach(function (s) { r.spots[s] = true; });
     });
-    /* A point just outside a component: off the middle of the longest side of
-       its outer cycle, on the side not inside that cycle's polygon. (A point
-       ON the cycle would be ambiguous — it may lie on another cycle too.) */
-    function outsidePoint(c) {
-      var poly = c.poly, best = 0, bl = -1, i, j;
-      for (i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-        var l = G.dist(poly[i], poly[j]);
-        if (l > bl) { bl = l; best = i; }
-      }
-      var p = poly[best], q = poly[(best + poly.length - 1) % poly.length], len = bl || 1;
-      var m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], nx = -(q[1] - p[1]) / len, ny = (q[0] - p[0]) / len;
-      var s1 = [m[0] + 0.5 * nx, m[1] + 0.5 * ny], s2 = [m[0] - 0.5 * nx, m[1] - 0.5 * ny];
-      return G.pointInPolygon(s1, poly) ? s2 : s1;
-    }
+    /* A component lies in the smallest inner face of ANOTHER component that contains one of its spots (thin
+       branch, 10/30: before, a point 0.5 px off its outer cycle, which a thin curve can be nearer than). */
+    var cycleRegion = new Array(cycles.length);
+    faces.forEach(function (ci) { cycleRegion[ci] = ci; });
     Object.keys(outerOf).forEach(function (comp) {
-      var ci = outerOf[comp], c = cycles[ci];
-      var r = region(regionOf(c.area < 0 ? outsidePoint(c) : c.poly[0]));
+      var ci = outerOf[comp], c = cycles[ci], s0 = c.halves[0].tail;
+      var r = region(regionOf([spots[s0].x, spots[s0].y], c.comp));
+      cycleRegion[ci] = r.key;
       r.boundaries.push({ cycle: ci, spots: Object.keys(c.spots).map(Number) });
       Object.keys(c.spots).forEach(function (s) { r.spots[s] = true; });
     });
     for (i = 0; i < nS; i++) {
       if (out[i].length) continue;                // isolated spot
-      var r = region(regionOf([spots[i].x, spots[i].y]));
+      var r = region(regionOf([spots[i].x, spots[i].y], find(i)));
       r.boundaries.push({ spot: i, spots: [i] });
       r.spots[i] = true;
     }
@@ -148,7 +161,9 @@
       regions: list, cycles: cycles,
       canMove: list.some(function (r) { return r.canMove; }),
       /* the region containing the point p */
-      regionAt: function (p) { return regions[regionOf(p)]; }
+      regionAt: function (p) { return regions[regionOf(p, -2)]; },
+      /* the region beside half-edge id (2e: curve e from e.a to e.b, 2e + 1: back) — exact, from the rotation */
+      regionOfHalf: function (id) { return regions[cycleRegion[halfCycle[id]]]; }
     };
   }
 
@@ -173,8 +188,9 @@
     sp[a].deg++; sp[b].deg++;
     var ed = edges.concat([{ a: a, b: z, pieces: polylinePieces(pts.slice(0, mid + 1)) }, { a: z, b: b, pieces: polylinePieces(pts.slice(mid)) }]);
     var an = analyse(sp, ed);
-    var p = pts[mid - 1], q = pts[mid + 1], tx = q[0] - p[0], ty = q[1] - p[1], tl = Math.sqrt(tx * tx + ty * ty) || 1;
-    var left = an.regionAt([m[0] - 4 * ty / tl, m[1] + 4 * tx / tl]), right = an.regionAt([m[0] + 4 * ty / tl, m[1] - 4 * tx / tl]);
+    /* the two sides of the new curve: the regions of its two half-edges (thin branch: exact; before, points
+       4 px off its middle) */
+    var left = an.regionOfHalf(2 * edges.length), right = an.regionOfHalf(2 * edges.length + 1);
     return { analysis: an, left: left, right: right, split: left !== right };
   }
 

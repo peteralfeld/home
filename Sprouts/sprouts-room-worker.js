@@ -18,7 +18,7 @@
           ({ what: 'grid' | 'parity', cells, … }), for the page's watch lines
    ========================================================================= */
 var q = self.location.search;
-importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'describe.js' + q, 'room.js' + q, 'moves.js' + q);
+importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'describe.js' + q, 'room.js' + q, 'thin.js' + q, 'moves.js' + q);
 var S = { game: null, route: null, spotR: 6, note: null, hush: 1, say: function () {} };   // (hush: nothing to say — the page says it)
 var Mk = self.SproutsMoves.create(S), jobId = null;
 self.SproutsRoute.setReporter(function (size) { self.postMessage({ id: jobId, size: size }); });
@@ -26,6 +26,7 @@ self.onmessage = function (e) {
   var d = e.data, res;
   jobId = d.id;
   S.game = d.game; S.route = d.route; S.spotR = d.spotR; S.note = null; S.hush = 1;
+  self.SproutsRelax.setHalfStumps(!!(d.route && d.route.smallDead));   // (v212: stumps count at half size with View → Stumps half size)
   if (d.kind === 'route' || d.kind === 'lower') {
     var said = [];
     S.say = function (text, warn) { said.push([text, !!warn]); };

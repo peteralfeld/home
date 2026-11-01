@@ -16,7 +16,7 @@
       '<br><br><a style="color:#87CEEB" href="' + location.pathname + '">Open a new game in this tab</a></div>';
     return;
   }
-  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, Ly = SproutsLayout, AI = SproutsAI, Nt = SproutsNet;
+  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, Ly = SproutsLayout, Zg = SproutsGrow, AI = SproutsAI, Nt = SproutsNet;
   /* moves.js (v137): the router's pieces and making room, shared with the room worker. They read and
      write the page's own game, settings, spot size, note and hush through MS. */
   var Mv = SproutsMoves, MS = { say: function (text, warn, detail, plain) { say(text, warn, detail, plain); } };
@@ -28,9 +28,9 @@
   var Mk = Mv.create(MS);
   var tangentsAt = Mk.tangentsAt, sideTest = Mk.sideTest, choosePort = Mk.choosePort, makeBand = Mk.makeBand, arrivalSide = Mk.arrivalSide,
       trialMove = Mk.trialMove, armFor = Mk.armFor, loopStart = Mk.loopStart, markedRoute = Mk.markedRoute,
-      segIntersection = Mk.segIntersection, cornerProbe = Mk.cornerProbe;
+      segIntersection = Mk.segIntersection, cornerProbe = Mk.cornerProbe, thinRoute = Mk.thinRoute, thinCurve = Mk.thinCurve;
 
-  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 2.5, × 2.3 from Peter's game of 10/14, v160)
+  var SPOT_R0 = 6, LINE_W0 = 2.5;   // spot radius and curve width at scale 1 (Settings → Spot size, Curve thickness: × 0.5 … 3, v44; defaults × 2.5, × 2.3 from Peter's game of 10/14, v160; thin branch: × 0.8, × 1 from his snapshot of 10/31)
   var NUMBER_PX0 = 13, NUMBER_PX = NUMBER_PX0;   // spot numbers' font size at scale 1 (Settings → Number size: × 0.5 … 3, v56; default × 2 from Peter's game of 10/14, v160)
   var SPOT_R = 6;        // drawn radius of a spot — also what curves keep clear of (the disc), so a bigger spot needs more room
   /* v201 (Peter 10/21: two runs of the same n gave different games — "start with the same seed in future runs"):
@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 40, lambda: 1, animate: true, click: true, autoHuman: { M: true, A: false, R: true, Z: false, S: false }, autoAI: { M: true, A: false, R: true, Z: true, S: true }, heroic: false, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 2.5, lineScale: 2.3, numberScale: 2 };   // (v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, A: false, R: false, Z: false, S: false }, autoAI: { M: false, A: false, R: false, Z: false, S: false }, heroic: false, thin: true, zMethod: 'fpp', rSpread: false, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -83,11 +83,11 @@
     ['deg0', 'Seeds'], ['deg1', 'Sprouts'], ['deg2', 'Links'], ['deg3', 'Stumps']   // (v158: the manual's terms for degree 0–3)
   ];
   /* defaults from Peter's game sprouts-2026-10-02T14-49-06.json (v146: Player 2 Green, spots with 1 curve Orange) */
-  var colours = { background: '#e0f9ff', busy: '#969696', player1: '#0000ff', player2: '#008000',
+  var colours = { background: '#e0f9ff', busy: '#ffffff', player1: '#0000ff', player2: '#008000',
                   deg0: '#ac6488', deg1: '#fc6300', deg2: '#fc2dfc', deg3: '#666666' };
   /* While the program is computing (the computer's turn, A, R, Z, making room) the background is
      Colors → Background while computing (v135, Peter; Medium gray #969696 by default since v155 — White
-     v135–v154, light gray #c8c8c8 from v59/v89). */
+     v135–v154, light gray #c8c8c8 from v59/v89; thin branch: white again, Peter's snapshot of 10/31). */
   var roomBusy = false;  // M or the automatic room-making is at work (makeRoom → makeRoomNow)
   var routeBusy = false; // a marked route is being found in the worker (v139, routeAsync)
   /* Busy (Background while computing): A/R/Z, room-making, the other computer — and the computer's whole turn
@@ -499,13 +499,14 @@
   }
 
   /* Possible destinations are drawn at twice their radius while a start spot is armed. */
-  /* Settings → Dead spots half size (v130, Peter; on by default): a spot of degree 3 drawn at half the
-     diameter. Drawing only — curves still keep clear of the full disc. */
+  /* View → Stumps half size (v130, Peter; on by default): a spot of degree 3 at half the diameter — since v212
+     not only drawn so but counted so for room everywhere (relax.js fullRadius; setSmallDead keeps relax.js's
+     switch with route.smallDead) */
   function spotRadius(i) {
     var t = armed ? armed.targets : stroke ? stroke.targets : null, own = R.spotRadius(game.spots[i], SPOT_R);   // (v189: a spot drawn smaller to make room)
-    if (t && t[i]) return 2 * own;
-    return route.smallDead && game.spots[i].deg >= 3 ? own / 2 : own;
+    return t && t[i] ? 2 * own : own;
   }
+  function setSmallDead(on) { route.smallDead = on; R.setHalfStumps(on); document.getElementById('opt-smalldead').checked = on; }
   function isMarked(i) { return !!(armed && armed.markedSpots[i]); }
 
   /* ---------------- game set-up ---------------- */
@@ -581,6 +582,10 @@
      draws with 4.5–5.8 px whatever the area; the slider's own value stays (default × 2.3 = 5.8 px). And the
      sizes are set from the area ONLY WHEN THE AREA HAS CHANGED since they were last set from it (sizedFor):
      N in the same area leaves the sliders as the player set them. */
+  /* (thin branch, Peter 10/31: "set the defaults like they are in the most recent snapshot" — spots × 0.8 and
+     indices × 1.4 in his 1678 x 983 area, C = 1330.5: spot diameter 9.6 px = C/139, index 18.2 px = C/73;
+     before, C/70 and C/50 put × 1.6 and × 2 there whatever the defaults said) */
+  var AREA_PER_SPOT = 1330.5 / (0.8 * 2 * 6), AREA_PER_NUMBER = 1330.5 / (1.4 * 13);
   var sizedFor = null;
   var seedsLoaded = false;   // the present game's seeds came from a file (useLoaded) or are kept from one: N keeps them (v196)
   function sizesFor(W, H) {
@@ -588,7 +593,7 @@
     if (key === sizedFor) return;
     sizedFor = key;
     var C = (W + H) / 2;
-    [['opt-spotsize', C / 70 / (2 * SPOT_R0)], ['opt-numbersize', C / 50 / NUMBER_PX0]].forEach(function (s) {
+    [['opt-spotsize', C / AREA_PER_SPOT / (2 * SPOT_R0)], ['opt-numbersize', C / AREA_PER_NUMBER / NUMBER_PX0]].forEach(function (s) {
       var el = document.getElementById(s[0]), v = Math.min(Number(el.max), Math.max(Number(el.min), s[1]));
       el.value = v; el.dispatchEvent(new Event('input'));
     });
@@ -858,11 +863,7 @@
     if (!keysOverlay.hidden) { keysOverlay.hidden = true; return; }   // (v142) Space closes the keyboard list, and does nothing else
     if (aiHalt && !ai && !aiResume && !relaying && !band && !roomBusy && !routeBusy) { aiHalt = false; log('Continued (Space).'); maybeAI(); return; }   // a stopped game between two computers goes on
     if (bothAI() && game.phase === 'play' && !aiHalt) { aiHalt = true; log('Stopped (Space).'); }   // (v125) set first: finishRelaying below calls maybeAI
-    if (relaying) {                                // (v152: and no further rung of a ladder — the move is tried once more in what is there)
-      if (climb) climb.stopped = true;
-      if (aiResume) aiResume.halt = true;
-      finishRelaying(false); return;
-    }
+    if (relaying) { freezeRelaying(); return; }    // (thin branch, Peter 10/31: the picture as shown)
     if (stopRoom()) return;
     if (stopRoute()) return;
     if (armed) disarm('Cancelled.');
@@ -1036,6 +1037,13 @@
   }
   function markedNoRoom(ar, b, low) {
     var a = ar.a;
+    if (route.thin) {                              // (thin branch: drawn thin at once — or why not, said; the grid's verdict below would be about room, which thin moves do not need)
+      var tw = thinDraw(ar, b);
+      if (!tw) return;
+      pendingRoom = null;
+      say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true);
+      draw(); return;
+    }
     if (!low) {
       pendingRoom = null;
       say('No route encloses the marked spots from this side, even without room: they cannot be separated from the others that way.', true);
@@ -1058,10 +1066,10 @@
      drawing (R, v60; was "Redraw from scratch") moves the spots too; Room → Adjust the drawing (A) keeps the
      original and hand-added ones (a spot made by a move moves with its curve).
      Animated, as many steps a frame as fit in RELAY_FRAME_MS, the polylines
-     drawn as they go, until converged (a second press changes nothing); Space
-     stops early and keeps what is there. Then every curve
+     drawn as they go, until converged (a second press changes nothing). Then every curve
      becomes a smooth spline (no corners) and is certified, and the position
      must be unchanged; otherwise nothing changes. Its own undo step. Logged.
+     Space stops it and keeps the picture as shown (freezeRelaying).
      (v152: the Room menu's "after each move" options are gone — A, R and Z run
      by hand or as rungs of the ladder, climbOn and aiClimb.)
      Room → Draw the picture afresh (Z, v114; Peter 9/30: "a fundamentally new option … with A and R
@@ -1082,7 +1090,7 @@
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
-              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min) }, from = game;
+              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min), keepShape: kind === 'redraw' && !route.rSpread, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
     /* (v189) Z for a move — the computer's (fresh) or a human's waiting for room (retry) — may draw spots in
        tight places smaller if that player's • box in the Room menu is on; Z by itself only by the key . (v191, smallByHand) */
     var small = kind === 'fresh' && (smallByHand || (fresh ? !!fresh.mv && route.autoAI.S : !!retry && route.autoHuman.S && !route.heroic));
@@ -1097,7 +1105,7 @@
         draw();
         return;
       }
-      from = Ly.freshGame(game, fresh ? fresh.mv : null, fresh ? fresh.player : game.player, -1, route.D);   // (the present outside stays outside)
+      from = Ly.freshGame(game, fresh ? fresh.mv : null, fresh ? fresh.player : game.player, -1, route.D);   // (the present outside stays outside; FPP whatever the Room menu's Z method — growing runs only on the workers)
       if (!from) return;
     }
     relaying = { kind: kind, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(), small: small,
@@ -1137,8 +1145,15 @@
   var drawPool = [];     // the workers that draw afresh (sprouts-draw-worker.js), started on demand, as many as the Workers menu says
   function freshParallel(rl, o) {
     var f = rl.fresh, mv = f ? f.mv : null, player = f ? f.player : game.player, base = JSON.parse(rl.start);
-    var F = Ly.faces(base, mv), order = [F.outer], i;
-    for (i = 0; i < F.count; i++) if (i !== F.outer) order.push(i);
+    /* v209: by the Room menu's Z method — FPP: one job per REGION, that region outside (the present outside
+       first); Grow (zgrow.js): one job per START SPOT, the spots of the outermost components, highest degree
+       first. `face` below is the region or the start spot; `outer` (FPP) the present outside. */
+    var grow = route.zMethod === 'grow', order, outer = null, i;
+    if (grow) order = Zg.starts(base, mv, player);
+    else {
+      var F = Ly.faces(base, mv); outer = F.outer; order = [outer];
+      for (i = 0; i < F.count; i++) if (i !== outer) order.push(i);
+    }
     /* v141: the page and ALL its workers share Chrome's one 4 GB JavaScript heap (V8 9.2+: one pointer-compression
        cage per process), however much memory the machine has — Peter's 40-spot game of 10/1 died ("Aw, Snap",
        out of memory) 22 s into a Z with 32 drawing and 32 thinking workers. The thinking workers are idle during
@@ -1149,8 +1164,8 @@
     var n = Math.min(poolSize(), order.length);
     while (drawPool.length > n) drawPool.pop().terminate();
     while (drawPool.length < n) drawPool.push(new Worker('sprouts-draw-worker.js' + version()));
-    var par = rl.par = { order: order, outer: F.outer, next: 0, done: 0, results: [], best: null, workers: n,
-                         running: {}, shown: F.outer, shows: 1, times: [], givenUp: 0 };   // running: face → { w, gap, t0 }; times: of the finished layouts (not those given up)
+    var par = rl.par = { order: order, grow: grow, outer: outer, next: 0, done: 0, results: [], best: null, workers: n,
+                         running: {}, shown: order[0], shows: 1, times: [], givenUp: 0 };   // running: face → { w, gap, t0 }; times: of the finished layouts (not those given up)
     var bar = zBarOf(rl.before);
     par.over = function () { return par.early || par.roundFailed || par.roundDone || par.done === order.length; };
     function finished(m) {
@@ -1220,11 +1235,14 @@
         finished({ face: face, error: 'a script error (' + e.message + ')' });
         if (par.over()) finishRelaying(false); else give(w);
       };
-      w.postMessage({ id: face, game: base, mv: mv, player: player, outerFace: face, o: o, show: face === par.shown });
+      var job = { id: face, game: base, mv: mv, player: player, o: o, show: face === par.shown };
+      if (grow) job.start = face; else job.outerFace = face;
+      w.postMessage(job);
     }
     function sayProgress() {
       if (relaying !== rl) return;
-      var sh = par.shown === null ? '' : par.shown === F.outer ? '; on screen: the present outside' : '; on screen: the most promising layout still running';
+      var sh = par.shown === null ? '' : grow ? '; on screen: the growth from spot ' + (par.shown + 1) :
+               par.shown === outer ? '; on screen: the present outside' : '; on screen: the most promising layout still running';
       say(relayWord() + ': ' + par.done + ' of ' + order.length + ' layouts done, the first ' + zBar(rl.before) + ' is taken' +
           (par.best ? ' (the best so far keeps ' + Math.round(par.best.clearance) + ' px)' : '') + sh + ', ' + ((Date.now() - rl.t0) / 1000).toFixed(0) + ' s…   Space stops',
           false, null, false);
@@ -1265,7 +1283,7 @@
     drawPool.forEach(function (w) { w.terminate(); }); drawPool = [];   // (v141: always — idle, they kept their memory from the thinking workers)
     var fails = par.results.filter(function (m) { return m.error; }), running = Object.keys(par.running).length;
     par.summary = par.results.slice().sort(function (a, b) { return (b.error ? -Infinity : b.clearance) - (a.error ? -Infinity : a.clearance); }).map(function (m) {
-      return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '') +
+      return (par.grow ? 'from spot ' + (m.face + 1) : m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '') +
                                                                                    (m.small && m.small.length ? ', ' + m.small.length + ' spot' + (m.small.length > 1 ? 's' : '') + ' smaller (down to ' + Math.round(2 * m.least * SPOT_R) + ' px)' : '')) +
              (m.secs !== undefined ? ' in ' + Math.round(m.secs) + ' s' : '');
     }).join('; ') + (running ? '; still running when it ended: ' + running + (all - par.next > 0 ? '; not started: ' + (all - par.next) : '') : all - par.next > 0 ? '; not started: ' + (all - par.next) : '');
@@ -1279,7 +1297,7 @@
     /* v185: every layout failed (as in a game where there are no more regions than workers, so the round is all of
        them) is the same news as a failed round, and gets the same message */
     if (par.roundFailed || par.done === all) return { error: (par.roundFailed ? 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried'
-                                                                               : 'all ' + all + ' layouts (each region outside in turn) failed') + ' — the picture has run out of room. ' +
+                                                                               : 'all ' + all + ' layouts (' + (par.grow ? 'each grown from another spot' : 'each region outside in turn') + ') failed') + ' — the picture has run out of room. ' +
                                          'More room: smaller spots (Settings → Spot size) or a smaller Minimum clearance (Settings); for the next game, a larger drawing area (Game → Size: during a game the picture is only scaled)', clearance: -Infinity, outOfRoom: true };
     return { error: par.done ? 'none of the ' + par.done + ' layouts finished so far could be drawn' : 'stopped before any layout was finished',
              clearance: -Infinity };
@@ -1339,13 +1357,13 @@
         ((par ? par.done === par.order.length || par.early || par.roundDone : st.done) ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s' +
         (par ? ' (' + (par.early ? 'the first layout ' + zBar(rl.before) + ', after ' + par.done + ' of ' + par.order.length : (par.roundDone ? 'the best of the first round, ' : '') + par.done + ' of ' + par.order.length + ' layouts') +
-               ' on ' + par.workers + ' workers, each region outside in turn' +
+               ' on ' + par.workers + ' workers, ' + (par.grow ? 'grown from a spot each' : 'each region outside in turn') +
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
-               (r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
+               (par.grow ? 'grown from spot ' + (r.face + 1) : r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
          fresh && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
         (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
-    if (par) log('    The layouts (each with another region outside), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
+    if (par) log('    The layouts (' + (par.grow ? 'each grown from another spot' : 'each with another region outside') + '), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
     logSizes(JSON.parse(rl.start), game);
     if (rl.fresh) {                               // the computer's move, made in the new picture (the two curves are R's, certified)
       var f = rl.fresh;
@@ -1362,10 +1380,36 @@
     statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
     if (rl.retry) retryMove(rl.retry); else afterRelay();
   }
+  /* SPACE DURING A, R OR Z (thin branch, Peter 10/31: "the idea of stopping with what you see at that moment
+     is the ability to document a weird situation"; before, Space smoothed and certified what was there, or
+     took Z's best finished layout, or went back to the picture before — not what was on the screen): the
+     picture is kept EXACTLY AS SHOWN — A's and R's polylines at that step, or the Z layout on the screen —
+     unsmoothed and unchecked, as the game's picture; the picture before is an undo step (U). The curves
+     that cross or touch others are looked for and logged. The ladder and the tidying stop; the computer's
+     move that waited is cancelled (between two computers the game stops; Space goes on). */
+  function freezeRelaying() {
+    var rl = relaying, shown = JSON.parse(JSON.stringify(game)), what = relayWord(), secs = ((Date.now() - rl.t0) / 1000).toFixed(0);
+    relaying = null;
+    if (rl.par) { clearInterval(rl.par.timer); drawPool.forEach(function (w) { w.terminate(); }); drawPool = []; }
+    if (climb) climb.stopped = true;
+    tidyNext = null; aiResume = null;
+    if (ai) aiCancel();
+    game = JSON.parse(rl.start);
+    snapshot('the picture before ' + what.toLowerCase() + ' was stopped');
+    game = shown;
+    var Th = window.SproutsThin, cross = Th ? Th.crossingCurves(game) : null;
+    var named = function (ei) { var e = game.edges[ei]; return e ? (e.a + 1) + '–' + (e.b + 1) : 'the window\'s sides'; };
+    log('Stopped (Space): ' + what + (rl.st ? ' at step ' + rl.st.it : rl.par && rl.par.shown !== null ? ' — the layout on the screen' + (rl.par.shown === rl.par.outer ? ' (the present outside)' : '') : '') +
+        ' after ' + secs + ' s: the picture KEPT AS SHOWN (curves not smoothed, not checked; U goes back to the picture before). ' +
+        (!cross ? '' : cross.length ? 'Curves that cross or touch others: ' + cross.map(named).join(', ') + '.' : 'No curves cross.'));
+    say('Stopped: the picture as it was on the screen' + (cross && cross.length ? ' — curves cross (see the log)' : '') + '.   U goes back to the picture before' + (bothAI() ? ';   Space continues' : ''), !!(cross && cross.length));
+    draw();
+  }
   /* After A, R or Z: the computer's move (or the other computer's) that waited for it as a rung of its
      ladder (aiResume: tried again in the new drawing, or on to the next rung if the drawing could not be
      changed — `failed`), else the computer's turn. */
   function afterRelay(failed) {
+    if (tidyNext && !aiResume && tidyOn()) return;   // (thin branch: the next tidying step)
     var a = aiResume;
     if (a) {
       aiResume = null;
@@ -1632,7 +1676,55 @@
      move climbs the ladder. */
   function roomWanted() {
     if (ai) { if (ai.useM && !ai.mDone) { ai.mDone = true; ai.used.push('M'); makeRoom(); } return; }
+    if (route.thin && armed && pendingRoom && !(climb && climb.thinFailed && climb.a === armed.a && climb.b === pendingRoom.b && climb.moves === game.moves)) {   // (thin branch: drawn thin at once)
+      var ar0 = armed, b0 = pendingRoom.b, why = thinDraw(armed, pendingRoom.b);
+      if (!why) return;
+      /* not even thin (a marked move the thin router could not route round its marks): the ladder, as before */
+      log('Not drawn thin: ' + why + '. The Room menu\'s steps, as before.');
+      climb = { a: ar0.a, b: b0, moves: game.moves, next: 0, used: [], thinFailed: true };
+    }
     climbOn();
+  }
+  /* ---- MOVES ALWAYS DRAWN (thin branch, Peter 10/30: "infinitely small points, and infinitely thin lines,
+     with rendering coming afterwards") ----
+     With Room → "Moves always drawn" on, a move that does not fit the ordinary way (the band, the minimum
+     clearance, the spots' discs) is drawn at once by moves.js thinRoute: a polyline through a triangulation
+     of the drawing that crosses and touches nothing, however narrow the way — spots count as points and
+     curves as thin there; the picture may show curves merging or crossing spots' discs, the position is
+     exact. No ladder: M, A, R, Z are not used to make the move fit. Afterwards, if the picture falls short
+     of the visual standard (some clearance below the minimum), the steps A, R, Z checked in the Room menu
+     for the player who moved run automatically, in that order, until it does not (tidying, for the eye);
+     unchecked, they are there by hand. ar: the armed move, b its destination. Null when the move was
+     committed; else why not. */
+  var tidyNext = null;                             // the tidying steps still to run after a thin move: { keys }
+  function thinDraw(ar, b) {
+    var a = ar.a, t0 = Date.now(), res;
+    hush++;
+    try { res = thinRoute(ar, b); } finally { hush--; }
+    if (!res.path) return res.fail;
+    var cv = thinCurve(res, a, b), box = isAI(game.player) ? route.autoAI : route.autoHuman;
+    armed = null; pendingRoom = null; lastTry = null; climb = null;
+    if (note && / — drawn the shortest way/.test(note)) note = null;   // (the grid router's verdict on the marks, left from trying first: the thin move honours them — Peter 10/31: "What does it mean it drew the shortest way?")
+    tidyNext = { keys: ['A', 'R', 'Z'].filter(function (k) { return box[k]; }) };
+    commitMove(a, b, { pieces: cv.pieces, h: cv.h }, 'drawn thin (spots as points): ' + cv.pieces.length + (cv.smooth ? ' pieces, smooth' : ' straight pieces') + ', clearance ' +
+               (cv.clearance >= 0.1 ? cv.clearance.toFixed(1) : cv.clearance.toExponential(1)) + ' px, ' + (Date.now() - t0) + ' ms');
+    return null;
+  }
+  /* the next tidying step after a thin move, if the picture still falls short of the minimum clearance:
+     true when one has started (relaying) */
+  function tidyOn() {
+    var t = tidyNext;
+    if (!t) return false;
+    var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2, halfStumps: route.smallDead };
+    if (!t.keys.length || !(Rd.leastClearance(game, o) < route.d0)) { tidyNext = null; return false; }
+    while (t.keys.length) {
+      var k = t.keys.shift();
+      log('Tidying after a move drawn thin: ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
+      relayDrawing(k === 'A' ? 'adjust' : k === 'R' ? 'redraw' : 'fresh');
+      if (relaying) return true;
+    }
+    tidyNext = null;
+    return false;
   }
   function climbOn() {
     if (!armed || !pendingRoom || route.heroic) return;
@@ -1910,6 +2002,13 @@
   /* connectTo's second half (v139: after the marked route, which may come from the worker) */
   function connectRouted(ar, b, marked, mr) {
     if (marked) {
+      /* thin branch: marks the grid's router could not honour (no route, or not round the marks) — drawn thin */
+      if (route.thin && (!mr ? ar.why !== 'room' : mr.plain && mr.failed)) {
+        var tw = thinDraw(ar, b);
+        if (!tw) return;
+        note = null;
+        say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true); draw(); return;
+      }
       if (!mr) {                                  // still armed, marks kept
         if (ar.why !== 'room') { draw(); return; }
         say('No way round the marked spots at the minimum clearance — looking for one with less room…');
@@ -2116,6 +2215,7 @@
     var committed = game.moves;
     if (ai) aiCommitted();
     if (game.moves !== committed) return;        // (v79: the other computer's move was drawn as another move and taken back in aiCommitted)
+    if (!relaying && tidyOn()) return;            // (thin branch: tidying first; afterRelay goes on)
     if (!relaying) { updateTitle(); maybeAI(); draw(); }   // (the title before the next computer turn begins — it is not updated while busy; the background white again if no computer moves)
   }
 
@@ -2143,7 +2243,19 @@
   function toggleTriangles() { var el = document.getElementById('opt-triangles'); el.checked = !el.checked; route.triangles = el.checked; draw(); }   // T (v132)
   function toggleDeadNumbers() { var el = document.getElementById('opt-deadnumbers'); el.checked = !el.checked; route.deadNumbers = !el.checked; draw(); }   // G (v133)
   function toggleSeedNumbers() { var el = document.getElementById('opt-seednumbers'); el.checked = !el.checked; route.seedNumbers = !el.checked; draw(); }   // / (v191)
-  function toggleSmallDead() { var el = document.getElementById('opt-smalldead'); el.checked = !el.checked; route.smallDead = el.checked; draw(); }   // H (v131)
+  function toggleSmallDead() { setSmallDead(!route.smallDead); draw(); }   // H (v131)
+  /* B (thin branch, Peter 10/31: "a new command that uploads the current screen image without stopping …
+     also a json going with that position"): the picture as drawn now, the game as it is now (during A, R
+     or Z: the picture on the screen, as Space keeps it) and the log, three files with one time stamp —
+     nothing stops, any time (busy or not). */
+  function saveSnapshot() {
+    var st = stamp(), data = JSON.stringify(gameData(), null, 1);
+    log('Snapshot (B): sprouts-snap-' + st + ' .png, .json, -log.txt' + (relaying ? ' — during ' + relayWord().toLowerCase() + (relaying.st ? ', step ' + relaying.st.it : '') + ' (the picture on the screen)' : '') + '.');
+    canvas.toBlob(function (blob) { download('sprouts-snap-' + st + '.png', blob); }, 'image/png');
+    download('sprouts-snap-' + st + '.json', new Blob([data], { type: 'application/json' }));
+    var head = 'Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n';
+    download('sprouts-snap-' + st + '-log.txt', new Blob([head + logLines.join('\n') + '\n'], { type: 'text/plain' }));
+  }
   function savePNG() {
     canvas.toBlob(function (blob) { download('sprouts-' + stamp() + '.png', blob); }, 'image/png');
   }
@@ -2275,7 +2387,7 @@
     if (typeof r.click === 'boolean') { document.getElementById('opt-click').checked = r.click; route.click = r.click; }
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
     if (typeof r.seedNumbers === 'boolean') { document.getElementById('opt-seednumbers').checked = !r.seedNumbers; route.seedNumbers = r.seedNumbers; }
-    if (typeof r.smallDead === 'boolean') { document.getElementById('opt-smalldead').checked = r.smallDead; route.smallDead = r.smallDead; }
+    if (typeof r.smallDead === 'boolean') setSmallDead(r.smallDead);
     if (typeof r.markStopped === 'boolean') { document.getElementById('opt-markstopped').checked = r.markStopped; route.markStopped = r.markStopped; }
     if (typeof r.triangles === 'boolean') { document.getElementById('opt-triangles').checked = r.triangles; route.triangles = r.triangles; }
     /* the Room menu's eight boxes (v152); a file from before has Shift spots / curves automatically, which were M for both */
@@ -2287,11 +2399,14 @@
       });
     });
     setHeroic(r.heroic === true, true);           // (also shows the boxes)
+    if (Z_METHODS[r.zMethod]) setZMethod(r.zMethod, true);   // (v209; a file from before keeps the present choice)
+    if (typeof r.rSpread === 'boolean') { route.rSpread = r.rSpread; document.getElementById('opt-rspread').checked = r.rSpread; }   // (v211; likewise)
+    if (typeof r.thin === 'boolean') { route.thin = r.thin; document.getElementById('opt-thin').checked = r.thin; }   // (thin branch; likewise)
   }
   function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
 
   var commands = { 'cmd-new': newOrStart, 'cmd-exit': exitPage, 'cmd-undo': undo,
-                   'cmd-png': savePNG, 'cmd-save': saveGame, 'cmd-load': loadGame,
+                   'cmd-png': savePNG, 'cmd-snap': saveSnapshot, 'cmd-save': saveGame, 'cmd-load': loadGame,
                    'cmd-log': saveLog, 'cmd-log-prev': savePreviousLog, 'cmd-position': savePosition, 'cmd-area': function () { sayArea(); } };   // (cmd-area: v156, View → Size of the drawing area, as Q)
   Object.keys(commands).forEach(function (id) {
     document.getElementById(id).addEventListener('click', function () { closeMenus(); if (!relaying && !roomBusy && !routeBusy) commands[id](); });
@@ -2463,6 +2578,7 @@
     if (tag === 'SELECT' || (tag === 'INPUT' && /^(text|number)$/.test(e.target.type))) return;   // (v158: only fields that take typing — after a checkbox or slider was clicked the keys work)
     var k = e.key.toLowerCase();
     if (k === 'k' || k === '?') { e.preventDefault(); closeMenus(); toggleKeys(); return; }   // (v142) any time, busy or not
+    if (k === 'b' && keysOverlay.hidden) { e.preventDefault(); saveSnapshot(); return; }   // (thin branch) any time, busy or not
     if (!keysOverlay.hidden) return;              // while the list is shown, the other keys wait (Space closes it, above)
     if (relaying || roomBusy || routeBusy) return;   // (the space bar is handled above; roomBusy, routeBusy: in a worker, v137, v139)
     var fn = keys[k];
@@ -2580,8 +2696,11 @@
     colourPanel.appendChild(label);
   });
 
+  /* (thin branch, 10/31: the slider starts where the default puts it — route — not where the page's field
+     says: a reload keeps the fields as they were, and the defaults seemed not to change) */
   function bindSlider(id, valId, key, show, conv) {
     var input = document.getElementById(id), val = document.getElementById(valId);
+    input.value = key === 'lambda' ? Math.log10(route[key]) : route[key];
     function update() { route[key] = conv(Number(input.value)); val.textContent = show(route[key]); }
     input.addEventListener('input', update);
     update();
@@ -2599,7 +2718,8 @@
   document.getElementById('opt-animate').addEventListener('change', function (e) { route.animate = e.target.checked; });
   document.getElementById('opt-deadnumbers').addEventListener('change', function (e) { route.deadNumbers = !e.target.checked; draw(); });
   document.getElementById('opt-seednumbers').addEventListener('change', function (e) { route.seedNumbers = !e.target.checked; draw(); });
-  document.getElementById('opt-smalldead').addEventListener('change', function (e) { route.smallDead = e.target.checked; draw(); });
+  document.getElementById('opt-smalldead').addEventListener('change', function (e) { setSmallDead(e.target.checked); draw(); });
+  R.setHalfStumps(route.smallDead);
   document.getElementById('opt-markstopped').addEventListener('change', function (e) { route.markStopped = e.target.checked; draw(); });
   /* v158 (Peter): every View option a checkbox — C, S and F too (before, menu items without a visible state) */
   document.getElementById('opt-poly').addEventListener('change', function (e) { showPolygons = e.target.checked; draw(); });
@@ -2635,6 +2755,28 @@
     if (!quiet) log('Room: heroic (hand-drawn curves kept as drawn; no local room-making; nothing automatic for a human\'s moves) ' + (on ? 'on' : 'off') + '.');
   }
   document.getElementById('opt-heroic').addEventListener('change', function (e) { setHeroic(e.target.checked); });
+  /* Z's method (v209, Peter 10/30: "two competing Z steps … there might be more, so let's have a menu"; FPP the
+     default while it is ahead): read by freshParallel; without workers Z is always FPP (zgrow runs only on them). */
+  var Z_METHODS = { fpp: 'FPP layout', grow: 'growing from a spot' };
+  function setZMethod(m, quiet) {
+    route.zMethod = m;
+    document.getElementById('opt-zmethod').value = m;
+    if (!quiet) log('Room: Z draws afresh by ' + Z_METHODS[m] + '.');
+  }
+  document.getElementById('opt-zmethod').addEventListener('change', function (e) { setZMethod(e.target.value); });
+  /* v211 (Peter 10/30: R spread the picture sideways in a wide area, "it often looks weird"): off, R keeps the
+     picture's width-to-height ratio (redraw.js keepShape); on, R may spread it over the whole drawing area */
+  document.getElementById('opt-rspread').addEventListener('change', function (e) {
+    route.rSpread = e.target.checked;
+    log('Room: R ' + (route.rSpread ? 'spreads the picture over the whole drawing area' : 'keeps the picture\'s shape (enlarges it evenly at most)') + '.');
+  });
+  setZMethod(route.zMethod, true);
+  /* thin branch (Peter 10/30): moves always drawn — see thinDraw */
+  document.getElementById('opt-thin').checked = route.thin;
+  document.getElementById('opt-thin').addEventListener('change', function (e) {
+    route.thin = e.target.checked;
+    log('Room: moves always drawn (spots as points, curves thin, where a move does not fit otherwise) ' + (route.thin ? 'on' : 'off') + '.');
+  });
   AUTO_KEYS.forEach(function (k) {
     [['autoHuman', 'auto-human-', 'a human'], ['autoAI', 'auto-ai-', 'the computer']].forEach(function (t) {
       document.getElementById(t[1] + k).addEventListener('change', function (e) {
@@ -3001,6 +3143,7 @@
   function enclosedSpots(pos, mv) { var e = {}; if (!mv.two) mv.S.forEach(function (k) { pos.regions[mv.r].boundaries[k].forEach(function (t) { e[t] = 1; }); }); return e; }
   /* rungs: those of LADDER the move may use; first: the candidates in the drawing as it is (else found) */
   function aiStart(a, rungs, first) {
+    if (route.thin) rungs = rungs.filter(function (k) { return k !== 'M'; });   // (thin branch: a move that does not fit is drawn thin — aiClimb — and tidied after; the other rungs only if that fails)
     a.rungs = rungs; a.used = []; a.failed = [];
     a.useM = rungs[0] === 'M'; a.mDone = false; a.next = a.useM ? 1 : 0;
     aiRound(a, first);
@@ -3057,6 +3200,19 @@
   }
   /* The next rung switched on: A or R, then the move again (afterRelay, aiAgain); Z, with the move. */
   function aiClimb(a) {
+    if (route.thin && a.thin && a.thin.mv === a.move && !a.thin.tried) {   // (thin branch: the move drawn thin)
+      a.thin.tried = true; ai = a;
+      var why = thinDraw(a.thin.ar, a.thin.y);
+      if (!why) return;                            // (committed: aiCommitted has judged it)
+      ai = a; a.failed.push(a.text + ' (even thin: ' + why + ')');
+      /* "moves always drawn": drawing the picture afresh with the move (Z) draws any position — the last
+         resort, whatever the Room menu's boxes say (an enclosing move the thin router cannot route: its
+         barriers fenced each other in, Peter's 30-seed game of 10/30, move 13) */
+    }
+    if (route.thin && a.thin && a.thin.mv === a.move && a.thin.tried && a.move && a.rungs.indexOf('Z') < 0) {   // (not drawn thin, or drawn thin as another move)
+      a.rungs = a.rungs.concat(['Z']);
+      log(a.who + ': ' + a.text + ' could not be drawn thin; drawing the picture afresh with it (Z) — moves are always drawn.');
+    }
     while (a.next < a.rungs.length) {
       var k = a.rungs[a.next++];
       if (k === 'M' || (k === 'Z' && !a.move)) continue;   // (M: in the first round only, aiTry)
@@ -3120,9 +3276,21 @@
     st.obs = R.buildObstacles(game, SPOT_R); st.an = an;
     hush++;
     try { updateSide(st, probe); var ok = arm(st); } finally { hush--; }
+    if (!ok && route.thin) {                       // (thin branch: no room to start the ordinary way — the move is known, drawn thin (aiClimb))
+      ok = true;
+      armed = { a: x, spot: pa, start: st.side || probe, obs: st.obs, planner: st.planner, targets: {}, blocked: {}, an: an,
+                marks: {}, arcMarks: {}, markedSpots: {}, region: reg, boundary: mv.j };
+    }
     if (!ok) return 'cannot start at spot ' + (x + 1);
     var ar = armed; armed = null;
-    if (ar.region.key !== reg.key) return 'the side of spot ' + (x + 1) + ' was not found';
+    if (ar.region.key !== reg.key) {
+      /* (thin branch: the side probe, 12 px off the spot, can lie beyond a curve drawn thin — the region and
+         the boundary are known from the move itself) */
+      if (!route.thin) return 'the side of spot ' + (x + 1) + ' was not found';
+      ar.region = reg; ar.boundary = mv.j;
+    }
+    ar.seedsAlike = true;                          // (thin branch: loose seeds are interchangeable for the computer's move — moves.js thinMarked)
+    a.thin = { mv: mv, ar: ar, y: y, tried: false };   // (thin branch: what aiClimb draws thin if the move does not fit)
     var Y0 = game.spots[y];
     if (y !== x && Y0.deg === 2) {                 // y has two corners: arrive by the one the move names (v85, the router's target side; v112: also in the second round — the move is its corners)
       var pby = cornerProbe(an, reg.boundaries[mv.j2], mv.i2);

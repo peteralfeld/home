@@ -26,6 +26,7 @@
   var Rt = root.SproutsRoute || require('./route.js');
   var E = root.SproutsEngine || require('./engine.js');
   var Rm = root.SproutsRoom || require('./room.js');
+  var Th = root.SproutsThin || require('./thin.js');
   var STEP = 4;          // arc-length spacing of a resampled polyline (ui.js uses it for strokes too)
   var TOL = 1.5;         // largest allowed distance between the relaxed band and the fitted spline (ui.js uses it too)
   var CERT = 0.6;        // the fitted spline must keep this share of the minimum clearance (ui.js finishBand, trialMove)
@@ -104,7 +105,7 @@
         var arcOf = null, mHalves = null;
         if (ar.mArc) mHalves = ar.mArc;
         else {
-          arcOf = arcsOf(cycles[ciA], a, b, ar.start, ar);
+          arcOf = arcsOf(cycles[ciA], a, b, ar.start);
           if (!arcOf) return [];
           var ms = Object.keys(ar.arcMarks).map(Number).filter(function (sp) { return sp !== a && sp !== b; })[0];
           if (ms !== undefined) { var hm = cycles[ciA].halves.filter(function (h) { return h.tail === ms; })[0], km = cycles[ciA].halves.indexOf(hm); mHalves = all.filter(function (k2) { return arcOf[k2] === arcOf[km]; }); }
@@ -265,7 +266,7 @@
          ray leaving by arc 2 has its parity flipped). */
       var an = ar.an, cycles = an.cycles, ciA = reg.boundaries[ar.boundary].cycle, outCi = reg.key >= 0 ? reg.key : -1;
       var arcOf = null;                             // for cycle ciA: halves index -> 1 or 2
-      if (!loop && ciA !== undefined) arcOf = arcsOf(cycles[ciA], a, b, ar.start, ar);
+      if (!loop && ciA !== undefined) arcOf = arcsOf(cycles[ciA], a, b, ar.start);
       function hits(r, cyc) {                       // crossings of ray r with a cycle, nearest first
         var out = [];
         cyc.halves.forEach(function (h, k) {
@@ -366,26 +367,27 @@
 
     /* Which arc of the boundary cycle `cyc` (from the engine) each of its
        half-edges is on, for a curve from spot a to spot b: 1 from a's corner
-       round to b's, 2 the rest. a's corner is the one facing `start`; b must
-       have only one corner on the cycle. Null if the arcs cannot be told. */
-    function arcsOf(cyc, a, b, start, ar) {
+       round to b's, 2 the rest. a's corner is the one facing `start`; b's, when
+       b has two on the cycle, the one facing the direction `bdir` from b (the
+       side the move reaches b from), or the `pick`-th. Null if the arcs cannot be told. */
+    function arcsOf(cyc, a, b, start, bdir, pick) {
       var hv = cyc.halves, n = hv.length, atA = [], atB = [], k;
       hv.forEach(function (h, k) { if (h.tail === a) atA.push(k); if (h.tail === b) atB.push(k); });
-      if (atB.length !== 1 || !atA.length) return null;
-      var kA = atA[0];
-      if (atA.length > 1) {                          // the corner whose sector holds the start direction
-        var A = S.game.spots[a], ang = Math.atan2(start[1] - A.y, start[0] - A.x);
-        kA = -1;
-        atA.forEach(function (k) {
-          var prev = hv[(k + n - 1) % n], back = Math.atan2(prev.pts[prev.pts.length - 2][1] - A.y, prev.pts[prev.pts.length - 2][0] - A.x);
+      if (!atB.length || !atA.length) return null;
+      function corner(at, s, ang) {                // the corner of spot s whose sector holds the direction ang
+        var P0 = S.game.spots[s], kk = -1;
+        at.forEach(function (k) {
+          var prev = hv[(k + n - 1) % n], back = Math.atan2(prev.pts[prev.pts.length - 2][1] - P0.y, prev.pts[prev.pts.length - 2][0] - P0.x);
           var lo = hv[k].angle, span = back - lo; span -= 2 * Math.PI * Math.floor(span / (2 * Math.PI));   // sector from the outgoing curve round to the incoming one
           var t = ang - lo; t -= 2 * Math.PI * Math.floor(t / (2 * Math.PI));
-          var mid = lo + span / 2, probe = [A.x + 12 * Math.cos(mid), A.y + 12 * Math.sin(mid)];
-          if (t < span && ar && ar.an.regionAt(probe) === ar.region) kA = k;
+          if (t < span) kk = k;
         });
-        if (kA < 0) return null;
+        return kk;
       }
-      var kB = atB[0], out = [], len = (kB - kA + n) % n;
+      var kA = atA.length > 1 ? corner(atA, a, Math.atan2(start[1] - S.game.spots[a].y, start[0] - S.game.spots[a].x)) : atA[0];
+      var kB = atB.length === 1 ? atB[0] : bdir ? corner(atB, b, Math.atan2(bdir[1], bdir[0])) : pick !== undefined ? atB[pick] : -1;
+      if (kA < 0 || kB === undefined || kB < 0) return null;
+      var out = [], len = (kB - kA + n) % n;
       for (k = 0; k < n; k++) out[k] = (k - kA + n) % n < len ? 1 : 2;
       return out;
     }
@@ -573,13 +575,13 @@
         /* v183 (Peter's 60-seed game by hand, 26 → 26: the band kept 11 px, the fitted spline 1.5 px; making
            room said "the move fits already" and did nothing, and R had to): the fitted spline is judged too, as
            finishBand judges it — its clearance, scaled to the band's (÷ CERT), counts when it falls short */
-        var rmin = rt.state.rmin;
+        var rmin = rt.state.rmin, at = rt.state.rminAt;
         if (rmin >= S.route.d0) {
           var fit = G.fitClamped(G.resample(rt.pts, STEP), rt.dirA, rt.dirB, TOL, { minPiece: 12 });
           var cert = R.certify(obs, rt.move.ctx, fit.pieces, CERT * S.route.d0);
-          if (!cert.ok) rmin = Math.min(rmin, cert.clearance / CERT);
+          if (!cert.ok && cert.clearance / CERT < rmin) { rmin = cert.clearance / CERT; at = cert.at; }
         }
-        return { E: rt.state.E, rmin: rmin, pts: rt.pts };
+        return { E: rt.state.E, rmin: rmin, at: at, pts: rt.pts };   // (at, v213: where the narrowest place is)
       } finally { S.game = saved; S.route.d0 = savedD0; S.note = savedNote; S.hush--; if (savedCell === undefined) delete S.route.cellD0; }
     }
 
@@ -596,6 +598,11 @@
       var ar = { a: a, spot: pa, start: start, obs: obs, an: an, region: reg, boundary: -1, marks: {}, arcMarks: {}, markedSpots: ar0.markedSpots,
                  planner: Rt.planner(obs, ctx, S.route.d0, gm.W0, gm.H0, start, S.spotR) };
       reg.boundaries.forEach(function (bd, k) { if (bd.spots.indexOf(a) >= 0) ar.boundary = k; });
+      /* v208: the start may lie in a region A does not border — roomFor probes a slid spot from a point 12 px
+         off its curve, which can fall across something — and then there is no armed state: the trial move does
+         not fit from there. (markedRoute read reg.boundaries[-1].cycle and the room worker died with "a script
+         error", twice in Peter's 30-seed game of 10/30.) */
+      if (ar.boundary < 0) return null;
       Object.keys(ar0.marks).forEach(function (k0) {
         var sp = ar0.region.boundaries[k0].spots;
         reg.boundaries.forEach(function (bd, k) { if (bd.spots.some(function (x) { return sp.indexOf(x) >= 0; })) ar.marks[k] = true; });
@@ -773,6 +780,308 @@
       return { game: g2, start: start, fitted: fitted, what: what };
     }
 
+    /* THE THIN ROUTE (thin branch, Peter 10/30: "infinitely small points, and infinitely thin lines"): the
+       move of the armed state ar to spot b as a polyline from a's centre to b's that crosses and touches
+       nothing however narrow the way — a walk through the triangulation of the drawing (thin.js), or, when
+       the move encloses something, the hug (thinMarked). The sides at a and b are the triangulation's
+       (Router.sideAt), from the direction of the click (start, bsideDir) or the computer's corner (bdir).
+       { path, tri, router, clearance } or { fail: why }. Spots are points here: the curve may pass over a
+       spot's disc, never through its centre. */
+    function thinRoute(ar, b) {
+      var gm = S.game, a = ar.a, A = gm.spots[a], eps = Th.startEps(gm), why = null;
+      var sideA = A.deg === 2 && ar.start ? [ar.start[0] - A.x, ar.start[1] - A.y] : null, okA;
+      var sideB = b !== a && gm.spots[b].deg === 2 ? ar.bsideDir || ar.bdir || null : null, okB;   // (bdir: the computer's)
+      var marked = Object.keys(ar.marks || {}).length || Object.keys(ar.arcMarks || {}).length || ar.encloseNone || ar.mArc;
+      /* the curves' polygons are refined where the walk comes nearer to a curve than its polygon is to it */
+      for (var round = 0; round < 24; round++) {
+        var rt = Th.router(gm, eps);
+        if (rt) eps = rt.tri.eps;                  // (refined where curves' polygons crossed)
+        if (!rt) return { fail: 'the drawing could not be triangulated' };
+        /* the sides at a and b, as the triangulation has them */
+        okA = sideA ? rt.sideAt(a, sideA) : null;
+        okB = sideB ? rt.sideAt(b, sideB) : ar.bside || null;
+        var P = null;
+        if (marked) {
+          P = thinMarked(ar, b, rt, okA, okB);
+          if (!P) {
+            /* a narrow way that free points kept out of — nearer to a curve's polygon than twice its tolerance
+               (thin.js refineFree): those polygons refined, and again (measured: a loop round a component through
+               a gap of a pixel, refused at once) */
+            var sk = rt.unconnected ? Object.keys(rt.skipped || {}).map(Number) : [], tr0 = rt.tri, more = false;
+            sk.forEach(function (L) { var e = tr0.legEdge[L], k = tr0.legPiece[L], to = tr0.legEps[L] / 16; if (tr0.legEps[L] > 1e-12 && to >= 1e-9 && to < eps[e][k]) { eps[e][k] = to; more = true; } });
+            if (!more) return { fail: 'no way round the marked spots was found' };
+            why = 'no way round the marked spots was found';
+            continue;
+          }
+        }
+        if (!P) P = a === b ? rt.loopNothing(a, okA) : rt.route(a, b, okA, okB, S.route.d0);
+        if (!P) return { fail: 'spot ' + (b + 1) + ' cannot be reached from that side' };
+        var cert = Th.certify(rt.tri, P, 0, a, b);
+        if (cert.ok) { Th.remember(gm, eps); return { path: P, tri: rt.tri, router: rt, clearance: cert.clearance }; }
+        if (!cert.near.length) { why = 'the curve would touch a spot or itself'; break; }
+        var tr = rt.tri;
+        cert.near.forEach(function (L) { var e = tr.legEdge[L], k = tr.legPiece[L]; eps[e][k] = Math.min(eps[e][k], tr.legEps[L] / 16); });
+        why = 'the way is narrower than the arithmetic can certify';
+      }
+      return { fail: why };
+    }
+    /* A thin route that honours the marks (thin branch) — by THE HUG (thin.js Router.hug, 10/31): the curve is
+       the outline of what it must enclose. The blob: for a move a → b on one boundary, the arc of that
+       boundary that goes with the marked side (the computer names it: mArc; a marked spot on it says which;
+       else both arcs are tried); for a loop, the spot a, with a's own boundary when that is marked; and every
+       marked boundary hung on it by the shortest path through free points. (Before: walls on both sides and
+       crossing parities of cut rays — the walls fenced each other in, the parities came with curves that
+       crossed themselves.) Each candidate is judged by the engine: every boundary must be on its side
+       (relative to the outside, or the region's outer boundary, when there is one), loose seeds counted for
+       the computer (ar.seedsAlike). The polyline, or null. */
+    function thinMarked(ar, b, rt, okA, okB) {
+      var gm = S.game, a = ar.a, loop = a === b, reg = ar.region, an = ar.an, own = reg.boundaries[ar.boundary], tv = rt.tri.vid;
+      var cyc = own.cycle !== undefined ? an.cycles[own.cycle] : null;     // (none: a is a lone spot)
+      if (!loop && (!cyc || own.spots.indexOf(b) < 0)) return rt.route(a, b, okA, okB, S.route.d0);   // (b on another boundary: the move encloses nothing)
+      /* the judge: what has a side, and which */
+      var items = [], anchor = -1;
+      reg.boundaries.forEach(function (bd, k) {
+        if (k === ar.boundary) {
+          if (loop) { var rest = bd.spots.filter(function (sp) { return sp !== a; }); if (rest.length) items.push({ spot: rest[0], marked: Object.keys(ar.arcMarks).length > 0 }); }
+          return;
+        }
+        if (reg.key >= 0 && bd.cycle === reg.key) { anchor = items.length; items.push({ spot: bd.spots[0], marked: !!ar.marks[k], anchor: true }); return; }
+        items.push({ spot: bd.spots[0], marked: !!ar.marks[k], seed: bd.spot !== undefined && gm.spots[bd.spot].deg === 0 });
+      });
+      if (reg.key === -1) { anchor = items.length; items.push({ outside: true, marked: false, anchor: true }); }
+      function judge(P) {
+        var af = E.afterMove(gm.spots, gm.edges, a, b, P);
+        if (!af.split || !af.left || !af.right) return false;
+        var sd = items.map(function (it) {
+          var l = it.outside ? af.left.key === -1 : af.left.spots.indexOf(it.spot) >= 0, r = it.outside ? af.right.key === -1 : af.right.spots.indexOf(it.spot) >= 0;
+          return l && !r ? 1 : r && !l ? 0 : -1;
+        });
+        if (anchor >= 0) { if (sd[anchor] < 0) return false; sd = sd.map(function (v, i) { return i === anchor ? -1 : v < 0 ? -1 : v ^ sd[anchor]; }); }
+        var sides = anchor < 0 ? [0, 1] : [items[anchor].marked ? 0 : 1];   // (the anchor's side is 0: the marked go there if it is marked itself)
+        for (var si = 0; si < sides.length; si++) {
+          var ms = sides[si];
+          var good = true, inS = 0, needS = 0;
+          items.forEach(function (it, i) {
+            if (i === anchor || sd[i] < 0) return;
+            if (ar.seedsAlike && it.seed) { if (it.marked) needS++; if (sd[i] === ms) inS++; return; }
+            if (sd[i] !== (it.marked ? ms : 1 - ms)) good = false;
+          });
+          if (good && inS === needS) return true;
+        }
+        return false;
+      }
+      /* the blob's parts as triangulation vertices and polygon legs */
+      var ids = rt.tri.polyIds;
+      function legsOfHalf(h) { var q = ids[h.edge]; if (h.id & 1) q = q.slice().reverse(); var out = []; for (var k = 1; k < q.length; k++) out.push([q[k - 1], q[k]]); return out; }
+      function part(bd) {
+        if (bd.cycle === undefined) return { verts: new Set([tv[bd.spot]]), legs: [] };
+        var verts = new Set(), legs = [];
+        an.cycles[bd.cycle].halves.forEach(function (h) { legsOfHalf(h).forEach(function (l) { legs.push(l); verts.add(l[0]); verts.add(l[1]); }); });
+        bd.spots.forEach(function (sp) { verts.add(tv[sp]); });
+        return { verts: verts, legs: legs };
+      }
+      var holes = [];
+      reg.boundaries.forEach(function (bd, k) { if (k !== ar.boundary && ar.marks[k]) holes.push(part(bd)); });
+      var n0 = rt.refineFree(Array.from(rt.regionOf(rt.at(a, okA))));
+      var region = rt.regionOf(rt.at(a, okA));
+      var o = { va: tv[a], vb: tv[b], holes: holes, okA: okA, n0: n0, region: region, arc: [], d0: S.route.d0 };
+      /* the outline goes into every corner between curves at a spot to its tip, near both curves there:
+         straightened (simplify: across the corner's mouth, no spot cut off — the same move) */
+      function hug() { var Q = rt.hug(o); return Q ? rt.simplify(Q, o.va, o.vb, S.route.d0) : null; }
+      if (loop) {
+        var ownMarked = Object.keys(ar.arcMarks || {}).length > 0;
+        if (!holes.length && !ownMarked) return rt.loopNothing(a, okA);
+        if (ownMarked && cyc) o.base = part(own);
+        var P1 = hug();
+        return P1 && judge(P1) ? P1 : null;
+      }
+      /* the arcs of a's boundary from a to b: arcOf[k] = 1 for the half-edges from a's corner round to b's */
+      /* (b twice on the boundary, no side chosen at it: each of its corners in turn) */
+      var arcOfs = ar.mArc && ar.mArc.length ? [cyc.halves.map(function (h, k) { return ar.mArc.indexOf(k) >= 0 ? 1 : 2; })]
+        : [0, 1].map(function (pick) { return arcsOf(cyc, a, b, ar.start, ar.bsideDir || ar.bdir, pick); }).filter(function (x, i, all) { return x && (i === 0 || JSON.stringify(x) !== JSON.stringify(all[0])); });
+      var n = cyc.halves.length, arcOf;
+      function arcLegs(which) {                    // the legs of arc `which`, directed from a to b
+        var k0 = -1;
+        for (var k = 0; k < n; k++) if (arcOf[k] === which && arcOf[(k - 1 + n) % n] !== which) k0 = k;
+        if (k0 < 0) return null;
+        var legs = [];
+        for (var j = 0; j < n && arcOf[(k0 + j) % n] === which; j++) legsOfHalf(cyc.halves[(k0 + j) % n]).forEach(function (l) { legs.push(l); });
+        o.left = true;                             // (the engine's boundary cycles have their region on the left)
+        if (legs.length && legs[0][0] !== tv[a]) { legs = legs.reverse().map(function (l) { return [l[1], l[0]]; }); o.left = false; }   // (a run from b round to a)
+        return legs.length && legs[0][0] === tv[a] && legs[legs.length - 1][1] === tv[b] ? legs : null;
+      }
+      for (var c = 0; c < arcOfs.length; c++) {
+        arcOf = arcOfs[c];
+        var mk = ar.mArc && ar.mArc.length ? 1 : 0;
+        Object.keys(ar.arcMarks || {}).map(Number).forEach(function (sp) { cyc.halves.forEach(function (h, k) { if (h.tail === sp && sp !== a && sp !== b) mk = arcOf[k]; }); });
+        var tries = mk ? [mk] : [1, 2];
+        for (var i = 0; i < tries.length; i++) {
+          var legs = arcLegs(tries[i]);
+          if (!legs || !legs.length) continue;
+          o.arc = legs;
+          var P2 = hug();
+          if (P2 && judge(P2)) return P2;
+        }
+      }
+      return null;
+    }
+
+    /* The curve for a thin route's path: SMOOTH, with no pixel sizes (Peter 10/31: "Shouldn't pixel size be
+       entirely irrelevant?" — "Let's get rid of the band entirely!"). A curve THROUGH points of the polyline
+       with no corners (throughPoints, leaving a and reaching b along the polyline's end legs),
+       first through its own corners; checked against the drawing piece by piece (thin.js certify, each piece's
+       polygon within its own tolerance). Where a piece fails, by comparison, not by size: if it would pass with
+       its polygon exact (its margin is no worse than its tolerance), its polygon is made four times closer to
+       it; else it gets a point halfway along the polyline between its ends — the spline then follows the
+       polyline more closely there, and in the limit it is the polyline, which crosses and touches nothing. So
+       tight stretches get as many points as their room needs, wide ones keep few. The floor is the
+       arithmetic's (1e-9 px, as thin.js): below it, the polyline itself (straight pieces: exact).
+       (Before, 10/30–31: an elastic band relaxed from the polyline, its points STEP = 4 px apart, then one
+       spline through them — refused wherever the room was a fraction of those 4 px: 2 thin curves in 3.)
+       { pieces, h, smooth, clearance } */
+    var ARITH = 1e-9;
+    /* A curve through the points Q with no corners, made of one cubic piece per leg: at each inner point the
+       direction halfway between those of its two legs, the handles a third of the leg along it (leaving Q[0]
+       in direction dA, reaching the last in dB). LOCAL — a new point changes only the pieces next to it (the
+       C2 spline through the points, G.interpolate, rang far along the curve where legs of very different
+       lengths met, and adding points made it worse: measured, a 6082-leg polygon still crossing) — and as
+       the points come closer the pieces come closer to the legs, at a corner too. */
+    function throughPoints(Q, dA, dB) {
+      var n = Q.length, m = [dA], pieces = [], h = [];
+      for (var i = 1; i + 1 < n; i++) {
+        var l0 = G.dist(Q[i - 1], Q[i]) || 1, l1 = G.dist(Q[i], Q[i + 1]) || 1;
+        var x = (Q[i][0] - Q[i - 1][0]) / l0 + (Q[i + 1][0] - Q[i][0]) / l1, y = (Q[i][1] - Q[i - 1][1]) / l0 + (Q[i + 1][1] - Q[i][1]) / l1, l = Math.hypot(x, y);
+        m.push(l > 0 ? [x / l, y / l] : [(Q[i + 1][0] - Q[i][0]) / l1, (Q[i + 1][1] - Q[i][1]) / l1]);   // (a leg straight back: the next leg's direction)
+      }
+      m.push(dB);
+      m[1] = dA; m[n - 2] = dB;                    // (the first and last pieces straight: see smoothThin)
+      for (i = 0; i + 1 < n; i++) {
+        var d = G.dist(Q[i], Q[i + 1]) / 3;
+        pieces.push([Q[i], [Q[i][0] + m[i][0] * d, Q[i][1] + m[i][1] * d], [Q[i + 1][0] - m[i + 1][0] * d, Q[i + 1][1] - m[i + 1][1] * d], Q[i + 1]]);
+        h.push(3 * d);
+      }
+      return { pieces: pieces, h: h };
+    }
+    function thinCurve(res, a, b, smooth) {
+      var P = res.path;
+      if (smooth !== false && P.length >= 3 && res.tri) {
+        var c = smoothThin(res, a, b);
+        if (c) return c;
+      }
+      var pieces = E.polylinePieces(P);
+      return { pieces: pieces, h: pieces.map(function (pc) { return G.dist(pc[0], pc[3]); }), smooth: false, clearance: res.clearance };
+    }
+    function smoothThin(res, a, b) {
+      var P = res.path, n = P.length, k, m = res.tri.mesh, va = res.tri.vid[a], vb = res.tri.vid[b];
+      if (n < 3) return null;
+      /* THE ENDS: straight only as far as the end leg runs inside its first triangle at the spot — there a leg is
+         only required not to cross the curves meeting at the spot (thin.js certify exempts a curve's end legs);
+         beyond, the curve bends freely. (The whole end leg straight, 10/31: after simplify an end leg can be
+         hundreds of px — Peter's loop at 5, a straight 287 px leg.) */
+      function exit(v, p, q) {                     // where the leg p → q from vertex v leaves its triangle at v (or q)
+        var hs = m.around(v), Pm = m.P;
+        for (var t = 0; t < hs.length; t++) {
+          var h = hs[t], x = Pm[m.T[Th.nxt(h)]], y = Pm[m.T[Th.prv(h)]];
+          if (!(Th.orient(p, x, q) >= 0 && Th.orient(p, q, y) >= 0)) continue;   // (q's direction in this triangle's corner at v)
+          var d1 = (q[0] - p[0]) * (y[1] - x[1]) - (q[1] - p[1]) * (y[0] - x[0]);
+          if (!d1) return q;
+          var f = ((x[0] - p[0]) * (y[1] - x[1]) - (x[1] - p[1]) * (y[0] - x[0])) / d1;
+          return f > 0 && f < 1 ? [p[0] + f * (q[0] - p[0]), p[1] + f * (q[1] - p[1])] : q;
+        }
+        return q;
+      }
+      var e1 = exit(va, P[0], P[1]), e2 = exit(vb, P[n - 1], P[n - 2]);
+      P = [P[0]].concat(e1 === P[1] ? [] : [e1], P.slice(1, n - 1), e2 === P[n - 2] ? [] : [e2], [P[n - 1]]);
+      n = P.length;
+      if (n < 4) return null;                      // (two legs only: a corner between its end legs — it stays a polyline)
+      var U = [0];
+      for (k = 1; k < n; k++) U.push(U[k - 1] + G.dist(P[k - 1], P[k]));
+      function at(s) {                             // the polyline's point at arc length s
+        var lo = 0, hi = n - 1;
+        while (hi - lo > 1) { var md = (lo + hi) >> 1; if (U[md] <= s) lo = md; else hi = md; }
+        var t = (s - U[lo]) / ((U[hi] - U[lo]) || 1);
+        return t <= 0 ? P[lo] : t >= 1 ? P[hi] : [P[lo][0] + t * (P[hi][0] - P[lo][0]), P[lo][1] + t * (P[hi][1] - P[lo][1])];
+      }
+      function unit(p, q) { var l = G.dist(p, q) || 1; return [(q[0] - p[0]) / l, (q[1] - p[1]) / l]; }
+      var dA = unit(P[0], P[1]), dB = unit(P[n - 2], P[n - 1]);
+      /* the curve's points (arc lengths along the polyline): to begin with, only the ends of its straight end
+         pieces — ONE piece between them, as loose as it comes, cutting every corner; a point is added halfway
+         along the polyline only where the certificate finds a piece too near something. Wide stretches keep
+         long loose pieces, tight places get points where they need them. (10/31 first: a piece was also cut
+         wherever its middle strayed farther from the polyline than the polyline had room — the curve then
+         clung to the polyline everywhere, a polygon with rounded corners, and thousands of pieces.) */
+      /* the room of each leg of the polyline (up to half its length), for the polygons' tolerances */
+      var rr = res.router, room = [];
+      for (k = 0; k + 1 < n; k++) {
+        var lk = U[k + 1] - U[k], rk = rr ? rr.legClear(P[k], P[k + 1], va, vb, k === 0, k === n - 2, lk / 2) : lk / 2;
+        room.push(rk > 0 ? rk : lk / 2);
+      }
+      function roomOf(s0, s1) {                    // the least room of the polyline's legs between s0 and s1
+        var r = Infinity;
+        for (var q = 0; q + 1 < n; q++) if (U[q + 1] > s0 && U[q] < s1) r = Math.min(r, room[q]);
+        return r;
+      }
+      /* a piece's polygon tolerance, to begin with: half the least room of its stretch of the polyline (no more
+         is of any use; a looser one — the control polygon — made the certificate look far and wide: out of
+         memory), made four times closer where the certificate asks for it. A piece cut in two: each half from
+         its own stretch, or as close as its parent had been made (a half that took its parent's tolerance
+         always gave every piece the least room of the whole curve: 196,767 polygon points for 2466 pieces) */
+      function tolOf(s0, s1) { return Math.min((s1 - s0) / 2, roomOf(s0, s1)) / 2; }
+      function half(j, s0, s1) { return tight[j] ? Math.min(tol[j], tolOf(s0, s1)) : tolOf(s0, s1); }
+      var sv = [0, U[1], U[n - 2], U[n - 1]], tol = [0, tolOf(U[1], U[n - 2]), 0], tight = [false, false, false];   // (tight: made closer by the certificate)
+      for (;;) {
+        var fit = throughPoints(sv.map(at), dA, dB), pts = [fit.pieces[0][0]], legE = [], legPc = [];
+        fit.pieces.forEach(function (pc, j) {
+          if (j === 0 || j === fit.pieces.length - 1) { pts.push(pc[3]); legE.push(0); legPc.push(j); return; }   // (the straight end pieces: one leg each, the end legs certify exempts at the spots)
+          var rp = G.refinedPolygon([pc], tol[j], Infinity);
+          for (var q = 1; q < rp.pts.length; q++) { pts.push(rp.pts[q]); legE.push(rp.eps); legPc.push(j); }
+        });
+        var cert = Th.certify(res.tri, pts, legE, a, b), worst = {};   // (worst: each failing piece — its worst margin, and the tolerance it had)
+        if (cert.ok) {
+          /* touching nothing is not yet the same move: a piece could have jumped a spot between two rounds — so
+             no spot may lie between the curve and the polyline (even–odd round the two; the curve's polygon is
+             farther from every spot than it is from the curve, so the polygon's side is the curve's). A spot
+             there: the piece nearest to it gets a point. */
+          var ring = P.concat(pts.slice().reverse()), off = [];
+          S.game.spots.forEach(function (sp, si) { if (si !== a && si !== b && G.pointInPolygon([sp.x, sp.y], ring)) off.push([sp.x, sp.y]); });
+          if (!off.length) return { pieces: fit.pieces, h: fit.h, smooth: true, clearance: cert.clearance };
+          /* the piece that has it: between the piece and its stretch of the polyline (the piece nearest to the spot
+             need not be — cutting that one again and again, it came down to the arithmetic and the curve stayed
+             a polyline: Peter's loop at 7, 10/31) */
+          var start = [0];
+          for (var L0 = 1; L0 <= legPc.length; L0++) if (L0 === legPc.length || legPc[L0] !== legPc[L0 - 1]) start.push(L0);
+          off.forEach(function (q) {
+            for (var jj = 1; jj + 1 < fit.pieces.length; jj++) {
+              var ring2 = pts.slice(start[jj], start[jj + 1] + 1), back = [];
+              for (var kk = 0; kk < n; kk++) if (U[kk] > sv[jj] && U[kk] < sv[jj + 1]) back.push(P[kk]);
+              ring2 = ring2.concat(back.reverse());
+              if (G.pointInPolygon(q, ring2)) worst[jj] = { mg: -1, e: 0 };
+            }
+          });
+        }
+        Object.keys(cert.bad).forEach(function (L) {
+          var j = legPc[L - 1], mg = cert.bad[L];
+          if (!(worst[j] && worst[j].mg <= mg)) worst[j] = { mg: mg, e: legE[L - 1] };
+        });
+        var sv2 = [sv[0]], tol2 = [], tight2 = [], changed = false;
+        delete worst[0]; delete worst[sv.length - 2];   // (the straight end pieces stay, the polyline's end legs — when they are found too near, it is to a piece next to them, which changes)
+        for (var j = 0; j + 1 < sv.length; j++) {
+          var w = worst[j];
+          if (w && w.mg + w.e > 0 && tol[j] / 4 >= ARITH) {            // (its polygon too loose)
+            tol2.push(tol[j] / 4); tight2.push(true); changed = true;
+          } else if (w && sv[j + 1] - sv[j] >= 2 * ARITH) {           // (the spline too far from the polyline)
+            var mid = (sv[j] + sv[j + 1]) / 2;
+            sv2.push(mid); tol2.push(half(j, sv[j], mid), half(j, mid, sv[j + 1])); tight2.push(tight[j], tight[j]); changed = true;
+            sv2.push(sv[j + 1]);
+            continue;
+          } else { tol2.push(tol[j]); tight2.push(tight[j]); }
+          sv2.push(sv[j + 1]);
+        }
+        if (!changed) return null;
+        sv = sv2; tol = tol2; tight = tight2;
+      }
+    }
+
     /* An armed state as a message for the worker: what makes it, by value (v137). The side a click
        chose at B (bside, a function) goes as the direction it was made from (bsideDir). */
     function jobOf(ar, b) {
@@ -821,7 +1130,7 @@
     return { routeFor: routeFor, lowerFor: lowerFor, barrierCandidates: barrierCandidates, markedRoute: markedRoute, arcsOf: arcsOf, componentOf: componentOf,
              enclosingCurves: enclosingCurves, loopStart: loopStart, segIntersection: segIntersection, makeBand: makeBand,
              arrivalSide: arrivalSide, trialMove: trialMove, armFor: armFor, tangentsAt: tangentsAt, sideTest: sideTest,
-             choosePort: choosePort, cornerProbe: cornerProbe, roomFor: roomFor, jobOf: jobOf, armedOf: armedOf };
+             choosePort: choosePort, cornerProbe: cornerProbe, roomFor: roomFor, jobOf: jobOf, armedOf: armedOf, thinRoute: thinRoute, thinCurve: thinCurve };
   }
 
   var api = { create: create, STEP: STEP, TOL: TOL, CERT: CERT };

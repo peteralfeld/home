@@ -29,7 +29,16 @@
      true curve is within eps of the segment chain and s0, s1 are the edge's end spots. */
   /* A spot's radius: the Settings' spotR, or less for a spot drawn smaller to make room (v189: s.f, its share
      of spotR, set where a picture drawn afresh had no room for it at full size — Room menu's • column) */
-  function spotRadius(s, spotR) { return s.f > 0 && s.f < 1 ? s.f * spotR : spotR; }
+  /* v212 (Peter 10/30: "let's make stumps count half size"): with View → Stumps half size (H, route.smallDead) a
+     stump — a spot of degree 3, which can never get another curve — is not only DRAWN at half the diameter but
+     counts so for room everywhere: routing, the certificate, M, and A / R / Z (redraw.js). Before, the half size
+     was drawing only, and curves kept clear of full discs nobody could see (Peter's 60-seed game of 10/30: the
+     move 124 → 118 refused at 2.9 px from the invisible full disc of the stump 27, 18 px from 118). The page sets
+     the switch, and so do the workers from what they are sent (route.smallDead, o.halfStumps). */
+  var halfStumps = false;
+  function setHalfStumps(on) { halfStumps = !!on; }
+  function fullRadius(s, spotR) { return halfStumps && s.deg >= 3 ? spotR / 2 : spotR; }
+  function spotRadius(s, spotR) { var full = fullRadius(s, spotR); return s.f > 0 && s.f < 1 ? Math.min(full, s.f * spotR) : full; }
   function buildObstacles(scene, spotR, extra) {
     var obs = { segs: [], spots: [], cells: new Map(), spotR: spotR };
     function cellList(cx, cy) {
@@ -425,27 +434,28 @@
   }
 
   /* Clearance r and penalty φ at every interior point and every segment
-     midpoint, the energy E, and the smallest clearance rmin. */
+     midpoint, the energy E, and the smallest clearance rmin — and where it is (rminAt, v213: making room asks
+     whether the narrow place is one it can change). */
   function evaluate(band, pts, dh) {
     var n = pts.length - 1, S = arcs(pts), lam = band.params.lambda;
     var phiP = new Float64Array(n + 1), phiM = new Float64Array(n), rP = new Float64Array(n + 1);
     var gP = new Float64Array(2 * (n + 1)), gM = new Float64Array(2 * n), g = [0, 0];   // dφ/dp (v38: the exact gradient, see step)
-    var rmin = Infinity, E = 0, k;
+    var rmin = Infinity, rminAt = null, E = 0, k;
     var k0 = band.fixedA ? 1 : 0, k1 = band.fixedB ? n - 1 : n;   // the fixed stubs are left out
     for (k = k0 + 1; k < k1; k++) {
       var c = clearanceGrad(band, pts, S, pts[k], S[k], dh, g);
-      if (c.r < rmin) rmin = c.r;
+      if (c.r < rmin) { rmin = c.r; rminAt = pts[k]; }
       rP[k] = c.r;
       phiP[k] = c.phi; gP[2 * k] = g[0]; gP[2 * k + 1] = g[1];
     }
     for (k = k0; k < k1; k++) {
       var m = [(pts[k][0] + pts[k + 1][0]) / 2, (pts[k][1] + pts[k + 1][1]) / 2];
       c = clearanceGrad(band, pts, S, m, (S[k] + S[k + 1]) / 2, dh, g);
-      if (c.r < rmin) rmin = c.r;
+      if (c.r < rmin) { rmin = c.r; rminAt = m; }
       phiM[k] = c.phi; gM[2 * k] = g[0]; gM[2 * k + 1] = g[1];
       E += (S[k + 1] - S[k]) * (1 + lam * (phiP[k] + 4 * phiM[k] + phiP[k + 1]) / 6);
     }
-    return { S: S, phiP: phiP, phiM: phiM, rP: rP, rmin: rmin, E: E, gP: gP, gM: gM };
+    return { S: S, phiP: phiP, phiM: phiM, rP: rP, rmin: rmin, rminAt: rminAt, E: E, gP: gP, gM: gM };
   }
 
   /* Energy of the two segments meeting at point k, with point k moved to p:
@@ -686,16 +696,16 @@
   /* Is every point of the curve at least dmin (effective distance) from every
      obstacle and from the far parts of itself? Works on the refined control
      polygon: a vertex check with margin eps + half a leg covers the whole curve,
-     because distance is 1-Lipschitz. Returns { ok, clearance }. */
+     because distance is 1-Lipschitz. Returns { ok, clearance, at (the worst point) }. */
   function certify(obs, ctx0, pieces, dmin) {
     var ctx = Object.assign({}, ctx0, { scaleEnds: true });
     var maxLeg = Math.min(4, dmin), poly = G.refinedPolygon(pieces, 0.25, maxLeg);
-    var pts = poly.pts, S = arcs(pts), worst = Infinity, margin = poly.eps + maxLeg / 2;
+    var pts = poly.pts, S = arcs(pts), worst = Infinity, at = null, margin = poly.eps + maxLeg / 2;
     for (var i = 1; i + 1 < pts.length; i++) {
       var r = Math.min(rObs(obs, ctx, pts[i]), rSelf(ctx, pts, S, pts[i], S[i]) - poly.eps) - margin;
-      if (r < worst) worst = r;
+      if (r < worst) { worst = r; at = pts[i]; }
     }
-    return { ok: worst >= dmin, clearance: worst };
+    return { ok: worst >= dmin, clearance: worst, at: at };
   }
 
   /* ---------------- the spline band (v36: moving a curve that is already drawn) ----------------
@@ -964,7 +974,7 @@
 
   var api = { normalAt: normalAt, MIN_START: MIN_START, QUIET_E: QUIET_E, QUIET_MOVE: QUIET_MOVE,
     createSplineBand: createSplineBand, iterateSpline: iterateSpline, splinePieces: splinePieces,
-    buildObstacles: buildObstacles, spotRadius: spotRadius, rObs: rObs,
+    buildObstacles: buildObstacles, spotRadius: spotRadius, fullRadius: fullRadius, setHalfStumps: setHalfStumps, rObs: rObs,
     polylineCrossesObstacle: polylineCrossesObstacle, polylineCrossesItself: polylineCrossesItself,
     createBand: createBand, iterate: iterate, createRoute: createRoute, advance: advance, certify: certify
   };

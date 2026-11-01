@@ -214,12 +214,26 @@
       var c = list[i];
       if (c.room < o.d0) continue;                  // cannot fit there: no trial needed
       if (wantSide && c.side !== wantSide) continue;
-      var dk = (c.u > u0 ? '+' : '-') + c.side, d = dirs[dk] || (dirs[dk] = { fitted: false, last: Infinity });
+      var dk = (c.u > u0 ? '+' : '-') + c.side, d = dirs[dk] || (dirs[dk] = { fitted: false, last: Infinity, room: -Infinity, done: false });
+      if (d.done) continue;
       var g2 = copyGame(game);
       place(g2, z, c.u, 2 * o.spotR);
       var t = trial(g2, c), E = t && t.rmin >= o.d0 ? t.E : Infinity;
       if (E < Infinity && (!best || E < best.E)) {
         best = { u: c.u, side: c.side, E: E, room: t.rmin, from: [game.spots[z].x, game.spots[z].y], to: [g2.spots[z].x, g2.spots[z].y] };
+      }
+      /* v213 (Peter's 60-seed game of 10/30: 177 trials, 263 s, sliding spot 124 along its 1000 px curve while the
+         move kept 4.6–5.0 px at every position — the narrow place was at the OTHER end, 118): (1) a narrow place in
+         the end zone (within ρ) of the spot that does not slide is the same wherever z goes — sliding z ends;
+         (2) until the move fits, a direction goes on only while each position gives MORE room than the best before
+         it in that direction (by the trial's own measure, rmin) — sliding further where it stopped helping is not
+         how room is found. Once it fits, the first valley of the energy ends it, as before. */
+      if (t && !(E < Infinity) && t.at && G.dist(t.at, from) < o.rho) break;
+      if (!d.fitted && E === Infinity) {
+        var room = t ? t.rmin : -Infinity;
+        if (!(room > d.room)) d.done = true;
+        else d.room = room;
+        continue;
       }
       if (d.fitted && E > d.last + R.QUIET_E) break;   // past the first valley in this direction
       if (E < Infinity) d.fitted = true;
@@ -360,7 +374,7 @@
     out.runs = all;
     g.spots.forEach(function (sp, i) {
       if (i === a || i === b) return;
-      var d = distToRuns([[sp.x, sp.y]], all) - o.spotR;
+      var d = distToRuns([[sp.x, sp.y]], all) - R.spotRadius(sp, o.spotR);
       if (!(d < o.d0)) return;
       if (sp.deg === 0) { out.seeds.push({ idx: i, d: d }); return; }   // (v188: a seed can be moved — moveSeed)
       if (!out.spot || d < out.spot.d) out.spot = { idx: i, d: d };
@@ -379,18 +393,9 @@
      keep at least the room it had, or d0, from everything else. If the full distance does not do, half
      of it, a quarter, … (a search schedule, as lowerClearance). Moves g in place; the distance or null. */
   function moveSeed(g, z, runs, o, an) {
-    var p = [g.spots[z].x, g.spots[z].y], best = Infinity, q = null, tan = null;
-    runs.forEach(function (r) {
-      r = r.pts || r;
-      for (var i = 1; i < r.length; i++) {
-        var A = r[i - 1], B = r[i], vx = B[0] - A[0], vy = B[1] - A[1], L2 = vx * vx + vy * vy;
-        var t = L2 > 0 ? Math.max(0, Math.min(1, ((p[0] - A[0]) * vx + (p[1] - A[1]) * vy) / L2)) : 0;
-        var c = [A[0] + t * vx, A[1] + t * vy], dd = G.dist(p, c);
-        if (dd < best) { best = dd; q = c; tan = [vx, vy]; }
-      }
-    });
-    if (!q) return null;
-    var need = o.d0 - (best - o.spotR);
+    var p = [g.spots[z].x, g.spots[z].y], near = nearestOnRuns(p, runs);
+    if (!near) return null;
+    var best = near.d, q = near.q, tan = near.tan, need = o.d0 - (best - o.spotR);
     if (!(need > 0)) return null;
     var dir = [p[0] - q[0], p[1] - q[1]], dl = Math.hypot(dir[0], dir[1]);
     if (dl > 0) dir = [dir[0] / dl, dir[1] / dl];
@@ -416,6 +421,73 @@
       return s;
     }
     return null;
+  }
+  /* v213 (Peter, 10/30, on his 60-seed game, 124 → 118 kept 5 px from the stump 27, 18 px from 118: "It could
+     have fixed things easily also by moving 27 and 109 farther apart on their curve. That of course would have
+     changed the curves from 118 to 27 and 109. Can we incorporate something like that?"): a spot WITH CURVES in
+     the ghost's way — before v213 "which cannot move" — is moved straight away from the ghost's nearest point,
+     as far as its disc needs to keep d0 from the ghost, and its curves follow: each curve's de Boor points move
+     by the same vector times a weight that is 1 at the spot (its first two de Boor points, so the curve leaves
+     the spot in the same direction and a move's two curves stay smooth through it) and falls as (1 − t)² to 0
+     at the curve's far end (t: the de Boor point's place in the curve, 0 … 1). The full distance, half of it, a
+     quarter, … until a try keeps the position (positionKey), keeps every changed curve and every neighbour at
+     least at its floor (floorsOf: its certified clearance before, at most 0.6 d0 — a picture already too tight
+     is not made tighter), stays in the drawing, and keeps the spot's disc at least the room it had, or d0, from
+     everything but its own curves. Moves g in place; the distance, or null. */
+  function moveSpot(g, z, runs, o, floors, key0) {
+    var p = [g.spots[z].x, g.spots[z].y], near = nearestOnRuns(p, runs);
+    if (!near) return null;
+    var rz = R.spotRadius(g.spots[z], o.spotR), need = o.d0 - (near.d - rz);
+    if (!(need > 0)) return null;
+    var dir = [p[0] - near.q[0], p[1] - near.q[1]], dl = Math.hypot(dir[0], dir[1]);
+    if (dl > 0) dir = [dir[0] / dl, dir[1] / dl];
+    else { var tl = Math.hypot(near.tan[0], near.tan[1]) || 1; dir = [-near.tan[1] / tl, near.tan[0] / tl]; }
+    var mine = [];                                  // the curves at z: [edge index, z at its start, z at its end]
+    g.edges.forEach(function (e, i) { if (e.a === z || e.b === z) mine.push([i, e.a === z, e.b === z]); });
+    var units = unitsOf(g).filter(function (u) { return mine.some(function (m) { return u.edges.indexOf(m[0]) >= 0; }); });
+    function roomAt(gm, q) {                        // the spot's disc against everything but itself and its own curves
+      var g3 = copyGame(gm);
+      g3.spots[z].x = -1e6; g3.spots[z].y = -1e6;
+      mine.map(function (m) { return m[0]; }).sort(function (x, y) { return y - x; }).forEach(function (i) { g3.edges.splice(i, 1); });
+      return R.rObs(R.buildObstacles(g3, o.spotR), { aIdx: -1, bIdx: -1, A: q, B: q, rho: o.rho, spotR: o.spotR }, q) - rz;
+    }
+    var floor0 = Math.min(roomAt(g, p), o.d0);
+    for (var s = need; s > R.QUIET_MOVE; s /= 2) {
+      var v = [s * dir[0], s * dir[1]], np = [p[0] + v[0], p[1] + v[1]];
+      if (np[0] < rz || np[1] < rz || np[0] > g.W0 - rz || np[1] > g.H0 - rz) continue;
+      var g2 = copyGame(g);
+      g2.spots[z].x = np[0]; g2.spots[z].y = np[1];
+      mine.forEach(function (m) {
+        var e = g2.edges[m[0]], arr = G.deBoorOf(e.pieces, e.h), n = arr.length - 1;
+        for (var k = 0; k <= n; k++) {
+          var w0 = k <= 1 ? 1 : Math.pow(1 - (k - 1) / (n - 1), 2), w1 = n - k <= 1 ? 1 : Math.pow(1 - (n - k - 1) / (n - 1), 2);
+          var w = Math.max(m[1] ? w0 : 0, m[2] ? w1 : 0);
+          arr[k] = [arr[k][0] + w * v[0], arr[k][1] + w * v[1]];
+        }
+        e.pieces = G.piecesFromDeBoor(arr, e.h);
+      });
+      if (positionKey(g2) !== key0) continue;
+      if (units.some(function (u) { return certOf(g2, u, o) < floors[unitKey(u)] - 1e-9 || breaksFloor(g2, u, floors, o); })) continue;
+      if (roomAt(g2, np) < floor0) continue;
+      g.spots[z].x = np[0]; g.spots[z].y = np[1];
+      mine.forEach(function (m) { g.edges[m[0]].pieces = g2.edges[m[0]].pieces; });
+      return s;
+    }
+    return null;
+  }
+  /* The point of the runs nearest p: { d, q, tan } (the segment's direction there), or null */
+  function nearestOnRuns(p, runs) {
+    var out = null;
+    runs.forEach(function (r) {
+      r = r.pts || r;
+      for (var i = 1; i < r.length; i++) {
+        var A = r[i - 1], B = r[i], vx = B[0] - A[0], vy = B[1] - A[1], L2 = vx * vx + vy * vy;
+        var t = L2 > 0 ? Math.max(0, Math.min(1, ((p[0] - A[0]) * vx + (p[1] - A[1]) * vy) / L2)) : 0;
+        var c = [A[0] + t * vx, A[1] + t * vy], dd = G.dist(p, c);
+        if (!out || dd < out.d) out = { d: dd, q: c, tan: [vx, vy] };
+      }
+    });
+    return out;
   }
   /* v188: seeds of the move's region too close to each other, or to another spot, for a curve to pass
      between them — their discs less than 2·d0 apart, d0 on each side of a curve — are moved apart, each
@@ -572,12 +644,17 @@
       if (gh.fits) { if (rounds > 0) break; return { fail: true, reason: 'the move fits already', best: best }; }
       if (rounds > 0 && gh.w <= prevW + R.QUIET_MOVE) return { fail: true, reason: 'moving the curves stopped gaining room', best: best };
       prevW = gh.w;
-      var way = inTheWay(g, gh, a, b, o), movers = way.units;
-      if (way.spot) return { fail: true, reason: 'the way passes ' + Math.max(0, Math.round(way.spot.d)) + ' px from spot ' + (way.spot.idx + 1) + ', which cannot move',
-                             brief: 'the way passes too close to spot ' + (way.spot.idx + 1) + ', which cannot move', best: best };
+      var way = inTheWay(g, gh, a, b, o), movers = way.units, spotMoved = false;
+      if (way.spot) {                             // (v213: a spot with curves in the way moves, its curves following — moveSpot)
+        var sm = moveSpot(g, way.spot.idx, way.runs, o, floors, key0);
+        if (sm === null) return { fail: true, reason: 'the way passes ' + Math.max(0, Math.round(way.spot.d)) + ' px from spot ' + (way.spot.idx + 1) + ', which has no room to move away',
+                                  brief: 'the way passes too close to spot ' + (way.spot.idx + 1) + ', which has no room to move away', best: best };
+        seedMoved[way.spot.idx] = (seedMoved[way.spot.idx] || 0) + sm;
+        spotMoved = true;
+      }
       if (way.border !== null) return { fail: true, reason: 'the way passes ' + Math.max(0, Math.round(way.border)) + ' px from the edge of the drawing',
                                         brief: 'the way passes too close to the edge of the drawing', best: best };
-      var seedsMoved = false;
+      var seedsMoved = spotMoved;
       if (way.seeds.length) {                     // (v188) the seeds in the way, before the curves
         var anS = E.analyse(g.spots, g.edges);
         way.seeds.forEach(function (sd) {

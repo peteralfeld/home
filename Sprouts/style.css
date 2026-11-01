@@ -38,7 +38,7 @@ body {
   gap: 12px; padding: 4px 6px;
 }
 .menu-panel input, .menu-panel select { font: inherit; width: 120px; box-sizing: border-box; }
-.menu-panel select#opt-rules { width: 220px; }
+.menu-panel select#opt-rules, .menu-panel select#opt-zmethod { width: 220px; }
 .menu-panel select.colour { width: 150px; font-weight: bold; }
 .menu-panel input[type=checkbox] { width: auto; }
 .menu-panel .val { margin-left: auto; padding-right: 8px; opacity: .8; font-variant-numeric: tabular-nums; }

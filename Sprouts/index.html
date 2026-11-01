@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=207">
+<link rel="stylesheet" href="style.css?v=215">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 207</span>
+  <span id="app-version">SPROUTS v. 215</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -136,15 +136,15 @@
       <label class="row" data-tip="opt-d0">Minimum clearance <span class="val" id="val-d0"></span>
         <input id="opt-d0" type="range" min="3" max="30" step="1" value="6"></label>
       <label class="row" data-tip="opt-D">Comfort distance <span class="val" id="val-D"></span>
-        <input id="opt-D" type="range" min="10" max="64" step="1" value="40"></label>
+        <input id="opt-D" type="range" min="10" max="64" step="1" value="25"></label>
       <label class="row" data-tip="opt-lambda">Room vs length <span class="val" id="val-lambda"></span>
         <input id="opt-lambda" type="range" min="-1" max="1" step="0.1" value="0"></label>
       <label class="row" data-tip="opt-spotsize">Spot size <span class="val" id="val-spotsize"></span>
-        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="2.5"></label>
+        <input id="opt-spotsize" type="range" min="0.5" max="3" step="0.1" value="0.8"></label>
       <label class="row" data-tip="opt-linewidth">Curve thickness <span class="val" id="val-linewidth"></span>
-        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="2.3"></label>
+        <input id="opt-linewidth" type="range" min="0.5" max="3" step="0.1" value="1"></label>
       <label class="row" data-tip="opt-numbersize">Index size <span class="val" id="val-numbersize"></span>
-        <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="2"></label>
+        <input id="opt-numbersize" type="range" min="0.5" max="3" step="0.1" value="1.4"></label>
       <label class="row" data-tip="opt-animate">Animate <input id="opt-animate" type="checkbox" checked></label>
       <label class="row" data-tip="opt-click">Click to connect <input id="opt-click" type="checkbox" checked></label>
     </div>
@@ -159,6 +159,13 @@
         <tr id="auto-human-row"><td data-tip="room-human">Human</td><td data-tip="room-M"><input id="auto-human-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-human-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-human-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-human-Z" type="checkbox"></td><td data-tip="room-S"><input id="auto-human-S" type="checkbox"></td></tr>
         <tr><td data-tip="room-ai">Computer</td><td data-tip="room-M"><input id="auto-ai-M" type="checkbox"></td><td data-tip="room-A"><input id="auto-ai-A" type="checkbox"></td><td data-tip="room-R"><input id="auto-ai-R" type="checkbox"></td><td data-tip="room-Z"><input id="auto-ai-Z" type="checkbox"></td><td data-tip="room-S"><input id="auto-ai-S" type="checkbox"></td></tr>
       </table>
+      <label class="row" data-tip="opt-zmethod">Z draws afresh by
+        <select id="opt-zmethod">
+          <option value="fpp">FPP layout</option>
+          <option value="grow">Growing from a spot</option>
+        </select></label>
+      <label class="row" data-tip="opt-rspread">R spreads to the whole area <input id="opt-rspread" type="checkbox"></label>
+      <label class="row" data-tip="opt-thin">Moves always drawn <input id="opt-thin" type="checkbox"></label>
       <label class="row" data-tip="opt-heroic">Heroic <input id="opt-heroic" type="checkbox"></label>
     </div>
   </div>
@@ -173,6 +180,7 @@
     <div class="menu-panel">
       <button class="item" id="cmd-load" data-tip="cmd-load">Load game&hellip;</button>
       <button class="item" id="cmd-png" data-tip="cmd-png">Save picture as PNG <kbd>P</kbd></button>
+      <button class="item" id="cmd-snap" data-tip="cmd-snap">Snapshot: picture, game and log <kbd>B</kbd></button>
       <button class="item" id="cmd-save" data-tip="cmd-save">Save game as JSON</button>
       <button class="item" id="cmd-log" data-tip="cmd-log">Save log as text</button>
       <button class="item" id="cmd-log-prev" data-tip="cmd-log-prev">Save the log of the last session</button>
@@ -219,6 +227,7 @@
     <tr><td><kbd>Y</kbd></td><td>Window of its own (resizable by Game &rarr; Size) / back to a browser tab</td></tr>
     <tr><th colspan="2">File and Help</th></tr>
     <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
+    <tr><td><kbd>B</kbd></td><td>Snapshot: picture, game and log, without stopping anything</td></tr>
     <tr><td><kbd>K</kbd> or <kbd>?</kbd></td><td>This list</td></tr>
     <tr><th colspan="2">With the mouse</th></tr>
     <tr><td>Click, click</td><td>Connect two spots (Click to connect, Settings menu)</td></tr>
@@ -305,18 +314,21 @@
   <div data-tip-for="opt-triangles"><b>Initial seeds as triangles</b> <kbd>T</kbd>. Draws the spots the game started with (and any seeds added by hand) as triangles, whatever they have become, so they stand out from the spots made by moves.</div>
   <div data-tip-for="opt-deadnumbers"><b>No indices at stumps</b> <kbd>G</kbd>. With spot indices shown, leaves them off the stumps: the spots that already have three curves (no lives left), which no longer matter for the game.</div>
   <div data-tip-for="opt-seednumbers"><b>No indices at seeds</b> <kbd>/</kbd>. With spot indices shown, leaves them off the seeds: the spots with no curves yet, which in a game with many seeds are many and need no name until a curve reaches them (when room is made, the seeds of a region are all alike).</div>
-  <div data-tip-for="opt-smalldead"><b>Stumps half size</b> <kbd>H</kbd>. Draws stumps (spots with three curves, no lives) at half the size, so the live spots stand out. Only the drawing changes: curves keep clear of them as of full-size spots.</div>
+  <div data-tip-for="opt-smalldead"><b>Stumps half size</b> <kbd>H</kbd>. Draws stumps (spots with three curves, no lives) at half the size, so the live spots stand out &mdash; and they count at half size for room too: curves need to keep clear only of what is drawn, so a late picture, full of stumps, has more room. Off: stumps are drawn and counted at full size.</div>
   <div data-tip-for="opt-markstopped"><b>Mark a move that could not be drawn</b>. When the computer's move cannot be drawn even after the Room menu's automatic steps and the game stops, its two spots are marked in the mover's color — a ring at the start, a dashed ring at the destination (one dashed ring for a loop) — until the picture changes. A human's refused move is marked the same way while it waits.</div>
 
   <div data-tip-for="m-room"><b>Room:</b> what happens automatically when a move does not fit in the drawing as it is, for a human&rsquo;s moves and the computer&rsquo;s; and Heroic mode. <kbd>M</kbd>, <kbd>A</kbd>, <kbd>R</kbd>, <kbd>Z</kbd> and <kbd>.</kbd> can always be pressed by hand too.</div>
   <div data-tip-for="room-head"><b>Automatically, when a move does not fit:</b> the steps are taken in the order M, A, R, Z, &bull; (from the least to the most change to the picture), each once, until the move can be drawn. For a human&rsquo;s move the ladder stops at the first box not checked (an unchecked A is simply skipped): the status row offers that step and the ones after it by hand (their keys), each of which tries the move again and then lets the ladder go on by the same rule. For the computer&rsquo;s move only the checked steps are taken; if none of them makes room, the game stops and says so. Defaults: M and R for a human, M, R, Z and &bull; for the computer. &bull; lets Z, when the picture does not fit at full size, draw some spots smaller.</div>
   <div data-tip-for="room-M"><b>M &mdash; make room.</b> Local changes where the move has to go: spots slide aside, then the curves in its way are pushed back, as long as no neighbor gets squeezed below its own clearance. The rest of the picture stays. Key <kbd>M</kbd>. Not in Heroic mode.</div>
   <div data-tip-for="room-A"><b>A &mdash; adjust.</b> The whole drawing is reshaped for more room: curves move, while the initial seeds and seeds added by hand stay where they are (spots made by moves ride along with their curves). Key <kbd>A</kbd>.</div>
-  <div data-tip-for="room-R"><b>R &mdash; rearrange.</b> Like A, but every spot may move too, so the whole picture can spread out. Key <kbd>R</kbd>.</div>
-  <div data-tip-for="room-Z"><b>Z &mdash; draw the picture afresh.</b> Ignores the present drawing and draws the position from scratch (then polishes it as R does), trying each region as the outside, on the workers at once, until a picture is found at least as roomy as the old one (any picture that can be drawn, when the old one is below the minimum clearance). The slowest step; <kbd>Space</kbd> stops it and keeps the best so far. Key <kbd>Z</kbd>.</div>
+  <div data-tip-for="room-R"><b>R &mdash; rearrange.</b> Like A, but every spot may move too, so the whole picture can spread out &mdash; keeping its shape unless <i>R spreads to the whole area</i> is checked below. Key <kbd>R</kbd>.</div>
+  <div data-tip-for="room-Z"><b>Z &mdash; draw the picture afresh.</b> Ignores the present drawing and draws the position from scratch by the method chosen below (then polishes it as R does), trying each region as the outside or each starting spot, on the workers at once, until a picture is found at least as roomy as the old one (any picture that can be drawn, when the old one is below the minimum clearance). The slowest step; <kbd>Space</kbd> stops it and keeps the best so far. Key <kbd>Z</kbd>.</div>
   <div data-tip-for="room-S"><b>&bull; &mdash; spots drawn smaller where there is no room.</b> Only when Z has failed for a move: the fresh picture is accepted with some spots drawn smaller than Settings &rarr; Spot size (those in tight places only, never below the slider&rsquo;s smallest size), and the log names them. They grow back to their size as soon as an R or a Z finds room. Defaults: off for a human, on for the computer; Heroic turns it off for a human. Key <kbd>.</kbd> (Z with smaller spots allowed, by hand).</div>
   <div data-tip-for="room-human"><b>Human:</b> the steps tried automatically when a move you make does not fit. Off (gray) in Heroic mode.</div>
   <div data-tip-for="room-ai"><b>Computer:</b> the steps tried automatically when the move a computer player has chosen does not fit &mdash; also a move arriving from the other computer over the net. The computer never changes its move for one that is easier to draw: if no checked step makes room, the game stops and says so.</div>
+  <div data-tip-for="opt-zmethod"><b>Z draws afresh by.</b> How <kbd>Z</kbd> (and <kbd>.</kbd>) starts a picture from the position alone, before polishing it as R does. <b>FPP layout</b> (the default): the de Fraysseix&ndash;Pach&ndash;Pollack straight-line drawing of a triangulation of the position, one try with each region outside. <b>Growing from a spot</b> (new, experimental): the picture grown outward from a spot, outer parts first, each spot placed when a curve first reaches it and room kept for what a region will still receive, one try from each spot of the outermost parts; the grown drawing is scaled to fill the window. It needs the workers (a page opened as a file uses FPP). Saved with a game.</div>
+  <div data-tip-for="opt-rspread"><b>R spreads to the whole area.</b> Off (the default): <kbd>R</kbd> keeps the picture&rsquo;s shape &mdash; it may enlarge the picture evenly as far as the drawing area allows, but not stretch it, so a picture in a wide area is not pulled out sideways. On: <kbd>R</kbd> may spread the picture over the whole drawing area, as far in each direction as there is room. A, Z and M are not affected. Saved with a game.</div>
+  <div data-tip-for="opt-thin"><b>Moves always drawn.</b> On (the default): a move that does not fit the ordinary way is drawn at once with spots counted as points and curves as thin lines &mdash; it never fails for lack of room. Its curve crosses and touches nothing, however narrow the way (smooth where it can be, else a polyline); a move that encloses something hugs what it encloses; in a crowded picture it may run closer to other curves than the minimum clearance, or across a spot&rsquo;s disc, but the position is exactly the one intended. Nothing is done first to make room. Afterwards, if the picture falls short of the minimum clearance, the steps A, R and Z checked above for the player who moved are run automatically, in that order, until it no longer does (M is not used); unchecked, they are there by hand. Off: as before &mdash; the checked steps make room for the move first. Saved with a game.</div>
   <div data-tip-for="opt-heroic"><b>Heroic.</b> A curve you draw by hand is kept as drawn (straight pieces, corners and all) instead of being smoothed, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available). The computer&rsquo;s moves are drawn as usual.</div>
 
   <div data-tip-for="m-colors"><b>Colors</b> of the background, the two players&rsquo; curves and the spots (seeds, sprouts, links and stumps). They are saved with a game.</div>
@@ -331,6 +343,7 @@
 
   <div data-tip-for="m-file"><b>File.</b> Load and save games, the picture, the log and the position.</div>
   <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors, players, drawing area size and undo history, so it can be played on or taken back move by move. The drawing area is given the saved size as Game &rarr; Size gives it. Not while connected to another computer.</div>
+  <div data-tip-for="cmd-snap"><b>Snapshot</b> <kbd>B</kbd>. Saves, at once and with one time stamp, the picture as drawn now (PNG), the game as it is now (JSON &mdash; while A, R or Z runs, the picture on the screen) and the log. Nothing stops; it works at any time, also while something is running.</div>
   <div data-tip-for="cmd-png"><b>Save picture as PNG</b> <kbd>P</kbd>. Saves the drawing area as it is now as an image (in the browser&rsquo;s download folder).</div>
   <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors, the players, the drawing area&rsquo;s size and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
   <div data-tip-for="cmd-log"><b>Save log as text.</b> Saves this session&rsquo;s log: every move in words, the computer&rsquo;s thinking, room made or refused, with times and pixel figures &mdash; useful for reporting a problem.</div>
@@ -338,17 +351,19 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=207"></script>
-<script src="relax.js?v=207"></script>
-<script src="route.js?v=207"></script>
-<script src="engine.js?v=207"></script>
-<script src="describe.js?v=207"></script>
-<script src="room.js?v=207"></script>
-<script src="moves.js?v=207"></script>
-<script src="redraw.js?v=207"></script>
-<script src="layout.js?v=207"></script>
-<script src="ai.js?v=207"></script>
-<script src="net.js?v=207"></script>
-<script src="ui.js?v=207"></script>
+<script src="geom.js?v=215"></script>
+<script src="relax.js?v=215"></script>
+<script src="route.js?v=215"></script>
+<script src="engine.js?v=215"></script>
+<script src="describe.js?v=215"></script>
+<script src="room.js?v=215"></script>
+<script src="thin.js?v=215"></script>
+<script src="moves.js?v=215"></script>
+<script src="redraw.js?v=215"></script>
+<script src="layout.js?v=215"></script>
+<script src="zgrow.js?v=215"></script>
+<script src="ai.js?v=215"></script>
+<script src="net.js?v=215"></script>
+<script src="ui.js?v=215"></script>
 </body>
 </html>
