@@ -934,15 +934,22 @@
      its own legs that are not its neighbours. At its end spots the legs that meet there are only required not
      to cross (the curves meet there). Returns { ok, clearance, near: [L], bad: { leg: least margin } }: the
      clearance is the least margin found; near, the legs of the drawing's curves that were too near (their
-     pieces to be refined); bad, the curve's own legs (1-based, as i above) that were. */
-  function certify(tri, pts, eps, a, b) {
+     pieces to be refined); bad, the curve's own legs (1-based, as i above) that were.
+     need (v229, optional; a number or one per leg as eps): a distance the curve must keep besides from every spot
+     and every other curve — the smooth thin curve keeps half the room its polyline had, so that it no longer
+     passes a spot's centre at 0.0007 px (Peter's 200-seed game of 11/1: R could not move such a picture). The
+     margins and bad count it; clearance is still the bare margin (without it). */
+  function certify(tri, pts, eps, a, b, need) {
     var m = tri.mesh, P = m.P, T = m.T, C = m.C, va = tri.vid[a], vb = tri.vid[b], n = pts.length, i;
-    var per = typeof eps !== 'number', maxE = 0;
+    var per = typeof eps !== 'number', maxE = 0, perN = need && typeof need !== 'number';
     function E(i) { return per ? eps[i - 1] : eps; }   // (the tolerance of leg i)
+    function N(i) { return !need ? 0 : perN ? need[i - 1] : need; }   // (what leg i must keep besides)
     for (i = 1; i < n; i++) maxE = Math.max(maxE, E(i));
+    var maxN = 0;
+    for (i = 1; i < n; i++) maxN = Math.max(maxN, N(i));
     var og = obstacleGrid(tri), segs = og.segs, ns = og.ns, reach = og.maxEps + maxE;
-    var worst = Infinity, near = {}, bad = {};
-    function mark(i, mg) { if (mg < worst) worst = mg; if (!(mg > 0) && !(bad[i] <= mg)) bad[i] = mg; }
+    var worst = Infinity, bare = Infinity, near = {}, bad = {};
+    function mark(i, mg, nd) { nd = nd || 0; if (mg + nd < bare) bare = mg + nd; if (mg < worst) worst = mg; if (!(mg > 0) && !(bad[i] <= mg)) bad[i] = mg; }
     /* AT AN END SPOT the curve and the drawing's curves meet, so no distance can be asked there — but not
        crossing their polygons' legs is not enough: a leg stands for its piece of curve only within a tolerance,
        and a leg of ours nearly in line with it can cross the curve itself (measured 10/31: an end leg 0.02 px
@@ -972,12 +979,12 @@
       return Math.min(G.distPointSeg(p, r, s), G.distPointSeg(q, r, s), G.distPointSeg(r, p, q), G.distPointSeg(s, p, q));
     }
     for (i = 1; i < n; i++) {
-      var p = pts[i - 1], q = pts[i], ei = E(i);
-      og.g.querySeg(p, q, og.maxEps + ei, function (it) {
+      var p = pts[i - 1], q = pts[i], ei = E(i), ni = N(i);
+      og.g.querySeg(p, q, og.maxEps + ei + ni, function (it) {
         if (it >= ns) {                            // a spot
           var v = tri.vid[it - ns];
           if ((v === va && i === 1) || (v === vb && i === n - 1)) return;
-          mark(i, G.distPointSeg(P[v], p, q) - ei);
+          mark(i, G.distPointSeg(P[v], p, q) - ei - ni, ni);
           return;
         }
         var h = segs[it], u0 = T[h], u1 = T[nxt(h)], id = C[h], room = (id >= 0 ? tri.legEps[id] : 0) + ei;
@@ -987,8 +994,8 @@
           return;
         }
         var mg = d - room;
-        mark(i, mg);
-        if (!(mg > 0) && id >= 0) near[id] = 1;
+        mark(i, mg - ni, ni);
+        if (!(mg > 0) && id >= 0) near[id] = 1;   // (the drawing's polygons refined only where they are too near without the need)
       });
     }
     /* itself: legs that are not neighbours must not cross, and must be farther apart than the curve can be
@@ -1012,7 +1019,7 @@
         mark(i, d2); mark(t2, d2);
       });
     }
-    return { ok: worst > 0, clearance: worst, near: Object.keys(near).map(Number), bad: bad };
+    return { ok: worst > 0, clearance: need ? bare : worst, near: Object.keys(near).map(Number), bad: bad };
   }
 
   var api = { orient: orient, exactOrient: exactOrient, properCross: properCross, Mesh: Mesh, build: build, triangulate: triangulate, crossingCurves: crossingCurves, router: router, Router: Router, certify: certify, polygonOf: polygonOf, startEps: startEps, remember: remember, nxt: nxt, prv: prv };

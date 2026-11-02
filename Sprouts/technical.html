@@ -525,20 +525,22 @@ and cheap to the global and expensive, and each later one is tried only when the
   <tr><td>Resizing the window</td><td>the window, or <code>F</code> (full screen)</td><td>nothing in the game: the view is scaled</td><td><a href="#sec-window">4.2</a></td></tr>
   <tr><td>Sliding spots</td><td><code>M</code></td><td>one spot, along its own curve (a seed in the way is pushed aside)</td><td><a href="#sec-slide">4.3</a></td></tr>
   <tr><td>Pushing curves apart</td><td><code>M</code></td><td>the curves in the move&rsquo;s way</td><td><a href="#sec-push">4.4</a></td></tr>
-  <tr><td>Adjusting</td><td><code>A</code></td><td>every curve; the spots stay (except those riding on a move&rsquo;s curve)</td><td><a href="#sec-ar">4.5</a></td></tr>
+  <tr><td>Rearranging, seeds kept in place</td><td><code>R</code> with <code>A</code> on</td><td>every curve; the seeds stay (spots made by moves ride on their curves)</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Rearranging</td><td><code>R</code></td><td>every curve and every spot</td><td><a href="#sec-ar">4.5</a></td></tr>
-  <tr><td>Drawing afresh</td><td><code>Z</code> (<code>.</code>: with smaller spots where needed)</td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
+  <tr><td>Drawing afresh</td><td><code>Z</code></td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
 </table>
 
-<p><e>The ladder.</e> The commands <code>M</code> (sliding spots, then pushing curves), <code>A</code>,
-<code>R</code> and <code>Z</code> are the rungs of a ladder of increasing cost, and above Z there is one more
-step, <code>&bull;</code> (key <code>.</code>): drawing afresh with the spots in tight places drawn smaller
-(section <a href="#sec-z">4.6</a>). Each, pressed while a move is waiting for room, changes the picture and then
+<p><e>The ladder.</e> The commands <code>M</code> (sliding spots, then pushing curves), <code>R</code> and
+<code>Z</code> are the rungs of a ladder of increasing cost. With the Room menu&rsquo;s <e>Keep seeds in
+place</e> checked (key <code>A</code> turns it on and off), R keeps the initial seeds and those added by hand
+where they are &mdash; what a separate step A did before (v218/v219: the option replaced the menu&rsquo;s A
+column and the key A became its switch). Each, pressed while a move is waiting for room, changes the picture and then
 tries the waiting move again. The Room menu has a box per step for a human&rsquo;s moves and a box per step for
-the computer&rsquo;s, saying which steps are taken <e>automatically</e> (by default M and R for a human, M, R, Z
-and &bull; for the computer). Each step is taken at most once for a move, in the order M, A, R, Z, &bull;. For
+the computer&rsquo;s, saying which steps are taken <e>automatically</e> (by default only R for the computer: with <e>Moves always drawn</e> on, a move
+never waits for room, and the checked R and Z only tidy the picture after a move drawn thin). Each step is
+taken at most once for a move, in the order M, R, Z. For
 a human&rsquo;s move the ladder is climbed as far as the boxes are checked in a row. At the first box not
-checked it stops (an unchecked A is simply skipped), and the status row offers that step and the ones above it
+checked it stops, and the status row offers that step and the ones above it
 by hand. A step pressed by hand
 tries the move again, and the ladder then goes on from there by the same rule. For the computer&rsquo;s move
 the checked steps are taken in order and the unchecked ones skipped. When the steps are used up, the program
@@ -681,9 +683,9 @@ move&rsquo;s two curves as one, cut at the move&rsquo;s spot. Where a third curv
 made C¹ through it. If the smooth curves fail the certificate there are fallbacks: splines through the middles of
 the legs, points spread evenly on the polylines, and as a last resort a corner at the failing spot (logged). The
 result is refused if the position changed or the clearance is not positive. A curve whose pieces already suit its
-length keeps its knots as its points, so pressing <code>A</code> or <code>R</code> a second time starts where the
+length keeps its knots as its points, so pressing <code>R</code> a second time starts where the
 first ended and changes next to nothing. A spot that was drawn smaller than its size by an earlier Z (section
-<a href="#sec-z">4.6</a>) grows back to its size in A and R as soon as there is room for it.</p>
+<a href="#sec-z">4.6</a>) grows back to its size in R as soon as there is room for it.</p>
 
 <p>Tried and dropped: starting R from <e>Tutte&rsquo;s</e> barycentric embedding [<a href="#ref-tutte">7</a>] of the
 position&rsquo;s map, made into a triangulation. It is exact in theory and gives a genuinely fresh start, but
@@ -734,7 +736,7 @@ clearance was at least the minimum clearance of the Settings. The purpose is to 
 most beautiful picture. A picture whose least clearance, measured at its single tightest place, is already below
 the minimum is broken, and then the first layout that can be drawn at all is taken (v194: holding out for 3.0 px
 against a layout with 2.6 px once cost 38 minutes in a 100-seed game). A layout drawn with some spots smaller
-(below) counts when the &bull; box allows it. When a layout has been drawn but did not meet that bar, Z ends
+(below) counts when that is allowed. When a layout has been drawn but did not meet that bar, Z ends
 with the best so far as soon as one <e>round</e> is complete (as many layouts as there are workers), rather than
 running every region to the end. Stragglers are given up by comparison, not by a fixed time. Once half the
 layouts are done, one still running after twice the time of the median finished one (drawn or failed) is
@@ -745,10 +747,10 @@ or a smaller minimum clearance. A larger drawing area helps only a new game, sin
 only scaled. The log names the reason each layout failed. <code>Space</code> stops Z and takes the best result
 so far.</p>
 
-<p><e>Spots drawn smaller where there is no room</e> (the &bull; box of the Room menu, key <code>.</code>, v189).
-A layout whose spots cannot all grow to the size the Settings ask for is a failure at full size. When Z runs for
-a move and the mover&rsquo;s &bull; box is checked (or when <code>.</code> is pressed), such a layout is kept
-aside instead: at the end each spot is tried at full size, then at the largest size its gap allows, and the
+<p><e>Spots drawn smaller where there is no room</e> (v189). A layout whose spots cannot all grow to the size
+the Settings ask for is a failure at full size. When Z is the computer&rsquo;s last resort for a move that could
+not be drawn even thin (<e>Moves always drawn</e> on: the move must be drawn), such a layout is kept aside
+instead (v217; before, the Room menu had a &bull; box per player for this, and the key <code>.</code>): at the end each spot is tried at full size, then at the largest size its gap allows, and the
 layout keeps those spots smaller, never below the smallest size of the Settings&rsquo; slider. A layout kept
 aside that meets the bar above ends Z like one at full size. Otherwise, if no layout drew at full size, the one
 kept aside with the least shrinking (its smallest spot the largest, then the fewest spots shrunk) is taken. The size of a spot is part of the game object and is saved, loaded and undone with it.
@@ -761,7 +763,7 @@ spots drawn smaller. They grow back as soon as a later A, R or Z finds room for 
 kept exactly as drawn (as straight pieces between the sampled points, not smoothed). It must merely not touch or
 cross anything. Curves and spots are not moved locally (no sliding, no pushing, no Ctrl+drag, and no M for the
 computer either), and nothing is done automatically for a human&rsquo;s moves (the human row of the Room menu is
-grayed out). A, R and Z still work by hand.</p>
+grayed out). R and Z still work by hand.</p>
 
 <h1 id="sec-ai">5. The Computer Players<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 

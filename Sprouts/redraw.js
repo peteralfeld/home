@@ -316,7 +316,7 @@
     }
     var st = { game: game, o: o, key0: Rm.positionKey(game), corners: corners, regions: regions, fixSpots: !!fixSpots, comfort: comfort, vinfo: vinfo, segLine: segLine, segK: segK, spotAt: spotAt, P: P, nS: nS, paths: paths, segs: segs, lines: lines, units: units, fixed: fixed, tees: tees,
                box: [0, 0, game.W0, game.H0], it: 0, done: false, spotR: o.spotR || 0, stages: 0 };
-    /* KEEP THE SHAPE (v211, o.keepShape — R unless Room → "R spreads to the whole area" is on; Peter 10/30: R
+    /* KEEP THE SHAPE (v211, o.keepShape — R unless Room → "R fills the whole area" (v221; "R spreads to the whole area" v211–v220) is on; Peter 10/30: R
        spread the picture sideways in a wide drawing area, "it often looks weird"). Nothing in the energy
        stretches: the live regions' room pushes outward and the area's sides are the only limit, so in a wide
        area the picture grows sideways. Here the limit is a box of the PICTURE'S OWN width-to-height ratio
@@ -655,12 +655,16 @@
         var fs = lam * D * phi1(rij, D, padij) / dij, qx2 = fs * (P[i][0] - P[j][0]), qy2 = fs * (P[i][1] - P[j][1]);
         push(i, qx2, qy2); push(j, -qx2, -qy2);
       }
+      /* (v228) a spot whose disc reaches over the window's side — its centre still inside — counts like a curve
+         through a disc (phi's pad): finite, pushing it in. Before, the energy was infinite there and R could not
+         take a single step: Peter's 200-seed game of 11/1 on v226, a thin move put spot 381 at 3.4 px from the top
+         (its radius 6.6) at move 181, and every R from then on was refused after minutes. */
       var ri = rad[i], ws = [P[i][0] - box[0] - ri, box[2] - P[i][0] - ri, P[i][1] - box[1] - ri, box[3] - P[i][1] - ri];
       for (wi = 0; wi < 4; wi++) {
-        if (!(ws[wi] > 0)) return Infinity;
-        E += lam * D * phi(ws[wi], cB);
+        if (!(ws[wi] + ri > 0)) return Infinity;
+        E += lam * D * phi(ws[wi], cB, ri);
         if (!g) continue;
-        f = lam * D * phi1(ws[wi], cB);
+        f = lam * D * phi1(ws[wi], cB, ri);
         push(i, wi === 0 ? f : wi === 1 ? -f : 0, wi === 2 ? f : wi === 3 ? -f : 0);
       }
     }
@@ -764,12 +768,12 @@
       var dmax = 0;
       for (i = 0; i < n; i++) dmax = Math.max(dmax, Math.sqrt(d[2 * i] * d[2 * i] + d[2 * i + 1] * d[2 * i + 1]));
       if (!(dmax > 0)) break;
-      var alpha = st.S.length ? 1 : 2 * st.o.D / 3 / dmax, Q = P.map(function (p) { return p.slice(); }), En = Infinity;
+      var alpha = st.S.length ? 1 : 2 * st.o.D / 3 / dmax, Q = P.map(function (p) { return p.slice(); }), En = Infinity, gT = null, capT = null;
       for (var h = 0; h < 60; h++) {
-        var gd = 0, far = 0, rel = 0;
+        var gd = 0, far = 0, rel = 0, clipped = false;
         for (i = 0; i < n; i++) {
           var mx = alpha * d[2 * i], my = alpha * d[2 * i + 1], ml = Math.sqrt(mx * mx + my * my), lim = st.cap[i] / 3;
-          if (ml > lim) { mx *= lim / ml; my *= lim / ml; }
+          if (ml > lim) { mx *= lim / ml; my *= lim / ml; clipped = true; }
           Q[i][0] = P[i][0] + mx; Q[i][1] = P[i][1] + my;
           gd += gv[2 * i] * mx + gv[2 * i + 1] * my;
           far = Math.max(far, Math.abs(mx) + Math.abs(my));
@@ -785,8 +789,13 @@
            But from a tight start a point closer than a pixel to something may need steps that
            small: there its own cap (a third of its gap) is the measure instead of the pixel (v118;
            with the pixel alone Z failed at once, after 36–105 steps, for 3 of 16 outer regions). */
-        if ((st.o.tight ? rel : far) * 3 * MEM < 1) { En = Infinity; break; }
-        En = evaluate(st, Q, null);
+        if ((st.o.tight ? rel : far) * 3 * MEM < 1) { if (h === 0 && clipped && !st.S.length) st.clipStuck = true; En = Infinity; break; }   // (clipStuck, v229: see stepRedraw)
+        /* (v231) the trial with its gradient: when it is taken (and its points are not spread again, as A and Z's tight
+           start do), that gradient is the next step's — before, it was evaluated a second time right after. Measured
+           on Peter's 200-seed picture at move 221: 1.18 trials a step, the gradient evaluation as dear as a trial —
+           R 446 s, of it 223 s gradients and 215 s trials. */
+        gT = Q.map(function () { return [0, 0]; }); capT = new Float64Array(n);
+        En = evaluate(st, Q, gT, capT);
         if (En <= st.E + 1e-4 * gd && En < st.E) break;
         alpha /= 2;
       }
@@ -799,8 +808,12 @@
       if (st.fixSpots || st.o.tight) even(st, P, Q);
       /* DONE when the last 3 · MEM steps (time for L-BFGS to learn the curvature afresh twice over)
          together moved no point by a whole pixel — the smallest change that can be seen — or
-         gained less than a pixel's worth of energy a step (E is measured in pixels of length: a
-         gain of one is a curve one pixel shorter). (v54; Peter, 9/26: "stopping at good looking
+         gained less than a pixel's worth of energy a step: LENGTH a step, a curve one pixel shorter (v233; v54–v232
+         asked for less than ONE a step, a pixel's worth when the length weighed 1, a tenth of one since v207's
+         LENGTH = 10 — Peter 11/1: "That sounds rather conservative". His own rule — no point moving a pixel in ONE
+         step — stopped R at step 1 on near-touching pictures, and in a 25-seed game 4 R's were refused; this one:
+         R 10–40 % faster (14-02-36 7.6 → 7.1 s, with the seeds kept 13.8 → 10.6 s; move 221 235 → 187 s), the
+         energy within 0.3 %, no refusal in that game). (v54; Peter, 9/26: "stopping at good looking
          configurations rather than going 10 times longer with little or no improvement is actually
          preferable". v51–v53 asked for a tenth of a pixel, or a gain down at the arithmetic's
          rounding, and ran thousands of steps for changes nobody sees: 7016 → 946 steps on the
@@ -813,14 +826,14 @@
       hist.push([st.E - En, mv]);
       if (hist.length > 3 * MEM) hist.shift();
       var tot = 0, far = 0; hist.forEach(function (x) { tot += x[0]; far += x[1]; });
-      if (hist.length === 3 * MEM && (far < 1 || tot < 3 * MEM)) {
+      if (hist.length === 3 * MEM && (far < 1 || tot < 3 * MEM * LENGTH)) {
         if (st.confirmed) return false;
         st.confirmed = true;                        // once more with L-BFGS's memory cleared: a fresh start (a second
         st.S = []; st.Y = []; st.hist = []; return true;   //  press) must find nothing more either (v52)
       }
       var tiny = st.E - En < 1000 * 2.2e-16 * Math.abs(st.E);
-      var g2 = Q.map(function () { return [0, 0]; }), cap2 = new Float64Array(n);
-      En = evaluate(st, Q, g2, cap2);
+      var g2 = gT, cap2 = capT;
+      if (st.fixSpots || st.o.tight) { g2 = Q.map(function () { return [0, 0]; }); cap2 = new Float64Array(n); En = evaluate(st, Q, g2, cap2); }   // (the points were spread again: their own gradient)
       var sv = new Float64Array(2 * n), yv = new Float64Array(2 * n), g2v = new Float64Array(2 * n);
       for (i = 0; i < n; i++) if (!free[i]) { g2v[2 * i] = g2[i][0]; g2v[2 * i + 1] = g2[i][1]; }
       across(g2v, Q);
@@ -929,9 +942,38 @@
     }
     return false;
   }
+  /* (v229, Peter's 200-seed game of 11/1) NEAR-TOUCHING POINTS PUSHED APART before R's descent: where a thin move
+     left a curve 0.0007 px from a spot's centre, that point's push dwarfed every other (1e15 against a median of
+     12), the descent's first step was scaled to it and clipped to a third of its gap, nothing moved, and R ended
+     at step 0. So first every free point whose cap (its distance to anything it could hit) is too small for the
+     descent's own smallest step — a third of it below 1/(3·MEM) px, the "no step" rule — is moved a third of
+     its cap away from what pushes it (all at once: each by at most a third of its cap, so nothing crosses), round
+     after round while the energy falls. */
+  function separate(st) {
+    var P = st.P, n = P.length, free = st.fixed, rounds = 0;
+    for (;;) {
+      var g = P.map(function () { return [0, 0]; }), cap = new Float64Array(n), E = evaluate(st, P, g, cap), mv = [], i;
+      if (!isFinite(E)) break;
+      for (i = 0; i < n; i++) if (!free[i] && cap[i] * MEM < 1 && (g[i][0] || g[i][1])) mv.push(i);
+      if (!mv.length) break;
+      var Q = P.map(function (p) { return p.slice(); });
+      mv.forEach(function (i) { var l = Math.sqrt(g[i][0] * g[i][0] + g[i][1] * g[i][1]); Q[i][0] -= g[i][0] / l * cap[i] / 3; Q[i][1] -= g[i][1] / l * cap[i] / 3; });
+      if (!(evaluate(st, Q, null) < E)) break;
+      mv.forEach(function (i) { P[i][0] = Q[i][0]; P[i][1] = Q[i][1]; });
+      rounds++;
+    }
+    st.g = null;                                    // (the descent starts from the moved points)
+    st.separated = rounds;
+    return rounds;
+  }
   function stepRedraw(st, count) {
+    if (st.separated === undefined && !st.o.tight) separate(st);
     while (count-- > 0 && !st.done) {
       if (descend(st)) st.it++;
+      /* (v229, Peter: "give up at once when R cannot move") the first step moved nothing because one point,
+         clipped to its tiny gap, ruled it (clipStuck): nothing to re-space or finish — the picture is as it was,
+         and finishRedraw says so at once instead of making its curves for minutes */
+      else if (st.it === 0 && st.clipStuck) { st.stuck = true; st.done = true; }
       else if (!respace(st)) {
         if (st.o.tight && jiggle(st)) continue;
         if (smallSpots(st) && restage(st)) continue;   // the spots grow (see createRedraw)
@@ -1032,7 +1074,46 @@
      every spot at its full size — the growth in stages (restage) leaves each spot only half its gap, and
      the finished drawing often has room for more; then each as large as keeps d0 from what is nearest it;
      then as the descent left them. The first that can be drawn is taken. */
+  /* FILL THE AREA (v220, o.fill — R with its spots free; Peter 11/1: "there is an option to have R fill the entire
+     drawing space. It does not seem to work … R rendered the position small regardless of the setting"). The
+     energy has nothing that makes a picture large: once no region has a move, nothing pushes outward and the
+     length term (v207) pulls the picture together, so the box (keepShape, or the whole area) was a limit that
+     was never reached. So before the splines are made the polylines are scaled up to the area, less the margin
+     the sides ask for (comfort + a spot's radius), by one factor per direction (v221, Peter: off — the picture as
+     R leaves it — and on, the default, are the two choices; v220 also enlarged evenly when off). Never down (a factor below 1 leaves that direction as it is). Scaling up by factors >= 1 moves
+     no point across anything and shortens no distance, so the position and every clearance are kept; the spots
+     keep their size. True when it enlarged the picture. (v222, Peter: the enlarged curves were kinky — the
+     descent's small kinks magnified; the page then smooths them by a second descent with the seeds kept,
+     ui.js smoothAfterFill, and calls this first.) */
+  function fillArea(st) {
+    var o = st.o, P = st.P, W = st.game.W0, H = st.game.H0, mg = st.comfort + (o.spotR || 0);
+    if (!o.fill || !P.length) return false;
+    /* (v229, Peter agreed 11/1) ROOM FOR THE OUTSIDE: while the outside region still has a move, the margin also
+       leaves it the area R's room-by-lives gives a region — π (D/2)² for each of its lives — as a band round the
+       picture (W·H − (W − 2e)(H − 2e) = that area). Filled to the very edge, the outside was a thin strip along the
+       window's sides and thin moves there ran along the edge (spot 381 at 3.4 px from it, in Peter's 200-seed game
+       of 11/1). A finished game, whose outside has no move, still fills the window. */
+    var out = st.regions.filter(function (rg) { return rg.outside; })[0];
+    if (out && out.lives > 0) {
+      var Aw = Math.PI * o.D * o.D / 4 * out.lives, Wi = W - 2 * mg, Hi = H - 2 * mg, disc = (Wi + Hi) * (Wi + Hi) - 4 * Aw;
+      mg += disc > 0 ? ((Wi + Hi) - Math.sqrt(disc)) / 4 : Math.min(Wi, Hi) / 4;   // (more than the window holds: a quarter of it)
+    }
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    P.forEach(function (q) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; });
+    var sx = x1 > x0 ? (W - 2 * mg) / (x1 - x0) : 1, sy = y1 > y0 ? (H - 2 * mg) / (y1 - y0) : 1;
+    sx = Math.max(1, sx); sy = Math.max(1, sy);
+    if (sx === 1 && sy === 1) return false;
+    /* each direction scaled about the picture's center, which then moves only as far as the margins need */
+    var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, hw = sx * (x1 - x0) / 2, hh = sy * (y1 - y0) / 2;
+    var nx = Math.min(Math.max(cx, mg + hw), W - mg - hw), ny = Math.min(Math.max(cy, mg + hh), H - mg - hh);
+    if (2 * hw > W - 2 * mg) nx = W / 2;
+    if (2 * hh > H - 2 * mg) ny = H / 2;
+    P.forEach(function (q) { q[0] = nx + sx * (q[0] - cx); q[1] = ny + sy * (q[1] - cy); });
+    return true;
+  }
   function finishRedraw(st) {
+    if (st.stuck) return { game: st.game, error: 'it could not move the drawing at all (a curve passes too close to a spot or to another curve)', moved: 0, clearance: leastClearance(st.game, st.o) };   // (v229)
+    fillArea(st);
     if (!smallSpots(st)) return finishSized(st);
     var keep = st.rad, gp = spotGaps(st), r;
     st.rad = Float64Array.from(st.full);
@@ -1179,7 +1260,7 @@
     return c;
   }
 
-  var api = { createRedraw: createRedraw, stepRedraw: stepRedraw, redrawCurrent: redrawCurrent, finishRedraw: finishRedraw,
+  var api = { createRedraw: createRedraw, stepRedraw: stepRedraw, redrawCurrent: redrawCurrent, finishRedraw: finishRedraw, fillArea: fillArea,
               leastClearance: leastClearance, leastRadius: leastRadius, evaluate: evaluate };
   root.SproutsRedraw = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -18,6 +18,12 @@
    when the job on screen is done, the page shows the most promising of those
    still running — Peter, 9/30: otherwise it looks as if the page got stuck).
 
+   R (v226, Peter 11/1: the page took seconds to react to clicks and keys while R ran on its main thread): a job
+   { id, redraw: true, game, o, keep, show } runs R — createRedraw(game, o, keep), the descent in slices, and when
+   o.fill (R fills the whole area) the enlarging (fillArea) followed by the smoothing descent with the seeds kept
+   (as the page's smoothAfterFill did, v222), then finishRedraw — sending its polylines every FRAME_MS while shown.
+   Out for it: { id, picture, it, smoothing } and { id, done: true, …, smoothing }.
+
    In:  { id, game, mv (ai.js form) | null, player, outerFace | start, o, show }   a job (start: a GROW job)
         { id, show: true | false }                                       show its picture, or stop
    Out: { id, gap, it }                      now and then: how promising the job looks while it runs — during the
@@ -32,11 +38,18 @@ importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'd
 var Ly = self.SproutsLayout, Rd = self.SproutsRedraw, Zg = self.SproutsGrow;
 var REPORT_MS = 100;                             // how often a shown job sends its picture (the page draws at most that often)
 var SLICE_MS = 50;                               // steps between yields (a message waits at most this long)
+var FRAME_MS = 30;                               // R (v226): how often its picture goes to the page — the page's animation frame (ui.js RELAY_FRAME_MS)
 var job = null;
 self.onmessage = function (e) {
   var d = e.data;
   if (!d.game) { if (job && job.id === d.id) job.show = d.show; return; }
   self.SproutsRelax.setHalfStumps(!!d.o.halfStumps);   // (v212: stumps count at half size with View → Stumps half size)
+  if (d.redraw) {                                  // R (v226)
+    job = { id: d.id, show: !!d.show, grow: null, st: Rd.createRedraw(d.game, d.o, !!d.keep), o: d.o, last: 0, redraw: true, filled: false, smoothing: false,
+            before: Rd.leastClearance(d.game, d.o) };
+    setTimeout(slice, 0);
+    return;
+  }
   if (d.start !== undefined) {                     // GROW
     var t = Zg.targetOf(d.game, d.mv, d.player);
     job = { id: d.id, show: !!d.show, grow: Zg.createGrow(t, { o: d.o, start: d.start }), st: null, o: d.o, last: 0 };
@@ -76,15 +89,32 @@ function slice() {
     t = Date.now();
   }
   var st = j.st;
-  while (!done && Date.now() - t < SLICE_MS) done = Rd.stepRedraw(st, 1);
+  while (!done && Date.now() - t < (j.redraw ? FRAME_MS : SLICE_MS)) done = Rd.stepRedraw(st, 1);
+  if (done && j.redraw && j.o.fill && !j.filled && !st.stuck) {   // (v226, as the page's smoothAfterFill: enlarge, then smooth with the seeds kept)
+    j.filled = true;
+    if (Rd.fillArea(st)) {
+      var o2 = {}, k;
+      for (k in st.o) o2[k] = st.o[k];
+      o2.keepShape = false;
+      j.pre = st; j.st = Rd.createRedraw(Rd.redrawCurrent(st), o2, true); j.smoothing = true;   // (pre: the enlarged picture, kept in case the smoothing cannot be finished — v233)
+      if (j.show) self.postMessage({ id: j.id, picture: Rd.redrawCurrent(j.st), it: j.st.it, smoothing: true });
+      j.last = Date.now();
+      setTimeout(slice, 0);
+      return;
+    }
+  }
   if (done) {
-    var rr = Rd.finishRedraw(st);
+    var rr = Rd.finishRedraw(st), unsmoothed = false;
+    /* (v233, Peter's 200-seed game of 11/1: the last R was refused because only the smoothing — the seeds held — could
+       not be finished, "with the spots fixed — R moves them too"): then the enlarged picture as it was before the
+       smoothing is finished instead */
+    if (rr.error && j.pre) { var r0 = Rd.finishRedraw(j.pre); if (!r0.error) { rr = r0; unsmoothed = true; } }
     self.postMessage({ id: j.id, done: true, error: rr.error, game: rr.game, clearance: rr.clearance, corners: rr.corners || 0, small: rr.small || [],
-                       dense: !!rr.dense, moved: rr.moved, it: st.it, stages: st.stages });
+                       dense: !!rr.dense, moved: rr.moved, it: st.it, stages: st.stages, smoothing: j.smoothing, unsmoothed: unsmoothed, before: j.before });
     job = null;
     return;
   }
-  if (j.show && Date.now() - j.last > REPORT_MS) { self.postMessage({ id: j.id, picture: Rd.redrawCurrent(st), it: st.it }); j.last = Date.now(); }
-  self.postMessage({ id: j.id, gap: 1e6 + (gap(st) || 0), it: st.it });   // (a polish under way outranks any growth for the screen)
+  if (j.show && Date.now() - j.last > (j.redraw ? FRAME_MS : REPORT_MS)) { self.postMessage({ id: j.id, picture: Rd.redrawCurrent(st), it: st.it, smoothing: j.smoothing }); j.last = Date.now(); }
+  if (!j.redraw) self.postMessage({ id: j.id, gap: 1e6 + (gap(st) || 0), it: st.it });   // (a polish under way outranks any growth for the screen)
   setTimeout(slice, 0);
 }

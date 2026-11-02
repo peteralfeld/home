@@ -14,6 +14,8 @@
           Out { id, res: { mr, why, note, said } }   mr as markedRoute returns it ({ path }, { plain }, null);
           why = ar.why; note = the note it left; said = its messages ([text, warn]), for the page to show
    Lower: In  as Route with kind: 'lower'; Out { id, res: { low, note, said } }   moves.js lowerFor (v139)
+   Thin:  In  as Route with kind: 'thin' (job + boundary, seedsAlike); Out { id, res: { cv } | { fail } }   moves.js
+          thinFor (v227: the move drawn thin — spots as points, curves thin — off the page's thread)
    Size:  Out { id, size } while a job runs (v148): each grid and parity search route.js sets up
           ({ what: 'grid' | 'parity', cells, … }), for the page's watch lines
    ========================================================================= */
@@ -27,6 +29,7 @@ self.onmessage = function (e) {
   jobId = d.id;
   S.game = d.game; S.route = d.route; S.spotR = d.spotR; S.note = null; S.hush = 1;
   self.SproutsRelax.setHalfStumps(!!(d.route && d.route.smallDead));   // (v212: stumps count at half size with View → Stumps half size)
+  if (d.kind === 'thin') { self.postMessage({ id: d.id, res: Mk.thinFor(d.job) }); return; }
   if (d.kind === 'route' || d.kind === 'lower') {
     var said = [];
     S.say = function (text, warn) { said.push([text, !!warn]); };

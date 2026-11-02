@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, A: false, R: false, Z: false, S: false }, autoAI: { M: false, A: false, R: false, Z: false, S: false }, heroic: false, thin: true, zMethod: 'fpp', rSpread: false, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, heroic: false, thin: true, zMethod: 'fpp', rFill: true, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -140,7 +140,7 @@
   var historyWhy = {};   // what the snapshot at history[i] was taken for, if not a move (for the Undo log line; not saved)
   var stroke = null;     // { from: spotIndex, pts: [[x,y],...] } while the pointer is down
   var band = null;       // the elastic band being relaxed, while a move is animating
-  var relaying = null;   // { kind: 'adjust' | 'redraw', after, st, start, t0, before } while the drawing is adjusted (A) or redrawn (R)
+  var relaying = null;   // { kind: 'redraw' | 'fresh', keep, after, st, start, t0, before } while the drawing is rearranged (R) or drawn afresh (Z)
   var lastTry = null;    // how the move being relaxed was chosen ({ ar } armed, or { st } a drag), to arm again if it has no room (v39)
   var armed = null;      // click-to-connect: { a, start, planner, targets } after the first click
   var showPolygons = false;
@@ -216,7 +216,7 @@
   /* What the page is doing, for the log's watch lines */
   function busyWith() {
     var w = [];
-    if (relaying) w.push(relaying.kind === 'fresh' ? 'drawing afresh (Z)' : relaying.kind === 'adjust' ? 'adjusting (A)' : 'rearranging (R)');
+    if (relaying) w.push(relaying.kind === 'fresh' ? 'drawing afresh (Z)' : 'rearranging (R)');
     if (roomBusy) w.push('making room');
     if (routeBusy) w.push('finding a way for a curve');
     if (ai && ai.thinking) w.push('the computer thinking');
@@ -335,9 +335,15 @@
     view.oy = (view.ch - game.H0 * view.s) / 2;
     draw();
   }
-  function toWorld(e) {
+  function toWorldRaw(e) {
     var r = canvas.getBoundingClientRect();
     return [(e.clientX - r.left - view.ox) / view.s, (e.clientY - r.top - view.oy) / view.s];
+  }
+  /* (v223) a point inside the magnifier means the magnified point under it: c + (p − c) / m */
+  function toWorld(e) {
+    var p = toWorldRaw(e);
+    if (glass && G.dist(p, [glass.x, glass.y]) < glassR()) p = [glass.x + (p[0] - glass.x) / route.glassMag, glass.y + (p[1] - glass.y) / route.glassMag];
+    return p;
   }
 
   /* ---------------- drawing ---------------- */
@@ -362,20 +368,44 @@
   }
   function draw() {
     updateTitle();
-    var dpr = window.devicePixelRatio || 1, i, j, e, b;
+    var dpr = window.devicePixelRatio || 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = background();
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(dpr * view.s, 0, 0, dpr * view.s, dpr * view.ox, dpr * view.oy);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    drawLayer(null);
+    if (glass) drawGlass();
+  }
+  /* The picture, in world coordinates under the view's transform. L (v223, the magnifier's lens): null for the picture
+     itself; else { cx, cy, m, R } — every POSITION is mapped by p → c + m (p − c) (the layout magnified about the
+     glass's center c), while line widths, spot sizes, rings, marks and indices keep their sizes (Peter 11/1:
+     "the magnification applies to the layout of the curves, but not to their thickness or the diameter of spots
+     and the size of any indices"). The map is affine, so a Bézier piece maps to the Bézier piece of its mapped
+     control points: exact at any magnification. Only what can reach the glass is drawn (vis, and the curve
+     pieces whose control points' box comes near it), which also keeps the coordinates handed to the canvas
+     small. */
+  function drawLayer(L) {
+    var i, j, e, b;
+    var mx = L ? function (x) { return L.cx + L.m * (x - L.cx); } : function (x) { return x; };
+    var my = L ? function (y) { return L.cy + L.m * (y - L.cy); } : function (y) { return y; };
+    var vis = L ? function (x, y, r) { var dx = x - L.cx, dy = y - L.cy, q = (L.R + r) / L.m; return dx * dx + dy * dy <= q * q; } : function () { return true; };
+    var pieceVis = L ? function (b, r) {
+      var x0 = Math.min(b[0][0], b[1][0], b[2][0], b[3][0]), x1 = Math.max(b[0][0], b[1][0], b[2][0], b[3][0]);
+      var y0 = Math.min(b[0][1], b[1][1], b[2][1], b[3][1]), y1 = Math.max(b[0][1], b[1][1], b[2][1], b[3][1]);
+      var dx = Math.max(x0 - L.cx, 0, L.cx - x1), dy = Math.max(y0 - L.cy, 0, L.cy - y1), q = (L.R + r) / L.m;
+      return dx * dx + dy * dy <= q * q;
+    } : function () { return true; };
 
     for (i = 0; i < game.edges.length; i++) {
       e = game.edges[i];
       ctx.beginPath();
-      ctx.moveTo(e.pieces[0][0][0], e.pieces[0][0][1]);
+      var open = false;
       for (j = 0; j < e.pieces.length; j++) {
         b = e.pieces[j];
-        ctx.bezierCurveTo(b[1][0], b[1][1], b[2][0], b[2][1], b[3][0], b[3][1]);
+        if (!pieceVis(b, LINE_W)) { open = false; continue; }
+        if (!open) { ctx.moveTo(mx(b[0][0]), my(b[0][1])); open = true; }
+        ctx.bezierCurveTo(mx(b[1][0]), my(b[1][1]), mx(b[2][0]), my(b[2][1]), mx(b[3][0]), my(b[3][1]));
       }
       ctx.strokeStyle = e.player === 1 ? colours.player1 : colours.player2;
       ctx.lineWidth = LINE_W;
@@ -387,42 +417,45 @@
       for (i = 0; i < game.edges.length; i++) {
         for (j = 0; j < game.edges[i].pieces.length; j++) {
           b = game.edges[i].pieces[j];
+          if (!pieceVis(b, 2)) continue;
           ctx.beginPath();
-          ctx.moveTo(b[0][0], b[0][1]); ctx.lineTo(b[1][0], b[1][1]);
-          ctx.lineTo(b[2][0], b[2][1]); ctx.lineTo(b[3][0], b[3][1]);
+          ctx.moveTo(mx(b[0][0]), my(b[0][1])); ctx.lineTo(mx(b[1][0]), my(b[1][1]));
+          ctx.lineTo(mx(b[2][0]), my(b[2][1])); ctx.lineTo(mx(b[3][0]), my(b[3][1]));
           ctx.stroke();
-          ctx.fillRect(b[1][0] - 2, b[1][1] - 2, 4, 4);
-          ctx.fillRect(b[2][0] - 2, b[2][1] - 2, 4, 4);
-          ctx.beginPath(); ctx.arc(b[3][0], b[3][1], 2, 0, 2 * Math.PI); ctx.fill();
+          ctx.fillRect(mx(b[1][0]) - 2, my(b[1][1]) - 2, 4, 4);
+          ctx.fillRect(mx(b[2][0]) - 2, my(b[2][1]) - 2, 4, 4);
+          ctx.beginPath(); ctx.arc(mx(b[3][0]), my(b[3][1]), 2, 0, 2 * Math.PI); ctx.fill();
         }
       }
     }
 
+    function polyline(pts) {
+      ctx.beginPath(); ctx.moveTo(mx(pts[0][0]), my(pts[0][1]));
+      for (var k = 1; k < pts.length; k++) ctx.lineTo(mx(pts[k][0]), my(pts[k][1]));
+    }
     if (slideDrag && slideDrag.mode === 'extend' && slideDrag.trail.length > 1) {   // the extension being drawn by hand
-      ctx.beginPath(); ctx.moveTo(slideDrag.trail[0][0], slideDrag.trail[0][1]);
-      for (i = 1; i < slideDrag.trail.length; i++) ctx.lineTo(slideDrag.trail[i][0], slideDrag.trail[i][1]);
+      polyline(slideDrag.trail);
       var eo = game.edges[slideDrag.one.e];
       ctx.strokeStyle = eo.player === 1 ? colours.player1 : colours.player2;
       ctx.globalAlpha = 0.5; ctx.lineWidth = LINE_W; ctx.stroke(); ctx.globalAlpha = 1;
     }
     var poly = stroke && stroke.pts.length > 1 ? [[game.spots[stroke.from].x, game.spots[stroke.from].y]].concat(stroke.pts) : band ? band.pts : null;
     if (poly) {
-      ctx.beginPath();
-      ctx.moveTo(poly[0][0], poly[0][1]);
-      for (i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1]);
+      polyline(poly);
       ctx.strokeStyle = game.player === 1 ? colours.player1 : colours.player2;
       ctx.globalAlpha = 0.5; ctx.lineWidth = LINE_W; ctx.stroke(); ctx.globalAlpha = 1;
     }
 
     var chosen = stroke ? stroke.from : armed ? armed.a : -1;   // the spot a press or click settled on
     if (chosen >= 0) {
-      ctx.beginPath(); ctx.arc(game.spots[chosen].x, game.spots[chosen].y, 3 * SPOT_R, 0, 2 * Math.PI);   // clear of a lit spot's doubled disc
+      ctx.beginPath(); ctx.arc(mx(game.spots[chosen].x), my(game.spots[chosen].y), 3 * SPOT_R, 0, 2 * Math.PI);   // clear of a lit spot's doubled disc
       ctx.strokeStyle = game.player === 1 ? colours.player1 : colours.player2; ctx.lineWidth = 1.5; ctx.stroke();
     }
     var side = armed && armed.start !== armed.spot ? armed.start : stroke && stroke.side ? stroke.side : null;
     if (side) {                                  // the chosen side, as a short stub from the spot
       var from = armed ? armed.spot : [game.spots[stroke.from].x, game.spots[stroke.from].y];
-      ctx.beginPath(); ctx.moveTo(from[0], from[1]); ctx.lineTo(side[0], side[1]);
+      var fx = mx(from[0]), fy = my(from[1]);    // (in the magnifier the stub keeps its length, like the other marks)
+      ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx + side[0] - from[0], fy + side[1] - from[1]);
       ctx.strokeStyle = game.player === 1 ? colours.player1 : colours.player2; ctx.lineWidth = LINE_W; ctx.stroke();
     }
     var blocked = armed ? armed.blocked : stroke ? stroke.blocked : null;
@@ -430,7 +463,7 @@
       ctx.setLineDash([3, 3]); ctx.lineWidth = 1.5;
       Object.keys(blocked).forEach(function (k) {
         var q = game.spots[k];
-        ctx.beginPath(); ctx.arc(q.x, q.y, 2 * SPOT_R, 0, 2 * Math.PI); ctx.strokeStyle = shownColour(Number(k)); ctx.stroke();
+        ctx.beginPath(); ctx.arc(mx(q.x), my(q.y), 2 * SPOT_R, 0, 2 * Math.PI); ctx.strokeStyle = shownColour(Number(k)); ctx.stroke();
       });
       ctx.setLineDash([]);
     }
@@ -440,26 +473,28 @@
     if (route.markStopped && aiStopped && aiStopped.hist === history.length && aiStopped.atMove === game.moves && !computing()) {
       var sm = game.spots[aiStopped.mx], dm = game.spots[aiStopped.my];
       ctx.strokeStyle = game.player === 1 ? colours.player1 : colours.player2; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(sm.x, sm.y, 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.arc(mx(sm.x), my(sm.y), 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
       ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.arc(dm.x, dm.y, aiStopped.mx === aiStopped.my ? 2 * SPOT_R : 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.arc(mx(dm.x), my(dm.y), aiStopped.mx === aiStopped.my ? 2 * SPOT_R : 3 * SPOT_R, 0, 2 * Math.PI); ctx.stroke();
       ctx.setLineDash([]);
     }
     var stuck = stuckSpots(), orig = route.triangles ? originalSpots() : {};
     for (i = 0; i < game.spots.length; i++) {
       var sp = game.spots[i], sr = spotRadius(i);
+      if (!vis(sp.x, sp.y, 2 * sr)) continue;
+      var sx = mx(sp.x), sy = my(sp.y);
       ctx.fillStyle = shownColour(i);
       if (isMarked(i)) {                         // marked to be enclosed: drawn as a square
-        ctx.fillRect(sp.x - 1.1 * sr, sp.y - 1.1 * sr, 2.2 * sr, 2.2 * sr);
+        ctx.fillRect(sx - 1.1 * sr, sy - 1.1 * sr, 2.2 * sr, 2.2 * sr);
       } else if (orig[i]) {                      // View → Initial seeds as triangles (v98; named so v159): the disc's area, point up; hollow where the disc would be a ring
         var tr = TRI * sr;
-        triangle(sp.x, sp.y, tr); ctx.fill();
-        if (stuck[i]) { triangle(sp.x, sp.y, tr - 2 * RING * sr); ctx.fillStyle = background(); ctx.fill(); }
+        triangle(sx, sy, tr); ctx.fill();
+        if (stuck[i]) { triangle(sx, sy, tr - 2 * RING * sr); ctx.fillStyle = background(); ctx.fill(); }
       } else if (stuck[i]) {                     // lives left, no other spot to reach: a ring (RING of the radius), the background inside
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, sr, 0, 2 * Math.PI); ctx.fill();
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, (1 - RING) * sr, 0, 2 * Math.PI); ctx.fillStyle = background(); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, (1 - RING) * sr, 0, 2 * Math.PI); ctx.fillStyle = background(); ctx.fill();
       } else {
-        ctx.beginPath(); ctx.arc(sp.x, sp.y, sr, 0, 2 * Math.PI); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 2 * Math.PI); ctx.fill();
       }
     }
     if (showNumbers) {
@@ -468,12 +503,40 @@
       for (i = 0; i < game.spots.length; i++) {
         if (!route.deadNumbers && game.spots[i].deg >= 3) continue;   // View → No indices at stumps (G, v133; named so v157; on by default, over S)
         if (!route.seedNumbers && game.spots[i].deg === 0) continue;   // View → No indices at seeds (/, v191; off by default since v193 — Peter wants it for making room, where the seeds of a region are all alike)
-        var r = spotRadius(i), label = String(i + 1), lx = game.spots[i].x + r + 2, ly = game.spots[i].y - r + 2;
+        if (!vis(game.spots[i].x, game.spots[i].y, 4 * NUMBER_PX)) continue;
+        var r = spotRadius(i), label = String(i + 1), lx = mx(game.spots[i].x) + r + 2, ly = my(game.spots[i].y) - r + 2;
         ctx.lineWidth = 3 * NUMBER_PX / NUMBER_PX0; ctx.strokeStyle = background(); ctx.strokeText(label, lx, ly);
         ctx.fillStyle = shownColour(i); ctx.fillText(label, lx, ly);
       }
     }
   }
+  /* THE MAGNIFIER (v223, Peter 11/1): a circle of radius glassR() (View → Magnifier size: a share of
+     max(width, height) of the drawing, as its diameter) about glass = { x, y } (world coordinates, so it stays over
+     the same place of the picture when the window changes), showing the picture magnified route.glassMag times
+     about its center (drawLayer). Placed and moved with Alt+click / Alt+drag, taken away with an Alt+click inside
+     it (or View → Magnifier); clicks and drags inside it act on the magnified picture (toWorld). Not saved with a
+     game; left out of P's picture, kept in B's snapshot (which records the screen). */
+  var glass = null, glassDrag = null, glassFrame = 0, ctrlPress = null;   // (ctrlPress, v225: a Ctrl+press not yet a click or a drag)
+  function glassR() { return route.glassSize * Math.max(game.W0, game.H0) / 2; }
+  function drawGlass() {
+    var R = glassR(), cx = glass.x, cy = glass.y, px = 1 / view.s;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.clip();
+    ctx.fillStyle = background(); ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    drawLayer({ cx: cx, cy: cy, m: route.glassMag, R: R });
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.lineWidth = 3 * px; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    ctx.lineWidth = 1.5 * px; ctx.strokeStyle = '#404040'; ctx.stroke();
+    var label = glassMagText(route.glassMag);
+    ctx.font = 'bold ' + (13 * px) + 'px Calibri, "Segoe UI", sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.lineWidth = 3 * px; ctx.strokeStyle = '#ffffff'; ctx.strokeText(label, cx, cy + R - 10 * px);
+    ctx.fillStyle = '#404040'; ctx.fillText(label, cx, cy + R - 10 * px);
+    ctx.textAlign = 'start';
+  }
+  function glassMagText(m) { return (m < 10 ? m.toFixed(1).replace(/\.0$/, '') : String(Math.round(m))) + '×'; }
+  function drawSoon() { if (!glassFrame) glassFrame = requestAnimationFrame(function () { glassFrame = 0; draw(); }); }
+  function setGlass(g) { glass = g; document.getElementById('opt-glass').checked = !!g; draw(); }
 
   /* An equilateral triangle, point up, centered on (x, y), R the distance from
      the center to a corner (v98). TRI: the R that gives a disc's area
@@ -515,7 +578,6 @@
   function layoutCircle(n, W, H) {
     if (n === 1) return [[W / 2, H / 2]];
     var R = 0.36 * Math.min(W, H);
-    if (2 * R * Math.sin(Math.PI / n) < MIN_SEP) return null;
     var pts = [];
     for (var i = 0; i < n; i++) {
       var a = -Math.PI / 2 + 2 * Math.PI * i / n;
@@ -540,28 +602,40 @@
       var f = (s - len[k]) / (len[k + 1] - len[k]);
       pts.push([P[k][0] + f * (P[k + 1][0] - P[k][0]), P[k][1] + f * (P[k + 1][1] - P[k][1])]);
     }
-    for (i = 0; i < n; i++) if (G.dist(pts[i], pts[(i + 1) % n]) < MIN_SEP) return null;
     return pts;
   }
   /* v62 (Peter, 9/26): equally spaced along the middle of the window's longer
      side — n spots cut it into n + 1 equal parts. */
   function layoutLine(n, W, H) {
     var horizontal = W >= H, L = horizontal ? W : H, gap = L / (n + 1), pts = [];
-    if (n > 1 && gap < MIN_SEP) return null;
     for (var i = 1; i <= n; i++) pts.push(horizontal ? [i * gap, H / 2] : [W / 2, i * gap]);
     return pts;
   }
+  /* (v224, Peter 11/1: "when setting too many initial seeds it says that many points can't be rendered in the
+     window. That's no longer appropriate with thin lines and spots. Let's remove it.") The layouts no longer refuse:
+     spots closer than MIN_SEP are allowed (moves are drawn thin). Random still keeps MIN_SEP apart where it can —
+     the same draws as before, so a seeded layout that fitted is unchanged — and where no try fits, it takes the try
+     farthest from the spots already placed. A grid of MIN_SEP cells finds the spots within MIN_SEP of a try. */
   function layoutRandom(n, W, H) {
-    var margin = 3 * SNAP, pts = [];
-    if (W <= 2 * margin || H <= 2 * margin) return null;
-    for (var i = 0; i < n; i++) {
-      var placed = false;
-      for (var tries = 0; tries < 2000 && !placed; tries++) {
-        var p = [margin + rng() * (W - 2 * margin), margin + rng() * (H - 2 * margin)];
-        placed = pts.every(function (q) { return G.dist(p, q) >= MIN_SEP; });
-        if (placed) pts.push(p);
+    var margin = Math.min(3 * SNAP, W / 4, H / 4), pts = [], cells = {};
+    function key(x, y) { return Math.floor(x / MIN_SEP) + ',' + Math.floor(y / MIN_SEP); }
+    function nearest(p) {                         // the distance to the nearest spot placed, as far as MIN_SEP (at most MIN_SEP)
+      var d = MIN_SEP, cx = Math.floor(p[0] / MIN_SEP), cy = Math.floor(p[1] / MIN_SEP);
+      for (var gx = cx - 1; gx <= cx + 1; gx++) for (var gy = cy - 1; gy <= cy + 1; gy++) {
+        (cells[gx + ',' + gy] || []).forEach(function (q) { d = Math.min(d, G.dist(p, q)); });
       }
-      if (!placed) return null;
+      return d;
+    }
+    for (var i = 0; i < n; i++) {
+      var best = null, bestD = -1;
+      for (var tries = 0; tries < 2000; tries++) {
+        var p = [margin + rng() * (W - 2 * margin), margin + rng() * (H - 2 * margin)], d = nearest(p);
+        if (d > bestD) { best = p; bestD = d; }
+        if (d >= MIN_SEP) break;
+      }
+      pts.push(best);
+      var k = key(best[0], best[1]);
+      (cells[k] = cells[k] || []).push(best);
     }
     return pts;
   }
@@ -572,7 +646,7 @@
      Game → New game keep the present game's initial seeds with those layouts (Peter 10/20: "use the existing
      point distribution and not create or wait for a new one"); the keys 1–9 and 0, and a change in the menu,
      lay out anew. The seeds kept are the spots the game started with and those added by hand (originalSpots),
-     scaled to the drawing area if its size changed; the Spots field is set to their number. */
+     where they first stood (firstPlaces), scaled to the drawing area if its size changed; the Spots field is set to their number. */
   /* v185 (Peter 10/19): a new game's sizes follow its drawing area — with C the mean of its width and
      height, spot size (the diameter) C/70 and index size C/50, each held to its slider's range. A loaded game
      keeps the sizes saved with it; the sliders can still be moved by hand.
@@ -598,6 +672,24 @@
       el.value = v; el.dispatchEvent(new Event('input'));
     });
   }
+  /* Where the seeds first stood, scaled to a W x H area (Peter 11/1: "With Random Points, when I press N for a new
+     game, it regenerates the point set. It should use the old point set." — N took the seeds where they stood at
+     the END of the game, and R tidying had moved them by hundreds of pixels). Every change to the game is preceded
+     by an undo snapshot, so the first snapshot that has spot i holds it where it was placed; a spot in no snapshot
+     (no change since it came) is where it is now. Each snapshot is scaled by its own W0 x H0. */
+  function firstPlaces(idx, W, H) {
+    var out = {}, need = idx.slice(), k = 0;
+    function take(g, list) {
+      return list.filter(function (i) {
+        if (i >= g.spots.length) return true;
+        out[i] = [g.spots[i].x * W / g.W0, g.spots[i].y * H / g.H0];
+        return false;
+      });
+    }
+    while (need.length && k < history.length) need = take(JSON.parse(history[k++]), need);
+    take(game, need);
+    return out;
+  }
   function newGame(layout, preview, afresh) {
     if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true, null, true); return; }   // (v79)
     var nb = net && !netAllow ? netBlock(true) : null;
@@ -607,12 +699,12 @@
     var W = stage.clientWidth, H = stage.clientHeight, pts = [], kept = null;
     sizesFor(W, H);
     var seed = reseed();                           // (v201: a seeded run starts afresh with every new game)
-    if (seed !== null) afresh = true;              // (with a seed the layout is repeatable anyway, and the kept seeds may have been moved by R: lay out anew)
+    if (seed !== null) afresh = true;              // (with a seed the layout is repeatable anyway, and laying out again draws the same numbers from the generator, so the moves repeat too)
     /* (v196, Peter 10/21: after Load game, N went back to 5 spots in an ellipse) a loaded game's seeds are kept by
        N too, whatever the Layout menu says, until a layout is asked for (a digit key, 0, or a change of Spots or Layout) */
     if (!preview && !afresh && (layout === 'random' || layout === 'manual' || seedsLoaded) && game.phase !== 'place' && game.spots.length) {
-      var orig = originalSpots(), sx = W / game.W0, sy = H / game.H0;
-      kept = game.spots.filter(function (sp, i) { return orig[i]; }).map(function (sp) { return [sp.x * sx, sp.y * sy]; });
+      var orig = Object.keys(originalSpots()).map(Number).sort(function (a, b) { return a - b; }), first = firstPlaces(orig, W, H);
+      kept = orig.map(function (i) { return first[i]; });
       /* (v198) a Spots field that asks for another number than the seeds kept asks for a new layout — with a game under way
          the field's change previews nothing, so this was the only way left to a new random layout of another size */
       if (kept.length && (!(n >= 1) || n === kept.length)) { pts = kept; n = kept.length; document.getElementById('opt-spots').value = n; } else kept = null;
@@ -622,7 +714,6 @@
       seedsLoaded = false;
       if (!(n >= 1)) { say('The number of spots must be at least 1.', true, null, true); return; }
       pts = layout === 'ellipse' ? layoutEllipse(n, W, H) : layout === 'circle' ? layoutCircle(n, W, H) : layout === 'line' ? layoutLine(n, W, H) : layoutRandom(n, W, H);
-      if (!pts) { say('Unable to fit ' + n + ' spots in a window this size.', true, null, true); return; }
     }
     game = {
       W0: W, H0: H, edges: [], player: 1, moves: 0, added: 0,
@@ -741,8 +832,7 @@
 
   function placeSpot(p) {
     if (p[0] < SPOT_R || p[1] < SPOT_R || p[0] > game.W0 - SPOT_R || p[1] > game.H0 - SPOT_R) return;
-    var clear = game.spots.every(function (s) { return G.dist(p, [s.x, s.y]) >= MIN_SEP; });
-    if (!clear) { say('Too close to another spot.', true); return; }
+    if (game.spots.some(function (s) { return s.x === p[0] && s.y === p[1]; })) return;   // (v225: any distance from the others but none — thin moves, Peter 11/1)
     snapshot();
     game.spots.push({ x: p[0], y: p[1], deg: 0 });
     sayTurn(); draw();
@@ -751,6 +841,14 @@
   canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
 
   canvas.addEventListener('pointerdown', function (e) {
+    if (e.button === 0 && e.altKey) {             // (v223) Alt+click / Alt+drag: the magnifier — at any time, busy or not
+      e.preventDefault();
+      var q = toWorldRaw(e);
+      if (glass && G.dist(q, [glass.x, glass.y]) < glassR()) glassDrag = { dx: glass.x - q[0], dy: glass.y - q[1], at: q, moved: false };
+      else { glassDrag = { dx: 0, dy: 0, at: q, moved: true }; setGlass({ x: q[0], y: q[1] }); }
+      canvas.setPointerCapture(e.pointerId);
+      return;
+    }
     if (band || relaying || roomBusy || routeBusy) return;   // (roomBusy, routeBusy: room is made / a route found in a worker, v137, v139)
     var nb = net && (e.button === 0 || e.button === 2) ? netBlock(e.ctrlKey && e.button === 0) : null;   // (v79: not my turn, or the other computer is at work; Ctrl+drag moves spots any time)
     if (nb) { say(nb, true); return; }
@@ -767,11 +865,9 @@
     }
     if (game.phase === 'place') { placeSpot(p); return; }
     if (game.phase === 'over') { sayGameOver(); return; }
-    if (e.ctrlKey) {                              // Ctrl+click where a spot fits: add one; else Ctrl+drag moves the nearest spot
-      var fit = newSpotRoom(p);
-      if (fit.ok && net) { say('No spots added by hand while connected: the other computer could not follow.', true); return; }   // (v79)
-      if (fit.ok) { addSpot(p, fit); return; }
-      if (startSpotDrag(nearestSpot(p), p, fit.why)) canvas.setPointerCapture(e.pointerId);
+    if (e.ctrlKey) {                              // Ctrl+click: add a spot there; Ctrl+drag: move the nearest spot (v225: told apart by moving, as the magnifier's Alt+click — before, a spot was added only where it kept clear of everything, else the press moved the nearest spot)
+      ctrlPress = { p: p, at: toWorldRaw(e) };
+      canvas.setPointerCapture(e.pointerId);
       return;
     }
     if (armed) {                                  // second click of click-to-connect: the nearest possible destination
@@ -797,6 +893,19 @@
   });
 
   canvas.addEventListener('pointermove', function (e) {
+    if (glassDrag) {                              // (v223) moving the magnifier; a press that moves by less than a pixel on the screen is still a click
+      var q = toWorldRaw(e);
+      if (!glassDrag.moved && G.dist(q, glassDrag.at) * view.s < 1) return;
+      glassDrag.moved = true; glass.x = q[0] + glassDrag.dx; glass.y = q[1] + glassDrag.dy;
+      drawSoon();
+      return;
+    }
+    if (ctrlPress) {                              // (v225) a Ctrl+press that moves by a screen pixel becomes a Ctrl+drag of the nearest spot
+      if (G.dist(toWorldRaw(e), ctrlPress.at) * view.s < 1) return;
+      var cp = ctrlPress; ctrlPress = null;
+      if (startSpotDrag(nearestSpot(cp.p), cp.p, null)) moveSpotDrag(toWorld(e));
+      return;
+    }
     if (slideDrag) { moveSpotDrag(toWorld(e)); return; }
     if (!stroke) return;
     var p = toWorld(e), last = stroke.pts[stroke.pts.length - 1], d = G.dist(p, last);
@@ -823,6 +932,13 @@
      otherwise the route is found. A drag that goes out past another spot and
      comes back to A is a loop stroke, not a click. */
   canvas.addEventListener('pointerup', function () {
+    if (glassDrag) { var gd = glassDrag; glassDrag = null; if (!gd.moved) setGlass(null); else draw(); return; }   // (v223: an Alt+click inside the magnifier takes it away)
+    if (ctrlPress) {                              // (v225) a Ctrl+click: a new spot there
+      var cq = ctrlPress.p, fit = newSpotRoom(cq); ctrlPress = null;
+      if (fit.ok && net) { say('No spots added by hand while connected: the other computer could not follow.', true); return; }   // (v79)
+      if (fit.ok) addSpot(cq, fit); else if (fit.why) say(fit.why, true);
+      return;
+    }
     if (slideDrag) { endSpotDrag(); return; }
     if (!stroke) return;
     var st = stroke, end = st.pts[st.pts.length - 1], a = st.from, A = game.spots[a];
@@ -849,7 +965,10 @@
       startRoute(a, b, G.resample([[A.x, A.y]].concat(path, [pb]), STEP), st.obs, { st: st });
     }
   });
-  canvas.addEventListener('pointercancel', function () { stroke = null; draw(); });
+  canvas.addEventListener('pointercancel', function () { stroke = null; glassDrag = null; ctrlPress = null; draw(); });
+  /* (v223) Alt alone: Chrome on Windows puts the keyboard focus on its menu button when Alt is pressed and released by
+     itself, and the next key goes there — not wanted when Alt was for the magnifier */
+  ['keydown', 'keyup'].forEach(function (t) { document.addEventListener(t, function (e) { if (e.key === 'Alt') e.preventDefault(); }); });
 
   /* The SPACE BAR stops or cancels (v101, Peter; was Esc, which Chrome keeps
      for leaving full screen): A/R under way, an armed move, the computer's
@@ -1010,8 +1129,8 @@
     pendingRoom = { a: armed.a, b: b, room: rm };
     var why = rm ? 'the widest way there is too narrow' : 'there is no way through from this side';
     var detail = rm ? 'the widest way there keeps only ' + Math.max(0, Math.round(rm.clearance)) + ' px clear of the curves, and the minimum clearance is ' + route.d0 + ' px' : why;
-    say('No room to reach spot ' + (b + 1) + ': ' + why + '.' + roomOffer() + '   —   or click another spot', true,
-        'No room to reach spot ' + (b + 1) + ': ' + detail + '.');
+    refusal('No room to reach spot ' + (b + 1) + ': ' + why + '.' + roomOffer() + '   —   or click another spot',
+            'No room to reach spot ' + (b + 1) + ': ' + detail + '.');
     draw();
     roomWanted();
   }
@@ -1038,11 +1157,12 @@
   function markedNoRoom(ar, b, low) {
     var a = ar.a;
     if (route.thin) {                              // (thin branch: drawn thin at once — or why not, said; the grid's verdict below would be about room, which thin moves do not need)
-      var tw = thinDraw(ar, b);
-      if (!tw) return;
-      pendingRoom = null;
-      say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true);
-      draw(); return;
+      thinDraw(ar, b, function (tw) {
+        pendingRoom = null;
+        say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true);
+        draw();
+      });
+      return;
     }
     if (!low) {
       pendingRoom = null;
@@ -1058,19 +1178,20 @@
     roomWanted();
   }
 
-  /* ---------------- adjusting (A) and rearranging (R) the whole drawing ----------------
+  /* ---------------- rearranging (R) the whole drawing ----------------
      One machine for both (redraw.js, v45/v46): every curve a polyline, spots
      and points moving together to the minimum of one energy — the band's
      (length + λ · crowding) for all curves at once, plus smoothness and equal
      angles at spots (v51) — nothing can cross on the way. Room → Rearrange the
-     drawing (R, v60; was "Redraw from scratch") moves the spots too; Room → Adjust the drawing (A) keeps the
-     original and hand-added ones (a spot made by a move moves with its curve).
+     drawing (R, v60; was "Redraw from scratch") moves the spots too; with Room → Keep seeds in place (key A,
+     v218/v219 — before, a separate step A) it keeps the original and hand-added ones (a spot made by a move
+     moves with its curve).
      Animated, as many steps a frame as fit in RELAY_FRAME_MS, the polylines
      drawn as they go, until converged (a second press changes nothing). Then every curve
      becomes a smooth spline (no corners) and is certified, and the position
      must be unchanged; otherwise nothing changes. Its own undo step. Logged.
      Space stops it and keeps the picture as shown (freezeRelaying).
-     (v152: the Room menu's "after each move" options are gone — A, R and Z run
+     (v152: the Room menu's "after each move" options are gone — R and Z run
      by hand or as rungs of the ladder, climbOn and aiClimb.)
      Room → Draw the picture afresh (Z, v114; Peter 9/30: "a fundamentally new option … with A and R
      we have driven the polishing roughly as far as it can go"): the picture is laid out ANEW from
@@ -1082,18 +1203,19 @@
      With workers (v118) Z draws the position once for EVERY region as the outer one, side by side
      (freshParallel), and keeps the drawing with the most room; without them (a page opened as a
      file) only with the present outside, on the page's own thread as A and R. */
-  function relayDrawing(kind, fresh, smallByHand) {
-    if (relaying || band || game.phase === 'place' || !game.spots.length || (kind === 'adjust' && !game.edges.length)) return;
-    /* A, R or Z while a move waits for room (v50, Peter 9/24: offer R when the move cannot be made otherwise; A too, v136):
+  function relayDrawing(kind, fresh) {
+    if (relaying || band || game.phase === 'place' || !game.spots.length || (kind === 'redraw' && route.keepSeeds && !game.edges.length)) return;
+    /* R or Z while a move waits for room (v50, Peter 9/24: offer R when the move cannot be made otherwise):
        redraw, then try that move again — from the same region, the marks kept */
     var retry = !fresh && pendingRoom && armed ?   // (A too since v136, Peter)
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
-              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min), keepShape: kind === 'redraw' && !route.rSpread, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
-    /* (v189) Z for a move — the computer's (fresh) or a human's waiting for room (retry) — may draw spots in
-       tight places smaller if that player's • box in the Room menu is on; Z by itself only by the key . (v191, smallByHand) */
-    var small = kind === 'fresh' && (smallByHand || (fresh ? !!fresh.mv && route.autoAI.S : !!retry && route.autoHuman.S && !route.heroic));
+              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min), keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
+    /* Z may draw spots in tight places smaller only as the computer's last resort with Moves always drawn on — a
+       move not drawn even thin is drawn by Z with it, whatever it takes (Peter 11/1: the Room menu's • column and
+       the key . removed; before, v189–v215, they allowed it for either player) */
+    var small = kind === 'fresh' && !!fresh && !!fresh.mv && route.thin;
     if (kind === 'fresh') {
       o.tight = true; o.keepKnots = true;
       ensurePool();                               // (finds out whether workers can be had at all)
@@ -1108,7 +1230,11 @@
       from = Ly.freshGame(game, fresh ? fresh.mv : null, fresh ? fresh.player : game.player, -1, route.D);   // (the present outside stays outside; FPP whatever the Room menu's Z method — growing runs only on the workers)
       if (!from) return;
     }
-    relaying = { kind: kind, st: Rd.createRedraw(from, o, kind === 'adjust'), start: JSON.stringify(game), t0: Date.now(), small: small,
+    /* (v218, Peter 11/1: the Room menu's A column replaced by "Keep seeds in place") R with that option on is A:
+       the initial seeds and those added by hand stay, curves move and the spots made by moves ride along */
+    var keep = kind === 'redraw' && route.keepSeeds;
+    if (kind === 'redraw') { ensurePool(); if (!noWorkers && startRedrawWorker(o, keep, retry)) return; }   // (v226: R in a worker; on the page's thread only without workers)
+    relaying = { kind: kind, keep: keep, st: Rd.createRedraw(from, o, keep), start: JSON.stringify(game), t0: Date.now(), small: small,
                  before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
     say(relayWord() + '…   Space stops');
     draw();                                       // the gray background at once, also when not animated
@@ -1179,16 +1305,16 @@
       if (j && !/^given up/.test(m.error || '')) par.times.push(Date.now() - j.t0);
       par.done++; par.results.push(m); delete par.running[m.face];
       /* (v194) a round complete (one layout per worker) with a layout drawn — at full size, or with smaller spots
-         where • allows it — ends Z with the best so far: the others are not waited for (before, once any full-size
+         where allowed (rl.small) — ends Z with the best so far: the others are not waited for (before, once any full-size
          layout had drawn below the bar, every layout was run to the end for the roomiest) */
       var drawn = function () { return par.best || (rl.small && par.bestSmall); };
       /* (v189) a layout drawn only with some spots smaller (m.small) is no success at full size: it is kept
          aside, the one with the least shrinking (its smallest spot the largest, then the fewest small
-         spots), and taken only when no layout is drawn at full size and • allows it (freshResult) */
+         spots), and taken only when no layout is drawn at full size and rl.small allows it (freshResult) */
       if (!m.error && m.small && m.small.length) {
         m.least = Math.min.apply(null, m.small.map(function (q) { return q.f; }));
         if (!par.bestSmall || m.least > par.bestSmall.least || (m.least === par.bestSmall.least && m.small.length < par.bestSmall.small.length)) par.bestSmall = m;
-        if (rl.small && !(m.clearance < bar)) { par.early = m; return; }   // (v194: with • on, a layout with smaller spots meets the bar too)
+        if (rl.small && !(m.clearance < bar)) { par.early = m; return; }   // (v194: with rl.small, a layout with smaller spots meets the bar too)
         if (par.done >= par.workers && par.done < order.length) { if (drawn()) par.roundDone = true; else par.roundFailed = true; }
         if (m.face === par.shown) showNext();
         return;
@@ -1293,7 +1419,7 @@
     if (fails.length) par.summary += '\n    Why they failed: ' + Object.keys(whys).sort(function (u, v) { return whys[v] - whys[u]; }).map(function (w) { return w + ' (' + whys[w] + ')'; }).join('; ') + '.';
     if (par.early) return par.early;                      // (v194: may be a layout with smaller spots)
     if (par.best) return par.best;
-    if (rl.small && par.bestSmall) return par.bestSmall;   // (v189: • — some spots drawn smaller)
+    if (rl.small && par.bestSmall) return par.bestSmall;   // (v189: some spots drawn smaller)
     /* v185: every layout failed (as in a game where there are no more regions than workers, so the round is all of
        them) is the same news as a failed round, and gets the same message */
     if (par.roundFailed || par.done === all) return { error: (par.roundFailed ? 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried'
@@ -1319,48 +1445,110 @@
     });
     var px = function (i) { return Math.round(2 * R.spotRadius(g1.spots[i], SPOT_R)); };
     if (smaller.length) log('    Spot' + (smaller.length > 1 ? 's ' : ' ') + smaller.map(function (i) { return (i + 1) + ' (' + px(i) + ' px)'; }).join(', ') +
-                            ' drawn smaller to make room (Room menu: •; their size is ' + Math.round(2 * SPOT_R) + ' px).');
+                            ' drawn smaller to make room (their size is ' + Math.round(2 * SPOT_R) + ' px).');
     if (back.length) log('    Spot' + (back.length > 1 ? 's ' : ' ') + back.map(function (i) { return (i + 1) + (g1.spots[i].f ? ' (' + px(i) + ' px)' : ''); }).join(', ') +
                          ' grown back' + (back.some(function (i) { return g1.spots[i].f; }) ? ' (those in brackets not yet to full size)' : ' to full size') + '.');
   }
-  function relayWord() { return relaying.kind === 'adjust' ? 'Adjusting the drawing' : relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') + (relaying.small ? ' (spots smaller where there is no room)' : '') : 'Rearranging the drawing'; }
+  function relayWord() { return relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') + (relaying.small ? ' (spots smaller where there is no room)' : '') : 'Rearranging the drawing'; }
   function relayFrame() {
     if (!relaying) return;
     var st = relaying.st;
     var t = performance.now();                    // it runs to convergence (v51): as many steps as fit in a frame
     do Rd.stepRedraw(st, 1); while (!st.done && performance.now() - t < RELAY_FRAME_MS);
     game = Rd.redrawCurrent(st);
-    if (st.done) { finishRelaying(false); return; }
-    say(relayWord() + ': step ' + st.it + ', ' + ((Date.now() - relaying.t0) / 1000).toFixed(0) + ' s…   Space stops');
+    if (st.done && !smoothAfterFill(relaying)) { finishRelaying(false); return; }
+    say(relayWord() + (relaying.smoothing ? ', smoothing' : '') + ': step ' + st.it + ', ' + ((Date.now() - relaying.t0) / 1000).toFixed(0) + ' s…   Space stops');
     draw();
     requestAnimationFrame(relayFrame);
   }
+  /* R IN A WORKER (v226, Peter 11/1: "When the system is thinking, sometimes it takes a long time to react to a
+     control" — the page's own watchdog put the stalls of 5–19 s on R: its descent steps and its finish, the
+     splines and their certificate, ran on the page's thread, which is the only one that sees clicks and keys).
+     The whole of R — the descent, the enlarging and smoothing (fillArea, as smoothAfterFill), finishRedraw — runs
+     in a worker of its own (sprouts-draw-worker.js, a redraw job); its polylines come back every frame while
+     animated and are shown as the game's picture, as relayFrame did; Space terminates it (freezeRelaying);
+     the result is finished by finishRelaying as before (rl.result). False when no worker could be started. */
+  function startRedrawWorker(o, keep, retry) {
+    var w;
+    try { w = new Worker('sprouts-draw-worker.js' + version()); } catch (e) { return false; }
+    var rl = relaying = { kind: 'redraw', keep: keep, st: null, worker: w, it: 0, start: JSON.stringify(game), t0: Date.now(), small: false,
+                          before: null, retry: retry, fresh: null };   // (before: measured by the worker too, sent with the result)
+    w.onmessage = function (ev) {
+      var m = ev.data;
+      if (relaying !== rl) return;
+      if (m.smoothing) rl.smoothing = true;
+      if (m.done) { rl.result = m; rl.before = m.before; w.terminate(); finishRelaying(false); return; }
+      if (m.picture) {
+        rl.it = m.it; game = m.picture;
+        say(relayWord() + (rl.smoothing ? ', smoothing' : '') + ': step ' + m.it + ', ' + ((Date.now() - rl.t0) / 1000).toFixed(0) + ' s…   Space stops');
+        drawSoon();                                // (at most one drawing a frame, however fast the pictures come)
+      }
+    };
+    w.onerror = function (ev) {
+      if (ev.preventDefault) ev.preventDefault();
+      if (relaying !== rl) return;
+      w.terminate(); relaying = null; game = JSON.parse(rl.start);
+      log('Script error in the worker for R: ' + (ev.message || 'unknown') + '.');
+      say('Not rearranged: a script error in its worker (see the log).', true); draw();
+      if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
+    };
+    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate });
+    say(relayWord() + '…   Space stops');
+    draw();
+    return true;
+  }
+  /* SMOOTHING AFTER FILLING THE AREA (v222, Peter 11/1: "let's build in the smoothing step. I did see the
+     kinkiness"): when R's descent has ended and R fills the whole area, the polylines are enlarged at once
+     (redraw.js fillArea) and, if that enlarged them, a second descent starts from the enlarged picture with the
+     seeds kept in place (as Keep seeds in place does: curves move, spots made by moves ride along) — the bending
+     and length terms take out the small kinks the enlarging magnified, at the new size. Its end is finished as
+     usual (finishRedraw fills again, by the little the smoothing gave back). True when it started. */
+  function smoothAfterFill(rl) {
+    if (!rl || rl.kind !== 'redraw' || rl.filled || !rl.st || !rl.st.o.fill || rl.st.stuck) return false;
+    rl.filled = true;
+    if (!Rd.fillArea(rl.st)) return false;
+    rl.smoothing = true;
+    var o = {}, k;
+    for (k in rl.st.o) o[k] = rl.st.o[k];
+    o.keepShape = false;
+    rl.pre = rl.st; rl.st = Rd.createRedraw(Rd.redrawCurrent(rl.st), o, true);   // (pre: kept in case the smoothing cannot be finished, v233)
+    return true;
+  }
   function finishRelaying(runToEnd) {
-    var rl = relaying, st = rl.st, adjust = rl.kind === 'adjust', fresh = rl.kind === 'fresh', par = rl.par;
-    if (runToEnd && st) while (!Rd.stepRedraw(st, 50)) { /* on */ }
+    var rl = relaying, st = rl.st, fresh = rl.kind === 'fresh', par = rl.par;
+    if (rl.worker && !rl.result) {                 // (v226) R's worker asked to finish before it has: given up, the picture before kept
+      rl.worker.terminate(); relaying = null; game = JSON.parse(rl.start); draw();
+      return;
+    }
+    if (runToEnd && st) { while (!Rd.stepRedraw(st, 50)) { /* on */ } if (smoothAfterFill(rl)) { st = rl.st; while (!Rd.stepRedraw(st, 50)) { /* on */ } } }
     relaying = null;
-    var r = par ? freshResult(rl) : Rd.finishRedraw(st), not = adjust ? 'Not adjusted: ' : fresh ? 'Not drawn afresh: ' : 'Not rearranged: ';
+    var r = par ? freshResult(rl) : rl.result || Rd.finishRedraw(st), not = fresh ? 'Not drawn afresh: ' : 'Not rearranged: ';
+    if (r.error && rl.pre) { var r0 = Rd.finishRedraw(rl.pre); if (!r0.error) { r = r0; r.unsmoothed = true; } }   // (v233: the smoothing could not be finished — the enlarged picture before it, as the worker does)
     game = JSON.parse(rl.start);
-    /* (v189) a fresh picture with spots smaller than their size only where • allows it (A and R keep what spots
+    /* (v189) a fresh picture with spots smaller than their size only where allowed (relayDrawing's small) (A and R keep what spots
        had: they only grow spots made smaller before) */
-    if (!r.error && fresh && !par && r.small && r.small.length && !rl.small) r.error = 'there is room only with some spots drawn smaller (Room menu: • is off)';
+    if (!r.error && fresh && !par && r.small && r.small.length && !rl.small) r.error = 'there is room only with some spots drawn smaller';
     if (r.error) {
       say(not + r.error, true, not + r.error + (par ? '' : ' (least clearance ' + r.clearance.toFixed(1) + ' px)') + (par && par.summary ? '\n    ' + par.summary : '')); draw();
       if (rl.fresh) rl.fresh.onFail(); else if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
       return;
     }
-    snapshot(adjust ? 'drawing adjusted' : fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
+    if (rl.smoothing && !r.error) {                // (v222: the spots moved since R began, not since the smoothing began)
+      var s0 = JSON.parse(rl.start).spots;
+      r.moved = r.game.spots.reduce(function (m, sp, i) { return i < s0.length ? Math.max(m, G.dist([sp.x, sp.y], [s0[i].x, s0[i].y])) : m; }, 0);
+    }
+    snapshot(fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
     game = r.game;
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
-    var what = adjust ? 'Adjusted the drawing' : fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing';
+    var what = fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing' + (rl.keep ? ' (seeds kept in place)' : r.unsmoothed ? ' (enlarged to fill the area; the smoothing after it could not be finished, so left out)' : rl.smoothing ? ' (enlarged to fill the area, then smoothed)' : '');
     log(what +
-        ((par ? par.done === par.order.length || par.early || par.roundDone : st.done) ? '' : ' (stopped with Space)') + ': ' + (adjust ? '' : fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
+        ((par ? par.done === par.order.length || par.early || par.roundDone : rl.result || st.done) ? '' : ' (stopped with Space)') + ': ' + (rl.keep || fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s' +
         (par ? ' (' + (par.early ? 'the first layout ' + zBar(rl.before) + ', after ' + par.done + ' of ' + par.order.length : (par.roundDone ? 'the best of the first round, ' : '') + par.done + ' of ' + par.order.length + ' layouts') +
                ' on ' + par.workers + ' workers, ' + (par.grow ? 'grown from a spot each' : 'each region outside in turn') +
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
                (par.grow ? 'grown from spot ' + (r.face + 1) : r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
-         fresh && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
+         fresh && st && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
         (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
     if (par) log('    The layouts (' + (par.grow ? 'each grown from another spot' : 'each with another region outside') + '), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
@@ -1377,7 +1565,7 @@
       return;
     }
     sayTurn(); draw();
-    statusEl.textContent += '   —   ' + (adjust ? 'adjusted' : fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
+    statusEl.textContent += '   —   ' + (fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
     if (rl.retry) retryMove(rl.retry); else afterRelay();
   }
   /* SPACE DURING A, R OR Z (thin branch, Peter 10/31: "the idea of stopping with what you see at that moment
@@ -1391,6 +1579,7 @@
     var rl = relaying, shown = JSON.parse(JSON.stringify(game)), what = relayWord(), secs = ((Date.now() - rl.t0) / 1000).toFixed(0);
     relaying = null;
     if (rl.par) { clearInterval(rl.par.timer); drawPool.forEach(function (w) { w.terminate(); }); drawPool = []; }
+    if (rl.worker) rl.worker.terminate();          // (v226: R's worker)
     if (climb) climb.stopped = true;
     tidyNext = null; aiResume = null;
     if (ai) aiCancel();
@@ -1399,13 +1588,13 @@
     game = shown;
     var Th = window.SproutsThin, cross = Th ? Th.crossingCurves(game) : null;
     var named = function (ei) { var e = game.edges[ei]; return e ? (e.a + 1) + '–' + (e.b + 1) : 'the window\'s sides'; };
-    log('Stopped (Space): ' + what + (rl.st ? ' at step ' + rl.st.it : rl.par && rl.par.shown !== null ? ' — the layout on the screen' + (rl.par.shown === rl.par.outer ? ' (the present outside)' : '') : '') +
+    log('Stopped (Space): ' + what + (rl.st ? ' at step ' + rl.st.it : rl.worker ? ' at step ' + rl.it : rl.par && rl.par.shown !== null ? ' — the layout on the screen' + (rl.par.shown === rl.par.outer ? ' (the present outside)' : '') : '') +
         ' after ' + secs + ' s: the picture KEPT AS SHOWN (curves not smoothed, not checked; U goes back to the picture before). ' +
         (!cross ? '' : cross.length ? 'Curves that cross or touch others: ' + cross.map(named).join(', ') + '.' : 'No curves cross.'));
     say('Stopped: the picture as it was on the screen' + (cross && cross.length ? ' — curves cross (see the log)' : '') + '.   U goes back to the picture before' + (bothAI() ? ';   Space continues' : ''), !!(cross && cross.length));
     draw();
   }
-  /* After A, R or Z: the computer's move (or the other computer's) that waited for it as a rung of its
+  /* After R or Z: the computer's move (or the other computer's) that waited for it as a rung of its
      ladder (aiResume: tried again in the new drawing, or on to the next rung if the drawing could not be
      changed — `failed`), else the computer's turn. */
   function afterRelay(failed) {
@@ -1510,8 +1699,7 @@
     if (p[0] < SPOT_R || p[1] < SPOT_R || p[0] > game.W0 - SPOT_R || p[1] > game.H0 - SPOT_R) return { ok: false, why: 'No new spot there: it is outside the drawing.' };
     var an = E.analyse(game.spots, game.edges), r = an.regionAt(p);
     if (!r) return { ok: false, why: 'No new spot there: it is on a curve.' };
-    var clear = R.rObs(R.buildObstacles(game, SPOT_R), PLAIN, p), need = route.d0 + SPOT_R;
-    if (clear < need) return { ok: false, why: 'No new spot there: it would be too close to a curve, spot or border.' };
+    if (game.spots.some(function (s) { return s.x === p[0] && s.y === p[1]; })) return { ok: false, why: 'No new spot there: there is a spot.' };   // (v225: no clearance asked — thin moves, Peter 11/1)
     return { ok: true, an: an, region: r };
   }
   function addSpot(p, fit) {
@@ -1633,41 +1821,45 @@
      a few seconds, so the status line says so first, and the background turns
      gray (v65): the work starts after the next frame is painted (a timeout
      from inside requestAnimationFrame runs after that frame's paint). */
-  /* What a refusal for lack of room offers by hand: M (not in Heroic mode, v68: no local room-making), A, R, Z. */
-  function roomOffer() { return (route.heroic ? '   A, R or Z: redraw and try again' : '   M: make room   —   A, R or Z: redraw and try again') + '   —   .: afresh with smaller spots'; }
+  /* What a refusal for lack of room offers by hand: M (not in Heroic mode, v68: no local room-making), R, Z. */
+  /* (v232, Peter 11/1: "there is still a spurious message about not being able to make space and try M, R, or Z")
+     A refusal for lack of room while Moves always drawn is on: the move is drawn thin next (roomWanted, or the
+     computer's aiClimb), so the refusal and its offer of M, R, Z are not said (nor logged) — only a plain line on
+     the status row. Still said where the thin drawing of this very move failed before (climb.thinFailed). */
+  function refusal(text, detail) {
+    var failed = climb && climb.thinFailed && armed && pendingRoom && climb.a === armed.a && climb.b === pendingRoom.b && climb.moves === game.moves;
+    if (route.thin && (ai || !failed)) { if (ai) ai.lastWarn = text; say('Drawing it with spots as points and curves thin…'); return; }   // (lastWarn: the computer's record of why the ordinary way failed, aiRefused)
+    say(text, true, detail);
+  }
+  function roomOffer() { return route.heroic ? '   R or Z: redraw and try again' : '   M: make room   —   R or Z: redraw and try again'; }
   /* ---- THE LADDER (v152, Peter 10/7; v191, Peter 10/20) ----
-     The four ways of making room for a move that does not fit, in increasing complexity: M (slide spots,
-     push curves: makeRoom), A (adjust the drawing), R (rearrange it), Z (draw the picture afresh); and
-     after Z the step • (Z allowing spots in tight places to be drawn smaller; by hand the key .). The Room
+     The three ways of making room for a move that does not fit, in increasing complexity: M (slide spots,
+     push curves: makeRoom), R (rearrange the drawing; with Keep seeds in place the seeds stay — what A does,
+     v218: the A column went) and Z (draw the picture afresh). The Room
      menu says, separately for a human's moves and the computer's (route.autoHuman, route.autoAI), which of
      them are used AUTOMATICALLY. A human's move (climbOn): when it is refused for lack of room, the steps
-     are taken in the order M, A, R, Z, •, each at most once for the move, as long as their boxes are
+     are taken in the order M, R, Z, each at most once for the move, as long as their boxes are
      checked; at the first box NOT checked the ladder stops and offers that step and the ones after it by
-     hand (v191: before, unchecked steps were skipped) — except A, which is skipped when unchecked (v193). A step pressed by hand tries the move again, and the
+     hand (v191: before, unchecked steps were skipped). A step pressed by hand tries the move again, and the
      ladder goes on from there by the same rule. Heroic switches the human's off (and the computer's M: the
      curves drawn by hand have corners, which moving curves cannot handle). The computer's ladder (aiClimb)
      is unchanged: its checked rungs in order, the unchecked ones skipped. */
-  var LADDER = ['M', 'A', 'R', 'Z'];
-  var LADDER_NAME = { M: 'making room', A: 'adjusting', R: 'rearranging', Z: 'drawing afresh', S: 'spots drawn smaller' };
-  var LADDER_OFFER = { M: 'make room', A: 'adjust', R: 'rearrange', Z: 'draw afresh', S: 'afresh with smaller spots' };
-  /* the Room menu's boxes: the rungs, and • (v189, Peter 10/20: S here — when Z fails for a move, its fresh
-     picture may draw spots in tight places smaller; off for a human, on for the computer) */
-  var AUTO_KEYS = LADDER.concat(['S']);
-  function autoLabel(k) { return k === 'S' ? '•' : k; }
-  function autoKey(k) { return k === 'S' ? '.' : k; }
-  var climb = null;      // the human's ladder for the move waiting for room: { a, b, moves, next (index into AUTO_KEYS), used, stopped } — new for every click on a destination
-  function ladderText(used) { return used.map(function (k) { return LADDER_NAME[k] + ' (' + autoLabel(k) + ')'; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
-  /* the steps from index i on, offered by hand: "A (adjust), R (rearrange), Z (draw afresh) or . (afresh with smaller spots)" */
+  var LADDER = ['M', 'R', 'Z'];
+  var LADDER_NAME = { M: 'making room', R: 'rearranging', Z: 'drawing afresh' };
+  var LADDER_OFFER = { M: 'make room', R: 'rearrange', Z: 'draw afresh' };
+  var climb = null;      // the human's ladder for the move waiting for room: { a, b, moves, next (index into LADDER), used, stopped } — new for every click on a destination
+  function ladderText(used) { return used.map(function (k) { return LADDER_NAME[k] + ' (' + k + ')'; }).join(', ').replace(/, ([^,]*)$/, ' and $1'); }
+  /* the steps from index i on, offered by hand: "R (rearrange) or Z (draw afresh)" */
   function ladderOffer(i) {
-    var rest = AUTO_KEYS.slice(i).filter(function (k) { return !(k === 'M' && route.heroic); });
-    return rest.map(function (k) { return autoKey(k) + ' (' + LADDER_OFFER[k] + ')'; }).join(', ').replace(/, ([^,]*)$/, ' or $1');
+    var rest = LADDER.slice(i).filter(function (k) { return !(k === 'M' && route.heroic); });
+    return rest.map(function (k) { return k + ' (' + LADDER_OFFER[k] + ')'; }).join(', ').replace(/, ([^,]*)$/, ' or $1');
   }
-  /* A step pressed by hand (M, A, R, Z or .) while a move waits for room: the ladder goes on after it
+  /* A step pressed by hand (M, R or Z) while a move waits for room: the ladder goes on after it
      (v191, Peter: "when the user enters an option it should try the last chosen move again" — and then the
      next checked boxes as before). Never back down: a step is used at most once for the move. */
   function byHand(k) {
     if (!climb || !armed || !pendingRoom || climb.a !== armed.a || climb.b !== pendingRoom.b || climb.moves !== game.moves) return;
-    climb.next = Math.max(climb.next, AUTO_KEYS.indexOf(k) + 1);
+    climb.next = Math.max(climb.next, LADDER.indexOf(k) + 1);
     if (climb.used.indexOf(k) < 0) climb.used.push(k);
     climb.stopped = false;
   }
@@ -1677,11 +1869,14 @@
   function roomWanted() {
     if (ai) { if (ai.useM && !ai.mDone) { ai.mDone = true; ai.used.push('M'); makeRoom(); } return; }
     if (route.thin && armed && pendingRoom && !(climb && climb.thinFailed && climb.a === armed.a && climb.b === pendingRoom.b && climb.moves === game.moves)) {   // (thin branch: drawn thin at once)
-      var ar0 = armed, b0 = pendingRoom.b, why = thinDraw(armed, pendingRoom.b);
-      if (!why) return;
-      /* not even thin (a marked move the thin router could not route round its marks): the ladder, as before */
-      log('Not drawn thin: ' + why + '. The Room menu\'s steps, as before.');
-      climb = { a: ar0.a, b: b0, moves: game.moves, next: 0, used: [], thinFailed: true };
+      var ar0 = armed, b0 = pendingRoom.b;
+      thinDraw(armed, pendingRoom.b, function (why) {
+        /* not even thin (a marked move the thin router could not route round its marks): the ladder, as before */
+        log('Not drawn thin: ' + why + '. The Room menu\'s steps, as before.');
+        climb = { a: ar0.a, b: b0, moves: game.moves, next: 0, used: [], thinFailed: true };
+        climbOn();
+      });
+      return;
     }
     climbOn();
   }
@@ -1691,24 +1886,34 @@
      clearance, the spots' discs) is drawn at once by moves.js thinRoute: a polyline through a triangulation
      of the drawing that crosses and touches nothing, however narrow the way — spots count as points and
      curves as thin there; the picture may show curves merging or crossing spots' discs, the position is
-     exact. No ladder: M, A, R, Z are not used to make the move fit. Afterwards, if the picture falls short
-     of the visual standard (some clearance below the minimum), the steps A, R, Z checked in the Room menu
+     exact. No ladder: M, R, Z are not used to make the move fit. Afterwards, if the picture falls short
+     of the visual standard (some clearance below the minimum), the steps R, Z checked in the Room menu
      for the player who moved run automatically, in that order, until it does not (tidying, for the eye);
-     unchecked, they are there by hand. ar: the armed move, b its destination. Null when the move was
-     committed; else why not. */
+     unchecked, they are there by hand. ar: the armed move, b its destination. */
   var tidyNext = null;                             // the tidying steps still to run after a thin move: { keys }
-  function thinDraw(ar, b) {
-    var a = ar.a, t0 = Date.now(), res;
+  /* (v227, Peter 11/1: the page took seconds to react while a long or enclosing move was routed thin on its
+     thread) the routing and the curve in the moves worker (routeAsync, kind 'thin': moves.js thinFor), the page
+     busy meanwhile (routeBusy; Space stops it, stopRoute); here only without workers. When it is done: the move
+     committed — or onFail(why). */
+  function thinDraw(ar, b, onFail) {
+    var t0 = Date.now();
+    if (routeAsync(ar, b, true, function (res) { thinDone(ar, b, res, t0, onFail); }, 'thin')) return;
+    thinDone(ar, b, thinHere(ar, b), t0, onFail);
+  }
+  function thinHere(ar, b) {
+    var res;
     hush++;
     try { res = thinRoute(ar, b); } finally { hush--; }
-    if (!res.path) return res.fail;
-    var cv = thinCurve(res, a, b), box = isAI(game.player) ? route.autoAI : route.autoHuman;
+    return res.path ? { cv: thinCurve(res, ar.a, b) } : { fail: res.fail };
+  }
+  function thinDone(ar, b, res, t0, onFail) {
+    if (!res || !res.cv) { onFail(res && res.fail || 'no curve was found'); return; }
+    var a = ar.a, cv = res.cv, box = isAI(game.player) ? route.autoAI : route.autoHuman;
     armed = null; pendingRoom = null; lastTry = null; climb = null;
     if (note && / — drawn the shortest way/.test(note)) note = null;   // (the grid router's verdict on the marks, left from trying first: the thin move honours them — Peter 10/31: "What does it mean it drew the shortest way?")
-    tidyNext = { keys: ['A', 'R', 'Z'].filter(function (k) { return box[k]; }) };
+    tidyNext = { keys: ['R', 'Z'].filter(function (k) { return box[k]; }) };
     commitMove(a, b, { pieces: cv.pieces, h: cv.h }, 'drawn thin (spots as points): ' + cv.pieces.length + (cv.smooth ? ' pieces, smooth' : ' straight pieces') + ', clearance ' +
                (cv.clearance >= 0.1 ? cv.clearance.toFixed(1) : cv.clearance.toExponential(1)) + ' px, ' + (Date.now() - t0) + ' ms');
-    return null;
   }
   /* the next tidying step after a thin move, if the picture still falls short of the minimum clearance:
      true when one has started (relaying) */
@@ -1720,7 +1925,7 @@
     while (t.keys.length) {
       var k = t.keys.shift();
       log('Tidying after a move drawn thin: ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
-      relayDrawing(k === 'A' ? 'adjust' : k === 'R' ? 'redraw' : 'fresh');
+      relayDrawing(k === 'R' ? 'redraw' : 'fresh');
       if (relaying) return true;
     }
     tidyNext = null;
@@ -1731,21 +1936,20 @@
     var a = armed.a, b = pendingRoom.b;
     if (!climb || climb.a !== a || climb.b !== b || climb.moves !== game.moves) climb = { a: a, b: b, moves: game.moves, next: 0, used: [] };
     if (climb.stopped) return;                     // (used up, or stopped with Space: a step by hand goes on, byHand)
-    while (climb.next < AUTO_KEYS.length) {
-      var k = AUTO_KEYS[climb.next];
-      if (!route.autoHuman[k]) { if (k === 'A') { climb.next++; continue; } break; }   // (v191: the first box not checked stops the ladder; it and the rest are offered below — except A, which is simply skipped: v193, Peter never uses it)
+    while (climb.next < LADDER.length) {
+      var k = LADDER[climb.next];
+      if (!route.autoHuman[k]) break;              // (v191: the first box not checked stops the ladder; it and the rest are offered below)
       climb.next++;
-      if (k === 'S') { if (climb.used.indexOf('Z') >= 0 && climb.used.indexOf('S') < 0) climb.used.push('S'); continue; }   // (• went with Z: relayDrawing's small)
       climb.used.push(k);
       log('No room for ' + (a + 1) + ' → ' + (b + 1) + ': ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
       if (k === 'M') { makeRoom(); if (roomBusy) return; continue; }
-      relayDrawing(k === 'A' ? 'adjust' : k === 'R' ? 'redraw' : 'fresh');
+      relayDrawing(k === 'R' ? 'redraw' : 'fresh');
       if (relaying) return;
       if (!armed) { climb.stopped = true; return; }   // (Z could not lay the position out: it said why)
     }
     climb.stopped = true;
     if (!climb.used.length) return;                // (stopped at the first box: the refusal's own message offers every step)
-    var rest = climb.next < AUTO_KEYS.length ? '   By hand: ' + ladderOffer(climb.next) + ', each tries the move again' : roomOffer().replace(/try again$/, 'try again by hand');
+    var rest = climb.next < LADDER.length ? '   By hand: ' + ladderOffer(climb.next) + ', each tries the move again' : roomOffer().replace(/try again$/, 'try again by hand');
     say('Still no room for ' + (a + 1) + ' → ' + (b + 1) + ', even after ' + ladderText(climb.used) + '.' + rest + '   —   or click another spot', true);
     draw();
   }
@@ -1803,7 +2007,7 @@
     w.terminate();
   }
   function makeRoom() {
-    if (route.heroic) { say('Heroic mode: curves and spots are not moved locally.   A, R or Z: redraw' + (pendingRoom && armed ? ' and try again' : ''), true); return; }
+    if (route.heroic) { say('Heroic mode: curves and spots are not moved locally.   R or Z: redraw' + (pendingRoom && armed ? ' and try again' : ''), true); return; }
     if (!pendingRoom || !armed) { say('Nothing is waiting for room just now.', true); return; }
     say('Making room for ' + (armed.a + 1) + ' → ' + (pendingRoom.b + 1) + '…   Space stops');
     var ar = armed, pr = pendingRoom, b = pr.b;
@@ -1855,20 +2059,23 @@
     try { var w = ensureMovesWorker(); } catch (e) { movesWorker = null; log('No room worker (' + e.message + '): routes are found on the page\'s own thread.'); return false; }
     var job = Mk.jobOf(ar, b);
     job.encloseNone = !!ar.encloseNone;
+    if (kind === 'thin') { job.boundary = ar.boundary; job.seedsAlike = !!ar.seedsAlike; }   // (v227: what the thin router reads besides)
     var finish = function (mr) { unwatchJob(routeJob); routeJob = null; routeBusy = false; draw(); done(mr); };
     routeJob = { id: ++movesJobs, ai: !!ai, ar: ar,
       done: function (res) {
+        if (kind === 'thin') { finish(res); return; }
         if (kind === 'route') { ar.why = res.why; note = res.note; }
         if (!hushed) res.said.forEach(function (m) { say(m[0], m[1]); });
         finish(kind === 'route' ? res.mr : res.low);
       },
       fallback: function () {                       // a script error in the worker: here, as without workers
+        if (kind === 'thin') { finish(thinHere(ar, b)); return; }
         if (hushed) hush++;
         try { if (kind === 'route') ar.why = null; var r = kind === 'route' ? markedRoute(ar, b) : lowerHere(ar, b); } finally { if (hushed) hush--; }
         finish(r);
       } };
     routeBusy = true; draw();
-    watchJob(routeJob, (kind === 'route' ? 'the marked route ' : 'a narrower way round the marks, ') + (ar.a + 1) + ' → ' + (b + 1));
+    watchJob(routeJob, (kind === 'route' ? 'the marked route ' : kind === 'thin' ? 'the move drawn thin, ' : 'a narrower way round the marks, ') + (ar.a + 1) + ' → ' + (b + 1));
     w.postMessage({ id: routeJob.id, kind: kind, game: game, route: route, spotR: SPOT_R, job: job });
     return true;
   }
@@ -1893,7 +2100,7 @@
   function makeRoomNow(res, ar, b) {
     var a = ar.a, g2 = res.fail ? null : res.game, start = res.start, fitted = res.fitted, what = res.what, brief = res.brief, why = res.why;
     if (!g2) {
-      say('No room made for ' + (a + 1) + ' → ' + (b + 1) + (brief.length ? ': ' + brief.join('; ') : '') + '.   A, R or Z: redraw and try again', true,
+      say('No room made for ' + (a + 1) + ' → ' + (b + 1) + (brief.length ? ': ' + brief.join('; ') : '') + '.   R or Z: redraw and try again', true,
           'No room made for ' + (a + 1) + ' → ' + (b + 1) + ': ' + why.join('; ') + ', minimum clearance ' + route.d0 + ' px.');
       roomSnapshot = false;                        // (after a redraw's retry, the redraw is its own undo step)
       roomWanted();                                // (the next rung)
@@ -2004,10 +2211,11 @@
     if (marked) {
       /* thin branch: marks the grid's router could not honour (no route, or not round the marks) — drawn thin */
       if (route.thin && (!mr ? ar.why !== 'room' : mr.plain && mr.failed)) {
-        var tw = thinDraw(ar, b);
-        if (!tw) return;
-        note = null;
-        say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true); draw(); return;
+        thinDraw(ar, b, function (tw) {
+          note = null;
+          say('The move could not be drawn even with spots as points and curves thin: ' + tw + '.', true); draw();
+        });
+        return;
       }
       if (!mr) {                                  // still armed, marks kept
         if (ar.why !== 'room') { draw(); return; }
@@ -2088,7 +2296,7 @@
     if (roomSnapshot) { roomSnapshot = false; msg += ' (The drawing was changed for it, but not enough: U undoes that.)'; }
     if (tr && (tr.ar ? (armed = tr.ar) : arm(tr.st))) {
       pendingRoom = { a: a, b: b, room: { clearance: clearance } };
-      say(msg + roomOffer() + '   —   D: draw it again   —   or click another spot', true, detail);
+      refusal(msg + roomOffer() + '   —   D: draw it again   —   or click another spot', detail);
       draw();
       roomWanted();
       return;
@@ -2148,7 +2356,7 @@
       }
       if (tr && (tr.ar ? (armed = tr.ar) : arm(tr.st))) {
         pendingRoom = { a: mv.a, b: mv.b, room: { clearance: bd.state.rmin } };
-        say(msg + roomOffer() + '   —   or click another spot', true, detail);
+        refusal(msg + roomOffer() + '   —   or click another spot', detail);
         draw();
         roomWanted();
         return;
@@ -2166,7 +2374,7 @@
       var detail2 = 'The fitted curve came too close to something (clearance ' + cert.clearance.toFixed(1) + ' px, fit within ' + fit.err.toFixed(1) + ' px, ' + fit.pieces.length + ' pieces).' + (made2 ? ' (The drawing was changed for it, but not enough.)' : '');
       if (tr2 && (tr2.ar ? (armed = tr2.ar) : arm(tr2.st))) {
         pendingRoom = { a: mv.a, b: mv.b, room: { clearance: cert.clearance } };
-        say(msg2 + roomOffer() + '   —   or click another spot', true, detail2);
+        refusal(msg2 + roomOffer() + '   —   or click another spot', detail2);
         draw();
         roomWanted();
         return;
@@ -2250,14 +2458,17 @@
      nothing stops, any time (busy or not). */
   function saveSnapshot() {
     var st = stamp(), data = JSON.stringify(gameData(), null, 1);
-    log('Snapshot (B): sprouts-snap-' + st + ' .png, .json, -log.txt' + (relaying ? ' — during ' + relayWord().toLowerCase() + (relaying.st ? ', step ' + relaying.st.it : '') + ' (the picture on the screen)' : '') + '.');
+    log('Snapshot (B): sprouts-snap-' + st + ' .png, .json, -log.txt' + (relaying ? ' — during ' + relayWord().toLowerCase() + (relaying.st ? ', step ' + relaying.st.it : relaying.worker ? ', step ' + relaying.it : '') + ' (the picture on the screen)' : '') + '.');
     canvas.toBlob(function (blob) { download('sprouts-snap-' + st + '.png', blob); }, 'image/png');
     download('sprouts-snap-' + st + '.json', new Blob([data], { type: 'application/json' }));
     var head = 'Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n';
     download('sprouts-snap-' + st + '-log.txt', new Blob([head + logLines.join('\n') + '\n'], { type: 'text/plain' }));
   }
   function savePNG() {
+    var g = glass;                                // (v223: the picture without the magnifier — B's snapshot keeps it, as on the screen)
+    if (g) { glass = null; draw(); }
     canvas.toBlob(function (blob) { download('sprouts-' + stamp() + '.png', blob); }, 'image/png');
+    if (g) { glass = g; draw(); }
   }
 
   function download(name, blob) {
@@ -2335,7 +2546,7 @@
        does not make a new game from the file's seeds, as it does otherwise: there is a
        game in progress to get on with, and the seeds are a key press away after it.) */
     if (bothAI() && game.phase === 'play' && game.moves > 0) {
-      aiHalt = true;
+      aiHalt = true; loadedWaiting = history.length;
       log('Loaded in play, both players computers: waiting — N goes on from this position.');
     }
     maybeAI();
@@ -2383,6 +2594,8 @@
     if (typeof r.spotScale === 'number') set('opt-spotsize', r.spotScale);
     if (typeof r.lineScale === 'number') set('opt-linewidth', r.lineScale);
     if (typeof r.numberScale === 'number') set('opt-numbersize', r.numberScale);
+    if (typeof r.glassSize === 'number') set('opt-glasssize', r.glassSize);   // (v223)
+    if (typeof r.glassMag === 'number' && r.glassMag > 0) set('opt-glassmag', Math.log10(r.glassMag));
     if (typeof r.animate === 'boolean') { document.getElementById('opt-animate').checked = r.animate; route.animate = r.animate; }
     if (typeof r.click === 'boolean') { document.getElementById('opt-click').checked = r.click; route.click = r.click; }
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
@@ -2393,14 +2606,15 @@
     /* the Room menu's eight boxes (v152); a file from before has Shift spots / curves automatically, which were M for both */
     var oldM = typeof r.shiftSpots === 'boolean' || typeof r.shiftCurves === 'boolean' ? r.shiftSpots === true || r.shiftCurves === true : null;
     ['autoHuman', 'autoAI'].forEach(function (set) {
-      AUTO_KEYS.forEach(function (k) {
+      LADDER.forEach(function (k) {
         if (r[set] && typeof r[set][k] === 'boolean') route[set][k] = r[set][k];
         else if (k === 'M' && oldM !== null) route[set].M = oldM;
       });
     });
     setHeroic(r.heroic === true, true);           // (also shows the boxes)
     if (Z_METHODS[r.zMethod]) setZMethod(r.zMethod, true);   // (v209; a file from before keeps the present choice)
-    if (typeof r.rSpread === 'boolean') { route.rSpread = r.rSpread; document.getElementById('opt-rspread').checked = r.rSpread; }   // (v211; likewise)
+    if (typeof r.keepSeeds === 'boolean') { route.keepSeeds = r.keepSeeds; document.getElementById('opt-keepseeds').checked = r.keepSeeds; }   // (v218; a file from before keeps the present choice)
+    if (typeof r.rFill === 'boolean') { route.rFill = r.rFill; document.getElementById('opt-rspread').checked = r.rFill; }   // (v221: rFill — files of v211–v220 have rSpread, which meant less and was off in all of them: ignored, the present choice kept)
     if (typeof r.thin === 'boolean') { route.thin = r.thin; document.getElementById('opt-thin').checked = r.thin; }   // (thin branch; likewise)
   }
   function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
@@ -2550,11 +2764,15 @@
   }
   /* N and Game → New game (v127, Peter): while spots are being placed by hand, they start the game
      from those spots (as Enter does); otherwise a new game. */
+  /* v205: a loaded game that is waiting (see useLoaded) goes on from where it is — only that: loadedWaiting is the
+     history's length when it was loaded (v230, Peter 11/1: after Space had stopped a game between two computers, N
+     "simply restarted the game from where it was at the time, not at the beginning" — any stop counted as loaded) */
+  var loadedWaiting = null;
   function newOrStart() {
-    /* v205: a loaded game that is waiting (see useLoaded) goes on from where it is */
-    if (aiHalt && bothAI() && game.phase === 'play' && game.moves > 0) {
-      aiHalt = false; log('Went on from the loaded position (N).'); maybeAI(); return;
+    if (aiHalt && bothAI() && game.phase === 'play' && game.moves > 0 && loadedWaiting === history.length) {
+      aiHalt = false; loadedWaiting = null; log('Went on from the loaded position (N).'); maybeAI(); return;
     }
+    loadedWaiting = null;
     if (game.phase === 'place') startPlay(); else newGame();
   }
   /* X (v99, Peter): close the page. A browser lets a page close itself only
@@ -2570,7 +2788,7 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: function () { byHand('A'); relayDrawing('adjust'); }, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); }, '.': function () { byHand('S'); relayDrawing('fresh', null, true); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -2700,7 +2918,7 @@
      says: a reload keeps the fields as they were, and the defaults seemed not to change) */
   function bindSlider(id, valId, key, show, conv) {
     var input = document.getElementById(id), val = document.getElementById(valId);
-    input.value = key === 'lambda' ? Math.log10(route[key]) : route[key];
+    input.value = key === 'lambda' || key === 'glassMag' ? Math.log10(route[key]) : route[key];
     function update() { route[key] = conv(Number(input.value)); val.textContent = show(route[key]); }
     input.addEventListener('input', update);
     update();
@@ -2710,10 +2928,16 @@
   bindSlider('opt-lambda', 'val-lambda', 'lambda', function (v) { return v.toFixed(2); }, function (v) { return Math.pow(10, v); });
   /* v44 (Peter, 9/24): spot size and curve thickness, half to three times the old ones. The spot
      size is the disc curves keep clear of, so it counts for moves made from now on (curves
-     already drawn stay; A adjusts them) */
+     already drawn stay; R adjusts them) */
   bindSlider('opt-spotsize', 'val-spotsize', 'spotScale', function (v) { SPOT_R = SPOT_R0 * v; return (2 * SPOT_R).toFixed(0) + ' px'; }, function (v) { return v; });
   bindSlider('opt-linewidth', 'val-linewidth', 'lineScale', function (v) { LINE_W = LINE_W0 * v; return LINE_W.toFixed(1) + ' px'; }, function (v) { return v; });
   bindSlider('opt-numbersize', 'val-numbersize', 'numberScale', function (v) { NUMBER_PX = NUMBER_PX0 * v; return NUMBER_PX.toFixed(1).replace(/\.0$/, '') + ' px'; }, function (v) { return v; });
+  /* (v223) the magnifier: its size (diameter, a share of max(width, height) of the drawing) and magnification (the
+     slider in log10, 2× … 1000×) */
+  bindSlider('opt-glasssize', 'val-glasssize', 'glassSize', function (v) { return Math.round(100 * v) + '%'; }, function (v) { return v; });
+  bindSlider('opt-glassmag', 'val-glassmag', 'glassMag', glassMagText, function (v) { return Math.pow(10, v); });
+  ['opt-glasssize', 'opt-glassmag'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { if (glass) draw(); }); });
+  document.getElementById('opt-glass').addEventListener('change', function (e) { setGlass(e.target.checked ? glass || { x: game.W0 / 2, y: game.H0 / 2 } : null); });
   ['opt-spotsize', 'opt-linewidth', 'opt-numbersize'].forEach(function (id) { document.getElementById(id).addEventListener('input', function () { draw(); }); });
   document.getElementById('opt-animate').addEventListener('change', function (e) { route.animate = e.target.checked; });
   document.getElementById('opt-deadnumbers').addEventListener('change', function (e) { route.deadNumbers = !e.target.checked; draw(); });
@@ -2738,10 +2962,10 @@
   /* The Room menu (v152, Peter 10/7): which rungs of the ladder (LADDER, climbOn, aiClimb) are used
      automatically, for a human's moves and the computer's; and Heroic (v67), which switches the human's
      off and greys them out (v68, Peter 9/26: moving curves assumes smooth splines, and heroic curves have
-     corners) — they keep their values, used again when Heroic is off. M, A, R and Z by hand stay available
+     corners) — they keep their values, used again when Heroic is off. M, R and Z by hand stay available
      (M not in Heroic mode). */
   function showAuto() {
-    AUTO_KEYS.forEach(function (k) {
+    LADDER.forEach(function (k) {
       var h = document.getElementById('auto-human-' + k), c = document.getElementById('auto-ai-' + k);
       h.checked = route.autoHuman[k]; h.disabled = route.heroic;
       c.checked = route.autoAI[k];
@@ -2767,9 +2991,18 @@
   /* v211 (Peter 10/30: R spread the picture sideways in a wide area, "it often looks weird"): off, R keeps the
      picture's width-to-height ratio (redraw.js keepShape); on, R may spread it over the whole drawing area */
   document.getElementById('opt-rspread').addEventListener('change', function (e) {
-    route.rSpread = e.target.checked;
-    log('Room: R ' + (route.rSpread ? 'spreads the picture over the whole drawing area' : 'keeps the picture\'s shape (enlarges it evenly at most)') + '.');
+    route.rFill = e.target.checked;
+    log('Room: R ' + (route.rFill ? 'fills the whole drawing area' : 'leaves the picture at the size it comes out (keeping its shape)') + '.');
   });
+  /* v218 (Peter 11/1): Keep seeds in place — R (by hand, the ladders, tidying) keeps the initial seeds and
+     those added by hand where they are, as A does (relayDrawing); replaces the Room menu's A column */
+  function setKeepSeeds(on) {
+    route.keepSeeds = on;
+    document.getElementById('opt-keepseeds').checked = on;
+    log('Room: keep seeds in place ' + (route.keepSeeds ? 'on (R moves the curves, the seeds stay)' : 'off (R may move every spot)') + '.');
+  }
+  function toggleKeepSeeds() { setKeepSeeds(!route.keepSeeds); say('Keep seeds in place ' + (route.keepSeeds ? 'on' : 'off') + '.'); }   // A (v219, Peter 11/1: "The A key should be a shortcut for turning the option on or off")
+  document.getElementById('opt-keepseeds').addEventListener('change', function (e) { setKeepSeeds(e.target.checked); });
   setZMethod(route.zMethod, true);
   /* thin branch (Peter 10/30): moves always drawn — see thinDraw */
   document.getElementById('opt-thin').checked = route.thin;
@@ -2777,11 +3010,11 @@
     route.thin = e.target.checked;
     log('Room: moves always drawn (spots as points, curves thin, where a move does not fit otherwise) ' + (route.thin ? 'on' : 'off') + '.');
   });
-  AUTO_KEYS.forEach(function (k) {
+  LADDER.forEach(function (k) {
     [['autoHuman', 'auto-human-', 'a human'], ['autoAI', 'auto-ai-', 'the computer']].forEach(function (t) {
       document.getElementById(t[1] + k).addEventListener('change', function (e) {
         route[t[0]][k] = e.target.checked;
-        log('Room: ' + LADDER_NAME[k] + ' (' + autoLabel(k) + ') automatically for ' + t[2] + ' ' + (e.target.checked ? 'on' : 'off') + '.');
+        log('Room: ' + LADDER_NAME[k] + ' (' + k + ') automatically for ' + t[2] + ' ' + (e.target.checked ? 'on' : 'off') + '.');
       });
     });
   });
@@ -3068,11 +3301,11 @@
        1. the move in the drawing as it is — making room for it there (M) if the Room menu's M is on for the
           computer (aiTry, roomWanted); if its marks cannot be applied, the shortest way, kept only if that
           is the move (aiCommitted);
-       2. not drawn: the next of A, R and Z switched on for the computer (aiClimb), each once; after A or R
+       2. not drawn: the next of R and Z switched on for the computer (aiClimb), each once; after R
           the move is found again in the new drawing (aiFind: the spots keep their numbers, the position
           its key) and tried as in 1, without M; Z draws the picture afresh WITH the move (relayDrawing's
           `fresh`);
-       3. none left: the game stops (aiStops), said on the status line and in the log. A, R or Z by hand,
+       3. none left: the game stops (aiStops), said on the status line and in the log. R or Z by hand,
           then the computer tries that move once more (aiStopped: the same position) — or the user takes over.
      The other computer's move (a.remote) climbs the same ladder, with its candidates (netCandidates: the
      move sent, its mirror image) in place of the one move; when the ladder runs out it is refused there
@@ -3153,7 +3386,7 @@
      each family between the two spots, the boundaries made of enclosed spots (a.enc) on one side, or on the
      other; the one giving the intended position (its key, or its canonical form). Then the easiest
      interchangeable boundaries in the new drawing (easyEnclosure). (v178: before, every way of enclosing
-     was tried, at most AI_CHECK of them — "too many ways to enclose things here" with 44 loose seeds.) */
+     was tried, at most 2^16 of them — "too many ways to enclose things here" with 44 loose seeds.) */
   function aiFind(a) {
     if (a.remote) return netCandidates(a.pos, a.remote);
     var out = null, enc = a.enc || {};
@@ -3202,9 +3435,11 @@
   function aiClimb(a) {
     if (route.thin && a.thin && a.thin.mv === a.move && !a.thin.tried) {   // (thin branch: the move drawn thin)
       a.thin.tried = true; ai = a;
-      var why = thinDraw(a.thin.ar, a.thin.y);
-      if (!why) return;                            // (committed: aiCommitted has judged it)
-      ai = a; a.failed.push(a.text + ' (even thin: ' + why + ')');
+      thinDraw(a.thin.ar, a.thin.y, function (why) {   // (committed: aiCommitted judges it; else on to Z, below)
+        ai = a; a.failed.push(a.text + ' (even thin: ' + why + ')');
+        aiClimb(a);
+      });
+      return;
       /* "moves always drawn": drawing the picture afresh with the move (Z) draws any position — the last
          resort, whatever the Room menu's boxes say (an enclosing move the thin router cannot route: its
          barriers fenced each other in, Peter's 30-seed game of 10/30, move 13) */
@@ -3222,9 +3457,9 @@
         log(a.who + (a.remote ? ': its move ' + a.sent : '') + ' could not be drawn as intended: ' + a.failed.join('; ') + '. Drawing the picture afresh (Z) with ' + a.text + ', as the Room menu says.');
         relayDrawing('fresh', f);
       } else {
-        log(a.who + (a.remote ? ': its move ' + a.sent : '') + ' could not be drawn as intended: ' + a.failed.join('; ') + '. ' + (k === 'A' ? 'Adjusting' : 'Rearranging') + ' the drawing (' + k + ') to try again, as the Room menu says.');
+        log(a.who + (a.remote ? ': its move ' + a.sent : '') + ' could not be drawn as intended: ' + a.failed.join('; ') + '. Rearranging the drawing (' + k + ') to try again, as the Room menu says.');
         aiResume = a;
-        relayDrawing(k === 'A' ? 'adjust' : 'redraw');
+        relayDrawing('redraw');
       }
       if (relaying) return;
       aiResume = null; ai = a; a.used.pop();      // (could not start: the next)
@@ -3244,7 +3479,7 @@
     var t0 = a.text || a.text0 || (a.mx + 1) + ' → ' + (a.my + 1);
     aiStopped = { here: a.here, key: a.key, mx: a.mx, my: a.my, enc: a.enc, canon: a.canon, text: t0, brief: a.brief || a.brief0 || t0, verdict: a.verdict, atMove: game.moves, hist: history.length };
     log(a.who + ' cannot draw its move ' + aiStopped.text + ' as intended' + after + ': ' + a.failed.join('; ') + '. The game stops here.');
-    say(a.who + ' cannot draw its move ' + aiStopped.brief + ' as intended' + after + ': the game stops here.   A, R or Z: redraw, and it tries again — or set ' + playerName(game.player) + ' to Human and draw a move by hand', true);
+    say(a.who + ' cannot draw its move ' + aiStopped.brief + ' as intended' + after + ': the game stops here.   R or Z: redraw, and it tries again — or set ' + playerName(game.player) + ' to Human and draw a move by hand', true);
     draw();
   }
   /* A move that ended without a commit — the watch found the page idle
@@ -3420,7 +3655,6 @@
     setTimeout(aiWatch, AI_WATCH_MS);
     return null;
   }
-  var AI_CHECK = 1 << 16;                         // the most subsets aiCommitted tries when the drawn move is not the intended one
   function aiCommitted() {
     var a = ai; ai = null;
     var gotPos = AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots), got = AI.gameKey(gotPos);
@@ -3438,18 +3672,23 @@
        with the same canonical form for one and the same move) */
     var same = got === a.expect || AI.canonical(gotPos) === AI.canonical(AI.apply(a.pos, a.move));
     if (!same) {                                   // not the intended move (v111): taken back, as for the other computer's moves
-      var other = null, big = false;
+      /* which move was drawn (v227: read off the drawing, as aiFind does — the boundaries in the drawn region
+         that holds the new spot on one side, or on the other; before, up to 2^16 subsets were tried, each
+         keyed in full, which held the page for seconds — 3.4 s in a 30-seed game) */
+      var other = null, z = a.pos.n, R1 = gotPos.regions.filter(function (rg) { return rg.boundaries.some(function (bd) { return bd.indexOf(z) >= 0; }); })[0], inR1 = {};
+      if (R1) R1.boundaries.forEach(function (bd) { bd.forEach(function (t) { inR1[t] = 1; }); });
       AI.families(a.pos).forEach(function (fam) {
         if (other || !((fam.x === a.move.x && fam.y === a.move.y) || (fam.x === a.move.y && fam.y === a.move.x))) return;
-        if (fam.count > AI_CHECK) { big = true; return; }
-        for (var m = 0; m < fam.count && !other; m++) {
-          var mv = AI.expand(fam, fam.others.filter(function (k, u) { return (m >> u) & 1; }));
+        var bds = a.pos.regions[fam.r].boundaries, S = fam.others.filter(function (k) { return bds[k].every(function (t) { return inR1[t]; }); });
+        [S, fam.others.filter(function (k) { return S.indexOf(k) < 0; })].forEach(function (sub) {
+          if (other) return;
+          var mv = AI.expand(fam, sub);
           if (AI.gameKey(AI.apply(a.pos, mv)) === got) other = AI.describe(a.pos, mv) + ' (corners ' + mv.i + ' → ' + mv.i2 + ')';
-        }
+        });
       });
-      var drawn = other ? other + ', a legal move, not the one intended' : big ? 'another move (not identified: too many ways to enclose things here)' : 'NO LEGAL MOVE';
+      var drawn = other ? other + ', a legal move, not the one intended' : 'NO LEGAL MOVE';
       log('    ' + a.who + ' intended ' + a.text + ' (corners ' + a.move.i + ' → ' + a.move.i2 + '); ' + (a.fresh ? 'drawn afresh as ' : 'the router drew ') + drawn + '; taken back.');
-      if (!other && !big) { log('    BUG: the drawn position is no legal move from ' + (a.move.x + 1) + ' to ' + (a.move.y + 1) + '. Please save the game.'); say('The computer\'s move was not drawn as a legal move (a bug: please save the game).', true); }
+      if (!other) { log('    BUG: the drawn position is no legal move from ' + (a.move.x + 1) + ' to ' + (a.move.y + 1) + '. Please save the game.'); say('The computer\'s move was not drawn as a legal move (a bug: please save the game).', true); }
       undoStep();                                  // (the move's own snapshot; the log line of the move stays, followed by this one)
       a.failed.push(a.text + ' (drawn as another move)');
       ai = a; aiNext();

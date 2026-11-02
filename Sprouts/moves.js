@@ -1030,13 +1030,17 @@
       function half(j, s0, s1) { return tight[j] ? Math.min(tol[j], tolOf(s0, s1)) : tolOf(s0, s1); }
       var sv = [0, U[1], U[n - 2], U[n - 1]], tol = [0, tolOf(U[1], U[n - 2]), 0], tight = [false, false, false];   // (tight: made closer by the certificate)
       for (;;) {
-        var fit = throughPoints(sv.map(at), dA, dB), pts = [fit.pieces[0][0]], legE = [], legPc = [];
+        var fit = throughPoints(sv.map(at), dA, dB), pts = [fit.pieces[0][0]], legE = [], legN = [], legPc = [];
         fit.pieces.forEach(function (pc, j) {
-          if (j === 0 || j === fit.pieces.length - 1) { pts.push(pc[3]); legE.push(0); legPc.push(j); return; }   // (the straight end pieces: one leg each, the end legs certify exempts at the spots)
-          var rp = G.refinedPolygon([pc], tol[j], Infinity);
-          for (var q = 1; q < rp.pts.length; q++) { pts.push(rp.pts[q]); legE.push(rp.eps); legPc.push(j); }
+          if (j === 0 || j === fit.pieces.length - 1) { pts.push(pc[3]); legE.push(0); legN.push(0); legPc.push(j); return; }   // (the straight end pieces: one leg each, the end legs certify exempts at the spots)
+          var rp = G.refinedPolygon([pc], tol[j], Infinity), nj = roomOf(sv[j], sv[j + 1]) / 2;
+          for (var q = 1; q < rp.pts.length; q++) { pts.push(rp.pts[q]); legE.push(rp.eps); legN.push(nj); legPc.push(j); }
         });
-        var cert = Th.certify(res.tri, pts, legE, a, b), worst = {};   // (worst: each failing piece — its worst margin, and the tolerance it had)
+        /* (v229) a piece keeps HALF THE ROOM of its stretch of the polyline from every spot and every other curve
+           (legN) — not just "touching nothing": a loose piece used to bow past a spot at 0.0007 px of its centre
+           (Peter's 200-seed game of 11/1), and R could not move the picture afterwards. Cut nearer the polyline,
+           which has that room, the curve always gets it. */
+        var cert = Th.certify(res.tri, pts, legE, a, b, legN), worst = {};   // (worst: each failing piece — its worst margin, and the tolerance it had)
         if (cert.ok) {
           /* touching nothing is not yet the same move: a piece could have jumped a spot between two rounds — so
              no spot may lie between the curve and the polyline (even–odd round the two; the curve's polygon is
@@ -1106,6 +1110,22 @@
        aiTry and makeRoomNow do; a probe direction alone can point into the other side once the drawing
        has changed (a first try sent bdir as bsideDir: after room was made, "no route from that side"
        while the room check found 55 px, and room was made for ever) — a click's by its direction. */
+    /* A move drawn thin in a worker (v227, Peter 11/1: the page took seconds to react while a long or enclosing
+       thin move was routed on its thread): the armed state rebuilt as routeFor does, plus what the thin router
+       reads besides (boundary, seedsAlike, encloseNone), then thinRoute and thinCurve as the page runs them.
+       { cv: { pieces, h, smooth, clearance } } or { fail: why }. */
+    function thinFor(j) {
+      var ar = armedOf(j);
+      if (!ar) return { fail: 'the region of the move was not found in the worker (a bug)' };
+      ar.boundary = j.boundary;
+      if (j.seedsAlike) ar.seedsAlike = true;
+      if (j.encloseNone) ar.encloseNone = true;
+      if (j.bdir) ar.bside = arrivalSide(j.b, ar);
+      var res = thinRoute(ar, j.b);
+      if (!res.path) return { fail: res.fail };
+      var cv = thinCurve(res, j.a, j.b);
+      return { cv: { pieces: cv.pieces, h: cv.h, smooth: !!cv.smooth, clearance: cv.clearance } };
+    }
     function routeFor(j) {
       var ar0 = armedOf(j);
       if (!ar0) return { mr: null, why: 'lost' };
@@ -1130,7 +1150,7 @@
     return { routeFor: routeFor, lowerFor: lowerFor, barrierCandidates: barrierCandidates, markedRoute: markedRoute, arcsOf: arcsOf, componentOf: componentOf,
              enclosingCurves: enclosingCurves, loopStart: loopStart, segIntersection: segIntersection, makeBand: makeBand,
              arrivalSide: arrivalSide, trialMove: trialMove, armFor: armFor, tangentsAt: tangentsAt, sideTest: sideTest,
-             choosePort: choosePort, cornerProbe: cornerProbe, roomFor: roomFor, jobOf: jobOf, armedOf: armedOf, thinRoute: thinRoute, thinCurve: thinCurve };
+             choosePort: choosePort, cornerProbe: cornerProbe, roomFor: roomFor, jobOf: jobOf, armedOf: armedOf, thinRoute: thinRoute, thinCurve: thinCurve, thinFor: thinFor };
   }
 
   var api = { create: create, STEP: STEP, TOL: TOL, CERT: CERT };
