@@ -105,6 +105,7 @@ page takes you back here.</p>
       <li><a href="#sec-band">3.4. The elastic band</a></li>
       <li><a href="#sec-ports">3.5. Leaving and reaching a spot</a></li>
       <li><a href="#sec-fit">3.6. From polyline to spline, and the check</a></li>
+      <li><a href="#sec-thin">3.7. Moves always drawn: spots as points, curves thin</a></li>
     </ul>
   </li>
   <li><a href="#sec-room">4. Making Room: Six Kinds of Rearranging</a>
@@ -113,7 +114,7 @@ page takes you back here.</p>
       <li><a href="#sec-window">4.2. The window</a></li>
       <li><a href="#sec-slide">4.3. Sliding spots along their curves</a></li>
       <li><a href="#sec-push">4.4. Pushing curves apart</a></li>
-      <li><a href="#sec-ar">4.5. A and R: one energy for the whole picture</a></li>
+      <li><a href="#sec-ar">4.5. R: one energy for the whole picture</a></li>
       <li><a href="#sec-z">4.6. Z: the picture drawn afresh</a></li>
       <li><a href="#sec-heroic">4.7. Heroic mode</a></li>
     </ul>
@@ -201,12 +202,15 @@ back is accepted only if it produces the position the computer intended (section
 
 <h2 id="sec-nocap">1.3. No limit on the number of spots</h2>
 
-<p>The program has no upper limit on the number of spots. Practical limits are imposed by the size of your
-drawing area and your computing resources. A position with many regions needs room for its curves, and at some
-point a move the rules allow cannot be drawn with the minimum clearance the Settings ask for. When that happens
-the program says why (the widest way it found and what was needed), and offers the ways of making room
-described in section <a href="#sec-room">4</a>. The largest games played during development had 100 seeds,
-computer against computer, in a drawing area of 2560 by 1383 pixels.</p>
+<p>The program has no upper limit on the number of spots, and since v215 no move fails for lack of room. A
+position with many regions needs room for its curves, and at some point a move the rules allow cannot be drawn
+with the minimum clearance the Settings ask for. With Room &rarr; <e>Moves always drawn</e> on (the default) the
+move is then drawn anyway, with spots treated as points and curves as lines of no width (section
+<a href="#sec-thin">3.7</a>), and the picture is tidied afterwards by the ways of making room of section
+<a href="#sec-room">4</a>. With it off, the program says why the move does not fit (the widest way it found and
+what was needed) and offers those ways first. Practical limits are now time and memory: a game of 200 seeds,
+computer against computer, went to its end at move 506 in 74 minutes (v234), most of it spent in R tidying the
+picture after the computer&rsquo;s moves.</p>
 
 <h1 id="sec-topology">2. From Picture to Position<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
@@ -378,8 +382,11 @@ route made to go round the right things (<a href="#sec-marked">3.3</a>), the rou
 with as much room on both sides as there is (<a href="#sec-band">3.4</a>&ndash;<a href="#sec-ports">3.5</a>),
 and the curve turned into a spline and certified (<a href="#sec-fit">3.6</a>). The two numbers that govern it all
 are in the Settings menu: the <e>minimum clearance</e> $d_0$ (default 6 pixels), the least distance a new curve
-must keep from everything else, and the <e>comfort distance</e> $D$ (default 40 pixels), the distance at which
+must keep from everything else, and the <e>comfort distance</e> $D$ (default 25 pixels), the distance at which
 a curve stops feeling its neighbors much.</p>
+
+<p>When these stages find no way with the minimum clearance and Room &rarr; <e>Moves always drawn</e> is on, the
+move is drawn by a second router that ignores all widths (section <a href="#sec-thin">3.7</a>).</p>
 
 <h2 id="sec-input">3.1. Reading the player&rsquo;s intention</h2>
 
@@ -512,6 +519,83 @@ position is recomputed (section <a href="#sec-rotation">2.3</a>), and the move i
 history, in the log (in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or
 joined) and, in network play, sent to the other computer.</p>
 
+<h2 id="sec-thin">3.7. Moves always drawn: spots as points, curves thin</h2>
+
+<p>The router of the previous sections needs room: a grid cell, a band with a barrier at $d_0$, a spline fit
+within 1.5 pixels. In a crowded picture a move the rules allow can find no such room, however the picture is
+rearranged. Room &rarr; <e>Moves always drawn</e> (on by default since v215) removes that failure. For
+<e>making</e> a move, spots are points and curves have no width; the clearance and the spot discs are visual
+standards, restored afterwards where there is room. The code is in <code>thin.js</code> (the triangulation, the
+walk, the hug and the certificate) and <code>moves.js</code> (<code>thinRoute</code>, <code>thinCurve</code>,
+<code>smoothThin</code>).</p>
+
+<p><b>The triangulation.</b> The drawing is triangulated with the curves as constraints: every spot is a vertex,
+and every curve contributes its refined control polygon (section <a href="#sec-polygons">2.2</a>), whose legs
+are inserted as constraint edges. Polygons of two curves that cross (possible where curves are closer than the
+polygons&rsquo; tolerance) are refined until they do not. The triangulation is our own code: incremental
+insertion of the vertices with Lawson flips toward the Delaunay triangulation, then each constraint inserted by
+flipping away the sides it crosses (Sloan&rsquo;s method [<a href="#ref-sloan">16</a>]). Its robustness
+rests on the orientation test, which is <e>exact</e>: a floating-point filter, and where that is inconclusive,
+BigInt arithmetic on the exact binary values of the coordinates (in the spirit of Shewchuk&rsquo;s robust
+predicates [<a href="#ref-shewchuk">17</a>]). The triangulation is therefore valid however
+thin its triangles are, and gaps of $10^{-9}$ pixels are handled as surely as gaps of 10. (The in-circle test
+is floating point; it only decides which flips make triangles nicer, and each flip is checked with the exact
+test to keep the quadrilateral convex.)</p>
+
+<p><b>The walk.</b> The move&rsquo;s region is a set of triangles connected across sides that are not curves. A
+route from $a$ to $b$ is a walk through them: from $a$ to the middle of a side of a triangle at $a$, from there
+to the middle of a side of the next triangle, and so on, and from the last side straight to $b$. Each leg joins
+two points on the boundary of one triangle, so it lies inside it, and the polyline crosses and touches nothing.
+The walk is found by Dijkstra&rsquo;s algorithm over the sides, a leg&rsquo;s length counted as is where the leg
+has room $d_0$ or more and stretched by $d_0/\text{room}$ where it has less: as short as can be, and as wide as
+can be where it is narrow. (The widest walk was tried first and goes round everything; the shortest of a given
+width hugs every corner at that width, and in a 100-seed game each move halved the gaps it passed, until after
+some 30 moves they were $10^{-12}$ pixels.) The sides at $a$ and $b$ (section <a href="#sec-ports">3.5</a>) are
+those of the triangles in the chosen direction. The polyline is then shortened (<code>Router.simplify</code>): from each point, straight on to a far later
+point, provided the straight leg crosses nothing, keeps at least the room of the legs it replaces (or $d_0$), and
+encloses no spot with them, so that the curve still goes round everything as before.</p>
+
+<p><b>The hug.</b> A move that encloses chosen things (section <a href="#sec-marked">3.3</a>) is drawn as the
+<e>outline</e> of what it encloses. First a blob is formed: the stretch of boundary from $a$ to $b$ that is to lie
+inside (for a loop, the spot $a$), and each marked boundary joined to the blob by the shortest path along
+triangle sides, nearest first (Prim&rsquo;s algorithm). Each path touches the blob once, so the blob is a tree with
+the boundaries hanging on it and fences nothing else in. Its outline, traced on the region&rsquo;s side from $a$
+round every vertex of the blob to $b$, crosses each triangle side at a blob vertex that does not belong to the
+blob, at its middle (or a third of the way along, where both ends of the side are the blob&rsquo;s). Every leg
+again joins two points of one triangle&rsquo;s boundary: the curve crosses and touches nothing, and it encloses
+the blob and nothing else.</p>
+
+<p><b>The smooth curve.</b> A polyline has corners, so <code>smoothThin</code> replaces it by a curve with none,
+with no pixel sizes in the method. The curve is one cubic piece per leg through the polyline&rsquo;s points,
+the tangent at each inner point halfway between the directions of its two legs and the handles a third of the
+leg long. This is local: a new point changes only the pieces beside it. (The C² spline through the points
+reached far along the curve where legs of very different lengths met.) The end pieces are straight as far as
+the end leg runs inside its first triangle at the spot; there a leg is only required not to cross the curves that
+meet at the spot. Each piece is then checked by the <e>certificate</e> (<code>thin.certify</code>): its refined
+polygon must keep from every other curve&rsquo;s polygon more than the two tolerances together, and from every
+spot but its own ends. Where a piece fails, the decision is by comparison, not by size. If it would pass with
+its polygon exact, its polygon is refined four times closer; otherwise it gets a new point halfway along the
+polyline between its ends, so the curve follows the polyline more closely there. In the limit the curve is the
+polyline, which crosses and touches nothing, so the process ends. Tight stretches get as many points as their
+room needs, wide ones keep few. Below the arithmetic&rsquo;s floor ($10^{-9}$ pixels) the polyline itself is
+used, as straight pieces. Since v229 the smooth curve must also keep half the room its polyline had from every
+spot and every other curve: without that, a curve could pass a spot&rsquo;s center at $0.0007$ pixels, and the
+descent of R (section <a href="#sec-ar">4.5</a>) could not move such a picture at all.</p>
+
+<p><b>Where it runs.</b> A thin move in a crowded picture can take tens of seconds: the triangulation of a
+picture with thousands of polygon legs, and many rounds of certification. Since v227 it runs in the room worker
+(<code>sprouts-room-worker.js</code>, job kind <code>thin</code>, <code>moves.thinFor</code>), so the page stays
+responsive and <code>Space</code> stops it. A human&rsquo;s move is first tried the ordinary way; a computer&rsquo;s
+too. Only when that fails is the move drawn thin, and the status row says <e>Drawing it with spots as points and
+curves thin&hellip;</e>.</p>
+
+<p><b>Tidying.</b> After a move drawn thin the picture may fall short of the minimum clearance. The steps R and Z
+checked in the Room menu for the player who moved are then run, in that order, until the least clearance of the
+drawing is $d_0$ again (<code>ui.tidyOn</code>; M is not used, since there is no waiting move to make room for).
+By default only the computer&rsquo;s R is checked (v234). The least clearance is computed on the page&rsquo;s
+thread; in a very large picture this takes several seconds and freezes the page meanwhile, a known defect
+(the check belongs in R&rsquo;s worker).</p>
+
 <h1 id="sec-room">4. Making Room: Six Kinds of Rearranging<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <h2 id="sec-room-overview">4.1. Overview</h2>
@@ -525,7 +609,7 @@ and cheap to the global and expensive, and each later one is tried only when the
   <tr><td>Resizing the window</td><td>the window, or <code>F</code> (full screen)</td><td>nothing in the game: the view is scaled</td><td><a href="#sec-window">4.2</a></td></tr>
   <tr><td>Sliding spots</td><td><code>M</code></td><td>one spot, along its own curve (a seed in the way is pushed aside)</td><td><a href="#sec-slide">4.3</a></td></tr>
   <tr><td>Pushing curves apart</td><td><code>M</code></td><td>the curves in the move&rsquo;s way</td><td><a href="#sec-push">4.4</a></td></tr>
-  <tr><td>Rearranging, seeds kept in place</td><td><code>R</code> with <code>A</code> on</td><td>every curve; the seeds stay (spots made by moves ride on their curves)</td><td><a href="#sec-ar">4.5</a></td></tr>
+  <tr><td>Rearranging, seeds kept in place</td><td><code>R</code> with <e>Keep seeds in place</e> on (key <code>A</code>)</td><td>every curve; the seeds stay (spots made by moves ride on their curves)</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Rearranging</td><td><code>R</code></td><td>every curve and every spot</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Drawing afresh</td><td><code>Z</code></td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
 </table>
@@ -559,6 +643,16 @@ sized for the screen&rsquo;s pixel density so that curves stay sharp. Nothing in
 magnifies the picture but does not give the game more room, because the clearances in the Settings are measured
 in world pixels. To have more room, start the game in the larger window (or full screen). Saved games keep their
 world size and are shown scaled in any window.</p>
+
+<p><e>The magnifier</e> (View menu, <code>Alt</code>+click; v223) is a second view inside a round glass of center
+$c$ and magnification $m$ (2 to 1000). It draws the picture again, clipped to the glass, with every
+<e>position</e> mapped by $p \mapsto c + m\,(p - c)$ but every <e>size</e> unmagnified: curves keep their width,
+spots their size, indices their font. Places where curves run a fraction of a pixel apart are then seen apart.
+Only what can reach the glass is drawn: a curve whose bounding box, mapped, misses the glass is skipped, which
+keeps the glass fast at a magnification of 1000. A press inside the glass is mapped back by
+$p = c + (q - c)/m$ before it reaches the game, so clicks, drags and right-clicks there act on the magnified
+picture: a spot, the side of a link, a spot to mark. The glass is left out of the PNG (<code>P</code>) and kept
+in the snapshot (<code>B</code>), which records the screen.</p>
 
 <h2 id="sec-slide">4.3. Sliding spots along their curves</h2>
 
@@ -605,9 +699,10 @@ are never squeezed below their own clearance to make room for the move.</p>
 <p>Sliding and pushing can take seconds in a crowded picture, so they run in a separate thread (a Web Worker,
 section <a href="#sec-workers">7.1</a>). The page stays responsive and <code>Space</code> stops them.</p>
 
-<h2 id="sec-ar">4.5. A and R: one energy for the whole picture</h2>
+<h2 id="sec-ar">4.5. R: one energy for the whole picture</h2>
 
-<p><e>A</e> (adjust) and <e>R</e> (rearrange) lay out all the curves at once, by minimizing one energy over the
+<p><e>R</e> (rearrange), with or without <e>Keep seeds in place</e> (until v219 a separate step <e>A</e>, adjust),
+lays out all the curves at once, by minimizing one energy over the
 whole drawing (<code>redraw.js</code>). The idea is that every curve should be drawn as the band would draw it if
 it were drawn last, all at the same time. Every curve becomes a polyline through its end spots and points about $D$
 apart along it (a move&rsquo;s two curves form one unit, so bending is charged through the move&rsquo;s spot). The
@@ -668,15 +763,46 @@ curves crossing twice would leave the rotation system, and hence the position te
 detected by the check. When no step lowers the energy any more, the points are jiggled at random within a sixth of
 their caps, a few times, to get out of shallow traps.</p>
 
-<p>The descent stops when the drawing no longer changes visibly: the last 24 steps moved no point by a pixel, or
-gained less than a pixel&rsquo;s worth of energy each. (Earlier versions ran to the rounding error of the
-arithmetic, thousands of steps that nobody could see.) The picture is shown as it goes, in 30 ms slices
-per animation frame, and <code>Space</code> stops it where it is.</p>
+<p>Each step of the line search evaluates the energy at the trial point together with its gradient and caps
+(v231), and when the trial is accepted that gradient serves as the next step&rsquo;s, so an accepted step costs
+one evaluation instead of two. (Not when the points were spread again along their curves after the step, as
+with the seeds kept: their gradient is then computed afresh.)</p>
 
-<p><e>A</e> keeps the original spots, and those added by hand, where they are, and moves the points of each curve
+<p>The descent stops when the drawing no longer changes visibly (v233): over the last 24 steps the points moved
+less than a pixel in all, or the energy fell by less than a pixel&rsquo;s worth of length per step ($3\cdot 8\cdot 10$
+in all, the weight of length being 10). It then starts once more with L-BFGS&rsquo;s memory cleared, as a second
+press of R would, and stops for good when that finds nothing more either. (Earlier versions ran to the rounding
+error of the arithmetic, thousands of steps that nobody could see; a rule that stopped as soon as no point moved
+a pixel in one step stopped at the first step in crowded pictures.) The picture is shown as it goes, in 30 ms
+slices per animation frame, and <code>Space</code> stops it where it is.</p>
+
+<p><b>Before the descent.</b> A thin move can leave a curve a tiny fraction of a pixel from a spot or another
+curve. That point&rsquo;s push then dwarfs all others, the first step is scaled to it, the cap clips it to a third
+of the tiny gap, and nothing moves. So first (<code>separate</code>, v229) every point whose cap is too small for
+the descent&rsquo;s own smallest step is moved a third of its cap away from what pushes it, all at once, round
+after round while the energy falls. If even then the first step is clipped to nothing, R gives up at once and
+says so (&ldquo;it could not move the drawing at all&rdquo;) rather than running without effect.</p>
+
+<p><b>Filling the area.</b> The energy has nothing that makes a picture large: once no region has a move nothing
+pushes outward, and the length term pulls the picture together, so at the end of a game R left it small. With
+Room &rarr; <e>R fills the whole area</e> on (the default; v220&ndash;v221), the polylines are scaled up after the
+descent, by one factor per direction, to fill the drawing area less a margin (the comfort distance and a
+spot&rsquo;s radius, and while the outside region still has a move, a band round the picture with the area the
+room-by-lives term gives its lives, $\pi(D/2)^2$ each). Factors below 1 are not applied. Enlarging by factors of
+at least 1 moves no point across anything and shortens no distance, so the position and every clearance are kept,
+and the spots keep their size. Enlarging by different factors magnifies the descent&rsquo;s small kinks, so a
+second descent follows with the seeds kept in place, which straightens them without undoing the enlargement
+(v222); if that smoothing fails, the enlarged picture is kept as it is (v233). With <e>Keep seeds in place</e>
+the picture is not enlarged.</p>
+
+<p><b>Where it runs.</b> Since v226 R runs in a drawing worker (<code>sprouts-draw-worker.js</code>, job
+<code>redraw</code>). The worker posts the picture as it goes, for the animation, and at the end the result
+and, for a fill whose smoothing failed, the unsmoothed picture. The page only checks and commits the result.</p>
+
+<p>With <e>Keep seeds in place</e>, R keeps the original spots, and those added by hand, where they are, and moves the points of each curve
 only <e>across</e> the curve, spreading them evenly along it again after each step. (Crowding is charged per point,
 so otherwise the points drain out of crowded stretches and the smooth curve through the few that are left swings
-into a neighbor.) <e>R</e> moves everything.</p>
+into a neighbor.) Otherwise R moves everything.</p>
 
 <p>Finally each curve is the clamped C² spline <e>through</e> its points (<code>geom.interpolate</code>), a
 move&rsquo;s two curves as one, cut at the move&rsquo;s spot. Where a third curve leaves that spot the spline is
@@ -695,7 +821,7 @@ polynomial.</p>
 
 <h2 id="sec-z">4.6. Z: the picture drawn afresh</h2>
 
-<p>A and R start from the present picture and can only improve it locally. When a move cannot be drawn even after
+<p>R starts from the present picture and can only improve it locally. When a move cannot be drawn even after
 R, <e>Z</e> draws the position from its combinatorial map alone (<code>layout.js</code>), with no regard to how it
 looks now. For the computer, the position <e>after</e> its intended move is drawn, so the move needs no router at
 all.</p>
@@ -755,7 +881,7 @@ layout keeps those spots smaller, never below the smallest size of the Settings&
 aside that meets the bar above ends Z like one at full size. Otherwise, if no layout drew at full size, the one
 kept aside with the least shrinking (its smallest spot the largest, then the fewest spots shrunk) is taken. The size of a spot is part of the game object and is saved, loaded and undone with it.
 The router, the certificate and the room-making all see the spot at its smaller size, and the log names the
-spots drawn smaller. They grow back as soon as a later A, R or Z finds room for them.</p>
+spots drawn smaller. They grow back as soon as a later R or Z finds room for them.</p>
 
 <h2 id="sec-heroic">4.7. Heroic mode</h2>
 
@@ -1074,9 +1200,10 @@ grid drawing, is implemented in the program itself.</p>
   <li>the <e>thinking</e> workers (<code>sprouts-worker.js</code>), as many as the Workers menu says (by default,
   the number of logical processors), for Monte Carlo and Parity search and for computing the candidates&rsquo;
   canonical forms;</li>
-  <li>the <e>drawing</e> workers (<code>sprouts-draw-worker.js</code>), one layout each for Z, the same number;</li>
+  <li>the <e>drawing</e> workers (<code>sprouts-draw-worker.js</code>), one layout each for Z, the same number,
+  and one of them for R (since v226);</li>
   <li>one worker for the router and for making room (<code>sprouts-room-worker.js</code>): sliding spots, pushing
-  curves apart, and the marked route.</li>
+  curves apart, the marked route, and moves drawn thin (since v227).</li>
 </ul>
 <p>The modules they use (<code>geom.js</code>, <code>engine.js</code>, <code>ai.js</code>, and so on) are written
 without reference to the page, so the same files load in the page, in workers, and in Node for the test suite.
@@ -1114,22 +1241,23 @@ can be rebuilt from it, which is how several problems were found.</p>
 
 <table class="desc">
   <tr><td class="code">index.html, style.css</td><td>the page: menus, status line, canvas, the keyboard list</td></tr>
-  <tr><td class="code">ui.js</td><td>the page controller: input, menus, drawing on the canvas, the move flow, the computer&rsquo;s turn, A/R/Z on the page, undo, saving and loading, the log</td></tr>
+  <tr><td class="code">ui.js</td><td>the page controller: input, menus, drawing on the canvas and the magnifier, the move flow, the computer&rsquo;s turn, R and Z, tidying, undo, saving and loading, the log</td></tr>
   <tr><td class="code">geom.js</td><td>B&eacute;zier pieces, subdivision, refined control polygons, spline fitting and interpolation (sections 2.1&ndash;2.2, 3.6)</td></tr>
   <tr><td class="code">engine.js</td><td>the position computed from the picture: rotation system, faces, regions, lives (2.3)</td></tr>
   <tr><td class="code">describe.js</td><td>positions, regions and moves in words, for the log and File &rarr; Save position</td></tr>
   <tr><td class="code">relax.js</td><td>obstacles, the clearance energy, the elastic band and the spline band, certification (3.4)</td></tr>
   <tr><td class="code">route.js</td><td>the grid planner, the widest way, barrier trees and the parity search (3.2&ndash;3.3)</td></tr>
-  <tr><td class="code">moves.js</td><td>the router&rsquo;s pieces: marked routes, ports, trial moves, making room (3.3&ndash;3.5, 4.3&ndash;4.4)</td></tr>
+  <tr><td class="code">moves.js</td><td>the router&rsquo;s pieces: marked routes, ports, trial moves, making room, the thin route and its smooth curve (3.3&ndash;3.5, 3.7, 4.3&ndash;4.4)</td></tr>
+  <tr><td class="code">thin.js</td><td>moves always drawn: the exact constrained triangulation, the walk, the hug, the certificate (3.7)</td></tr>
   <tr><td class="code">room.js</td><td>sliding spots and pushing curves apart (4.3&ndash;4.4)</td></tr>
-  <tr><td class="code">redraw.js</td><td>A and R, and the polish after Z (4.5)</td></tr>
+  <tr><td class="code">redraw.js</td><td>R, filling the area, and the polish after Z (4.5)</td></tr>
   <tr><td class="code">layout.js</td><td>Z: the map, the triangulation, the grid drawing (4.6)</td></tr>
   <tr><td class="code">ai.js</td><td>the position&rsquo;s topology, the moves, canonical forms, every computer player (2.4&ndash;2.6, 5)</td></tr>
   <tr><td class="code">net.js</td><td>two-computer play (6)</td></tr>
   <tr><td class="code">sprouts-worker.js, sprouts-draw-worker.js, sprouts-room-worker.js</td><td>the workers (7.1)</td></tr>
 </table>
 
-<p>The test suite runs in Node, one file per module, and checks among other things that A and R never change a
+<p>The test suite runs in Node, one file per module, and checks among other things that R never changes a
 position and leave every curve certified and inside the window, that Z reproduces the position of every saved test game,
 that every move of every saved game is legal, and the bounds of section <a href="#sec-bounds">5.5</a>.</p>
 
@@ -1190,6 +1318,12 @@ that every move of every saved game is legal, and the bounds of section <a href=
 
   <li id="ref-lv2">J. Lemoine, S. Viennot, Analysis of misère Sprouts game with reduced canonical trees, 2009.
   <a href="https://arxiv.org/abs/0908.4407">arXiv:0908.4407</a></li>
+
+  <li id="ref-sloan">S. W. Sloan, A fast algorithm for generating constrained Delaunay triangulations.
+  <i>Computers &amp; Structures</i> 47, 1993, 441&ndash;450.</li>
+
+  <li id="ref-shewchuk">J. R. Shewchuk, Adaptive precision floating-point arithmetic and fast robust geometric
+  predicates. <i>Discrete &amp; Computational Geometry</i> 18, 1997, 305&ndash;363.</li>
 </ol>
 
 </body>

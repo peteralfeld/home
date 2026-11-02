@@ -113,7 +113,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <p> Since the drawing may get crowded the layout of the game page is chosen so as to maximize the area in which you can draw. There are just two rows at the top of the page that are not used for drawing. The first row contains a number of menus that you can use to control the game. This is the <i>Control Row</i>. The second row gives you information about the game as it proceeds. This is the <i>Status Row</i>. Below it is the <i>Drawing Area</i>.
 
-<p> The size of the drawing area, <e>width x height</e>, is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. You can also give the drawing area an exact size with <e>Size</e> in the Game menu (see <a href="#sec-game-settings">Game Settings</a>). Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (typing <e>F</e>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3840x2103 pixels. That area can accommodate 100 spots in an ellipse, or distributed randomly, but not in a circle or a line. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
+<p> The size of the drawing area, <e>width x height</e>, is measured in pixels and is listed in the status row when first bringing up the game window. That information changes accordingly when you resize the window. You can also give the drawing area an exact size with <e>Size</e> in the Game menu (see <a href="#sec-game-settings">Game Settings</a>). Most of the game development and testing used a drawing area of size of 1090x607 pixels. The largest drawing area, available by going full screen (typing <e>F</e>) on my system, and scaling by 100% (which makes print and icons small and hard to read), is 3840x2103 pixels. The recommended scaling on my system is 150%. At that scale the size of the full screen drawing area is 2560x1383 pixels.
 
 <p> In an ordinary browser tab the browser keeps its own rows of tabs, address bar and bookmarks above the game, and it does not let the game change the size of the window. Typing <e>Y</e> moves the game, as it is, into a window of its own, without those rows; there the Size menu resizes the window itself. Typing <e>Y</e> again moves the game back into an ordinary tab (see <a href="#sec-viewing-options">Viewing Options</a>).
  
@@ -133,8 +133,8 @@ The easiest way to get started quickly on your first game is to do the <a href="
 <p>You may find it easier to draw by clicking. To move from $x$ to $y$ begin by clicking on  $x$. Clicking on a link, a spot with one life left, is somewhat delicate. You can depart from a link to one side or the other. You choose the side by moving a small distance in your chosen direction. If you forget and just click on a link then the system will choose a direction for you which may not be the direction you intended.    If a link can reach another spot with a life only from one side the system will depart towards that side even if you choose the other. Next, click on $y$.   If $y$ is a link it may matter from which side the curve arrives: click just outside the link, on the side you want, rather than on the link itself.   If both $x$ and $y$ are connected (or $x=y$), the new curve splits a region in two, and you may wish to include some spots in one of the new regions: after clicking on $x$ and before clicking on $y$, right-click (or <e>Shift</e>-click) on those spots.   They will turn into squares to indicate their status.   If the curve cannot be routed around the marked spots the status row says so; <e>Enter</e> then draws the shortest curve instead.
 
 <h3>Adding Seeds and Moving Spots</H3>
-<p> The system lets you add a new seed by Ctrl-clicking in an empty part of the drawing area.   This facility may be helpful for experiments and study, but of course adding seeds is not part of an ordinary game.
-<p> Ctrl-dragging a spot moves it: a seed moves freely within its region, a sprout lengthens or shortens its curve, and a spot in the middle of a curve slides along it.
+<p> The system lets you add a new seed by Ctrl-clicking anywhere in the drawing area except on a curve or on a spot.   This facility may be helpful for experiments and study, but of course adding seeds is not part of an ordinary game.
+<p> Ctrl-dragging moves the spot nearest to where you press: a seed moves freely within its region, a sprout lengthens or shortens its curve, and a spot in the middle of a curve slides along it.
 
 
  <H2>The Control Row</H2>
@@ -143,7 +143,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
  <OL>
    <LI>Playing against an AI</LI>
-   <LI>Making space</LI>
+   <LI>Making room in the drawing</LI>
    <LI>Playing remotely</LI>
    <LI>Undoing moves and other actions</li>
    <LI>Recording games and pictures</li>
@@ -170,12 +170,12 @@ The easiest way to get started quickly on your first game is to do the <a href="
   <H3 class="menu-head" style="--menu: #fc6300">Game Settings</H3>
   <p>The following settings are available:
   <OL>
-    <LI>The number of spots. You can increase it or decrease it with the buttons to the right of the text field. You can also simply enter a number in the text field.  The default number of spots is 5.  There is no limit to the number of spots other than the size of your drawing field and your computer resources.   </LI>
+    <LI>The number of spots. You can increase it or decrease it with the buttons to the right of the text field. You can also simply enter a number in the text field.  The default number of spots is 5.  There is no limit to the number of spots other than your computer resources and your patience: since moves are always drawn (see <a href="#sec-making-room">Making Room</a>) the drawing never runs out of room, though in a crowded picture the curves may come closer together than the minimum clearance.   </LI>
     <LI>The layout of the spots.   The default is to have them equally spaced on an ellipse that matches the aspect ratio of your drawing area.   You can also place them on a circle, in a line, randomly, or by hand.   The keys <e>1</e> &hellip; <e>9</e> start a new game with that many spots in the chosen layout, even if a game is ongoing. Pressing <e>0</e> gives an empty drawing area in which you place the spots by clicking in the desired places with the left mouse button. When you are done, pressing <e>Enter</e> or <e>N</e> then starts the game.</LI>
     <LI>By default the player who makes the last possible move wins.   You can change this to the <e>misère</e> version where that player loses.  </LI>
     <LI><e>Size</e> of the drawing area, in pixels.   The two fields show the present width and height. To change the current size replace these numbers and press <e>Enter</e> or click <e>Set</e>.   The buttons give 1090 x 607, 1280 x 742, 1024 x 1024, 512 x 512, the largest square there is room for (<e>Max square</e>), and <e>Full screen</e>.   In a window of its own (<e>Y</e>) the window grows or shrinks so that the drawing area gets exactly that size, and stays resizable by hand; if the screen is too small, the drawing area gets the most there is room for, and the status row says so.   In an ordinary browser tab, which the game may not resize, the drawing area is given the size inside the tab, with the page&rsquo;s dark background around it; resizing the window by hand lets the drawing area fill it again.   Before the first move a new size lays the spots out afresh; later the picture is only scaled.</LI>
     <LI><e>Random seed</e>: left empty, the random layout, the Random player and the tie-breaks among equally good computer moves differ from game to game.   With a number in the field they are repeatable: the same seed, number of spots and settings give the same spots and the same moves every time (Monte Carlo&rsquo;s random games are not covered).   Useful for comparing versions of the program on the same game.</LI>
-    <LI>You can interrupt any ongoing game and start a new game. You can also do this by typing <e>N</e>.   With the Random and Place by hand layouts, and after a game was loaded from a file, the new game starts from the same seeds as the game before; to get a new random distribution change the number of spots or the layout, or type one of the keys <e>1</e> &hellip; <e>9</e>, and to place spots afresh type <e>0</e>.</LI>
+    <LI>You can interrupt any ongoing game and start a new game. You can also do this by typing <e>N</e>.   With the Random and Place by hand layouts, and after a game was loaded from a file, the new game starts from the same seeds as the game before, where they stood at its beginning (seeds added by hand included); to get a new random distribution change the number of spots or the layout, or type one of the keys <e>1</e> &hellip; <e>9</e>, and to place spots afresh type <e>0</e>.   One exception: a game loaded in the middle of play between two computers waits, so that you can look at the position, and the first <e>N</e> continues it from there.</LI>
     <LI>You can undo the last move.  If a human plays against a computer the last human move will be undone.  You can also use the keyboard command <e>U</e>.   The keys <e>&lt;</e> and <e>&gt;</e> step back and forward through the game one move at a time; meanwhile the computer waits, and a move made at any point continues the game from there.</LI>
     <LI>To close the game&rsquo;s tab click on <e>Exit</e> or type <e>X</e>.   A browser lets a page close itself only when it was opened in a tab of its own (for example from this guide, or from a desktop shortcut); otherwise the status row says how to close the tab.</LI>
     </OL>
@@ -226,6 +226,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <LI><e>/</e> omits the indices of seeds.   In a game with many seeds they are many, and a seed needs no name until a curve reaches it (off by default).</LI>
     <LI><e>H</e> draws stumps half size, for the same reason (on by default).</LI>
     <LI><e>Q</e> shows the size of the drawing area in the status row as width x height, in pixels.</LI>
+    <LI><e>Alt</e>+click puts a <i>magnifier</i> where you click: a round glass over the drawing that shows the part under it magnified.   Only the layout of the curves and spots is magnified, not the thickness of the curves, the size of the spots or the indices, so places where curves run very close together can be seen apart.   <e>Alt</e>+drag moves the glass, and <e>Alt</e>+click inside it takes it away (as does the <e>Magnifier</e> box in the View menu).   Clicks, drags and right-clicks inside the glass act on what you see there, so you can start, finish or mark a move in a tight place.   <e>Magnifier size</e> sets the diameter of the glass, as a share of the drawing area&rsquo;s width or height, whichever is larger (25% by default), and <e>Magnification</e> how many times it magnifies, from 2 to 1000 (5 by default).   The glass is left out of the picture saved with <e>P</e>, but kept in a snapshot (<e>B</e>), which records the screen.</LI>
     <LI><e>Y</e> switches between an ordinary browser tab and a window of its own, without the browser&rsquo;s tabs and toolbars, carrying the game, its settings and its log along; the drawing area keeps its size (in a tab larger than that, it sits in the middle until you resize the window by hand), and the tab or window it leaves closes itself. In a window of its own <e>Size</e> in the Game menu can resize the window itself, which an ordinary browser tab does not allow.</LI>
     </OL>
 
@@ -235,37 +236,44 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
   <OL>
     <LI><e>Minimum clearance</e> between curves, ranging from 3 px to 30 px (6 px by default).</LI>
-    <LI><e>Comfort distance</e>: curves closer together than this push each other apart; beyond it they hardly affect each other.   It is the largest distance at which the system still cares how close curves come.   It ranges from 10 px to 64 px (40 px by default). </LI>
+    <LI><e>Comfort distance</e>: curves closer together than this push each other apart; beyond it they hardly affect each other.   It is the largest distance at which the system still cares how close curves come.   It ranges from 10 px to 64 px (25 px by default). </LI>
     <LI><e>Room vs length</e>: The system tries to make the curves short and also so that enough room is left for more curves. This slider, ranging from 0.1 to 10, lets you adjust the relative importance of these targets (1 by default, equal weight).  </LI>
     <LI><e>Spot size</e>, the diameter of the spots, ranging from 6 to 36 px.   Curves keep clear of the spots, so a change applies to moves made from then on.</LI>
     <LI><e>Curve thickness</e>, adjusts the thickness of curves, ranging from 1.25 to 7.5 px.</LI>
     <LI><e>Index size</e> adjusts the size of the spot indices, ranging from 6.5 to 39 px. </LI>
-    <LI>The first new game in a drawing area of a given size sets the spot size and the index size to suit it: with <e>C</e> the mean of the area&rsquo;s width and height, the spot size is <e>C</e>/70 and the index size <e>C</e>/50, each held within its range (in a 1090 x 607 area: 12 and 16.9 px).   The curve thickness is never changed by a new game.   You can change all three afterwards, and further new games in the same area leave them as you set them; a loaded game keeps the sizes it was saved with.</LI>
+    <LI>The first new game in a drawing area of a given size sets the spot size and the index size to suit it: with <e>C</e> the mean of the area&rsquo;s width and height, the spot size is <e>C</e>/139 and the index size <e>C</e>/73, each held within its range (in a 1090 x 607 area: 6.1 and 11.6 px).   The curve thickness is never changed by a new game.   You can change all three afterwards, and further new games in the same area leave them as you set them; a loaded game keeps the sizes it was saved with.</LI>
     <LI><e>Animate</e>, on by default, graphically shows each new curve settling into its shape, and the process of making room.</LI>
     <LI><e>Click to connect</e>, on by default, makes it possible to define new curves by clicking on the spots.</LI>
 
     </OL>
 
 
-  <H3 class="menu-head" style="--menu: #633f63">Making Room</H3>
+  <H3 id="sec-making-room" class="menu-head" style="--menu: #633f63">Making Room</H3>
 
-  <p>The system offers four options to make room or generally redraw the position:
+  <p>The system offers three ways to make room or generally redraw the position, from the least to the most change to the picture:
 
   <OL>
-
-<LI><e>M</E> adjusts the location of spots and the routing of nearby curves for a specific move.</LI>
-<LI><e>A</e> leaves the initial seeds (and any seeds added by hand) in place, but moves other spots and redraws curves.</LI>
-<LI><e>R</e> similar to A, but also moves the initial seeds.</LI>
-<LI><e>Z</e> redraws the position from scratch.</LI>
+<LI><e>M</e> (make room) adjusts the location of spots and the routing of nearby curves for a specific move.   The rest of the picture stays.</LI>
+<LI><e>R</e> (rearrange) reshapes the whole drawing: curves and spots move so that the whole picture can spread out.</LI>
+<LI><e>Z</e> (draw afresh) ignores the present drawing and draws the position from scratch, then polishes it as R does.   It is the slowest of the three.</LI>
   </OL>
 
-<p>  By default, the M and R options are invoked automatically for both human and AI players.   For AI players, the Z option is also invoked automatically.  The checkboxes can be used to turn the automatic options on and off.   When a move does not fit, the options are tried in the order M, A, R, Z, &bull;, each once, until the move can be drawn.   For a human player the options are invoked automatically as long as their boxes are checked in a row: at the first unchecked box (other than A, which is simply skipped) the system stops and offers that option and the remaining ones in the status row.   Pressing one of them tries the move again, and the system then goes on from there by the same rule.   For an AI player the checked options are invoked in order and the unchecked ones skipped; if none succeeds the game stops and the status row says so.   The keys <e>M</e>, <e>A</e>, <e>R</e>, <e>Z</e> and <e>.</e> can also be pressed at any time, and the space bar stops A, R or Z.
+<p> The keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any time, and the space bar stops R or Z (Z then keeps the best picture it has found so far).   R and Z run in a worker of their own, so the page stays responsive while they work.
 
-<p>  The last column, headed by a bullet (<e>&bull;</e>), is the option after Z.   When it is checked and Z fails to draw a move with every spot at its full size, Z may draw some spots smaller &mdash; only those in tight places, and never smaller than the smallest spot size of the Settings menu.   The log names the spots drawn smaller, and they grow back to their size as soon as a later R or Z finds room for them.   It is off by default for human players and on for AI players; Heroic mode turns it off for human players.   At the end of a game the log says how many spots are still drawn smaller.   The key <e>.</e> (period) draws the picture afresh with smaller spots allowed, at any time.
+<p> <e>Moves always drawn</e>, on by default, decides what happens when a move does not fit the ordinary way.   The move is then drawn at once with the spots counted as points and the curves as thin lines, so it never fails for lack of room.   Its curve crosses and touches nothing, however narrow the way: it is smooth where it can be, and a polyline otherwise, and a move that encloses something hugs what it encloses.   In a crowded picture the curve may run closer to other curves than the minimum clearance, or across a spot&rsquo;s disc, but the position is exactly the one intended.   Meanwhile the status row says <e>Drawing it with spots as points and curves thin&hellip;</e>; in a very crowded picture this can take a while, and the space bar stops it.   Nothing is done first to make room.   Afterwards, if the picture falls short of the minimum clearance, the picture is <i>tidied</i>: the steps R and Z checked in the Room menu for the player who moved are run automatically, in that order, until the clearance is restored (M is not used for this).
 
-<p> When a move is refused for lack of room &mdash; there is no way through with the minimum clearance, or the curve would come too close to something &mdash; the status row says why, the move stays begun, and the message offers <e>M</e>, <e>A</e>, <e>R</e>, <e>Z</e> and <e>.</e>.   You can also click another spot instead.   The key <e>D</e> draws the refused move again in the drawing as it is now, as if you clicked its destination again: useful after you have lowered the minimum clearance, moved a spot by hand, or changed the Room boxes.
+<p> The checkboxes, in the columns M, R and Z, say which steps are taken automatically, separately for a human&rsquo;s moves and for the computer&rsquo;s.   By default only R is checked, for the computer: with Moves always drawn on, that means the picture is tidied by R after the computer&rsquo;s moves, and you tidy after your own moves by pressing <e>R</e> when you like.   With Moves always drawn off, a move that does not fit is refused until room is made for it: the checked steps are tried in the order M, R, Z, each once, until the move can be drawn.   For a human player the steps are taken automatically as long as their boxes are checked in a row: at the first unchecked box the system stops and offers that step and the remaining ones in the status row.   Pressing one of them tries the move again, and the system then goes on from there by the same rule.   For an AI player the checked steps are taken in order and the unchecked ones skipped; if none succeeds the game stops and the status row says so.
 
-  <p> Selecting <e>Heroic Mode</e> turns the human space making options off and draws curves as they are drawn by a human player.   
+<p> When a move is refused for lack of room &mdash; there is no way through with the minimum clearance, or the curve would come too close to something &mdash; the status row says why, the move stays begun, and the message offers <e>M</e>, <e>R</e> and <e>Z</e>.   You can also click another spot instead.   The key <e>D</e> draws the refused move again in the drawing as it is now, as if you clicked its destination again: useful after you have lowered the minimum clearance, moved a spot by hand, or changed the Room boxes.   With Moves always drawn on, a refusal is rare: it happens only when even the thin drawing fails, and the message then begins <e>The move could not be drawn even with spots as points and curves thin</e>.
+
+<p> The other items of the menu:
+
+  <OL>
+<LI><e>Z draws afresh by</e> chooses how Z starts its picture from the position alone.   The <e>FPP layout</e> (the default) is the straight-line drawing of de Fraysseix, Pach and Pollack, tried with each region as the outside.   <e>Growing from a spot</e> (experimental) grows the picture outward from a spot, tried from each spot of the outermost parts.</LI>
+<LI><e>R fills the whole area</e>, on by default: when R has finished, the picture is enlarged in each direction until it fills the drawing area (only enlarged, so nothing comes closer to anything), and the curves are then smoothed once more, since enlarging by different amounts in the two directions can leave kinks.   Off: R keeps the picture&rsquo;s shape and leaves it at the size it comes out, which at the end of a game is often small.</LI>
+<LI><e>Keep seeds in place</e>, off by default, also switched with the key <e>A</e>: R keeps the initial seeds and seeds added by hand where they are and reshapes only the curves; the spots made by moves ride along with their curves.   This is useful for watching games from a fixed set of seeds.   The picture is then not enlarged.</LI>
+<LI><e>Heroic</e> keeps a curve you draw by hand as drawn, straight pieces, corners and all, instead of smoothing it, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available).   The computer&rsquo;s moves are drawn as usual.</LI>
+  </OL>   
 <h3 id="sec-games-played-to-the-end">Games Played to the End</h3>
 
 <p> How far can the drawing be pushed?   The table below records games of Random against Random, each played to the end from $n$ seeds placed at random, with every setting at its default except that the spot indices are not shown, in a drawing area of 2560 x 1331 pixels (my screen, less a line the browser kept for itself), with version 200 of the program &mdash; except for the game of 60 seeds, whose conditions differed a little and are given below.   The columns count how often the program tried to make room for a move (<e>M</e>, successful or not), rearranged the drawing (<e>R</e>), drew the picture afresh (<e>Z</e>), and drew spots smaller for lack of room (<e>&bull;</e>); then the number of moves of the game and the time it took, from the first move to the last.   Clicking a picture shows it at half size.
@@ -282,6 +290,8 @@ The easiest way to get started quickly on your first game is to do the <a href="
 
 <p> The game of 60 seeds is at the edge of what the drawing can carry.   The run in the table was played with version 201, from the fixed random seed 1, in a drawing area of 2560 x 1383 pixels (the same screen, without the line the browser had kept for itself); it reached the end of the game at move 150.   Two earlier 60 seed games, each from seeds drawn afresh, stopped short &mdash; at move 114 with version 199, and at move 88 with version 200 &mdash; when the computer could not draw its move even after M, R and Z (a whole round of 32 fresh layouts failed).   What uses up the room is not the number of spots but the Random player&rsquo;s taste for enclosing most of the board: the picture ends up as a nest of rings, each a region of its own with two or three lives on a boundary thousands of pixels long, and each keeps room for a curve along its whole length.
 
+<p> These games were played before moves were always drawn (version 215); the picture then had to have room for every move at the minimum clearance.   Since then far larger games go to the end.   With version 234 a game from 200 seeds went to the end in 506 moves and 74 minutes, with R tidying after the computer&rsquo;s moves and no Z at all; with version 231 the same game had taken 88 minutes.   Near the end of such a game R takes a minute or more each time, and the curves come within a pixel or so of each other.
+
 <p> Not every Z is for lack of room: a Random player likes to enclose a dozen or more of the things in a region at once, and when there are too many separate things in a region to route a curve around the chosen ones, the move is drawn afresh instead.
 
 <H3 class="menu-head" style="--menu: #fc2dfc">Colors</H3>
@@ -294,6 +304,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
   <OL>
     <LI><e>Load game</e> lets you import a JSON file with a saved game. It opens the regular file selection menu on your computer.</LI>
     <LI><e>Save picture as PNG</e> puts a PNG image of the current position into your download directory, so you can send it to your friends.</LI>
+    <LI><e>Snapshot</e> (key <e>B</e>) saves, at once and with one time stamp, the picture as drawn now, the game as it is now and the log.   Nothing stops; it works at any time, also while something is running.   It is the best way to report what you see.</LI>
     <LI><e>Save game as JSON</e> lets you save your current status (including all selected options, the players and the size of the drawing area) for reloading at a later stage.</LI>
     <LI><e>Save log as text</e> downloads the program&rsquo;s log of the session &mdash; every move, the computer&rsquo;s thinking, room made or refused &mdash; as a text file.   Its primary use is for debugging.</LI>
     <LI><e>Save the log of the last session</e> is another debugging tool.  The system keeps and updates a copy of the current log in the browser&rsquo;s storage.  If the page crashes you can start a new Sprouts session and immediately select this option.  </lI>
@@ -312,7 +323,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
 <LI><e>Blue to move   L=9  m=2  M=7  K=1</e>: whose turn it is, and four numbers about the position: <e>L</e> the lives left on the board, <e>m</e> a lower bound on the number of moves the game can still last, <e>M</e> the largest number of moves that can actually still be played, and <e>K</e> the number of survivors.   When $m = M$ the length of the game is settled, however it is played.   <e>M</e> is worked out in the background, usually within a fraction of a second; until it is known the row shows the upper bound as <e>M&le;7</e>, and in a few complicated positions that may stay.</LI>
 <LI><e>Click the destination spot (4 possible) &mdash; right-click marks spots to enclose &mdash; click just outside a spot to choose its side &mdash; Space cancels</e>: after the first click of a move.   It also lists the spots marked to be enclosed, and destinations that can be reached in principle but have no room for a curve.</LI>
 <LI><e>Green (Fast parity search) is thinking &hellip;</e>: the computer&rsquo;s progress.   When its search has seen the whole rest of the game, the message after its move adds a verdict: <e>Green has a winning position</e> or <e>Green is lost against best play</e>.</LI>
-<LI><e>No room to reach spot 7 &hellip;</e> or <e>No room: the curve comes too close to something to be smoothed</e>: a move that does not fit.   The message offers the ways to make room (M, A, R, Z and the period) and <e>D</e> to draw the move again; the ways to make room are also tried automatically as the Room menu says, and <e>Still no room &hellip;</e> says which were tried and which remain to be tried by hand.</LI>
+<LI><e>No room to reach spot 7 &hellip;</e> or <e>No room: the curve comes too close to something to be smoothed</e>: a move that does not fit.   The message offers the ways to make room (M, R and Z) and <e>D</e> to draw the move again; the ways to make room are also tried automatically as the Room menu says, and <e>Still no room &hellip;</e> says which were tried and which remain to be tried by hand.   With <e>Moves always drawn</e> on (the default) you will instead see <e>Drawing it with spots as points and curves thin&hellip;</e> while the move is drawn anyway.</LI>
 <LI><e>Not drawn afresh: the first 32 layouts (one round, one for each worker) all failed &hellip; the picture has run out of room</e>: Z could not draw the position in the room there is.   Z takes the first picture at least as roomy as the one before; when the picture before is already below the minimum clearance, it takes the first that can be drawn at all.   More room comes from smaller spots or a smaller minimum clearance (Settings); a larger drawing area helps only a new game, because during a game a new size only scales the picture.</LI>
 <LI><e>Drawing area is 1090 x 607 &mdash; the window could not be resized &hellip;</e>: Size in the Game menu, used in an ordinary browser tab; the message says why (for example, that <e>Y</e> gives the game a window of its own, which can be resized).</LI>
 <LI><e>Blue can&rsquo;t move &mdash; Green wins.   Game over.   L=8  m=0  M=0  K=8</e>: the end of the game, with the same four numbers as during play: <e>L</e> the lives left, <e>m</e> = <e>M</e> = 0, and <e>K</e> the survivors (at the end every life left belongs to a survivor, so <e>K</e> = <e>L</e>).</LI>
@@ -338,17 +349,16 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <tr><td><kbd>Enter</kbd></td><td>Start the game from the spots placed; draw a move the shortest way when its marks cannot be applied</td></tr>
     <tr><td><kbd>U</kbd></td><td>Undo the last move</td></tr>
     <tr><td><kbd>&lt;</kbd> <kbd>&gt;</kbd></td><td>Back / forward through the game one move at a time</td></tr>
-    <tr><td><kbd>Space</kbd></td><td>Stop what is under way: the computer&rsquo;s thinking, A, R, Z, making room, finding a way, a move begun by clicking. Between two computers: stop the game after the move being drawn; again: continue</td></tr>
+    <tr><td><kbd>Space</kbd></td><td>Stop what is under way: the computer&rsquo;s thinking, R, Z, making room, finding a way, a move begun by clicking. Between two computers: stop the game after the move being drawn; again: continue</td></tr>
     <tr><td><kbd>X</kbd></td><td>Exit (close the page)</td></tr>
   </table>
   <table>
     <tr><th colspan="2">Drawing</th></tr>
     <tr><td><kbd>M</kbd></td><td>Make room for a move that does not fit</td></tr>
     <tr><td><kbd>D</kbd></td><td>Draw a move refused for lack of room again, in the drawing as it is now</td></tr>
-    <tr><td><kbd>A</kbd></td><td>Adjust the drawing</td></tr>
     <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
+    <tr><td><kbd>A</kbd></td><td>Keep seeds in place (when R rearranges) on / off</td></tr>
     <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
-    <tr><td><kbd>.</kbd></td><td>Draw the picture afresh, spots smaller where there is no room</td></tr>
   </table>
   <table>
     <tr><th colspan="2">View</th></tr>
@@ -365,6 +375,7 @@ The easiest way to get started quickly on your first game is to do the <a href="
   <table>
     <tr><th colspan="2">File and Help</th></tr>
     <tr><td><kbd>P</kbd></td><td>Save the picture as PNG</td></tr>
+    <tr><td><kbd>B</kbd></td><td>Snapshot: picture, game and log, without stopping anything</td></tr>
     <tr><td><kbd>K</kbd> or <kbd>?</kbd></td><td>This list</td></tr>
   </table>
   <table>
@@ -372,8 +383,9 @@ The easiest way to get started quickly on your first game is to do the <a href="
     <tr><td>Click, click</td><td>Connect two spots (Click to connect, Settings menu)</td></tr>
     <tr><td>Drag</td><td>Draw a curve by hand from spot to spot</td></tr>
     <tr><td>Right-click or <kbd>Shift</kbd>+click</td><td>After the first click: mark spots the curve is to enclose</td></tr>
-    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a seed where one fits</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+click</td><td>Add a seed there</td></tr>
     <tr><td><kbd>Ctrl</kbd>+drag</td><td>Move a spot</td></tr>
+    <tr><td><kbd>Alt</kbd>+click, <kbd>Alt</kbd>+drag</td><td>Magnifier: put it there, move it; <kbd>Alt</kbd>+click inside it takes it away. Clicks inside it act on the magnified picture</td></tr>
   </table>
 </div>
 
