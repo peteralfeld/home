@@ -105,7 +105,7 @@ page takes you back here.</p>
       <li><a href="#sec-band">3.4. The elastic band</a></li>
       <li><a href="#sec-ports">3.5. Leaving and reaching a spot</a></li>
       <li><a href="#sec-fit">3.6. From polyline to spline, and the check</a></li>
-      <li><a href="#sec-thin">3.7. Moves always drawn: spots as points, curves thin</a></li>
+      <li><a href="#sec-thin">3.7. Allow thin moves: spots as points, curves thin</a></li>
     </ul>
   </li>
   <li><a href="#sec-room">4. Making Room: Six Kinds of Rearranging</a>
@@ -204,7 +204,7 @@ back is accepted only if it produces the position the computer intended (section
 
 <p>The program has no upper limit on the number of spots, and since v215 no move fails for lack of room. A
 position with many regions needs room for its curves, and at some point a move the rules allow cannot be drawn
-with the minimum clearance the Settings ask for. With Room &rarr; <e>Moves always drawn</e> on (the default) the
+with the minimum clearance the Settings ask for. With Room &rarr; <e>Allow thin moves</e> on (the default) the
 move is then drawn anyway, with spots treated as points and curves as lines of no width (section
 <a href="#sec-thin">3.7</a>), and the picture is tidied afterwards by the ways of making room of section
 <a href="#sec-room">4</a>. With it off, the program says why the move does not fit (the widest way it found and
@@ -385,7 +385,7 @@ are in the Settings menu: the <e>minimum clearance</e> $d_0$ (default 6 pixels),
 must keep from everything else, and the <e>comfort distance</e> $D$ (default 25 pixels), the distance at which
 a curve stops feeling its neighbors much.</p>
 
-<p>When these stages find no way with the minimum clearance and Room &rarr; <e>Moves always drawn</e> is on, the
+<p>When these stages find no way with the minimum clearance and Room &rarr; <e>Allow thin moves</e> is on, the
 move is drawn by a second router that ignores all widths (section <a href="#sec-thin">3.7</a>).</p>
 
 <h2 id="sec-input">3.1. Reading the player&rsquo;s intention</h2>
@@ -519,11 +519,11 @@ position is recomputed (section <a href="#sec-rotation">2.3</a>), and the move i
 history, in the log (in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or
 joined) and, in network play, sent to the other computer.</p>
 
-<h2 id="sec-thin">3.7. Moves always drawn: spots as points, curves thin</h2>
+<h2 id="sec-thin">3.7. Allow thin moves: spots as points, curves thin</h2>
 
 <p>The router of the previous sections needs room: a grid cell, a band with a barrier at $d_0$, a spline fit
 within 1.5 pixels. In a crowded picture a move the rules allow can find no such room, however the picture is
-rearranged. Room &rarr; <e>Moves always drawn</e> (on by default since v215) removes that failure. For
+rearranged. Room &rarr; <e>Allow thin moves</e> (on by default since v215; called <e>Allow thin moves</e> until v245) removes that failure, but for a way narrower than the arithmetic can certify: such a move goes on to the steps checked in the Room menu, and with none left the game stops with a message (v246; before, Z was then run with the move whatever the Room menu said). For
 <e>making</e> a move, spots are points and curves have no width; the clearance and the spot discs are visual
 standards, restored afterwards where there is room. The code is in <code>thin.js</code> (the triangulation, the
 walk, the hug and the certificate) and <code>moves.js</code> (<code>thinRoute</code>, <code>thinCurve</code>,
@@ -534,10 +534,10 @@ and every curve contributes its refined control polygon (section <a href="#sec-p
 are inserted as constraint edges. Polygons of two curves that cross (possible where curves are closer than the
 polygons&rsquo; tolerance) are refined until they do not. The triangulation is our own code: incremental
 insertion of the vertices with Lawson flips toward the Delaunay triangulation, then each constraint inserted by
-flipping away the sides it crosses (Sloan&rsquo;s method [<a href="#ref-sloan">16</a>]). Its robustness
+flipping away the sides it crosses (Sloan&rsquo;s method [<a href="#ref-sloan">15</a>]). Its robustness
 rests on the orientation test, which is <e>exact</e>: a floating-point filter, and where that is inconclusive,
 BigInt arithmetic on the exact binary values of the coordinates (in the spirit of Shewchuk&rsquo;s robust
-predicates [<a href="#ref-shewchuk">17</a>]). The triangulation is therefore valid however
+predicates [<a href="#ref-shewchuk">16</a>]). The triangulation is therefore valid however
 thin its triangles are, and gaps of $10^{-9}$ pixels are handled as surely as gaps of 10. (The in-circle test
 is floating point; it only decides which flips make triangles nicer, and each flip is checked with the exact
 test to keep the quadrilateral convex.)</p>
@@ -620,7 +620,7 @@ place</e> checked (key <code>A</code> turns it on and off), R keeps the initial 
 where they are &mdash; what a separate step A did before (v218/v219: the option replaced the menu&rsquo;s A
 column and the key A became its switch). Each, pressed while a move is waiting for room, changes the picture and then
 tries the waiting move again. The Room menu has a box per step for a human&rsquo;s moves and a box per step for
-the computer&rsquo;s, saying which steps are taken <e>automatically</e> (by default only R for the computer: with <e>Moves always drawn</e> on, a move
+the computer&rsquo;s, saying which steps are taken <e>automatically</e> (by default only R for the computer: with <e>Allow thin moves</e> on, a move
 never waits for room, and the checked R and Z only tidy the picture after a move drawn thin). Each step is
 taken at most once for a move, in the order M, R, Z. For
 a human&rsquo;s move the ladder is climbed as far as the boxes are checked in a row. At the first box not
@@ -763,6 +763,26 @@ curves crossing twice would leave the rotation system, and hence the position te
 detected by the check. When no step lowers the energy any more, the points are jiggled at random within a sixth of
 their caps, a few times, to get out of shallow traps.</p>
 
+<p><b>The push smoothed along the curves (v241).</b> Late in a large game tongues and stumps stayed where they were,
+although pulling them in would have shortened the curves a great deal. Such a move shifts a long strand of points
+together, but the energy pulls only at its end: along a straight stretch the pulls on a point cancel. With one step
+scale for all points the pull at the end travels back along the strand one point per step, so the steps needed grow
+with the square of the number of points in the strand, and the stop rule ends R first. On the 200-seed picture at
+move 344, R stopped after 42 steps with the tongue&rsquo;s seed where it was. The remedy is the Sobolev gradient
+[<a href="#ref-neuberger">17</a>], as used for curve energies by Yu, Schumacher and Crane
+[<a href="#ref-repulsive">18</a>]: L-BFGS&rsquo;s starting matrix is $c\,(I + \beta L)^{-1}$ instead of $c\,I$, where
+$L$ is the graph Laplacian of the polylines (consecutive points of a curve, the curves joined at their spots), $\beta
+= 100$ (a push is spread over about ten point spacings) and $c$ the preconditioned Barzilai&ndash;Borwein scale
+$s\cdot y / y\cdot (I+\beta L)^{-1} y$. The system is solved by conjugate gradients with Jacobi&rsquo;s
+preconditioner; points held in place stay at zero. A pull at a tongue&rsquo;s tip then moves the whole strand in one
+step. Only how R steps changes, not the energy it lowers. On that picture R took 726 steps and pulled the seed in by
+about 800 pixels, the curves 16% shorter; on a crowded 200-seed picture it needed half the steps and was faster; on a
+late 200-seed picture that the old descent could not move at all it shortened the curves by 13%. In a 60-seed game
+on a 400&nbsp;&times;&nbsp;400 area the old descent was refused after every move for the last twenty moves, the
+thin moves piling up, while the new one tidied to the end. It is used only while the spots may move: with the seeds
+kept in place (and in the smoothing after the area is filled, and from Z&rsquo;s tight start) the points move only
+across their curves and are spread again, and there it made the descent slower.</p>
+
 <p>Each step of the line search evaluates the energy at the trial point together with its gradient and caps
 (v231), and when the trial is accepted that gradient serves as the next step&rsquo;s, so an accepted step costs
 one evaluation instead of two. (Not when the points were spread again along their curves after the step, as
@@ -874,8 +894,8 @@ only scaled. The log names the reason each layout failed. <code>Space</code> sto
 so far.</p>
 
 <p><e>Spots drawn smaller where there is no room</e> (v189). A layout whose spots cannot all grow to the size
-the Settings ask for is a failure at full size. When Z is the computer&rsquo;s last resort for a move that could
-not be drawn even thin (<e>Moves always drawn</e> on: the move must be drawn), such a layout is kept aside
+the Settings ask for is a failure at full size. When Z runs with the computer&rsquo;s move and
+<e>Allow thin moves</e> is on (spots counted as points), such a layout is kept aside
 instead (v217; before, the Room menu had a &bull; box per player for this, and the key <code>.</code>): at the end each spot is tried at full size, then at the largest size its gap allows, and the
 layout keeps those spots smaller, never below the smallest size of the Settings&rsquo; slider. A layout kept
 aside that meets the bar above ends Z like one at full size. Otherwise, if no layout drew at full size, the one
@@ -1121,8 +1141,10 @@ computer then commits to that one move: it is never exchanged for another that h
   (v178): starting from the move&rsquo;s spots, the boundaries it must enclose and the straight way from its
   first spot to each of them, the nearest boundary of a kind still wanted is added, then the next nearest to
   everything chosen so far, and so on: a cluster round the move instead of seeds scattered over the
-  window. If its marks cannot be applied, it is
-  drawn the shortest way, and kept only if that is the same move.</li>
+  window. If its marks cannot be applied, it is drawn thin at once, with its marks (section
+  <a href="#sec-thin">3.7</a>), when Allow thin moves is on; otherwise it is drawn the shortest way, and kept only
+  if that is the same move. With Allow thin moves on, a move that does not fit is drawn thin (after M, if the computer&rsquo;s M is on),
+  and if even that fails the next items follow: R and Z if checked, else the game stops (v246).</li>
   <li>If it cannot be drawn: the next of A and R switched on, after which the same move is found again in the new
   picture (by its spots, which keep their indices: the boundaries made of the enclosed spots, on one side or
   the other, whichever gives the intended position) and tried again, its interchangeable boundaries chosen
@@ -1237,6 +1259,14 @@ or a freeze the log of the session that died can still be saved (File &rarr; Sav
 Since the log names every move by its spots and the regions it creates, the positions of a game that crashed
 can be rebuilt from it, which is how several problems were found.</p>
 
+<p>Saving never stops anything and works at any time, also while R, Z or the router is busy. A file is handed to
+the browser in pieces rather than built as one string first, since a browser&rsquo;s longest string has about
+537 million characters and a game file can be longer: it holds the game&rsquo;s whole undo history, every
+position before each move, so it grows roughly with the square of the number of moves (a 300-seed game passed that
+limit). A game file is therefore written without indentation, one piece to a line, with one line per undo position;
+a file too long to be read as one string is read back line by line. Every save is logged with its size, and a
+save that fails says why.</p>
+
 <h2 id="sec-files">7.4. The files</h2>
 
 <table class="desc">
@@ -1324,6 +1354,12 @@ that every move of every saved game is legal, and the bounds of section <a href=
 
   <li id="ref-shewchuk">J. R. Shewchuk, Adaptive precision floating-point arithmetic and fast robust geometric
   predicates. <i>Discrete &amp; Computational Geometry</i> 18, 1997, 305&ndash;363.</li>
+
+  <li id="ref-neuberger">J. W. Neuberger, <i>Sobolev Gradients and Differential Equations</i>. Lecture Notes in
+  Mathematics 1670, Springer, 1997.</li>
+
+  <li id="ref-repulsive">C. Yu, H. Schumacher, K. Crane, <a href="https://www.cs.cmu.edu/~kmcrane/Projects/RepulsiveCurves/index.html">Repulsive
+  Curves</a>. <i>ACM Transactions on Graphics</i> 40(2), 2021.</li>
 </ol>
 
 </body>

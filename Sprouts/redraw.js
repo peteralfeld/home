@@ -149,7 +149,7 @@
   function createRedraw(game, o, fixSpots) {
     var spec = game.edges.map(function () { return null; }), st = createAt(game, o, fixSpots, spec);
     for (;;) {
-      var bad = startFaults(st), changed = false;
+      var bad = startFaults(st, spec), changed = false;
       if (!bad) return st;
       var byEdge = {};
       bad.forEach(function (c) { (byEdge[c[0]] = byEdge[c[0]] || {})[c[1]] = 1; });
@@ -172,7 +172,8 @@
         if (raise && START_EPS / Math.pow(4, sp.lv + 1) >= 1e-9) { sp.lv++; changed = true; }
       });
       if (!changed) return st;                      // (as before: the descent and the check at the end tell)
-      st = createAt(game, o, fixSpots, spec);
+      var halvedAll = st.halvedAll || bad.length === st.segs.length;   // (v243: see startFaults)
+      st = createAt(game, o, fixSpots, spec); st.halvedAll = halvedAll;
     }
   }
   var START_EPS = 0.5;                              // the polygon a curve's points are taken along, at first
@@ -183,8 +184,8 @@
   }
   /* null if the start is the drawing's position with no chords crossing; else the chords to cut, [edge, k]
      (the k-th chord of the edge's path): those that cross another chord — or, if the position differs
-     without a crossing, every chord */
-  function startFaults(st) {
+     without a crossing, those with a spot between them and their curve (spotsAcross), else every chord */
+  function startFaults(st, spec) {
     var P = st.P, segs = st.segs, cells = new Map(), CELL = 2 * st.o.D, bad = [];
     function chordOf(k) {
       var u = st.units[st.segLine[k]], e0 = u.edges[0], n0 = st.paths[e0].length - 1;
@@ -207,7 +208,44 @@
     }
     if (bad.length) return bad;
     if (Rm.positionKey(redrawCurrent(st)) === st.key0) return null;
+    bad = spotsAcross(st, spec);
+    if (bad.length) return bad;
+    /* (v243) every chord is halved ONCE per start, no more: on the picture after move 122 of the trial series' 50-seed
+       game (11/6) the position differed with no chord crossing round after round, every chord was halved each time,
+       and a re-spacing went from 2,000 points to 484,615 — one step of R took 233 s (the whole R 187 s on Peter's
+       machine against 3–10 s for its neighbours). Halved once and still different, the start is taken as it is: the
+       descent keeps it apart, and the check at the end (finishRedraw) refuses a changed position, as for a start that
+       could not be refined further. That R: 33 s instead of 245 (Node), the position kept, clearance 1.45 against 0.94. */
+    if (st.halvedAll) return null;
     for (k = 0; k < segs.length; k++) bad.push(chordOf(k));
+    return bad;
+  }
+  /* (v244) The chords with a spot between them and their curve: the spot is on the other side of the chord than of
+     the curve, so the start is another position though no chords cross. Found in the trial series' 50-seed game
+     (11/6): after move 49 (88 → 93, drawn thin) the seed 2 lay so close to the new curve that its chord passed on
+     the seed's other side; halving every chord once did not bring it back, the descent ran from the wrong start and
+     the check at the end refused R four times in a row (21–33 s each). A chord's lens is the chord closed by its arc
+     (the curve's polygon between the chord's ends); a spot inside it, other than the curve's own ends, is across. */
+  function spotsAcross(st, spec) {
+    var g = st.game, P = st.P, bad = [];
+    g.edges.forEach(function (e, ei) {
+      var path = st.paths[ei], sp = spec[ei], F = sp ? sp.F : [], n = path.length - 2, q;
+      if (!sp) for (q = 1; q <= n; q++) F.push(q / (n + 1));
+      var all = [0].concat(F, [1]), poly = polyOf(e, sp ? sp.lv : 0);
+      for (var j = 0; j + 1 < path.length; j++) {
+        var lens = [P[path[j]]], x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (q = 0; q < poly.pts.length; q++) if (poly.S[q] > all[j] * poly.L && poly.S[q] < all[j + 1] * poly.L) lens.push(poly.pts[q]);
+        lens.push(P[path[j + 1]]);
+        if (lens.length < 3) continue;
+        lens.forEach(function (p) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+        for (var s = 0; s < st.nS; s++) {
+          if (s === e.a || s === e.b) continue;
+          var X = g.spots[s].x, Y = g.spots[s].y;
+          if (X < x0 || X > x1 || Y < y0 || Y > y1) continue;
+          if (G.pointInPolygon([X, Y], lens)) { bad.push([ei, j]); break; }
+        }
+      }
+    });
     return bad;
   }
   function createAt(game, o, fixSpots, spec) {
@@ -714,11 +752,62 @@
     });
   }
   var MEM = 8;
+  /* THE PUSH SMOOTHED ALONG THE CURVES (v241; built on the sobolev branch, Peter 11/2: "Later stumps and tongues move very slowly, and
+     eventually, in a large game they seem to stay put"). Pulling in a tongue or sliding a stump along its curves moves
+     a long strand of points together, but the energy pulls only at its end (on a straight stretch the pulls on a
+     point cancel); with one step scale for all points that pull travels back along the strand a point at a time, so
+     the steps needed grow with the square of the strand's points, and the stop rule ends R first. Measured in Node:
+     the 200-seed picture at move 344 — R stopped after 42 steps with the tongue's seed at x 45; smoothed, 726 steps,
+     the seed at 850, the curves 64,146 → 54,030 px. Remedy, the Sobolev (H¹) gradient: L-BFGS's starting matrix is
+     c (I + βL)⁻¹ instead of c I, L the graph Laplacian of the polylines (consecutive points of a curve, curves joined
+     at their spots), c the preconditioned Barzilai–Borwein scale s·y / y·(I + βL)⁻¹y. A pull at a tongue's tip then
+     moves the whole strand in one step. It changes how R steps, not the energy R lowers. Only when the spots may
+     move (R): with the seeds kept (A, the smoothing after the area is filled) and from Z's tight start the points
+     move across their curves and are spread again — there it made A slower (14-02-36 15 → 26 s) and is left out.
+     SMOOTH_BETA: the strength, about √β point spacings along a curve (β 100: ten spacings, ≈ 10 D); 10, 100 and 1000
+     all pulled the tongue in, 100 went furthest. */
+  var SMOOTH_BETA = 100;
+  function smoothing(st) { return st.fixSpots || st.o.tight ? 0 : SMOOTH_BETA; }
+  /* x = (I + βL)⁻¹ v on the free points (fixed points held at 0), per coordinate; conjugate gradients with
+     Jacobi's preconditioner (I + βL is symmetric positive definite, its diagonal 1 + β · a point's degree) */
+  function smoothAlong(st, v) {
+    var n = st.P.length, fx = st.fixed, segs = st.segs, beta = smoothing(st), x = new Float64Array(2 * n), i, k;
+    var deg = st.smoothDeg;
+    if (!deg || st.smoothSegs !== segs) {          // (built again after a re-spacing: new points, new segments)
+      deg = new Float64Array(n);
+      for (k = 0; k < segs.length; k++) { deg[segs[k][0]]++; deg[segs[k][1]]++; }
+      st.smoothDeg = deg; st.smoothSegs = segs;
+    }
+    function mul(u, out) {                         // out = (I + βL) u
+      for (var j = 0; j < n; j++) { var dj = fx[j] ? 0 : 1 + beta * deg[j]; out[2 * j] = dj * u[2 * j]; out[2 * j + 1] = dj * u[2 * j + 1]; }
+      for (var m = 0; m < segs.length; m++) {
+        var a = segs[m][0], b = segs[m][1];
+        if (!fx[a]) { out[2 * a] -= beta * u[2 * b]; out[2 * a + 1] -= beta * u[2 * b + 1]; }
+        if (!fx[b]) { out[2 * b] -= beta * u[2 * a]; out[2 * b + 1] -= beta * u[2 * a + 1]; }
+      }
+    }
+    var r = new Float64Array(2 * n), z = new Float64Array(2 * n), p = new Float64Array(2 * n), q = new Float64Array(2 * n), rz = 0, r0 = 0;
+    for (i = 0; i < 2 * n; i++) { r[i] = fx[i >> 1] ? 0 : v[i]; z[i] = r[i] / (1 + beta * deg[i >> 1]); p[i] = z[i]; rz += r[i] * z[i]; r0 += r[i] * r[i]; }
+    if (!(r0 > 0)) return x;
+    for (var it = 0; it < 2 * n; it++) {
+      mul(p, q);
+      var pq = 0;
+      for (i = 0; i < 2 * n; i++) pq += p[i] * q[i];
+      var al = rz / pq, rr = 0;
+      for (i = 0; i < 2 * n; i++) { x[i] += al * p[i]; r[i] -= al * q[i]; rr += r[i] * r[i]; }
+      if (rr < 1e-16 * r0) break;                  // (to the arithmetic's precision, relative to the push)
+      var rz2 = 0;
+      for (i = 0; i < 2 * n; i++) { z[i] = r[i] / (1 + beta * deg[i >> 1]); rz2 += r[i] * z[i]; }
+      var bb = rz2 / rz; rz = rz2;
+      for (i = 0; i < 2 * n; i++) p[i] = z[i] + bb * p[i];
+    }
+    return x;
+  }
   function descend(st) {
-    var P = st.P, n = P.length, i, k;
+    var P = st.P, n = P.length, i, k, beta = smoothing(st);
     if (!st.g) {
       st.g = P.map(function () { return [0, 0]; }); st.cap = new Float64Array(n);
-      st.E = evaluate(st, P, st.g, st.cap); st.S = []; st.Y = [];
+      st.E = evaluate(st, P, st.g, st.cap); st.S = []; st.Y = []; st.MY = [];
       if (st.E0 === undefined) st.E0 = st.E;
     }
     var g = st.g, free = st.fixed, gv = new Float64Array(2 * n);
@@ -752,7 +841,13 @@
         al[k] = [a, rho];
         for (i = 0; i < d.length; i++) d[i] -= a * st.Y[k][i];
       }
-      if (st.S.length) {
+      if (beta > 0) {                              // (v241) H0 = c (I + βL)⁻¹ — see SMOOTH_BETA
+        d = smoothAlong(st, d);
+        if (st.S.length) {
+          var lst = st.S.length - 1, c0 = dot(st.S[lst], st.Y[lst]) / dot(st.Y[lst], st.MY[lst]);
+          for (i = 0; i < d.length; i++) d[i] *= c0;
+        }
+      } else if (st.S.length) {
         var last = st.S.length - 1, gam = dot(st.S[last], st.Y[last]) / dot(st.Y[last], st.Y[last]);
         for (i = 0; i < d.length; i++) d[i] *= gam;
       }
@@ -762,7 +857,7 @@
       }
       for (i = 0; i < d.length; i++) d[i] = -d[i];
       var slope = dot(gv, d);
-      if (!(slope < 0)) { st.S = []; st.Y = []; continue; }
+      if (!(slope < 0)) { st.S = []; st.Y = []; st.MY = []; continue; }
       /* each vertex's move is clipped to a third of its cap (so nothing can cross); the first
          step without memory goes as far as the largest cap allows */
       var dmax = 0;
@@ -799,7 +894,7 @@
         if (En <= st.E + 1e-4 * gd && En < st.E) break;
         alpha /= 2;
       }
-      if (!(En < st.E)) { if (st.S.length) { st.S = []; st.Y = []; continue; } break; }
+      if (!(En < st.E)) { if (st.S.length) { st.S = []; st.Y = []; st.MY = []; continue; } break; }
       /* With the spots fixed the points of each curve are then spread evenly along its polyline
          again (v53). They move only across their curve (`across`), but "across" is across the
          chord between a point's neighbours, and where the polyline bends the points still drift
@@ -829,7 +924,7 @@
       if (hist.length === 3 * MEM && (far < 1 || tot < 3 * MEM * LENGTH)) {
         if (st.confirmed) return false;
         st.confirmed = true;                        // once more with L-BFGS's memory cleared: a fresh start (a second
-        st.S = []; st.Y = []; st.hist = []; return true;   //  press) must find nothing more either (v52)
+        st.S = []; st.Y = []; st.MY = []; st.hist = []; return true;   //  press) must find nothing more either (v52)
       }
       var tiny = st.E - En < 1000 * 2.2e-16 * Math.abs(st.E);
       var g2 = gT, cap2 = capT;
@@ -842,8 +937,11 @@
         yv[2 * i] = g2v[2 * i] - gv[2 * i]; yv[2 * i + 1] = g2v[2 * i + 1] - gv[2 * i + 1];
         P[i][0] = Q[i][0]; P[i][1] = Q[i][1];
       }
-      if (tiny) { st.S = []; st.Y = []; }            // a tiny gain along L-BFGS's direction: try the plain gradient next
-      else if (dot(sv, yv) > 0) { st.S.push(sv); st.Y.push(yv); if (st.S.length > MEM) { st.S.shift(); st.Y.shift(); } }
+      if (tiny) { st.S = []; st.Y = []; st.MY = []; }   // a tiny gain along L-BFGS's direction: try the plain gradient next
+      else if (dot(sv, yv) > 0) {
+        st.S.push(sv); st.Y.push(yv); (st.MY = st.MY || []).push(beta > 0 ? smoothAlong(st, yv) : null);   // (MY: (I + βL)⁻¹ y, for c)
+        if (st.S.length > MEM) { st.S.shift(); st.Y.shift(); st.MY.shift(); }
+      }
       st.g = g2; st.cap = cap2; st.E = En;
       return true;
     }
@@ -1011,7 +1109,7 @@
       if (st.best && st.E > st.bestE) {             // back to the best drawing met (the same points: nothing to check)
         var ns = createRedraw(st.best, Object.assign({}, st.o, { keepKnots: true }), st.fixSpots);
         adopt(st, ns);
-        st.E = st.bestE; st.S = []; st.Y = [];
+        st.E = st.bestE; st.S = []; st.Y = []; st.MY = [];
       }
       return false;
     }
@@ -1023,7 +1121,7 @@
       var th = 2 * Math.PI * rnd(), r = st.cap[i] / 6 * rnd();
       P[i][0] += r * Math.cos(th); P[i][1] += r * Math.sin(th);
     }
-    st.g = null; st.S = []; st.Y = []; st.hist = []; st.confirmed = false;
+    st.g = null; st.S = []; st.Y = []; st.MY = []; st.hist = []; st.confirmed = false;
     st.jiggles = (st.jiggles || 0) + 1;
     return true;
   }

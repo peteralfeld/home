@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, heroic: false, thin: true, zMethod: 'fpp', rFill: true, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, heroic: false, thin: true, zMethod: 'fpp', rFill: true, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, numbers: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -144,7 +144,6 @@
   var lastTry = null;    // how the move being relaxed was chosen ({ ar } armed, or { st } a drag), to arm again if it has no room (v39)
   var armed = null;      // click-to-connect: { a, start, planner, targets } after the first click
   var showPolygons = false;
-  var showNumbers = true;   // spots are numbered 1, 2, … in order of creation
   var view = { s: 1, ox: 0, oy: 0, cw: 1, ch: 1 };
 
   /* ---------------- status line ---------------- */
@@ -497,7 +496,7 @@
         ctx.beginPath(); ctx.arc(sx, sy, sr, 0, 2 * Math.PI); ctx.fill();
       }
     }
-    if (showNumbers) {
+    if (route.numbers) {   // View → Spot indices (S): spots numbered 1, 2, … in order of creation; saved with a game since v244
       ctx.font = 'bold ' + NUMBER_PX + 'px Calibri, "Segoe UI", sans-serif';
       ctx.textBaseline = 'bottom';
       for (i = 0; i < game.spots.length; i++) {
@@ -682,7 +681,7 @@
     function take(g, list) {
       return list.filter(function (i) {
         if (i >= g.spots.length) return true;
-        out[i] = [g.spots[i].x * W / g.W0, g.spots[i].y * H / g.H0];
+        out[i] = W === g.W0 && H === g.H0 ? [g.spots[i].x, g.spots[i].y] : [g.spots[i].x * W / g.W0, g.spots[i].y * H / g.H0];   // (v240: exact in the same area — x · W / W0 moved seeds by 1e-14 px, and the drawing grew that to 23 px by the end of a 5-seed game)
         return false;
       });
     }
@@ -699,7 +698,10 @@
     var W = stage.clientWidth, H = stage.clientHeight, pts = [], kept = null;
     sizesFor(W, H);
     var seed = reseed();                           // (v201: a seeded run starts afresh with every new game)
-    if (seed !== null) afresh = true;              // (with a seed the layout is repeatable anyway, and laying out again draws the same numbers from the generator, so the moves repeat too)
+    /* (with a seed the layout is repeatable anyway, and laying out again draws the same numbers from the generator, so
+       the moves repeat too — but not a LOADED game's seeds, v240: Peter 11/2, N after a loaded seeded game laid out new
+       seeds by the Layout menu, an ellipse, and played the same game on them; the file's seeds are kept, as without a seed) */
+    if (seed !== null && !seedsLoaded) afresh = true;
     /* (v196, Peter 10/21: after Load game, N went back to 5 spots in an ellipse) a loaded game's seeds are kept by
        N too, whatever the Layout menu says, until a layout is asked for (a digit key, 0, or a change of Spots or Layout) */
     if (!preview && !afresh && (layout === 'random' || layout === 'manual' || seedsLoaded) && game.phase !== 'place' && game.spots.length) {
@@ -715,6 +717,11 @@
       if (!(n >= 1)) { say('The number of spots must be at least 1.', true, null, true); return; }
       pts = layout === 'ellipse' ? layoutEllipse(n, W, H) : layout === 'circle' ? layoutCircle(n, W, H) : layout === 'line' ? layoutLine(n, W, H) : layoutRandom(n, W, H);
     }
+    /* (v238, Peter 11/2: a loaded game played differently every time, and differently from N's) the generator starts
+       afresh AFTER the seeds are laid out, as Load game starts it (useLoaded): the moves of a seeded game then depend
+       only on its seeds, so a file saved at the start replays N's game exactly. (Before, the layout's draws came first
+       and the moves went on from there — seeded runs of v201–v237 do not repeat move for move in v238.) */
+    if (seed !== null) reseed();
     game = {
       W0: W, H0: H, edges: [], player: 1, moves: 0, added: 0,
       phase: layout === 'manual' ? 'place' : 'play', rules: document.getElementById('opt-rules').value,   // ('manual kept' plays at once)
@@ -1212,9 +1219,9 @@
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
               minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min), keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
-    /* Z may draw spots in tight places smaller only as the computer's last resort with Moves always drawn on — a
-       move not drawn even thin is drawn by Z with it, whatever it takes (Peter 11/1: the Room menu's • column and
-       the key . removed; before, v189–v215, they allowed it for either player) */
+    /* Z with the computer's move may draw spots in tight places smaller with Allow thin moves on (spots counted as
+       points; v216–v245 this was Z as the last resort for a move not drawn even thin, which v246 no longer runs;
+       Peter 11/1: the Room menu's • column and the key . removed; before, v189–v215, they allowed it for either player) */
     var small = kind === 'fresh' && !!fresh && !!fresh.mv && route.thin;
     if (kind === 'fresh') {
       o.tight = true; o.keepKnots = true;
@@ -1348,7 +1355,7 @@
         var m = e.data;
         if (relaying !== rl || m.id !== face) return;
         if (m.gap !== undefined) { if (par.running[face]) par.running[face].gap = m.gap; return; }
-        if (m.picture) { if (par.shown === face) { game = m.picture; draw(); } return; }
+        if (m.picture) { w.postMessage({ id: m.id, drawn: true }); if (par.shown === face) { game = m.picture; draw(); } return; }   // (drawn, v242: the worker sends the next picture only now)
         m.face = face; finished(m);
         if (par.over()) { finishRelaying(false); return; }
         sayProgress(); give(w);
@@ -1479,6 +1486,7 @@
       if (m.smoothing) rl.smoothing = true;
       if (m.done) { rl.result = m; rl.before = m.before; w.terminate(); finishRelaying(false); return; }
       if (m.picture) {
+        w.postMessage({ id: m.id, drawn: true });   // (v242: the worker sends the next picture only after this one is taken — see sprouts-draw-worker.js)
         rl.it = m.it; game = m.picture;
         say(relayWord() + (rl.smoothing ? ', smoothing' : '') + ': step ' + m.it + ', ' + ((Date.now() - rl.t0) / 1000).toFixed(0) + ' s…   Space stops');
         drawSoon();                                // (at most one drawing a frame, however fast the pictures come)
@@ -1823,7 +1831,7 @@
      from inside requestAnimationFrame runs after that frame's paint). */
   /* What a refusal for lack of room offers by hand: M (not in Heroic mode, v68: no local room-making), R, Z. */
   /* (v232, Peter 11/1: "there is still a spurious message about not being able to make space and try M, R, or Z")
-     A refusal for lack of room while Moves always drawn is on: the move is drawn thin next (roomWanted, or the
+     A refusal for lack of room while Allow thin moves is on: the move is drawn thin next (roomWanted, or the
      computer's aiClimb), so the refusal and its offer of M, R, Z are not said (nor logged) — only a plain line on
      the status row. Still said where the thin drawing of this very move failed before (climb.thinFailed). */
   function refusal(text, detail) {
@@ -1869,24 +1877,34 @@
   function roomWanted() {
     if (ai) { if (ai.useM && !ai.mDone) { ai.mDone = true; ai.used.push('M'); makeRoom(); } return; }
     if (route.thin && armed && pendingRoom && !(climb && climb.thinFailed && climb.a === armed.a && climb.b === pendingRoom.b && climb.moves === game.moves)) {   // (thin branch: drawn thin at once)
-      var ar0 = armed, b0 = pendingRoom.b;
+      var ar0 = armed, b0 = pendingRoom.b, same = climb && climb.a === ar0.a && climb.b === b0 && climb.moves === game.moves;
+      /* (v246, Peter 11/7: "let's go with M first") M checked for a human's moves: room made first, once for the
+         move; still no room — this again, and the move is drawn thin */
+      if (route.autoHuman.M && !route.heroic && !(same && climb.used.indexOf('M') >= 0)) {
+        climb = { a: ar0.a, b: b0, moves: game.moves, next: 1, used: ['M'] };
+        log('No room for ' + (ar0.a + 1) + ' → ' + (b0 + 1) + ': ' + LADDER_NAME.M + ' (M) automatically, as the Room menu says; drawn thin if that is not enough.');
+        makeRoom();
+        if (roomBusy) return;
+        if (!armed || !pendingRoom) return;
+      }
+      var usedM = !!(climb && climb.a === ar0.a && climb.b === b0 && climb.moves === game.moves && climb.used.indexOf('M') >= 0);
       thinDraw(armed, pendingRoom.b, function (why) {
-        /* not even thin (a marked move the thin router could not route round its marks): the ladder, as before */
+        /* not even thin (a marked move the thin router could not route round its marks): the ladder, as before (M not twice) */
         log('Not drawn thin: ' + why + '. The Room menu\'s steps, as before.');
-        climb = { a: ar0.a, b: b0, moves: game.moves, next: 0, used: [], thinFailed: true };
+        climb = { a: ar0.a, b: b0, moves: game.moves, next: usedM ? 1 : 0, used: usedM ? ['M'] : [], thinFailed: true };
         climbOn();
       });
       return;
     }
     climbOn();
   }
-  /* ---- MOVES ALWAYS DRAWN (thin branch, Peter 10/30: "infinitely small points, and infinitely thin lines,
+  /* ---- ALLOW THIN MOVES (thin branch, Peter 10/30: "infinitely small points, and infinitely thin lines,
      with rendering coming afterwards") ----
-     With Room → "Moves always drawn" on, a move that does not fit the ordinary way (the band, the minimum
+     With Room → "Allow thin moves" on, a move that does not fit the ordinary way (the band, the minimum
      clearance, the spots' discs) is drawn at once by moves.js thinRoute: a polyline through a triangulation
      of the drawing that crosses and touches nothing, however narrow the way — spots count as points and
      curves as thin there; the picture may show curves merging or crossing spots' discs, the position is
-     exact. No ladder: M, R, Z are not used to make the move fit. Afterwards, if the picture falls short
+     exact. No ladder but M: if M is checked for the player it makes room first (v246, Peter 11/7: "M first"); R, Z are not used to make the move fit unless the thin drawing fails. Afterwards, if the picture falls short
      of the visual standard (some clearance below the minimum), the steps R, Z checked in the Room menu
      for the player who moved run automatically, in that order, until it does not (tidying, for the eye);
      unchecked, they are there by hand. ar: the armed move, b its destination. */
@@ -2447,7 +2465,7 @@
     document.documentElement.requestFullscreen();
   }
   function togglePolygons() { showPolygons = !showPolygons; document.getElementById('opt-poly').checked = showPolygons; draw(); }
-  function toggleNumbers() { showNumbers = !showNumbers; document.getElementById('opt-numbers').checked = showNumbers; draw(); }
+  function toggleNumbers() { route.numbers = !route.numbers; document.getElementById('opt-numbers').checked = route.numbers; draw(); }
   function toggleTriangles() { var el = document.getElementById('opt-triangles'); el.checked = !el.checked; route.triangles = el.checked; draw(); }   // T (v132)
   function toggleDeadNumbers() { var el = document.getElementById('opt-deadnumbers'); el.checked = !el.checked; route.deadNumbers = !el.checked; draw(); }   // G (v133)
   function toggleSeedNumbers() { var el = document.getElementById('opt-seednumbers'); el.checked = !el.checked; route.seedNumbers = !el.checked; draw(); }   // / (v191)
@@ -2457,20 +2475,39 @@
      or Z: the picture on the screen, as Space keeps it) and the log, three files with one time stamp —
      nothing stops, any time (busy or not). */
   function saveSnapshot() {
-    var st = stamp(), data = JSON.stringify(gameData(), null, 1);
+    var st = stamp();
     log('Snapshot (B): sprouts-snap-' + st + ' .png, .json, -log.txt' + (relaying ? ' — during ' + relayWord().toLowerCase() + (relaying.st ? ', step ' + relaying.st.it : relaying.worker ? ', step ' + relaying.it : '') + ' (the picture on the screen)' : '') + '.');
-    canvas.toBlob(function (blob) { download('sprouts-snap-' + st + '.png', blob); }, 'image/png');
-    download('sprouts-snap-' + st + '.json', new Blob([data], { type: 'application/json' }));
-    var head = 'Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n';
-    download('sprouts-snap-' + st + '-log.txt', new Blob([head + logLines.join('\n') + '\n'], { type: 'text/plain' }));
+    savePicture('sprouts-snap-' + st + '.png');
+    saveFile('sprouts-snap-' + st + '.json', gameFileParts, 'application/json');
+    saveFile('sprouts-snap-' + st + '-log.txt', function () { return logParts('saved'); }, 'text/plain');
   }
   function savePNG() {
     var g = glass;                                // (v223: the picture without the magnifier — B's snapshot keeps it, as on the screen)
     if (g) { glass = null; draw(); }
-    canvas.toBlob(function (blob) { download('sprouts-' + stamp() + '.png', blob); }, 'image/png');
+    savePicture('sprouts-' + stamp() + '.png');
     if (g) { glass = g; draw(); }
   }
 
+  /* SAVING FILES (v236, Peter 11/2: his 300-seed game could not be saved — "please do make the system more robust
+     with respect to saving files"). A file's contents are handed to the Blob in PIECES, never joined into one string
+     first: Chrome's longest string is about 537 million characters, and the 300-seed game's JSON (the whole game with
+     its 909 undo positions, indented) passed that — JSON.stringify threw "Invalid string length" and the save did
+     nothing but a line in the log. Every save is logged with its size; one that fails says why in the status line. */
+  function saveFile(name, parts, type) {
+    var blob;
+    try { blob = new Blob(parts(), { type: type }); }
+    catch (e) { say('Could not save ' + name + ': ' + e.message + '.', true, null, true); return; }
+    download(name, blob);
+    log('Saved ' + name + ' (' + sizeText(blob.size) + ').');
+  }
+  function savePicture(name) {
+    canvas.toBlob(function (blob) {
+      if (!blob) { say('Could not save ' + name + ': the browser made no image of the drawing.', true, null, true); return; }
+      download(name, blob);
+      log('Saved ' + name + ' (' + sizeText(blob.size) + ').');
+    }, 'image/png');
+  }
+  function sizeText(n) { return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1) + ' MB'; }
   function download(name, blob) {
     var link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -2479,19 +2516,55 @@
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   }
 
-  /* The whole position as JSON: the game object, the routing settings, and the
-     undo history (version 2, 9/23: the positions before each move, oldest
-     first), so a position can be sent along with a bug report, loaded back,
-     and moves undone to replay them with a fix. */
+  /* A GAME FILE (version 2, 9/23): the game object, the routing settings, the colors, the players, the drawing
+     area's size, and the undo history (the positions before each move, oldest first), so a position can be sent
+     along with a bug report, loaded back, and moves undone to replay them with a fix. Since v236 it is written
+     without indentation, one piece to a line: a header line, then "game", "route", "colours", "players" and
+     "area" (and since v238 "seed", the Random seed) each on a line of its own, "history":[ on its own, ONE LINE PER UNDO POSITION (the history is kept as
+     JSON strings already — they go into the file as they are), and ]} — so that a file too long to be read as one
+     string can still be read back line by line (readGameByLines). */
+  function gameParts(d) {
+    var p = ['{"format":"sprouts-game","version":2,\n'];
+    ['game', 'route', 'colours', 'players', 'area', 'seed'].forEach(function (k) { if (d[k] !== undefined) p.push(JSON.stringify(k) + ':' + JSON.stringify(d[k]) + ',\n'); });
+    p.push('"history":[\n');
+    d.history.forEach(function (h, i) { p.push(h, i < d.history.length - 1 ? ',\n' : '\n'); });
+    p.push(']}\n');
+    return p;
+  }
+  function gameFileParts() {
+    var sv = document.getElementById('opt-seed').value.trim(), seed = sv !== '' && isFinite(Number(sv)) ? Math.floor(Number(sv)) : undefined;   // (v238: the Random seed, if any)
+    return gameParts({ game: game, route: route, colours: colours, players: players, area: { w: stage.clientWidth, h: stage.clientHeight }, seed: seed, history: history });
+  }
+  /* A game file read line by line (v236), for one too long to be read as one string: as gameParts writes it. */
+  function readGameByLines(file) {
+    var data = null, inHistory = false, rest = '', reader = file.stream().pipeThrough(new TextDecoderStream()).getReader();
+    function line(s) {
+      s = s.trim();
+      if (!s) return;
+      if (data === null) { data = JSON.parse(s.replace(/,$/, '}')); return; }               // the header line
+      if (inHistory) { if (s === ']}') inHistory = false; else data.history.push(JSON.parse(s.replace(/,$/, ''))); return; }
+      if (s === '"history":[') { data.history = []; inHistory = true; return; }
+      var piece = JSON.parse('{' + s.replace(/,$/, '') + '}');
+      Object.keys(piece).forEach(function (k) { data[k] = piece[k]; });
+    }
+    function next() {
+      return reader.read().then(function (r) {
+        if (r.done) { line(rest); return data; }
+        var lines = (rest + r.value).split('\n');
+        rest = lines.pop();
+        lines.forEach(line);
+        return next();
+      });
+    }
+    return next();
+  }
+  /* the game handed over by Y (a new window) — an object, not a file */
   function gameData() {
     return { format: 'sprouts-game', version: 2, game: game, route: route, colours: colours,   // (colours: v42)
              players: players, area: { w: stage.clientWidth, h: stage.clientHeight },   // (v185, Peter: the players and the drawing area's size too)
              history: history.map(function (h) { return JSON.parse(h); }) };
   }
-  function saveGame() {
-    var text = JSON.stringify(gameData(), null, 1);
-    download('sprouts-' + stamp() + '.json', new Blob([text], { type: 'application/json' }));
-  }
+  function saveGame() { saveFile('sprouts-' + stamp() + '.json', gameFileParts, 'application/json'); }
   /* The undo history of a version-1 file, which has none: rebuilt by taking the
      moves off one by one. A move appended its new spot and its two edges
      (x→z, z→y) last and changed nothing else but the two degrees, the move
@@ -2511,21 +2584,39 @@
     if (net) { say('No loading while connected: the other computer could not follow (Net → Leave first).', true, null, true); return; }   // (v79)
     var input = document.createElement('input');
     input.type = 'file'; input.accept = '.json,application/json';
-    input.addEventListener('change', function () {
-      var file = input.files[0];
-      if (!file) return;
-      file.text().then(function (text) {
-        var data;
-        try { data = JSON.parse(text); } catch (e) { say('Not a JSON file.', true, null, true); return; }
+    input.addEventListener('change', function () { if (input.files[0]) openFile(input.files[0]); });
+    input.click();
+  }
+  /* a game file read and put in place (Load game; v243 also a file named in the page's address) */
+  function openFile(file) {
+      function use(data) {
         if (!data || data.format !== 'sprouts-game' || !data.game || !data.game.spots) { say('Not a Sprouts game file.', true, null, true); return; }
         useLoaded(data, file.name);
-      });
-    });
-    input.click();
+      }
+      function byLines() {   // (v236) too long to be read as one string: line by line, as the game files of v236 on are written
+        readGameByLines(file).then(use, function (e) { say('Could not read ' + file.name + ' (' + sizeText(file.size) + '): ' + e.message + '.', true, null, true); });
+      }
+      file.text().then(function (text) {
+        var data;
+        try { data = JSON.parse(text); }
+        catch (e) { if (e instanceof SyntaxError) say('Not a JSON file.', true, null, true); else byLines(); return; }
+        use(data);
+      }, byLines);
+  }
+  /* (v243, Peter 11/6: the manual's table of games links to them) index.html?game=FILE opens the page with that game
+     file loaded, as File → Load game does — a file on the same site, read as a Blob, so a long one is read line by
+     line too. A game between two computers then waits for N (useLoaded): from a start file, N plays the game. */
+  function loadFromAddress() {
+    var name = new URLSearchParams(location.search).get('game');
+    if (!name) return;
+    fetch(name).then(function (r) { if (!r.ok) throw new Error('the server answered ' + r.status); return r.blob(); })
+      .then(function (blob) { openFile(new File([blob], name.split('/').pop())); })
+      .catch(function (e) { say('Could not open ' + name + ': ' + e.message + '.', true, null, true); });
   }
   /* A game file's contents put in place (Load game; v166: also the game handed over by Y, `moved`) */
   function useLoaded(data, name, moved) {
     game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHalt = false; titleKey = null;
+    aiHeld = false;                               // (v240: a hold for N left by a menu change before loading — Layout, Spots, a Player — belongs to the game replaced)
     history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
     if (data.route) applySettings(data.route);
     if (data.colours) applyColours(data.colours);
@@ -2544,11 +2635,19 @@
        moving the moment it was loaded, leaving no chance to look at the position. It
        waits instead, and N starts it FROM THE POSITION AS LOADED. (In that one state N
        does not make a new game from the file's seeds, as it does otherwise: there is a
-       game in progress to get on with, and the seeds are a key press away after it.) */
-    if (bothAI() && game.phase === 'play' && game.moves > 0) {
+       game in progress to get on with, and the seeds are a key press away after it.)
+       v239 (Peter 11/2): also a game loaded BEFORE its first move — N then plays it from the file's seeds as they are
+       (before, it started at once; with a seed set, N would have laid out new seeds by the Layout menu). */
+    if (bothAI() && game.phase === 'play') {
       aiHalt = true; loadedWaiting = history.length;
       log('Loaded in play, both players computers: waiting — N goes on from this position.');
     }
+    /* (v238) the random generator started afresh, as N starts it after laying out the seeds — so a loaded game plays
+       the same every time, and a file saved at the start of a seeded game replays N's game. The file's own seed, if it
+       has one (saved since v238), is put in Game → Random seed first. */
+    if (typeof data.seed === 'number' && isFinite(data.seed)) document.getElementById('opt-seed').value = String(data.seed);
+    var sd = reseed();
+    if (sd !== null) log('Random seed ' + sd + (typeof data.seed === 'number' ? ' (from the file)' : '') + ': the generator starts afresh.');
     maybeAI();
   }
   /* The log lines for a loaded game: its start and every move so far,
@@ -2571,17 +2670,17 @@
     if (game.phase === 'over') log(gameOverText().replace(/\s{2,}/g, ' '));
   }
 
-  function saveLog() {
-    var head = 'Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n';
-    download('sprouts-log-' + stamp() + '.txt', new Blob([head + logLines.join('\n') + '\n'], { type: 'text/plain' }));
+  function logParts() {
+    var p = ['Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n'];
+    logLines.forEach(function (l) { p.push(l, '\n'); });
+    return p;
   }
+  function saveLog() { saveFile('sprouts-log-' + stamp() + '.txt', logParts, 'text/plain'); }
   function savePreviousLog() {
     if (!previousLog) { say('No log of an earlier session is kept in this browser.', true); return; }
-    download('sprouts-log-previous-session-' + stamp() + '.txt', new Blob([previousLog], { type: 'text/plain' }));
+    saveFile('sprouts-log-previous-session-' + stamp() + '.txt', function () { return [previousLog]; }, 'text/plain');
   }
-  function savePosition() {
-    download('sprouts-position-' + stamp() + '.txt', new Blob([D.position(game, playerName) + '\n'], { type: 'text/plain' }));
-  }
+  function savePosition() { saveFile('sprouts-position-' + stamp() + '.txt', function () { return [D.position(game, playerName) + '\n']; }, 'text/plain'); }
 
   /* The Settings saved with a game, put back on the sliders and switches (v28,
      Peter 9/23: a loaded game should replay exactly as it was played). The
@@ -2598,6 +2697,7 @@
     if (typeof r.glassMag === 'number' && r.glassMag > 0) set('opt-glassmag', Math.log10(r.glassMag));
     if (typeof r.animate === 'boolean') { document.getElementById('opt-animate').checked = r.animate; route.animate = r.animate; }
     if (typeof r.click === 'boolean') { document.getElementById('opt-click').checked = r.click; route.click = r.click; }
+    if (typeof r.numbers === 'boolean') { document.getElementById('opt-numbers').checked = r.numbers; route.numbers = r.numbers; }   // (v244)
     if (typeof r.deadNumbers === 'boolean') { document.getElementById('opt-deadnumbers').checked = !r.deadNumbers; route.deadNumbers = r.deadNumbers; }
     if (typeof r.seedNumbers === 'boolean') { document.getElementById('opt-seednumbers').checked = !r.seedNumbers; route.seedNumbers = r.seedNumbers; }
     if (typeof r.smallDead === 'boolean') setSmallDead(r.smallDead);
@@ -2622,8 +2722,15 @@
   var commands = { 'cmd-new': newOrStart, 'cmd-exit': exitPage, 'cmd-undo': undo,
                    'cmd-png': savePNG, 'cmd-snap': saveSnapshot, 'cmd-save': saveGame, 'cmd-load': loadGame,
                    'cmd-log': saveLog, 'cmd-log-prev': savePreviousLog, 'cmd-position': savePosition, 'cmd-area': function () { sayArea(); } };   // (cmd-area: v156, View → Size of the drawing area, as Q)
+  /* (v236) Saving goes any time, busy or not, as B always did — it changes nothing; the other commands wait
+     while the drawing is busy and now SAY so (before, the click did nothing, silently). */
+  var anyTime = { 'cmd-png': 1, 'cmd-snap': 1, 'cmd-save': 1, 'cmd-log': 1, 'cmd-log-prev': 1, 'cmd-position': 1 };
   Object.keys(commands).forEach(function (id) {
-    document.getElementById(id).addEventListener('click', function () { closeMenus(); if (!relaying && !roomBusy && !routeBusy) commands[id](); });
+    document.getElementById(id).addEventListener('click', function () {
+      closeMenus();
+      if (anyTime[id] || !(relaying || roomBusy || routeBusy)) commands[id]();
+      else say('Busy (' + busyWith() + '): try again when that is finished.', true, null, true);
+    });
   });
   /* Help (v142): the keyboard list any time; the guides open in a new tab (target=_blank), the menu closes */
   document.getElementById('cmd-keys').addEventListener('click', function () { closeMenus(); keysOverlay.hidden = false; });
@@ -2769,8 +2876,8 @@
      "simply restarted the game from where it was at the time, not at the beginning" — any stop counted as loaded) */
   var loadedWaiting = null;
   function newOrStart() {
-    if (aiHalt && bothAI() && game.phase === 'play' && game.moves > 0 && loadedWaiting === history.length) {
-      aiHalt = false; loadedWaiting = null; log('Went on from the loaded position (N).'); maybeAI(); return;
+    if (aiHalt && bothAI() && game.phase === 'play' && loadedWaiting === history.length) {   // (v239: also at move 0)
+      aiHalt = false; aiHeld = false; loadedWaiting = null; log('Went on from the loaded position (N).'); maybeAI(); return;   // (aiHeld, v240: this N starts it)
     }
     loadedWaiting = null;
     if (game.phase === 'place') startPlay(); else newGame();
@@ -2788,7 +2895,7 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, p: savePNG, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); } };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -2797,6 +2904,7 @@
     var k = e.key.toLowerCase();
     if (k === 'k' || k === '?') { e.preventDefault(); closeMenus(); toggleKeys(); return; }   // (v142) any time, busy or not
     if (k === 'b' && keysOverlay.hidden) { e.preventDefault(); saveSnapshot(); return; }   // (thin branch) any time, busy or not
+    if (k === 'p' && keysOverlay.hidden) { e.preventDefault(); closeMenus(); savePNG(); return; }   // (v236) likewise
     if (!keysOverlay.hidden) return;              // while the list is shown, the other keys wait (Space closes it, above)
     if (relaying || roomBusy || routeBusy) return;   // (the space bar is handled above; roomBusy, routeBusy: in a worker, v137, v139)
     var fn = keys[k];
@@ -2947,7 +3055,7 @@
   document.getElementById('opt-markstopped').addEventListener('change', function (e) { route.markStopped = e.target.checked; draw(); });
   /* v158 (Peter): every View option a checkbox — C, S and F too (before, menu items without a visible state) */
   document.getElementById('opt-poly').addEventListener('change', function (e) { showPolygons = e.target.checked; draw(); });
-  document.getElementById('opt-numbers').addEventListener('change', function (e) { showNumbers = e.target.checked; draw(); });
+  document.getElementById('opt-numbers').addEventListener('change', function (e) { route.numbers = e.target.checked; draw(); });
   /* Full screen: the box shows whether the page fills the screen — the page's own full screen (F) or the
      browser's (F11, or Chrome started so); clicking it asks for the change, the box follows what happened */
   var fullBox = document.getElementById('opt-full');
@@ -3008,7 +3116,7 @@
   document.getElementById('opt-thin').checked = route.thin;
   document.getElementById('opt-thin').addEventListener('change', function (e) {
     route.thin = e.target.checked;
-    log('Room: moves always drawn (spots as points, curves thin, where a move does not fit otherwise) ' + (route.thin ? 'on' : 'off') + '.');
+    log('Room: allow thin moves (spots as points, curves thin, where a move does not fit otherwise) ' + (route.thin ? 'on' : 'off') + '.');
   });
   LADDER.forEach(function (k) {
     [['autoHuman', 'auto-human-', 'a human'], ['autoAI', 'auto-ai-', 'the computer']].forEach(function (t) {
@@ -3376,7 +3484,8 @@
   function enclosedSpots(pos, mv) { var e = {}; if (!mv.two) mv.S.forEach(function (k) { pos.regions[mv.r].boundaries[k].forEach(function (t) { e[t] = 1; }); }); return e; }
   /* rungs: those of LADDER the move may use; first: the candidates in the drawing as it is (else found) */
   function aiStart(a, rungs, first) {
-    if (route.thin) rungs = rungs.filter(function (k) { return k !== 'M'; });   // (thin branch: a move that does not fit is drawn thin — aiClimb — and tidied after; the other rungs only if that fails)
+    /* (thin branch: a move that does not fit is drawn thin — aiClimb — and tidied after; R and Z only if that fails.
+       M, if checked, first — v246, Peter 11/7: "let's go with M first"; v215–v245 M was left out with thin moves) */
     a.rungs = rungs; a.used = []; a.failed = [];
     a.useM = rungs[0] === 'M'; a.mDone = false; a.next = a.useM ? 1 : 0;
     aiRound(a, first);
@@ -3402,7 +3511,7 @@
     return out ? [easyEnclosure(a.pos, out)] : [];
   }
   function aiRound(a, first) {
-    a.queue = first || aiFind(a); a.plain = []; a.second = false;
+    a.queue = first || aiFind(a); a.plain = []; a.second = false; a.plainThin = null; a.plainNote = null;
     if (!a.queue.length) { a.move = null; a.failed.push('the move was not found again in the new drawing'); aiClimb(a); return; }
     aiNext();
   }
@@ -3414,7 +3523,12 @@
   }
   /* (v183: an attempt given up leaves no note or marks behind — Peter's hand move 108 was logged with the
      computer's "could not route around the marks") */
-  function aiFailed(a, mv, why) { note = null; marksUsed = null; if (why === 'plain' && !a.second) a.plain.push(mv); else a.failed.push(a.text + ' (' + why + ')'); }
+  function aiFailed(a, mv, why) {
+    note = null; marksUsed = null;
+    if (why !== 'plain' || a.second) { a.failed.push(a.text + ' (' + why + ')'); return; }
+    a.plain.push(mv);
+    if (!a.plainThin && a.thin && a.thin.mv === mv) a.plainThin = { thin: a.thin, text: a.text, brief: a.brief, expect: a.expect };   // (v237: what aiNext draws thin)
+  }
   function aiNext() {
     var a = ai;
     while (a.queue.length) {
@@ -3425,7 +3539,21 @@
       if (!why) { say(a.who + ' plays ' + a.brief + (a.making ? ' — making room for it…' : '…')); return; }
       aiFailed(a, mv, why);
     }
-    if (!a.second && a.plain.length) {             // the marks could not be applied: the shortest way — kept only if that IS the move (aiCommitted)
+    /* The marks could not be applied. v237 (Peter 11/2: "Could we skip drawing the shortest curve altogether?"): with
+       Allow thin moves, the move is drawn thin at once, with its marks — before, the shortest way was drawn first and
+       kept only if it happened to be the move; in his 300-seed game it was another move 29 times, each taken back
+       (an ordinary drawing, an undo) before the thin one. Without Allow thin moves: the shortest way, kept only if
+       that IS the move (aiCommitted). */
+    if (!a.second && a.plain.length && route.thin && a.plainThin) {
+      var pt = a.plainThin;
+      a.thin = pt.thin; a.move = pt.thin.mv; a.text = pt.text; a.brief = pt.brief; a.expect = pt.expect;
+      a.plain = []; a.plainThin = null;
+      log(a.who + ': the marks of ' + a.text + ' could not be applied' + (a.plainNote ? ' (' + a.plainNote.replace(/ — drawn the shortest way$/, '') + ')' : '') + ': drawn thin.');
+      a.plainNote = null;
+      say(a.who + ' plays ' + a.brief + '…');
+      aiClimb(a); return;
+    }
+    if (!a.second && a.plain.length) {
       a.second = true; a.queue = a.plain; a.plain = []; aiNext(); return;
     }
     a.second = false;
@@ -3435,19 +3563,18 @@
   function aiClimb(a) {
     if (route.thin && a.thin && a.thin.mv === a.move && !a.thin.tried) {   // (thin branch: the move drawn thin)
       a.thin.tried = true; ai = a;
-      thinDraw(a.thin.ar, a.thin.y, function (why) {   // (committed: aiCommitted judges it; else on to Z, below)
+      thinDraw(a.thin.ar, a.thin.y, function (why) {   // (committed: aiCommitted judges it; else the Room menu's checked steps, below)
         ai = a; a.failed.push(a.text + ' (even thin: ' + why + ')');
         aiClimb(a);
       });
       return;
-      /* "moves always drawn": drawing the picture afresh with the move (Z) draws any position — the last
-         resort, whatever the Room menu's boxes say (an enclosing move the thin router cannot route: its
-         barriers fenced each other in, Peter's 30-seed game of 10/30, move 13) */
     }
-    if (route.thin && a.thin && a.thin.mv === a.move && a.thin.tried && a.move && a.rungs.indexOf('Z') < 0) {   // (not drawn thin, or drawn thin as another move)
-      a.rungs = a.rungs.concat(['Z']);
-      log(a.who + ': ' + a.text + ' could not be drawn thin; drawing the picture afresh with it (Z) — moves are always drawn.');
-    }
+    /* (v246, Peter 11/7: "if a thin move cannot be drawn it stops, explains, and asks for manual input" — "of course
+       the auto M A and Z should still work if selected") a move that could not be drawn even thin, or was drawn thin
+       as another move, goes on to the steps checked in the Room menu for the computer (below), and when none is left
+       the game stops: aiStops says why and offers R or Z by hand, or the player set to Human. Before (v215–v245) Z was
+       then added whatever the Room menu said — in Peter's 20-seed game of 11/7, with R off for the computer, a Z
+       nobody had asked for. */
     while (a.next < a.rungs.length) {
       var k = a.rungs[a.next++];
       if (k === 'M' || (k === 'Z' && !a.move)) continue;   // (M: in the first round only, aiTry)
@@ -3514,7 +3641,7 @@
     if (!ok && route.thin) {                       // (thin branch: no room to start the ordinary way — the move is known, drawn thin (aiClimb))
       ok = true;
       armed = { a: x, spot: pa, start: st.side || probe, obs: st.obs, planner: st.planner, targets: {}, blocked: {}, an: an,
-                marks: {}, arcMarks: {}, markedSpots: {}, region: reg, boundary: mv.j };
+                marks: {}, arcMarks: {}, markedSpots: {}, region: reg, boundary: mv.j, thinOnly: true };   // (thinOnly: no planner — nothing for M to make room with, v246)
     }
     if (!ok) return 'cannot start at spot ' + (x + 1);
     var ar = armed; armed = null;
@@ -3574,7 +3701,7 @@
     if (!ar.targets[y] && !ar.blocked[y]) return 'spot ' + (y + 1) + ' cannot be reached from that side';
     a.moves0 = game.moves; a.lastWarn = null;
     if (!ar.targets[y] || sided) {                 // the rules allow it, the room does not: as for a click — M's machinery, if the computer's M is on (and not used yet for this move)
-      if (!a.useM || a.mDone) return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : '');
+      if (!a.useM || a.mDone || ar.thinOnly) return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : '');
       armed = ar; hush++;
       try { explainBlocked(y); } finally { hush--; }
       if (!roomBusy) { armed = null; pendingRoom = null; return 'no room to reach spot ' + (y + 1) + (sided ? ' by the intended corner' : ''); }
@@ -3602,7 +3729,7 @@
      refused its route as too close): M's turn, as when the band ends too close (finishBand) — null when
      room is being made; false when M is off or used (then the reason goes on up the ladder). */
   function aiNoRoom(a, x, y, ar, msg) {
-    if (!a.useM || a.mDone) return false;
+    if (!a.useM || a.mDone || (ar && ar.thinOnly)) return false;
     lastTry = { ar: ar };
     refuseForRoom(x, y, msg, null, null);
     if (!roomBusy) { armed = null; pendingRoom = null; lastTry = null; return false; }
@@ -3618,7 +3745,7 @@
     if (marked) {
       if (!mr) {
         /* no room round the marks: M's machinery, as for a click (v112: before, the computer gave the move up) */
-        if (ar.why === 'room' && a.useM && !a.mDone) {
+        if (ar.why === 'room' && a.useM && !a.mDone && !ar.thinOnly) {
           armed = ar;
           var sync = true, started = null, moves0 = game.moves;
           explainMarkedNoRoom(y, true, function (making) {   // (v139: may come back later, from the worker)
@@ -3635,7 +3762,7 @@
         }
         return ar.why === 'room' ? 'no room round the marks' : 'no route round the marks';
       }
-      if (mr.plain && !plain) { note = null; return 'plain'; }
+      if (mr.plain && !plain) { if (!a.plainNote) a.plainNote = note; note = null; return 'plain'; }
       if (mr.plain) log(a.who + ': the marks of ' + a.text + ' could not be applied' + (note ? ' (' + note + ')' : '') + ': drawn the shortest way.');
       if (!mr.plain) P = G.resample(mr.path, STEP);
     }
@@ -4022,6 +4149,7 @@
     .forEach(function (t, i) { t.style.setProperty('--menu-bg', menuColours[i % menuColours.length][1]); });
   newGame();
   takeOver();
+  loadFromAddress();
 
   /* ---------------- Y: the game in a window of its own (v166, Peter 10/14) ----------------
      A page cannot turn its tab into an app window, but it can open itself in a POPUP window — in any browser,

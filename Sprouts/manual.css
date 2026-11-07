@@ -102,3 +102,9 @@ table.games th, table.games td { padding: 4px 14px; text-align: right; border-bo
 table.games th { color: #FFD700; }
 table.games td:last-child { text-align: left; }
 table.games td img { height: 60px; width: auto; vertical-align: middle; border: 1px solid #6495ED; }
+/* the series of games played to the end (v243): the spot counts across, one row per figure */
+table.series { border-collapse: collapse; margin: 0.5em 0 1.5em 2em; }
+table.series th, table.series td { padding: 4px 12px; text-align: center; border-bottom: 1px solid rgba(255,255,255,.2); }
+table.series th { color: #FFD700; }
+table.series tr th:first-child { text-align: left; }
+table.series td img { height: 60px; width: auto; vertical-align: middle; border: 1px solid #6495ED; }

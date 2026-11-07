@@ -26,6 +26,7 @@
 
    In:  { id, game, mv (ai.js form) | null, player, outerFace | start, o, show }   a job (start: a GROW job)
         { id, show: true | false }                                       show its picture, or stop
+        { id, drawn: true }                       (v242) the page has taken the last picture: the next may be sent
    Out: { id, gap, it }                      now and then: how promising the job looks while it runs — during the
                                              polish 1e6 + the least gap between the polylines (px), during a growth
                                              the curves drawn so far (so a polish under way outranks any growth)
@@ -40,8 +41,14 @@ var REPORT_MS = 100;                             // how often a shown job sends 
 var SLICE_MS = 50;                               // steps between yields (a message waits at most this long)
 var FRAME_MS = 30;                               // R (v226): how often its picture goes to the page — the page's animation frame (ui.js RELAY_FRAME_MS)
 var job = null;
+/* ONE PICTURE AT A TIME (v242, Peter's 500-spot game of 11/2: the tab ran out of memory during an R at move 831). A
+   picture of a large drawing is megabytes, and while the page's thread is busy (13–14 s routing a curve, every move
+   late in that game) the pictures sent every frame queue up unread. So after a picture the job sends the next only
+   when the page has said it took this one ({ id, drawn: true }); the work itself does not wait. */
+function sendPicture(j, msg) { j.waiting = true; j.last = Date.now(); self.postMessage(msg); }
 self.onmessage = function (e) {
   var d = e.data;
+  if (d.drawn) { if (job && job.id === d.id) job.waiting = false; return; }
   if (!d.game) { if (job && job.id === d.id) job.show = d.show; return; }
   self.SproutsRelax.setHalfStumps(!!d.o.halfStumps);   // (v212: stumps count at half size with View → Stumps half size)
   if (d.redraw) {                                  // R (v226)
@@ -71,7 +78,7 @@ function slice() {
   if (j.grow) {
     while (!done && Date.now() - t < SLICE_MS) done = Zg.stepGrow(j.grow, 10);
     if (!done) {
-      if (j.show && Date.now() - j.last > REPORT_MS) { self.postMessage({ id: j.id, picture: Zg.pictureOf(j.grow), it: j.grow.drawn }); j.last = Date.now(); }
+      if (j.show && !j.waiting && Date.now() - j.last > REPORT_MS) sendPicture(j, { id: j.id, picture: Zg.pictureOf(j.grow), it: j.grow.drawn });
       self.postMessage({ id: j.id, gap: j.grow.drawn, it: j.grow.drawn });
       setTimeout(slice, 0);
       return;
@@ -97,7 +104,7 @@ function slice() {
       for (k in st.o) o2[k] = st.o[k];
       o2.keepShape = false;
       j.pre = st; j.st = Rd.createRedraw(Rd.redrawCurrent(st), o2, true); j.smoothing = true;   // (pre: the enlarged picture, kept in case the smoothing cannot be finished — v233)
-      if (j.show) self.postMessage({ id: j.id, picture: Rd.redrawCurrent(j.st), it: j.st.it, smoothing: true });
+      if (j.show && !j.waiting) sendPicture(j, { id: j.id, picture: Rd.redrawCurrent(j.st), it: j.st.it, smoothing: true });
       j.last = Date.now();
       setTimeout(slice, 0);
       return;
@@ -114,7 +121,7 @@ function slice() {
     job = null;
     return;
   }
-  if (j.show && Date.now() - j.last > (j.redraw ? FRAME_MS : REPORT_MS)) { self.postMessage({ id: j.id, picture: Rd.redrawCurrent(st), it: st.it, smoothing: j.smoothing }); j.last = Date.now(); }
+  if (j.show && !j.waiting && Date.now() - j.last > (j.redraw ? FRAME_MS : REPORT_MS)) sendPicture(j, { id: j.id, picture: Rd.redrawCurrent(st), it: st.it, smoothing: j.smoothing });
   if (!j.redraw) self.postMessage({ id: j.id, gap: 1e6 + (gap(st) || 0), it: st.it });   // (a polish under way outranks any growth for the screen)
   setTimeout(slice, 0);
 }
