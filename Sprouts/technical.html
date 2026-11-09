@@ -523,7 +523,7 @@ joined) and, in network play, sent to the other computer.</p>
 
 <p>The router of the previous sections needs room: a grid cell, a band with a barrier at $d_0$, a spline fit
 within 1.5 pixels. In a crowded picture a move the rules allow can find no such room, however the picture is
-rearranged. Room &rarr; <e>Allow thin moves</e> (on by default since v215; called <e>Allow thin moves</e> until v245) removes that failure, but for a way narrower than the arithmetic can certify: such a move goes on to the steps checked in the Room menu, and with none left the game stops with a message (v246; before, Z was then run with the move whatever the Room menu said). For
+rearranged. Room &rarr; <e>Allow thin moves</e> (on by default since v215; called <e>Moves always drawn</e> until v245) removes that failure, but for a way narrower than the arithmetic can certify: such a move goes on to the steps checked in the Room menu, and with none left the game stops with a message (v246; before, Z was then run with the move whatever the Room menu said). For
 <e>making</e> a move, spots are points and curves have no width; the clearance and the spot discs are visual
 standards, restored afterwards where there is room. The code is in <code>thin.js</code> (the triangulation, the
 walk, the hug and the certificate) and <code>moves.js</code> (<code>thinRoute</code>, <code>thinCurve</code>,
@@ -591,10 +591,31 @@ curves thin&hellip;</e>.</p>
 
 <p><b>Tidying.</b> After a move drawn thin the picture may fall short of the minimum clearance. The steps R and Z
 checked in the Room menu for the player who moved are then run, in that order, until the least clearance of the
-drawing is $d_0$ again (<code>ui.tidyOn</code>; M is not used, since there is no waiting move to make room for).
-By default only the computer&rsquo;s R is checked (v234). The least clearance is computed on the page&rsquo;s
-thread; in a very large picture this takes several seconds and freezes the page meanwhile, a known defect
-(the check belongs in R&rsquo;s worker).</p>
+drawing is $d_0$ again (<code>ui.tidyOn</code>; M is not used, since there is no waiting move to make room for). By default only the computer&rsquo;s R is checked (v234). The least clearance is measured in workers (v253): the curves
+are shared out over as many workers as the Workers menu allows, each taking every $n$-th curve, and the least of
+their answers is the picture&rsquo;s; the page stays responsive meanwhile. (Before, it was measured on the
+page&rsquo;s thread: 25 seconds on a 300-seed picture, the page frozen.) The value is remembered for the picture it
+was measured on, and R takes it along instead of measuring the same picture again.</p>
+
+<p><b>Delayed tidying</b> (Room menu, on by default since v258). For the computer&rsquo;s moves the R after a thin
+move is postponed: the move&rsquo;s curves go on a list of untidied thin curves, kept in the game object
+(<code>game.thin</code>, so undo and saved games keep it). R runs before a later move that does not fit the
+ordinary way in a region with an untidied thin curve in it or on its boundary (both ends of the curve among the
+region&rsquo;s spots: <code>ui.thinNear</code>); the move is then tried again in the new picture, and drawn thin
+only if it still does not fit. An accepted R or Z empties the list, and a game between two computers ends with one
+more R if the list is not empty. The test needs no distance: late in a game the board is split into many small
+regions, and a thin curve in one cannot narrow the way of a move in another, so most thin moves need no R, and
+one R tidies several thin curves at once. Measured (11/9, the 300-seed game of the series settings): 46 R&rsquo;s
+instead of 156, the game 3,318 s instead of 5,098; the 200-seed game 1,303 s instead of 1,794.</p>
+
+<p><b>Certifying many curves at once.</b> The least clearance of a picture, and R&rsquo;s last stage, certify every
+curve against everything else (<code>room.certOf</code>). Until v254 each curve copied the whole game without
+itself and built all its obstacles again, so the work grew with the square of the picture&rsquo;s size: 25 seconds
+for the least clearance of a 300-seed picture, and 90&thinsp;% of a late R. Since v255 the obstacles are built
+once per picture (<code>room.allObstacles</code>) and each curve skips its own segments and its move&rsquo;s spot
+(<code>relax</code>&rsquo;s obstacle search: <code>ctx.skipSeg</code>, <code>ctx.skipSpot</code>), with the same
+result to the bit: the least clearance of that picture in 0.8 s, the last stage of a late R in 5 s instead of
+225.</p>
 
 <h1 id="sec-room">4. Making Room: Six Kinds of Rearranging<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
@@ -805,7 +826,7 @@ says so (&ldquo;it could not move the drawing at all&rdquo;) rather than running
 
 <p><b>Filling the area.</b> The energy has nothing that makes a picture large: once no region has a move nothing
 pushes outward, and the length term pulls the picture together, so at the end of a game R left it small. With
-Room &rarr; <e>R fills the whole area</e> on (the default; v220&ndash;v221), the polylines are scaled up after the
+Room &rarr; <e>R fills the whole area</e> on (v220&ndash;v221; off by default since v258), the polylines are scaled up after the
 descent, by one factor per direction, to fill the drawing area less a margin (the comfort distance and a
 spot&rsquo;s radius, and while the outside region still has a move, a band round the picture with the area the
 room-by-lives term gives its lives, $\pi(D/2)^2$ each). Factors below 1 are not applied. Enlarging by factors of
@@ -826,7 +847,10 @@ into a neighbor.) Otherwise R moves everything.</p>
 
 <p>Finally each curve is the clamped C² spline <e>through</e> its points (<code>geom.interpolate</code>), a
 move&rsquo;s two curves as one, cut at the move&rsquo;s spot. Where a third curve leaves that spot the spline is
-made C¹ through it. If the smooth curves fail the certificate there are fallbacks: splines through the middles of
+made C¹ through it (the direction through a spot with two curves is kept per spot and neighbor: until v256 it was
+kept per neighbor only, and a move&rsquo;s spot between two such spots, its curves single chords, took the
+direction of the wrong one; the curve then arrived backwards, the certificate failed at the spot, and R refused its
+own result over and over). If the smooth curves fail the certificate there are fallbacks: splines through the middles of
 the legs, points spread evenly on the polylines, and as a last resort a corner at the failing spot (logged). The
 result is refused if the position changed or the clearance is not positive. A curve whose pieces already suit its
 length keeps its knots as its points, so pressing <code>R</code> a second time starts where the
@@ -1278,7 +1302,7 @@ save that fails says why.</p>
   <tr><td class="code">relax.js</td><td>obstacles, the clearance energy, the elastic band and the spline band, certification (3.4)</td></tr>
   <tr><td class="code">route.js</td><td>the grid planner, the widest way, barrier trees and the parity search (3.2&ndash;3.3)</td></tr>
   <tr><td class="code">moves.js</td><td>the router&rsquo;s pieces: marked routes, ports, trial moves, making room, the thin route and its smooth curve (3.3&ndash;3.5, 3.7, 4.3&ndash;4.4)</td></tr>
-  <tr><td class="code">thin.js</td><td>moves always drawn: the exact constrained triangulation, the walk, the hug, the certificate (3.7)</td></tr>
+  <tr><td class="code">thin.js</td><td>thin moves: the exact constrained triangulation, the walk, the hug, the certificate (3.7)</td></tr>
   <tr><td class="code">room.js</td><td>sliding spots and pushing curves apart (4.3&ndash;4.4)</td></tr>
   <tr><td class="code">redraw.js</td><td>R, filling the area, and the polish after Z (4.5)</td></tr>
   <tr><td class="code">layout.js</td><td>Z: the map, the triangulation, the grid drawing (4.6)</td></tr>

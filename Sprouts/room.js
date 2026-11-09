@@ -467,7 +467,8 @@
         e.pieces = G.piecesFromDeBoor(arr, e.h);
       });
       if (positionKey(g2) !== key0) continue;
-      if (units.some(function (u) { return certOf(g2, u, o) < floors[unitKey(u)] - 1e-9 || breaksFloor(g2, u, floors, o); })) continue;
+      var obs2 = allObstacles(g2, o);
+      if (units.some(function (u) { return certOf(g2, u, o, obs2) < floors[unitKey(u)] - 1e-9 || breaksFloor(g2, u, floors, o, obs2); })) continue;
       if (roomAt(g2, np) < floor0) continue;
       g.spots[z].x = np[0]; g.spots[z].y = np[1];
       mine.forEach(function (m) { g.edges[m[0]].pieces = g2.edges[m[0]].pieces; });
@@ -514,12 +515,19 @@
   }
   /* The certified clearance of unit u from everything else in g (certify: refined
      control polygons; near u's own end spots by angle). */
-  function certOf(g, u, o) {
-    var g2 = copyGame(g);
-    if (u.z >= 0) { g2.spots[u.z].x = -1e6; g2.spots[u.z].y = -1e6; }
-    u.edges.slice().sort(function (x, y) { return y - x; }).forEach(function (i) { g2.edges.splice(i, 1); });
+  /* (v255, Peter 11/9: "Could we parallelize R?" — first, R's last stage spent 90 % of its time here) obs: the
+     obstacles of the whole of g, built once for many curves (allObstacles); the curve's own segments and its move's
+     spot are skipped (relax.js rObs: ctx.skipSeg, ctx.skipSpot) — the same result to the bit as removing them from a
+     copy of g, which each curve did before: the whole game copied and all its obstacles built again, curve after
+     curve. Measured (Node, the 300-seed picture after move 719): the least clearance 37.6 s → 0.84 s; that R's last
+     stage 225 s → 5.2 s, its picture identical. */
+  function allObstacles(g, o) { return R.buildObstacles(g, o.spotR); }
+  function certOf(g, u, o, obs) {
     var ctx = { aIdx: u.a, bIdx: u.b, A: [g.spots[u.a].x, g.spots[u.a].y], B: [g.spots[u.b].x, g.spots[u.b].y], rho: o.rho, spotR: o.spotR };
-    return R.certify(R.buildObstacles(g2, o.spotR), ctx, unitCurve(g, u).pieces, 0.6 * o.d0).clearance;
+    if (!obs) obs = allObstacles(g, o);
+    ctx.skipSeg = {}; u.edges.forEach(function (i) { ctx.skipSeg[4 + i] = true; });
+    if (u.z >= 0) ctx.skipSpot = u.z;
+    return R.certify(obs, ctx, unitCurve(g, u).pieces, 0.6 * o.d0).clearance;
   }
   function unitKey(u) { return u.edges.join(','); }
   /* FLOORS (v40): each curve's certified clearance may not fall below
@@ -530,18 +538,20 @@
      turn (6-7 in the 20-05-56 game: 9.9 → 4.6 px once end directions could turn). */
   function floorsOf(g, o) {
     var f = {};
-    unitsOf(g).forEach(function (u) { f[unitKey(u)] = Math.min(certOf(g, u, o), 0.6 * o.d0); });
+    var obs = allObstacles(g, o);
+    unitsOf(g).forEach(function (u) { f[unitKey(u)] = Math.min(certOf(g, u, o, obs), 0.6 * o.d0); });
     return f;
   }
   /* Would the new curve of u (in g2, already written) push a neighbour below its floor? */
-  function breaksFloor(g2, u, floors, o) {
+  function breaksFloor(g2, u, floors, o, obs) {   // (obs: g2's, if the caller has them; else built when first needed)
     if (!floors) return false;
     var mine = G.refinedPolygon(unitCurve(g2, u).pieces, 0.5, 8).pts;
     return unitsOf(g2).some(function (v) {
       if (unitKey(v) === unitKey(u) || floors[unitKey(v)] === undefined) return false;
       var theirs = G.refinedPolygon(unitCurve(g2, v).pieces, 0.5, 8).pts;
       if (distToRuns(theirs, [mine]) >= o.D) return false;
-      return certOf(g2, v, o) < floors[unitKey(v)] - 1e-9;
+      if (!obs) obs = allObstacles(g2, o);
+      return certOf(g2, v, o, obs) < floors[unitKey(v)] - 1e-9;
     });
   }
 
@@ -677,16 +687,25 @@
         var runs = ghostRuns(gh, g, u, a, b, o.rho);
         return { u: u, runs: runs, d: distToRuns(G.refinedPolygon(unitCurve(g, u).pieces, 0.5, 8).pts, runs) };
       }).filter(function (m) { return m.d < o.D; }).sort(function (x, y) { return x.d - y.d; });
+      /* (v252) sweeps while they settle: a sweep that moves the curves no less than the one before ends them. Peter's
+         100-seed test (11/7, M on, move 161, 41 → 258): seven curves pushed each other round in a cycle of three sweeps
+         (30, 20, 13 px moved, over and over) — some always "busy" — and M ran without end; the first sweeps had settled
+         (64, 43, 20, 14 px). That M now: 16 s (Node), no room — the move is drawn thin. */
+      var lastSweep = Infinity;
       while (busy) {
         busy = false; sweep++;
+        var swept = 0;
         group.forEach(function (m) {
           var r = relaxUnit(g, m.u, m.runs, o, an, floors);
           if (!r) return;
           any = true;
           if (r.busy) busy = true;
+          swept += r.moved;
           var nm = unitName(m.u);
           moved[nm] = (moved[nm] || 0) + r.moved;
         });
+        if (!(swept < lastSweep)) break;
+        lastSweep = swept;
       }
       if (positionKey(g) !== key0) return { fail: true, reason: 'moving the curves would have changed the position (a bug: please save the game)', best: best };
       if (!any && !seedsMoved) return { fail: true, reason: 'the curves in the way cannot move', best: best };
@@ -706,7 +725,7 @@
     var nrm = R.normalAt(pts, k, k), p = pts[k];
     return [1, -1].map(function (sg) { var r = an.regionAt([p[0] + sg * nrm[0], p[1] + sg * nrm[1]]); return !!r && !r.canMove; });
   }
-  var api = { lowerClearance: lowerClearance, unitsOf: unitsOf, certOf: certOf, unitName: unitName, ghostFor: ghostFor, ghostRuns: ghostRuns, inTheWay: inTheWay, relaxUnit: relaxUnit, moveCurvesFor: moveCurvesFor, positionKey: positionKey,
+  var api = { lowerClearance: lowerClearance, unitsOf: unitsOf, certOf: certOf, allObstacles: allObstacles, unitName: unitName, ghostFor: ghostFor, ghostRuns: ghostRuns, inTheWay: inTheWay, relaxUnit: relaxUnit, moveCurvesFor: moveCurvesFor, positionKey: positionKey,
               slidable: slidable, spline: spline, cut: cut, pointAt: pointAt, paramOf: paramOf, place: place,
               roomAlong: roomAlong, slideFor: slideFor,
               oneEdge: oneEdge, oriented: oriented, writeOriented: writeOriented, reverseCurve: reverseCurve,

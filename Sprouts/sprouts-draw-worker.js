@@ -51,9 +51,13 @@ self.onmessage = function (e) {
   if (d.drawn) { if (job && job.id === d.id) job.waiting = false; return; }
   if (!d.game) { if (job && job.id === d.id) job.show = d.show; return; }
   self.SproutsRelax.setHalfStumps(!!d.o.halfStumps);   // (v212: stumps count at half size with View → Stumps half size)
+  if (d.clear) {                                   // (v253) a share of the least clearance: the page asks several workers at once
+    self.postMessage({ id: d.id, clear: Rd.leastClearance(d.game, d.o, d.part, d.of) });
+    return;
+  }
   if (d.redraw) {                                  // R (v226)
     job = { id: d.id, show: !!d.show, grow: null, st: Rd.createRedraw(d.game, d.o, !!d.keep), o: d.o, last: 0, redraw: true, filled: false, smoothing: false,
-            before: Rd.leastClearance(d.game, d.o) };
+            before: typeof d.before === 'number' ? d.before : Rd.leastClearance(d.game, d.o) };   // (v253: the page's, when it knows it)
     setTimeout(slice, 0);
     return;
   }

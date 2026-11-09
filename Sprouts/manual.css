@@ -108,3 +108,7 @@ table.series th, table.series td { padding: 4px 12px; text-align: center; border
 table.series th { color: #FFD700; }
 table.series tr th:first-child { text-align: left; }
 table.series td img { height: 60px; width: auto; vertical-align: middle; border: 1px solid #6495ED; }
+
+/* thumbnails in the text: a small picture that opens the full-size one */
+a.thumb img { height: 100px; width: auto; vertical-align: middle; border: 1px solid #6495ED; margin: 2px 4px; }
+a.thumb:hover img { border-color: #c00; }

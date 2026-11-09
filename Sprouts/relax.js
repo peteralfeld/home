@@ -117,6 +117,7 @@
           if (!c) continue;
           for (var i = 0; i < c.segs.length; i++) {
             var s = c.segs[i];
+            if (ctx.skipSeg && ctx.skipSeg[s.id]) continue;   // (v255: a curve's own segments, in obstacles built once for the whole drawing — room.js certOf)
             /* v109: the segment's box is at least lb from p, and the scale f below is ≥ 1: a segment that
                cannot come nearer than what is known already (best, and its obstacle's own least distance)
                changes nothing — skipped before the exact distance. The results are the same to the bit. */
@@ -172,7 +173,7 @@
           }
           for (i = 0; i < c.spots.length; i++) {
             var sp = c.spots[i];
-            if (sp.idx === ctx.aIdx || sp.idx === ctx.bIdx) continue;
+            if (sp.idx === ctx.aIdx || sp.idx === ctx.bIdx || sp.idx === ctx.skipSpot) continue;
             var ds = G.dist(p, sp.p) - sp.r;
             if (ds < best) best = ds;
             if (byId && ds < byId[sp.id]) {

@@ -962,7 +962,15 @@
       if (k !== Math.max(least, Math.floor(x)) && k !== Math.max(least, Math.ceil(x))) need = true;
     });
     if (!need) return false;
-    var ns = createRedraw(finishWith(st, false, true).game, st.o, st.fixSpots);
+    /* (v248) from the smooth curves only if THEY are the position: in a crowded picture (Peter's 300-seed game, 11/7)
+       a spline through the points swung across a curve's start at a spot — the splines were another position,
+       createRedraw could not make its start match it, halved every chord (v243) and, by chance, came back with the
+       right position at twice the points; the next re-spacing halved the count again, and so on: 4,590 ↔ 9,600
+       points every 100 s, each count new, so the counts below never repeated — R ran 20 minutes moving spots 15 px.
+       Otherwise from the polylines, as where the splines' points would cross (below). Node, the position before
+       that game's R after move 719: descent 661 s and 16 re-spacings → 27 s and one; clearance 0.05 → 1.03 px. */
+    var sg = finishWith(st, false, true).game;
+    var ns = createRedraw(Rm.positionKey(sg) === st.key0 ? sg : redrawCurrent(st), st.o, st.fixSpots);
     /* in a tight place the new points would cross: then take them ON the present polylines
        instead (v106) — the descent kept those clear of each other (PrEd), so points anywhere on
        them cannot cross. (Points from the smooth splines, as before, where they do not cross: the
@@ -1243,9 +1251,9 @@
        into the corner, and the curve hooks (9/29: 43-51-7 at 51, 36-38-1 at 38). */
     var corners = {}, r4 = r3;
     for (;;) {                                      // corners only at the spots where the curves that fail meet
-      var more = false;
+      var more = false, obs4 = Rm.allObstacles(r4.game, st.o);
       Rm.unitsOf(r4.game).forEach(function (u) {
-        if (Rm.certOf(r4.game, u, st.o) > 0) return;
+        if (Rm.certOf(r4.game, u, st.o, obs4) > 0) return;
         ev.units.forEach(function (w) { if (w.z >= 0 && (w.z === u.a || w.z === u.b) && !corners[w.z]) { corners[w.z] = true; more = true; } });
       });
       if (!more) break;
@@ -1305,10 +1313,15 @@
     st.corners.forEach(function (C) {
       if (C.nb.length !== 2) return;
       var u0 = unit([P[C.nb[0]][0] - P[C.s][0], P[C.nb[0]][1] - P[C.s][1]]), u1 = unit([P[C.nb[1]][0] - P[C.s][0], P[C.nb[1]][1] - P[C.s][1]]);
-      through[C.nb[0]] = unit([u0[0] - u1[0], u0[1] - u1[1]]); through[C.nb[1]] = unit([u1[0] - u0[0], u1[1] - u0[1]]);
+      through[C.s + ':' + C.nb[0]] = unit([u0[0] - u1[0], u0[1] - u1[1]]); through[C.s + ':' + C.nb[1]] = unit([u1[0] - u0[0], u1[1] - u0[1]]);
     });
+    /* (v256) keyed by the spot AND its neighbour: keyed by the neighbour alone, a spot that was the neighbour of two
+       such spots — a move's spot whose two curves are single chords, between two links (Peter's trial 300-seed game,
+       11/9: 194 – 409 – 129) — took the direction of whichever came last, and the curve 409 → 129 arrived at 129
+       backwards: a hairpin at the spot, its clearance by angle −7.8 px, and R refused four times in a row (each a
+       minute or more). That R now: accepted, clearance 11.1 px. Pictures without such a spot: identical. */
     function ends(ln) {                             // [leaving the first spot, arriving at the last], or null for the first leg
-      var a = through[ln[1]], b = through[ln[ln.length - 2]];
+      var a = through[ln[0] + ':' + ln[1]], b = through[ln[ln.length - 1] + ':' + ln[ln.length - 2]];
       return [ln[0] < st.nS && a ? a : null, ln[ln.length - 1] < st.nS && b ? [-b[0], -b[1]] : null];
     }
     st.units.forEach(function (u, ui) {
@@ -1351,10 +1364,12 @@
     g.edges[u.edges[1]].pieces = right.pieces; g.edges[u.edges[1]].h = right.h;
   }
 
-  /* The least certified clearance of a drawing's curves (for the log: before and after). */
-  function leastClearance(game, o) {
-    var c = Infinity;
-    Rm.unitsOf(game).forEach(function (u) { c = Math.min(c, Rm.certOf(game, u, o)); });
+  /* The least certified clearance of a drawing's curves (for the log: before and after). part, of (v253): only the
+     curves numbered part, part + of, part + 2·of, … — the page splits the work over several workers (ui
+     measureClearance) and takes the least of their answers. */
+  function leastClearance(game, o, part, of) {
+    var c = Infinity, obs = Rm.allObstacles(game, o);   // (v255: built once for every curve)
+    Rm.unitsOf(game).forEach(function (u, i) { if (!of || i % of === part) c = Math.min(c, Rm.certOf(game, u, o, obs)); });
     return c;
   }
 

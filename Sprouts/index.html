@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=247">
+<link rel="stylesheet" href="style.css?v=258">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 247</span>
+  <span id="app-version">SPROUTS v. 258</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -169,8 +169,9 @@
           <option value="fpp">FPP layout</option>
           <option value="grow">Growing from a spot</option>
         </select></label>
-      <label class="row" data-tip="opt-rspread">R fills the whole area <input id="opt-rspread" type="checkbox" checked></label>
+      <label class="row" data-tip="opt-rspread">R fills the whole area <input id="opt-rspread" type="checkbox"></label>
       <label class="row" data-tip="opt-thin">Allow thin moves <input id="opt-thin" type="checkbox"></label>
+      <label class="row" data-tip="opt-delayedtidy">Delayed tidying <input id="opt-delayedtidy" type="checkbox" checked></label>
       <label class="row" data-tip="opt-keepseeds">Keep seeds in place <kbd>A</kbd> <input id="opt-keepseeds" type="checkbox"></label>
       <label class="row" data-tip="opt-heroic">Heroic <input id="opt-heroic" type="checkbox"></label>
     </div>
@@ -334,8 +335,9 @@
   <div data-tip-for="room-human"><b>Human:</b> the steps tried automatically when a move you make does not fit. Off (gray) in Heroic mode.</div>
   <div data-tip-for="room-ai"><b>Computer:</b> the steps tried automatically when the move a computer player has chosen does not fit &mdash; also a move arriving from the other computer over the net. The computer never changes its move for one that is easier to draw: if no checked step makes room, the game stops and says so.</div>
   <div data-tip-for="opt-zmethod"><b>Z draws afresh by.</b> How <kbd>Z</kbd> starts a picture from the position alone, before polishing it as R does. <b>FPP layout</b> (the default): the de Fraysseix&ndash;Pach&ndash;Pollack straight-line drawing of a triangulation of the position, one try with each region outside. <b>Growing from a spot</b> (new, experimental): the picture grown outward from a spot, outer parts first, each spot placed when a curve first reaches it and room kept for what a region will still receive, one try from each spot of the outermost parts; the grown drawing is scaled to fill the window. It needs the workers (a page opened as a file uses FPP). Saved with a game.</div>
-  <div data-tip-for="opt-rspread"><b>R fills the whole area.</b> On (the default): when <kbd>R</kbd> has finished, the picture is enlarged in each direction until it fills the drawing area (only enlarged, so nothing comes closer to anything). Off: <kbd>R</kbd> keeps the picture&rsquo;s shape and leaves it at the size it comes out, which at the end of a game is often small. Z, M and R with <i>Keep seeds in place</i> are not affected. Saved with a game.</div>
+  <div data-tip-for="opt-rspread"><b>R fills the whole area.</b> On: when <kbd>R</kbd> has finished, the picture is enlarged in each direction until it fills the drawing area (only enlarged, so nothing comes closer to anything). Off (the default since v258): <kbd>R</kbd> keeps the picture&rsquo;s shape and leaves it at the size it comes out, which at the end of a game is often small. Z, M and R with <i>Keep seeds in place</i> are not affected. Saved with a game.</div>
   <div data-tip-for="opt-thin"><b>Allow thin moves.</b> On (the default): a move that does not fit the ordinary way is drawn at once with spots counted as points and curves as thin lines &mdash; it does not fail for lack of room. If even a thin move cannot be drawn (the way is narrower than the arithmetic can certify), the steps R and Z checked above for that player are tried; with none checked, or if they fail too, the game stops and says why: R or Z by hand, and the computer tries its move again, or set the player to Human and draw a move by hand. Its curve crosses and touches nothing, however narrow the way (smooth where it can be, else a polyline); a move that encloses something hugs what it encloses; in a crowded picture it may run closer to other curves than the minimum clearance, or across a spot&rsquo;s disc, but the position is exactly the one intended. Nothing else is done first to make room, but M if it is checked above for the player who moved. Afterwards, if the picture falls short of the minimum clearance, the steps R and Z checked above for the player who moved are run automatically, in that order, until it no longer does (M is not used); unchecked, they are there by hand. Off: as before &mdash; the checked steps make room for the move first. Saved with a game.</div>
+  <div data-tip-for="opt-delayedtidy"><b>Delayed tidying</b> (on by default). For the computer&rsquo;s moves with Allow thin moves: a move drawn thin is not followed by R at once; its curves are remembered as untidied. R runs first when a later move does not fit in a region that has an untidied thin curve in it or on its boundary &mdash; one R tidies them all and makes room for that move &mdash; and once at the end of a game between two computers. Saved with a game.</div>
   <div data-tip-for="opt-keepseeds"><b>Keep seeds in place</b> <kbd>A</kbd>. Off (the default): <kbd>R</kbd> may move every spot. On: <kbd>R</kbd> &mdash; by hand, when a move does not fit, and when tidying after a move &mdash; keeps the initial seeds and seeds added by hand where they are and reshapes only the curves; the spots made by moves ride along with their curves. For watching games from a fixed set of seeds. Saved with a game.</div>
   <div data-tip-for="opt-heroic"><b>Heroic.</b> A curve you draw by hand is kept as drawn (straight pieces, corners and all) instead of being smoothed, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available). The computer&rsquo;s moves are drawn as usual.</div>
 
@@ -359,19 +361,19 @@
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=247"></script>
-<script src="relax.js?v=247"></script>
-<script src="route.js?v=247"></script>
-<script src="engine.js?v=247"></script>
-<script src="describe.js?v=247"></script>
-<script src="room.js?v=247"></script>
-<script src="thin.js?v=247"></script>
-<script src="moves.js?v=247"></script>
-<script src="redraw.js?v=247"></script>
-<script src="layout.js?v=247"></script>
-<script src="zgrow.js?v=247"></script>
-<script src="ai.js?v=247"></script>
-<script src="net.js?v=247"></script>
-<script src="ui.js?v=247"></script>
+<script src="geom.js?v=258"></script>
+<script src="relax.js?v=258"></script>
+<script src="route.js?v=258"></script>
+<script src="engine.js?v=258"></script>
+<script src="describe.js?v=258"></script>
+<script src="room.js?v=258"></script>
+<script src="thin.js?v=258"></script>
+<script src="moves.js?v=258"></script>
+<script src="redraw.js?v=258"></script>
+<script src="layout.js?v=258"></script>
+<script src="zgrow.js?v=258"></script>
+<script src="ai.js?v=258"></script>
+<script src="net.js?v=258"></script>
+<script src="ui.js?v=258"></script>
 </body>
 </html>

@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, heroic: false, thin: true, zMethod: 'fpp', rFill: true, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, numbers: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, delayedTidy: true, heroic: false, thin: true, zMethod: 'fpp', rFill: false, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, numbers: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -1228,7 +1228,7 @@
       ensurePool();                               // (finds out whether workers can be had at all)
       if (!noWorkers) {
         relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(), small: small,
-                     before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
+                     before: leastClearanceOf(game, o), retry: retry, fresh: fresh || null };   // (v253: remembered after tidying's measurement)
         freshParallel(relaying, o);
         say(relayWord() + '…   Space stops');
         draw();
@@ -1500,7 +1500,7 @@
       say('Not rearranged: a script error in its worker (see the log).', true); draw();
       if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
     };
-    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate });
+    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate, before: knownClearance(game) });   // (v253: before, when tidying has just measured it)
     say(relayWord() + '…   Space stops');
     draw();
     return true;
@@ -1547,6 +1547,8 @@
     }
     snapshot(fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
     game = r.game;
+    rememberClearance(game, r.clearance);         // (v249: for the next tidying's "before")
+    if (game.thin) game.thin = [];                 // (v257: an accepted R or Z tidies every thin curve)
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
     var what = fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing' + (rl.keep ? ' (seeds kept in place)' : r.unsmoothed ? ' (enlarged to fill the area; the smoothing after it could not be finished, so left out)' : rl.smoothing ? ' (enlarged to fill the area, then smoothed)' : '');
     log(what +
@@ -1909,6 +1911,76 @@
      for the player who moved run automatically, in that order, until it does not (tidying, for the eye);
      unchecked, they are there by hand. ar: the armed move, b its destination. */
   var tidyNext = null;                             // the tidying steps still to run after a thin move: { keys }
+  /* (v249) THE PICTURE'S LEAST CLEARANCE, REMEMBERED: Rd.leastClearance takes 25 s on the 300-seed picture (measured,
+     Node), measured after every thin move. Kept for the picture it was measured on (a
+     fingerprint of every spot and every curve's control points); R and Z hand theirs over with their result. */
+  var clearMemo = null;
+  function pictureFingerprint(g) {
+    var h = 2166136261, n = 0;
+    function add(x) { var v = Math.round(x * 1024); h = Math.imul(h ^ (v & 0xffff), 16777619); h = Math.imul(h ^ (v >>> 16), 16777619); n++; }
+    g.spots.forEach(function (sp) { add(sp.x); add(sp.y); });
+    g.edges.forEach(function (e) { add(e.a); add(e.b); (e.pieces || []).forEach(function (b) { b.forEach(function (q) { add(q[0]); add(q[1]); }); }); });
+    return (h >>> 0) + ':' + n;
+  }
+  function leastClearanceOf(g, o) {
+    var fp = pictureFingerprint(g);
+    if (clearMemo && clearMemo.fp === fp) return clearMemo.c;
+    var c = Rd.leastClearance(g, o);
+    clearMemo = { fp: fp, c: c };
+    return c;
+  }
+  function rememberClearance(g, c) { if (typeof c === 'number' && !isNaN(c)) clearMemo = { fp: pictureFingerprint(g), c: c }; }
+  function knownClearance(g) { return clearMemo && clearMemo.fp === pictureFingerprint(g) ? clearMemo.c : undefined; }
+  /* (v253, Peter 11/8: "let's assign the least clearance measurement to a worker. Would it make sense to use more
+     than one worker?" — he pressed S while it was measuring and saw nothing for seconds) MEASURED IN WORKERS: the
+     curves are shared out over as many workers as the Workers menu allows (each takes every n-th curve: the costs
+     even out), the page stays responsive, and the least of their answers is the picture's. cb(c) at once when it is
+     known (returns false), else later (returns true). Without workers: here, as before. */
+  var measuring = null;                           // the measurement running: { cb }
+  /* (v254, the crash of 11/9: the series' 300-seed game died ("Aw, Snap!") at 01:14, just as a measurement began after
+     move 670 — the page's heap was 0.5 GB, but every measurement had started 32 new workers and ended them: 476
+     measurements in that game alone, over 15,000 workers, each loading all the drawing scripts; the likeliest cause,
+     not proven) THE MEASURING WORKERS ARE KEPT and used again; one that fails is replaced. */
+  var clearWorkers = [];
+  function clearWorker(i) {
+    if (!clearWorkers[i]) clearWorkers[i] = new Worker('sprouts-draw-worker.js' + version());
+    return clearWorkers[i];
+  }
+  function measureClearance(g, o, cb) {
+    var c = knownClearance(g);
+    if (c !== undefined) { cb(c); return false; }
+    ensurePool();
+    var n = Math.max(1, Math.min(poolSize(), Rm.unitsOf(g).length));
+    if (noWorkers) { cb(leastClearanceOf(g, o)); return false; }
+    var left = n, least = Infinity, m = measuring = { cb: cb }, t0 = Date.now(), failed = false;
+    function done() {
+      if (measuring !== m) return;                 // (another measurement took its place)
+      measuring = null;
+      if (failed) least = Math.min(least, leastClearanceOf(g, o));   // (a share missing: measured here)
+      rememberClearance(g, least);
+      log('Least clearance measured: ' + (isFinite(least) ? least.toFixed(1) + ' px' : 'no curves') + ', ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s on ' + n + ' workers.');
+      cb(least);
+    }
+    try {
+      for (var i = 0; i < n; i++) {
+        (function (i) {
+          var w = clearWorker(i);
+          w.onmessage = function (ev) { if (measuring !== m) return; if (typeof ev.data.clear === 'number') least = Math.min(least, ev.data.clear); if (--left === 0) done(); };
+          w.onerror = function (ev) {
+            if (ev.preventDefault) ev.preventDefault();
+            log('Script error in a worker measuring the clearance: ' + (ev.message || 'unknown') + '.');
+            w.terminate(); clearWorkers[i] = null; failed = true;
+            if (measuring === m && --left === 0) done();
+          };
+          w.postMessage({ id: i, clear: true, game: g, o: o, part: i, of: n });
+        })(i);
+      }
+    } catch (e) {
+      measuring = null;
+      cb(leastClearanceOf(g, o)); return false;
+    }
+    return true;
+  }
   /* (v227, Peter 11/1: the page took seconds to react while a long or enclosing move was routed thin on its
      thread) the routing and the curve in the moves worker (routeAsync, kind 'thin': moves.js thinFor), the page
      busy meanwhile (routeBusy; Space stops it, stopRoute); here only without workers. When it is done: the move
@@ -1929,17 +2001,55 @@
     var a = ar.a, cv = res.cv, box = isAI(game.player) ? route.autoAI : route.autoHuman;
     armed = null; pendingRoom = null; lastTry = null; climb = null;
     if (note && / — drawn the shortest way/.test(note)) note = null;   // (the grid router's verdict on the marks, left from trying first: the thin move honours them — Peter 10/31: "What does it mean it drew the shortest way?")
-    tidyNext = { keys: ['R', 'Z'].filter(function (k) { return box[k]; }) };
+    tidyNext = { keys: ['R', 'Z'].filter(function (k) { return box[k]; }), ai: isAI(game.player) };
+    thinFrom = game.edges.length;                 // (v257: the move's curves, for the list of untidied thin curves — afterMoveMade)
     commitMove(a, b, { pieces: cv.pieces, h: cv.h }, 'drawn thin (spots as points): ' + cv.pieces.length + (cv.smooth ? ' pieces, smooth' : ' straight pieces') + ', clearance ' +
                (cv.clearance >= 0.1 ? cv.clearance.toFixed(1) : cv.clearance.toExponential(1)) + ' px, ' + (Date.now() - t0) + ' ms');
   }
   /* the next tidying step after a thin move, if the picture still falls short of the minimum clearance:
      true when one has started (relaying) */
+  /* (v257, Peter 11/9: DELAYED TIDYING, Room menu, for the computer's moves) a thin move is not followed by R;
+     its curves go on game.thin, the untidied thin curves (in the game object, so undo and saving keep it). R runs
+     before a computer's move that does not fit in a region with an untidied thin curve in it or on its boundary
+     (aiClimb: thinNear) — one R tidies them all and makes room for the move — and once at the end of a game between
+     two computers. An accepted R or Z empties the list (finishRelaying). */
+  var thinFrom = null;
+  function thinNear(ar) {
+    var thin = game.thin || [], on = {};
+    if (!thin.length || !ar || !ar.region) return false;
+    ar.region.boundaries.forEach(function (b) { (b.spots || b).forEach(function (i) { on[i] = true; }); });
+    return thin.some(function (ei) { var e = game.edges[ei]; return !!e && !!on[e.a] && !!on[e.b]; });
+  }
   function tidyOn() {
+    if (route.delayedTidy && bothAI() && game.phase === 'over' && game.thin && game.thin.length && !game.endTidied) {   // (also when the last move was drawn thin: its own tidying step is replaced — the 300-seed test of 11/9 ended untidied)
+      game.endTidied = true;                       // (once: a refused R does not come back)
+      tidyNext = { keys: ['R', 'Z'].filter(function (k) { return route.autoAI[k]; }), ai: true, end: true };
+      log('The end of the game: ' + game.thin.length + ' untidied thin curves — tidying once (Delayed tidying).');
+    }
     var t = tidyNext;
     if (!t) return false;
+    if (route.delayedTidy && t.ai && !t.end) { tidyNext = null; return false; }
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2, halfStumps: route.smallDead };
-    if (!t.keys.length || !(Rd.leastClearance(game, o) < route.d0)) { tidyNext = null; return false; }
+    /* (v249–v250) Tried and WITHDRAWN: tidying only if the thin move left the least clearance smaller than before the
+       move. Peter's 100-seed test (11/7, M on): an R was refused after move 49, the picture stayed at its tiny
+       clearance, no later thin move made it smaller, and no R ran again — the picture became extreme. (It would have
+       saved only 10–13 % of the R time of the 250- and 300-seed games.) */
+    if (!t.keys.length) { tidyNext = null; return false; }
+    /* (v253) the measurement in workers: the move's turn goes on when it is back (true meanwhile, as for a step that
+       has started) */
+    var g0 = game, waiting = false, now;
+    var pending = measureClearance(game, o, function (cl) {
+      if (!waiting) { now = cl; return; }
+      if (tidyNext !== t || game !== g0 || relaying) { updateTitle(); maybeAI(); draw(); return; }   // (something else happened meanwhile)
+      if (!tidyStep(t, cl)) { updateTitle(); maybeAI(); draw(); }
+    });
+    if (!pending) return tidyStep(t, now);
+    waiting = true;
+    say('Measuring the least clearance after the thin move…');
+    return true;
+  }
+  function tidyStep(t, cl) {
+    if (!(cl < route.d0)) { tidyNext = null; return false; }
     while (t.keys.length) {
       var k = t.keys.shift();
       log('Tidying after a move drawn thin: ' + LADDER_NAME[k] + ' (' + k + ') automatically, as the Room menu says.');
@@ -2041,7 +2151,9 @@
         var w = ensureMovesWorker();
         roomJob = { id: ++movesJobs, done: done };
         watchJob(roomJob, 'making room for ' + (ar.a + 1) + ' → ' + (b + 1));
-        w.postMessage({ id: roomJob.id, game: game, route: route, spotR: SPOT_R, job: Mk.jobOf(ar, b), spots: true, curves: true, pending: pending });
+        var msg = { id: roomJob.id, game: game, route: route, spotR: SPOT_R, job: Mk.jobOf(ar, b), spots: true, curves: true, pending: pending };
+        window.__lastRoomJob = msg;                  // (v251: the last M job, kept for reproducing a slow one outside the page — Peter's 100-seed test, 11/7: M on 41 → 258 ran for minutes)
+        w.postMessage(msg);
         return;
       } catch (e) { movesWorker = null; unwatchJob(roomJob); roomJob = null; log('No room worker (' + e.message + '): room is made on the page\'s own thread.'); }
     }
@@ -2441,6 +2553,10 @@
     var committed = game.moves;
     if (ai) aiCommitted();
     if (game.moves !== committed) return;        // (v79: the other computer's move was drawn as another move and taken back in aiCommitted)
+    if (thinFrom !== null) {                      // (v257: this move was drawn thin — its curves on the list)
+      if (route.delayedTidy && tidyNext && tidyNext.ai) { game.thin = (game.thin || []).slice(); for (var te = thinFrom; te < game.edges.length; te++) game.thin.push(te); }
+      thinFrom = null;
+    }
     if (!relaying && tidyOn()) return;            // (thin branch: tidying first; afterRelay goes on)
     if (!relaying) { updateTitle(); maybeAI(); draw(); }   // (the title before the next computer turn begins — it is not updated while busy; the background white again if no computer moves)
   }
@@ -2713,6 +2829,7 @@
     });
     setHeroic(r.heroic === true, true);           // (also shows the boxes)
     if (Z_METHODS[r.zMethod]) setZMethod(r.zMethod, true);   // (v209; a file from before keeps the present choice)
+    if (typeof r.delayedTidy === 'boolean') { route.delayedTidy = r.delayedTidy; document.getElementById('opt-delayedtidy').checked = r.delayedTidy; }   // (v257)
     if (typeof r.keepSeeds === 'boolean') { route.keepSeeds = r.keepSeeds; document.getElementById('opt-keepseeds').checked = r.keepSeeds; }   // (v218; a file from before keeps the present choice)
     if (typeof r.rFill === 'boolean') { route.rFill = r.rFill; document.getElementById('opt-rspread').checked = r.rFill; }   // (v221: rFill — files of v211–v220 have rSpread, which meant less and was off in all of them: ignored, the present choice kept)
     if (typeof r.thin === 'boolean') { route.thin = r.thin; document.getElementById('opt-thin').checked = r.thin; }   // (thin branch; likewise)
@@ -3104,6 +3221,10 @@
   });
   /* v218 (Peter 11/1): Keep seeds in place — R (by hand, the ladders, tidying) keeps the initial seeds and
      those added by hand where they are, as A does (relayDrawing); replaces the Room menu's A column */
+  document.getElementById('opt-delayedtidy').addEventListener('change', function (e) {   // (v257)
+    route.delayedTidy = e.target.checked;
+    log('Room: delayed tidying ' + (route.delayedTidy ? 'on (the computer\'s thin moves are tidied by R only before a move in a region with untidied thin curves, and at the end)' : 'off (R after every thin move that leaves the picture short of the minimum clearance)') + '.');
+  });
   function setKeepSeeds(on) {
     route.keepSeeds = on;
     document.getElementById('opt-keepseeds').checked = on;
@@ -3170,7 +3291,7 @@
   function bothAI() { return isAI(1) && isAI(2) && !net; }
   function maybeAI() {
     if (aiHalt && !bothAI()) aiHalt = false;
-    if (ai || band || relaying || roomBusy || routeBusy || stroke || armed || game.phase !== 'play' || !isAI(game.player)) return;
+    if (ai || band || relaying || roomBusy || routeBusy || measuring || stroke || armed || game.phase !== 'play' || !isAI(game.player)) return;
     if (aiHalt) { say('Stopped before move ' + (game.moves + 1) + ' (' + playerName(game.player) + ' to move).   Space continues   —   N starts a new game'); return; }
     if (browsing) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') waits:   > goes forward, or make its move by hand.'); return; }
     if (aiHeld && game.moves === 0) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') moves first: press N to start the game.'); return; }
@@ -3561,6 +3682,16 @@
   }
   /* The next rung switched on: A or R, then the move again (afterRelay, aiAgain); Z, with the move. */
   function aiClimb(a) {
+    /* (v257) Delayed tidying: untidied thin curves in or on the move's region — R first, once for the move
+       (aiAgain tries the move again in the new picture; if it still does not fit it comes back here and is drawn thin) */
+    if (route.delayedTidy && route.thin && route.autoAI.R && a.thin && a.thin.mv === a.move && !a.thin.tried && !a.preR && thinNear(a.thin.ar)) {
+      a.preR = true;
+      log(a.who + ': ' + a.text + ' does not fit, and its region has untidied thin curves: rearranging (R) first (Delayed tidying).');
+      ai = null; a.used.push('R'); aiResume = a;
+      relayDrawing('redraw');
+      if (relaying) return;
+      aiResume = null; ai = a; a.used.pop();
+    }
     if (route.thin && a.thin && a.thin.mv === a.move && !a.thin.tried) {   // (thin branch: the move drawn thin)
       a.thin.tried = true; ai = a;
       thinDraw(a.thin.ar, a.thin.y, function (why) {   // (committed: aiCommitted judges it; else the Room menu's checked steps, below)
