@@ -603,6 +603,10 @@
         return;
       }
       var h = segs[it], u0 = T[h], u1 = T[nxt(h)];
+      /* (v260) a leg from a straight to b along a curve's polygon leg from a to b: the same chord — the curve's ends at a and
+         b are no excuse there. Before, simplify straightened such a move onto the curve, and the certificate refined in vain:
+         "the way is narrower than the arithmetic can certify" (Peter's 75-seed game of 11/9, 69 → 228 beside the path 69-228) */
+      if (first && last && ((u0 === va && u1 === vb) || (u0 === vb && u1 === va))) { r = -1; return; }
       if ((first && (u0 === va || u1 === va)) || (last && (u0 === vb || u1 === vb))) { if (properCross(p, q, P[u0], P[u1])) r = -1; return; }
       if (properCross(p, q, P[u0], P[u1])) { r = -1; return; }
       var d = Math.min(G.distPointSeg(P[u0], p, q), G.distPointSeg(P[u1], p, q), G.distPointSeg(p, P[u0], P[u1]), G.distPointSeg(q, P[u0], P[u1]));
@@ -837,7 +841,10 @@
     var startV = reverse ? o.vb : o.va;
     var out = [P[startV]].concat(pts, [P[endV]]);
     if (reverse) out.reverse();
-    return out.length >= 3 ? out : null;
+    /* (v260) a move with no point between a and b: the arc is two sides of one triangle, and the curve is its third side,
+       which crosses and touches nothing (simplify puts the new spot halfway). Before, refused: "no way round the marked
+       spots was found" — Peter's 150-seed game of 11/9, move 302, 131 → 448 round 422. A loop needs points besides its spot. */
+    return out.length >= (loop ? 3 : 2) ? out : null;
   };
   /* The triangles of the region a walk from the triangles `from` can reach (across sides that are no curve). */
   Router.prototype.regionOf = function (from) {

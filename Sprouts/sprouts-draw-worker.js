@@ -120,7 +120,7 @@ function slice() {
        not be finished, "with the spots fixed — R moves them too"): then the enlarged picture as it was before the
        smoothing is finished instead */
     if (rr.error && j.pre) { var r0 = Rd.finishRedraw(j.pre); if (!r0.error) { rr = r0; unsmoothed = true; } }
-    self.postMessage({ id: j.id, done: true, error: rr.error, game: rr.game, clearance: rr.clearance, corners: rr.corners || 0, small: rr.small || [],
+    self.postMessage({ id: j.id, done: true, error: rr.error, game: rr.game, clearance: rr.clearance, corners: rr.corners || 0, straight: rr.straight || 0, small: rr.small || [],
                        dense: !!rr.dense, moved: rr.moved, it: st.it, stages: st.stages, smoothing: j.smoothing, unsmoothed: unsmoothed, before: j.before });
     job = null;
     return;

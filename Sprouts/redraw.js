@@ -884,7 +884,12 @@
            But from a tight start a point closer than a pixel to something may need steps that
            small: there its own cap (a third of its gap) is the measure instead of the pixel (v118;
            with the pixel alone Z failed at once, after 36–105 steps, for 3 of 16 outer regions). */
-        if ((st.o.tight ? rel : far) * 3 * MEM < 1) { if (h === 0 && clipped && !st.S.length) st.clipStuck = true; En = Infinity; break; }   // (clipStuck, v229: see stepRedraw)
+        /* (v260) …and that would gain less than a pixel's worth of energy (LENGTH) a step over the same 3·MEM steps: where
+           curves are a fraction of a pixel apart the energy is so steep that only moves of thousandths of a pixel lower it,
+           each still gaining hundreds. Peter's 10-seed game of 11/9, the final position: three curves between spots 6 and 32,
+           a quarter of a pixel apart, the descent stopped after 2 steps with E at 209,000 and R was refused; now 591 steps,
+           E 40,000, the curves 3.8 px apart, accepted. */
+        if ((st.o.tight ? rel : far) * 3 * MEM < 1 && -gd * 3 * MEM < LENGTH) { if (h === 0 && clipped && !st.S.length) st.clipStuck = true; En = Infinity; break; }   // (clipStuck, v229: see stepRedraw)
         /* (v231) the trial with its gradient: when it is taken (and its points are not spread again, as A and Z's tight
            start do), that gradient is the next step's — before, it was evaluated a second time right after. Measured
            on Peter's 200-seed picture at move 221: 1.18 trials a step, the gradient evaluation as dear as a trial —
@@ -1254,11 +1259,27 @@
       var more = false, obs4 = Rm.allObstacles(r4.game, st.o);
       Rm.unitsOf(r4.game).forEach(function (u) {
         if (Rm.certOf(r4.game, u, st.o, obs4) > 0) return;
-        ev.units.forEach(function (w) { if (w.z >= 0 && (w.z === u.a || w.z === u.b) && !corners[w.z]) { corners[w.z] = true; more = true; } });
+        ev.units.forEach(function (w) { if (w.z >= 0 && (w.z === u.a || w.z === u.b || w.z === u.z) && !corners[w.z]) { corners[w.z] = true; more = true; } });   // (v259: also the failing move's own spot)
       });
       if (!more) break;
       r4 = finishWith(ev, st.o.D, false, corners);
       if (!r4.error) { r4.dense = true; r4.corners = Object.keys(corners).length; return r4; }
+    }
+    /* (v259) Very last: the units that still fail are drawn as their polylines (straight pieces through their points,
+       corners and all) — the descent kept the polylines apart, so the picture is the position with positive
+       clearance, a few curves angular instead of the whole R thrown away. The series' 150-seed game of 11/9 stopped
+       at move 302 after R was refused twice (a loop 144-424-144 still 0.2 px short after the corners); that R is now
+       accepted, clearance 0.6 px, one curve straight. In the 20-seed game all 8 refused R's are accepted so. */
+    var straight = {}, r5 = r4;
+    for (;;) {
+      var more5 = false, obs5 = Rm.allObstacles(r5.game, st.o);
+      Rm.unitsOf(r5.game).forEach(function (u) {
+        if (Rm.certOf(r5.game, u, st.o, obs5) > 0) return;
+        ev.units.forEach(function (w, wi) { if (!straight[wi] && w.edges.some(function (ei) { return u.edges.indexOf(ei) >= 0; })) { straight[wi] = true; more5 = true; } });
+      });
+      if (!more5) break;
+      r5 = finishWith(ev, st.o.D, false, corners, straight);
+      if (!r5.error) { r5.dense = true; r5.corners = Object.keys(corners).length; r5.straight = Object.keys(straight).length; return r5; }
     }
     return r;
   }
@@ -1301,7 +1322,7 @@
     });
     return best;
   }
-  function finishWith(st, dense, unchecked, corners) {
+  function finishWith(st, dense, unchecked, corners, straight) {
     var o = st.o, g = JSON.parse(JSON.stringify(st.game)), P = st.P;
     g.spots.forEach(function (s, i) { s.x = P[i][0]; s.y = P[i][1]; });
     sizesInto(st, g);
@@ -1325,6 +1346,13 @@
       return [ln[0] < st.nS && a ? a : null, ln[ln.length - 1] < st.nS && b ? [-b[0], -b[1]] : null];
     }
     st.units.forEach(function (u, ui) {
+      if (straight && straight[ui]) {               // (v259) the unit as its polyline: straight pieces through its points
+        u.edges.forEach(function (ei) {
+          var pc = E.polylinePieces(st.paths[ei].map(function (v) { return P[v]; }));
+          g.edges[ei].pieces = pc; g.edges[ei].h = pc.map(function (b) { return G.dist(b[0], b[3]); });
+        });
+        return;
+      }
       var dd = ends(st.lines[ui]);
       var c = u.edges.length === 1 || Rm.slidable(st.game, u.z) ? smoothCurve(st.lines[ui].map(function (v) { return P[v]; }), dd[0], dd[1], dense) : null;
       if (u.edges.length === 1) { g.edges[u.edges[0]].pieces = c.pieces; g.edges[u.edges[0]].h = c.h; return; }

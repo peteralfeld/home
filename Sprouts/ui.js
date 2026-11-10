@@ -1538,6 +1538,7 @@
     if (!r.error && fresh && !par && r.small && r.small.length && !rl.small) r.error = 'there is room only with some spots drawn smaller';
     if (r.error) {
       say(not + r.error, true, not + r.error + (par ? '' : ' (least clearance ' + r.clearance.toFixed(1) + ' px)') + (par && par.summary ? '\n    ' + par.summary : '')); draw();
+      if (game.phase === 'over') statusEl.textContent += '   —   ' + gameOverText(true);   // (v260: the end-of-game tidying refused — the game is still over)
       if (rl.fresh) rl.fresh.onFail(); else if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
       return;
     }
@@ -1559,7 +1560,8 @@
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
                (par.grow ? 'grown from spot ' + (r.face + 1) : r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
          fresh && st && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
-        (r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
+        (r.straight ? '; the smooth curves did not fit: ' + (r.corners ? r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump and ' : '') + r.straight + (r.straight > 1 ? ' curves' : ' curve') + ' drawn straight (as polylines)' :
+         r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
     if (par) log('    The layouts (' + (par.grow ? 'each grown from another spot' : 'each with another region outside') + '), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
     logSizes(JSON.parse(rl.start), game);

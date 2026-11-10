@@ -563,7 +563,9 @@ the boundaries hanging on it and fences nothing else in. Its outline, traced on 
 round every vertex of the blob to $b$, crosses each triangle side at a blob vertex that does not belong to the
 blob, at its middle (or a third of the way along, where both ends of the side are the blob&rsquo;s). Every leg
 again joins two points of one triangle&rsquo;s boundary: the curve crosses and touches nothing, and it encloses
-the blob and nothing else.</p>
+the blob and nothing else. If the stretch of boundary is two sides of a single triangle, the outline has no point between $a$ and $b$:
+the curve is the triangle&rsquo;s third side (before v260 that was refused, &ldquo;no way round the marked spots was
+found&rdquo;). Shortening the polyline never puts a leg on a curve that itself joins $a$ and $b$ (v260).</p>
 
 <p><b>The smooth curve.</b> A polyline has corners, so <code>smoothThin</code> replaces it by a curve with none,
 with no pixel sizes in the method. The curve is one cubic piece per leg through the polyline&rsquo;s points,
@@ -817,6 +819,13 @@ error of the arithmetic, thousands of steps that nobody could see; a rule that s
 a pixel in one step stopped at the first step in crowded pictures.) The picture is shown as it goes, in 30 ms
 slices per animation frame, and <code>Space</code> stops it where it is.</p>
 
+<p>Within a step, the line search halves the step until the energy falls, and gives up on a step that would move no
+point by a 24th of a pixel <e>and</e> would gain less than a pixel&rsquo;s worth of length (since v260; before, the
+size of the move alone decided). Where curves are a fraction of a pixel apart the energy is so steep that only
+moves of thousandths of a pixel lower it, each still gaining a great deal: in the 10-seed game of the series the
+final R stopped after 2 steps with three curves a quarter of a pixel apart and was refused; now it takes 591 steps
+and ends with the curves 3.8 pixels apart.</p>
+
 <p><b>Before the descent.</b> A thin move can leave a curve a tiny fraction of a pixel from a spot or another
 curve. That point&rsquo;s push then dwarfs all others, the first step is scaled to it, the cap clips it to a third
 of the tiny gap, and nothing moves. So first (<code>separate</code>, v229) every point whose cap is too small for
@@ -851,7 +860,9 @@ made C¹ through it (the direction through a spot with two curves is kept per sp
 kept per neighbor only, and a move&rsquo;s spot between two such spots, its curves single chords, took the
 direction of the wrong one; the curve then arrived backwards, the certificate failed at the spot, and R refused its
 own result over and over). If the smooth curves fail the certificate there are fallbacks: splines through the middles of
-the legs, points spread evenly on the polylines, and as a last resort a corner at the failing spot (logged). The
+the legs, points spread evenly on the polylines, a corner at the failing spot (logged), and as a last resort,
+since v259, a curve that still fails drawn as its polyline, straight pieces through its points (logged): the descent
+kept the polylines apart, so the result is the position with positive clearance, instead of R thrown away. The
 result is refused if the position changed or the clearance is not positive. A curve whose pieces already suit its
 length keeps its knots as its points, so pressing <code>R</code> a second time starts where the
 first ended and changes next to nothing. A spot that was drawn smaller than its size by an earlier Z (section
