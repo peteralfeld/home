@@ -131,6 +131,7 @@ page takes you back here.</p>
       <li><a href="#sec-root">5.8. The candidates and the clock</a></li>
       <li><a href="#sec-intend">5.9. From intention to drawing</a></li>
       <li><a href="#sec-known">5.10. What is known about Sprouts</a></li>
+      <li><a href="#sec-replay">5.11. Replaying a game</a></li>
     </ul>
   </li>
   <li><a href="#sec-net">6. Two Computers</a></li>
@@ -1212,6 +1213,44 @@ the conjecture, and the misère results to 17 spots with reduced canonical trees
 have fallen apart into small enough parts, or near the end. Its value lies in combining reasonable play throughout
 with exact play late in the game, at the speed of a browser.</p>
 
+<h2 id="sec-replay">5.11. Replaying a game</h2>
+
+<p><e>Why a seed is not enough.</e> With a number in Game &rarr; Random seed, every random choice the page makes
+comes from one seeded generator, so the same seed, seeds and settings give the same game &mdash; in the same
+version of the program. Across versions they need not. The Random player picks a move by its place in the list of
+legal moves (section <a href="#sec-moves">2.5</a>), and that list is ordered by spot indices. The picture,
+meanwhile, has a say in which spots a move encloses: of several <e>interchangeable</e> boundaries the drawing
+encloses those easiest to reach (section <a href="#sec-intend">5.9</a>). A version that draws differently may
+enclose other loose seeds, giving the same game but with the spot indices in other places; from then on the same random
+numbers point at other moves. A 50-seed game played with version 253 and again with version 260, both with seed 1,
+were identical for 17 moves; at move 18 Random chose the same move, 14 &rarr; 41 enclosing four loose seeds, which
+version 253 drew round seeds 16, 17, 29, 44 and version 260 round 16, 17, 29, 33, and the games parted at
+move 19.</p>
+
+<p><e>The game&rsquo;s own moves.</e> File &rarr; Replay the game therefore does not ask any player again. It plays
+the present game&rsquo;s moves, in order, from its seeds where they first stood (from the undo history). Each move
+is read off the game&rsquo;s <e>final</e> picture: the curves of moves 1 to $m$ of it, the later ones left out,
+are a picture of the position after move $m$, since a picture never changes the position. From that position the
+move is described as it is sent to the other computer in network play (section <a href="#sec-net">6</a>): its two
+end spots, the spots on one side of a one-boundary move, and the <code>gameKey</code> of the position it
+produces and of its mirror image. The same machinery as there finds it among the legal moves of the position being
+replayed and draws it with the computer&rsquo;s ladder (section <a href="#sec-intend">5.9</a>), enclosing exactly
+the boundaries the game enclosed. Spot indices are therefore the game&rsquo;s at every move, in any version.</p>
+
+<p><e>Same game, not same picture.</e> The <code>gameKey</code> ignores boundaries with no lives left (section
+<a href="#sec-canonical">2.6</a>), and so do the moves: on which side of a new curve such a boundary ends up does not
+change the game, and the router puts it where its route happens to go. Of the candidate moves the replay
+prefers the one that gives the game&rsquo;s position exactly, boundaries without lives included, drawn from the same end as
+in the game; but the thin route (section <a href="#sec-thin">3.7</a>) may still arrive from the other end, and
+from such a move on, the picture differs even when a game is replayed by the version that played it. The drawing
+area and the settings in force matter too. What a replay guarantees is the sequence of positions.</p>
+
+<p>While a replay runs both players count as computers. Space pauses it, U takes moves back and the replay goes on
+from there, and a move that cannot be drawn pauses it (R or Z by hand, then Space, tries again). A game with spots
+added by hand during play cannot be replayed: those spots&rsquo; indices lie between the moves&rsquo; new spots.
+The manual&rsquo;s table of games played to the end links to such replays
+(<code>index.html?game=FILE&amp;replay</code>: the file loaded, then the replay started).</p>
+
 <h1 id="sec-net">6. Two Computers<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <p>Two people can play on two computers (menu Net, <code>net.js</code>). One <e>hosts</e> and gets a random
@@ -1306,7 +1345,7 @@ save that fails says why.</p>
 
 <table class="desc">
   <tr><td class="code">index.html, style.css</td><td>the page: menus, status line, canvas, the keyboard list</td></tr>
-  <tr><td class="code">ui.js</td><td>the page controller: input, menus, drawing on the canvas and the magnifier, the move flow, the computer&rsquo;s turn, R and Z, tidying, undo, saving and loading, the log</td></tr>
+  <tr><td class="code">ui.js</td><td>the page controller: input, menus, drawing on the canvas and the magnifier, the move flow, the computer&rsquo;s turn, R and Z, tidying, undo, saving and loading, replaying a game (5.11), the log</td></tr>
   <tr><td class="code">geom.js</td><td>B&eacute;zier pieces, subdivision, refined control polygons, spline fitting and interpolation (sections 2.1&ndash;2.2, 3.6)</td></tr>
   <tr><td class="code">engine.js</td><td>the position computed from the picture: rotation system, faces, regions, lives (2.3)</td></tr>
   <tr><td class="code">describe.js</td><td>positions, regions and moves in words, for the log and File &rarr; Save position</td></tr>

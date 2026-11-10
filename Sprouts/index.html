@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=260">
+<link rel="stylesheet" href="style.css?v=261">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 260</span>
+  <span id="app-version">SPROUTS v. 261</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -186,6 +186,7 @@
     <button class="menu-title" data-tip="m-file">File</button>
     <div class="menu-panel">
       <button class="item" id="cmd-load" data-tip="cmd-load">Load game&hellip;</button>
+      <button class="item" id="cmd-replay" data-tip="cmd-replay">Replay the game</button>
       <button class="item" id="cmd-png" data-tip="cmd-png">Save picture as PNG <kbd>P</kbd></button>
       <button class="item" id="cmd-snap" data-tip="cmd-snap">Snapshot: picture, game and log <kbd>B</kbd></button>
       <button class="item" id="cmd-save" data-tip="cmd-save">Save game as JSON</button>
@@ -355,25 +356,26 @@
   <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors, players, drawing area size and undo history, so it can be played on or taken back move by move. The drawing area is given the saved size as Game &rarr; Size gives it. Not while connected to another computer.</div>
   <div data-tip-for="cmd-snap"><b>Snapshot</b> <kbd>B</kbd>. Saves, at once and with one time stamp, the picture as drawn now (PNG), the game as it is now (JSON &mdash; while R or Z runs, the picture on the screen) and the log. Nothing stops; it works at any time, also while something is running.</div>
   <div data-tip-for="cmd-png"><b>Save picture as PNG</b> <kbd>P</kbd>. Saves the drawing area as it is now as an image (in the browser&rsquo;s download folder).</div>
+  <div data-tip-for="cmd-replay"><b>Replay the game.</b> Plays the present game (loaded, or just played) again from the start: its seeds where they first stood, then its own moves, one after the other, each drawn as the computer draws its moves &mdash; with the Room menu&rsquo;s steps for the computer and the present settings. The moves are the game&rsquo;s, so the same game is played whatever version of the page replays it; only the picture may differ. Space pauses and continues; U takes moves back and the replay goes on from there. While it runs this item reads <b>Stop the replay</b>: the players set in the Player menus then take over. Not while connected to another computer, nor for a game with spots added by hand during play.</div>
   <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors, the players, the drawing area&rsquo;s size and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
   <div data-tip-for="cmd-log"><b>Save log as text.</b> Saves this session&rsquo;s log: every move in words, the computer&rsquo;s thinking, room made or refused, with times and pixel figures &mdash; useful for reporting a problem.</div>
   <div data-tip-for="cmd-log-prev"><b>Save the log of the last session.</b> The log is kept in this browser as it grows, so after a crash or a reload the last session&rsquo;s log can still be saved. Only the one session before this one is kept.</div>
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=260"></script>
-<script src="relax.js?v=260"></script>
-<script src="route.js?v=260"></script>
-<script src="engine.js?v=260"></script>
-<script src="describe.js?v=260"></script>
-<script src="room.js?v=260"></script>
-<script src="thin.js?v=260"></script>
-<script src="moves.js?v=260"></script>
-<script src="redraw.js?v=260"></script>
-<script src="layout.js?v=260"></script>
-<script src="zgrow.js?v=260"></script>
-<script src="ai.js?v=260"></script>
-<script src="net.js?v=260"></script>
-<script src="ui.js?v=260"></script>
+<script src="geom.js?v=261"></script>
+<script src="relax.js?v=261"></script>
+<script src="route.js?v=261"></script>
+<script src="engine.js?v=261"></script>
+<script src="describe.js?v=261"></script>
+<script src="room.js?v=261"></script>
+<script src="thin.js?v=261"></script>
+<script src="moves.js?v=261"></script>
+<script src="redraw.js?v=261"></script>
+<script src="layout.js?v=261"></script>
+<script src="zgrow.js?v=261"></script>
+<script src="ai.js?v=261"></script>
+<script src="net.js?v=261"></script>
+<script src="ui.js?v=261"></script>
 </body>
 </html>

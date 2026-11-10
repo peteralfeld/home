@@ -728,6 +728,8 @@
       spots: pts.map(function (p) { return { x: p[0], y: p[1], deg: 0 }; })
     };
     history = []; historyWhy = {}; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = !!preview; aiHalt = false; titleKey = null; browsing = false; redoList = [];
+    if (replay) { replay = null; setReplayLabel(); }
+    historyRebuilt = false;
     log(layout === 'manual' ? 'New game: spots to be placed by hand, ' + rulesName(game.rules) + '.'
                             : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + (kept ? 'the same seeds as before' : layout) + '), ' + rulesName(game.rules) + (seed === null ? '' : ', random seed ' + seed) + '.');
     resizeCanvas();
@@ -859,7 +861,7 @@
     if (band || relaying || roomBusy || routeBusy) return;   // (roomBusy, routeBusy: room is made / a route found in a worker, v137, v139)
     var nb = net && (e.button === 0 || e.button === 2) ? netBlock(e.ctrlKey && e.button === 0) : null;   // (v79: not my turn, or the other computer is at work; Ctrl+drag moves spots any time)
     if (nb) { say(nb, true); return; }
-    if (ai || (game.phase === 'play' && isAI(game.player) && !browsing)) { say(playerName(game.player) + ' is played by the computer (' + kindName(players[game.player].kind) + '); set it to Human in its menu to play yourself.', true); return; }
+    if (ai || (game.phase === 'play' && isAI(game.player) && !browsing)) { say(replay ? 'A replay is running: Space pauses it, File → Stop the replay ends it and the players of the Player menus take over.' : playerName(game.player) + ' is played by the computer (' + aiKindName(game.player) + '); set it to Human in its menu to play yourself.', true); return; }
     var marking = e.button === 2 || (e.button === 0 && e.shiftKey);
     if (e.button !== 0 && !marking) return;
     closeMenus();
@@ -2706,10 +2708,11 @@
     input.click();
   }
   /* a game file read and put in place (Load game; v243 also a file named in the page's address) */
-  function openFile(file) {
+  function openFile(file, then) {
       function use(data) {
         if (!data || data.format !== 'sprouts-game' || !data.game || !data.game.spots) { say('Not a Sprouts game file.', true, null, true); return; }
         useLoaded(data, file.name);
+        if (then) then();
       }
       function byLines() {   // (v236) too long to be read as one string: line by line, as the game files of v236 on are written
         readGameByLines(file).then(use, function (e) { say('Could not read ' + file.name + ' (' + sizeText(file.size) + '): ' + e.message + '.', true, null, true); });
@@ -2723,19 +2726,23 @@
   }
   /* (v243, Peter 11/6: the manual's table of games links to them) index.html?game=FILE opens the page with that game
      file loaded, as File → Load game does — a file on the same site, read as a Blob, so a long one is read line by
-     line too. A game between two computers then waits for N (useLoaded): from a start file, N plays the game. */
+     line too. A game between two computers then waits for N (useLoaded). */
   function loadFromAddress() {
-    var name = new URLSearchParams(location.search).get('game');
+    var q = new URLSearchParams(location.search), name = q.get('game');
     if (!name) return;
+    /* (v261) index.html?game=FILE&replay: the game loaded, then File → Replay the game (the manual's "replay" links) */
+    var then = q.has('replay') ? function () { whenIdle(replayCommand); } : null;
     fetch(name).then(function (r) { if (!r.ok) throw new Error('the server answered ' + r.status); return r.blob(); })
-      .then(function (blob) { openFile(new File([blob], name.split('/').pop())); })
+      .then(function (blob) { openFile(new File([blob], name.split('/').pop()), then); })
       .catch(function (e) { say('Could not open ' + name + ': ' + e.message + '.', true, null, true); });
   }
   /* A game file's contents put in place (Load game; v166: also the game handed over by Y, `moved`) */
   function useLoaded(data, name, moved) {
     game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHalt = false; titleKey = null;
+    if (replay) { replay = null; setReplayLabel(); }
     aiHeld = false;                               // (v240: a hold for N left by a menu change before loading — Layout, Spots, a Player — belongs to the game replaced)
     history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
+    historyRebuilt = !data.history;               // (v261: no record of where the seeds first stood — Replay says so)
     if (data.route) applySettings(data.route);
     if (data.colours) applyColours(data.colours);
     if (game.rules) document.getElementById('opt-rules').value = game.rules;
@@ -2839,11 +2846,11 @@
   function stamp() { return new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19); }
 
   var commands = { 'cmd-new': newOrStart, 'cmd-exit': exitPage, 'cmd-undo': undo,
-                   'cmd-png': savePNG, 'cmd-snap': saveSnapshot, 'cmd-save': saveGame, 'cmd-load': loadGame,
+                   'cmd-png': savePNG, 'cmd-snap': saveSnapshot, 'cmd-save': saveGame, 'cmd-load': loadGame, 'cmd-replay': replayCommand,
                    'cmd-log': saveLog, 'cmd-log-prev': savePreviousLog, 'cmd-position': savePosition, 'cmd-area': function () { sayArea(); } };   // (cmd-area: v156, View → Size of the drawing area, as Q)
   /* (v236) Saving goes any time, busy or not, as B always did — it changes nothing; the other commands wait
      while the drawing is busy and now SAY so (before, the click did nothing, silently). */
-  var anyTime = { 'cmd-png': 1, 'cmd-snap': 1, 'cmd-save': 1, 'cmd-log': 1, 'cmd-log-prev': 1, 'cmd-position': 1 };
+  var anyTime = { 'cmd-replay': 1, 'cmd-png': 1, 'cmd-snap': 1, 'cmd-save': 1, 'cmd-log': 1, 'cmd-log-prev': 1, 'cmd-position': 1 };
   Object.keys(commands).forEach(function (id) {
     document.getElementById(id).addEventListener('click', function () {
       closeMenus();
@@ -3272,7 +3279,7 @@
      log says what was drawn instead; if it is no legal move at all, that is
      a bug and the status line says so. */
   function kindName(k) { return { human: 'Human', random: 'Random', montecarlo: 'Monte Carlo', parity: 'Fast parity search', sharp: 'Sharp parity search' }[k] || k; }
-  function isAI(p) { return players[p].kind !== 'human'; }
+  function isAI(p) { return !!replay || players[p].kind !== 'human'; }   // (v261: a replay plays both sides)
   function aiCancel() {
     aiResume = null;
     if (ai && ai.timer) clearTimeout(ai.timer);
@@ -3290,15 +3297,17 @@
      drawn is finished, no next move starts; Space again continues, N starts a
      new game. Cleared by a new or loaded game, or when a player becomes Human. */
   var aiHalt = false;
+  function aiKindName(p) { return replay ? 'replay' : kindName(players[p].kind); }
   function bothAI() { return isAI(1) && isAI(2) && !net; }
   function maybeAI() {
+    if (replay && (replay.stopping || game.phase !== 'play' || game.moves >= replay.total) && !(ai || band || relaying || roomBusy || routeBusy || measuring)) replayEnd();
     if (aiHalt && !bothAI()) aiHalt = false;
     if (ai || band || relaying || roomBusy || routeBusy || measuring || stroke || armed || game.phase !== 'play' || !isAI(game.player)) return;
     if (aiHalt) { say('Stopped before move ' + (game.moves + 1) + ' (' + playerName(game.player) + ' to move).   Space continues   —   N starts a new game'); return; }
-    if (browsing) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') waits:   > goes forward, or make its move by hand.'); return; }
-    if (aiHeld && game.moves === 0) { say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') moves first: press N to start the game.'); return; }
+    if (browsing) { say(playerName(game.player) + ' (' + aiKindName(game.player) + ') waits:   > goes forward, or make its move by hand.'); return; }
+    if (aiHeld && game.moves === 0) { say(playerName(game.player) + ' (' + aiKindName(game.player) + ') moves first: press N to start the game.'); return; }
     ai = { player: game.player, timer: setTimeout(aiMove, AI_DELAY) };
-    say(playerName(game.player) + ' (' + kindName(players[game.player].kind) + ') to move');
+    say(playerName(game.player) + ' (' + aiKindName(game.player) + ') to move');
   }
   function aiMove() {
     var a = ai, p = game.player;
@@ -3316,6 +3325,7 @@
       aiStart(a, [], null);
       return;
     }
+    if (replay) { replayMove(a); return; }
     if (kind === 'random') { aiCommit(a, AI.randomOf(fams[Math.floor(rng() * fams.length)], rng)); return; }   // (v152: one move, as for the other players)
     /* Monte Carlo / parity search: EVERY move (v138: before, one random enclosure per family — Peter's
        11-spot game of 9/30 was lost at move 23, where the one winning move, 8 → 8 enclosing 6, was not
@@ -3729,6 +3739,13 @@
   function aiStops(a) {                            // 3.
     ai = null; note = null; marksUsed = null;
     var after = a.used.length ? ', even after ' + ladderText(a.used) : '';
+    if (a.replay) {                                // (v261) the replay pauses before the move; Space tries it again
+      aiHalt = true;
+      log(a.who + ': move ' + (game.moves + 1) + ' of the game, ' + a.sent + ', could not be drawn here' + after + ': ' + a.failed.join('; ') + '. The replay pauses — R or Z by hand, then Space tries the move again; File → Stop the replay ends it.');
+      say('Move ' + (game.moves + 1) + ' of the game, ' + a.sent + ', could not be drawn here' + after + '.   R or Z by hand, then Space tries it again   —   File → Stop the replay ends the replay', true);
+      draw();
+      return;
+    }
     if (a.remote) {                                // the other computer's move (v79): refused there and taken back
       log(a.who + ': its move ' + a.sent + ' could not be drawn here' + after + ': ' + a.failed.join('; ') + '. It is refused and taken back there.');
       say('The move of the other computer could not be drawn here' + after + '; it was refused and taken back there.', true);
@@ -3919,8 +3936,8 @@
     var a = ai; ai = null;
     var gotPos = AI.fromAnalysis(E.analyse(game.spots, game.edges), game.spots), got = AI.gameKey(gotPos);
     if (a.remote) {                                // the other computer's move (v79): the drawn position must be the one sent (or its mirror image)
-      if (got === a.remote.key || got === a.remote.mkey) { log('    ' + a.who + ': ' + a.sent + ' drawn as on the other computer' + (a.fresh ? ', in a picture drawn afresh' : '') + '.'); a.done(true); return; }
-      log('    ' + a.who + ': ' + a.text + ' was drawn as another move than the one sent (' + a.sent + '); taken back.');
+      if (got === a.remote.key || got === a.remote.mkey) { log('    ' + a.who + ': ' + a.sent + (a.replay ? ' drawn as in the game replayed' : ' drawn as on the other computer') + (a.fresh ? ', in a picture drawn afresh' : '') + '.'); a.done(true); return; }
+      log('    ' + a.who + ': ' + a.text + ' was drawn as another move than the one ' + (a.replay ? 'in the game replayed' : 'sent') + ' (' + a.sent + '); taken back.');
       undoStep();                                  // (the move's own snapshot; the log line of the move stays, followed by this one)
       a.failed.push(a.text + ' (drawn as another move)');
       ai = a; aiNext();
@@ -4084,6 +4101,90 @@
     var regs = an.regions.filter(function (r) { return r.spots.indexOf(z) >= 0; });
     var inside = regs.length > 1 ? regs[0].spots.filter(function (s) { return s !== a && s !== b && s !== z; }) : null;
     return { x: a, y: b, inside: inside, key: k.key, mkey: k.mkey };
+  }
+  /* ---------- File → Replay the game (v261, Peter 11/10) ----------
+     A seeded Random game did not repeat across versions: the drawing chooses WHICH interchangeable seeds a move
+     encloses (easyEnclosure), and after one such choice the same random numbers picked other moves (the 50-seed
+     game of v253 and v260 parted at move 18: 16, 17, 29, 44 enclosed there, 16, 17, 29, 33 here). Replay plays
+     the game's OWN moves instead, from its seeds where they first stood: each move is read off the game's final
+     picture — moves 1 … m of it, the curves of later moves left out, ARE the position after move m (the picture
+     never changes a position) — as the two spots, the spots on one side and the position's keys, the form a
+     move takes to the other computer in net play; it is found here by netCandidates and drawn by the computer's
+     ladder (aiStart), as the other computer's move is. Both sides play (isAI) while it runs; Space pauses it
+     (aiHalt), U takes moves back and the replay goes on from there; File → Stop the replay hands the game to the
+     players of the Player menus. The game must not have spots added by hand during play (their numbers would
+     sit between the moves' spots). */
+  var replay = null, historyRebuilt = false;   // { src: the game replayed (its final state), n0: its seeds, total: its moves, stopping }
+  function setReplayLabel() { document.getElementById('cmd-replay').textContent = replay ? 'Stop the replay' : 'Replay the game'; }
+  function replayCommand() {
+    if (replay) {
+      replay.stopping = true;
+      if (ai && ai.timer) aiCancel();
+      if (!(ai || band || relaying || roomBusy || routeBusy || measuring)) maybeAI();
+      else say('The replay stops after the move being drawn.', true);
+      return;
+    }
+    if (net) { say('Not while connected to another computer.', true, null, true); return; }
+    if (ai || band || relaying || roomBusy || routeBusy || measuring) { say('Busy (' + busyWith() + '): try again when that is finished.', true, null, true); return; }
+    if (browsing) { say('Go forward to the end of the game first (>), then replay it.', true, null, true); return; }
+    if (game.phase === 'place' || !game.moves) { say('There are no moves to replay: load a game, or play one, first.', true, null, true); return; }
+    var src = JSON.parse(JSON.stringify(game)), M = src.moves, n0 = src.spots.length - M, m;
+    for (m = 0; m < M; m++) {
+      var e1 = src.edges[2 * m], e2 = src.edges[2 * m + 1];
+      if (!e1 || !e2 || e1.b !== n0 + m || e2.a !== n0 + m) { say('This game cannot be replayed: spots were added by hand during play.', true, null, true); return; }
+    }
+    if (src.edges.length !== 2 * M) { say('This game cannot be replayed: its curves do not match its moves.', true, null, true); return; }
+    var idx = [];
+    for (m = 0; m < n0; m++) idx.push(m);
+    var W = stage.clientWidth, H = stage.clientHeight, first = firstPlaces(idx, W, H), noStart = !history.length || historyRebuilt;
+    game = { W0: W, H0: H, edges: [], player: src.edges[0].player || 1, moves: 0, added: 0, phase: 'play', rules: src.rules || document.getElementById('opt-rules').value,
+             spots: idx.map(function (i) { return { x: first[i][0], y: first[i][1], deg: 0 }; }) };
+    history = []; historyWhy = {}; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = false; aiHalt = false; titleKey = null; browsing = false; redoList = [];
+    replay = { src: src, n0: n0, total: M, stopping: false };
+    setReplayLabel();
+    log('Replay: the ' + M + ' moves of the game, from its ' + n0 + ' seeds ' + (noStart ? 'where they are at the end (the game has no record of where they first stood)' : 'where they first stood') +
+        ', ' + rulesName(game.rules) + '. Space pauses; File → Stop the replay ends it.');
+    resizeCanvas();
+    sayTurn();
+    maybeAI();
+  }
+  /* move m + 1 of the game replayed (m = 0, 1, …), read off its final picture as netDescribe describes a move */
+  function replayMsg(m) {
+    var src = replay.src, z = replay.n0 + m, ed = src.edges.slice(0, 2 * m + 2);
+    var sp = src.spots.slice(0, z + 1).map(function (s) { return { x: s.x, y: s.y, deg: 0 }; });
+    ed.forEach(function (e) { sp[e.a].deg++; sp[e.b].deg++; });
+    var an = E.analyse(sp, ed), pos = AI.fromAnalysis(an, sp), x = ed[2 * m].a, y = ed[2 * m + 1].b;
+    var regs = an.regions.filter(function (r) { return r.spots.indexOf(z) >= 0; });
+    var inside = regs.length > 1 ? regs[0].spots.filter(function (s) { return s !== x && s !== y && s !== z; }) : null;
+    return { x: x, y: y, inside: inside, key: AI.gameKey(pos), mkey: AI.gameKey(mirrorPos(pos)), xkey: AI.key(pos), xmkey: AI.key(mirrorPos(pos)) };
+  }
+  function replayMove(a) {
+    var m = game.moves, msg = replayMsg(m), cands = netCandidates(a.pos, msg);
+    /* the candidates that make the game's position exactly first (AI.key: with the lifeless boundaries — the game's key ignores
+       them, so a loop round a seed beside a dead boundary, or round the dead boundary and nothing, is the same move: the
+       10-seed test, move 10, 1 → 1 enclosing nothing or 6) */
+    var exact = function (mv) { var k = AI.key(AI.apply(a.pos, mv)); return k === msg.xkey || k === msg.xmkey ? 0 : 1; };
+    cands = cands.map(function (mv, i) { return [mv.x === msg.x ? 0 : 1, exact(mv), i, mv]; })   // (drawn from the same end as in the game first, as netCandidates has them)
+      .sort(function (u, v) { return u[0] - v[0] || u[1] - v[1] || u[2] - v[2]; }).map(function (t) { return t[3]; });
+    a.who = playerName(a.player) + ' (replay)'; a.sent = (msg.x + 1) + ' → ' + (msg.y + 1);
+    if (!cands.length) {
+      ai = null;
+      log('Replay: move ' + (m + 1) + ' of the game, ' + a.sent + ', is not a move here — the positions differ (a bug: please save the game). The replay ends.');
+      say('Move ' + (m + 1) + ' of the game replayed is not a move here (a bug: please save the game). The replay ends.', true);
+      replay = null; setReplayLabel(); draw();
+      return;
+    }
+    a.remote = msg; a.replay = true; a.done = function () {};
+    marksUsed = null; pendingRoom = null; roomSnapshot = false; armed = null;
+    aiStart(a, aiRungs(), cands);
+  }
+  function replayEnd() {
+    var r = replay, all = game.moves >= r.total;
+    replay = null; setReplayLabel();
+    if (all) log('Replay finished: all ' + r.total + ' moves of the game.');
+    else log('Replay stopped after move ' + game.moves + ' of ' + r.total + '; the players of the Player menus take over.');
+    if (game.phase === 'play' && bothAI()) aiHalt = true;   // (a game replayed only in part: Space goes on with the players as set)
+    sayTurn();
   }
   /* The moves here between the two spots that make the position sent, in
      either direction (the router draws from x; from y it may arrive at x by
