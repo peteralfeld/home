@@ -1160,11 +1160,18 @@ parts.</p>
 stops on time even in very large positions. A search of depth 1 is always completed (a move must be chosen),
 whatever the budget.</p>
 
-<p><e>One move, from the position alone.</e> Several moves may tie for the best value (often all the winning
-moves, once the search is exact). The tie is broken without looking at the picture: random games are played from
-the tied moves alone (Monte Carlo, with the player&rsquo;s Monte Carlo settings), and the move that won most often
-is taken. A tie that remains is broken at random, which keeps games between two computers from repeating. The
-computer then commits to that one move: it is never exchanged for another that happens to be easier to draw.</p>
+<p><e>One move, from the position alone.</e> Several moves may tie for the best value. While the search is not
+exact, random games are played from the tied moves alone (Monte Carlo, with the player&rsquo;s Monte Carlo settings,
+which the Player menu shows for a parity search as <e>Ties: random games per tied move</e>), and the move that won
+most often is taken; a tie that remains is broken at random, which keeps games between two computers from repeating.
+Once the search is exact, the tied moves all win, or all lose against best play, and random games add nothing: the
+move whose curve is estimated shortest is taken (version 263), as a person with pencil and paper would choose. The
+estimate is made before anything is drawn: the move with the interchangeable boundaries it would enclose chosen as
+in section <a href="#sec-intend">5.9</a>, and its length taken as the perimeter of the convex hull of its two spots
+and everything it encloses, less the distance between the two spots (a move enclosing nothing: that distance; a loop:
+the perimeter). Equal estimates are broken at random. This is the one place where the picture has a say in which move
+is played, among moves the search found equal. The computer then commits to that one move: it is never exchanged for
+another that happens to be easier to draw.</p>
 
 <h2 id="sec-intend">5.9. From intention to drawing</h2>
 

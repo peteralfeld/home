@@ -318,11 +318,8 @@
       });
       return out;
     }
-    /* (o.lives, zgrow.js: a PARTIAL drawing's region is weighted by what it still has to receive, not by
-       its lives — the caller's function of the analysis and the region's index decides, here and after
-       every re-spacing, which builds the state anew) */
-    var regions = an.regions.map(function (r, ri) {
-      return { lives: o.lives ? o.lives(an, ri) : r.canMove ? r.lives : 0, outside: r.key === -1,
+    var regions = an.regions.map(function (r) {
+      return { lives: r.canMove ? r.lives : 0, outside: r.key === -1,
                cycles: r.boundaries.filter(function (bd) { return bd.cycle !== undefined; }).map(function (bd) { return cycleVerts(bd.cycle); }) };
     });
     var fixed = new Uint8Array(P.length);
