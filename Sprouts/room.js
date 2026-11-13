@@ -523,10 +523,11 @@
      stage 225 s → 5.2 s, its picture identical. */
   function allObstacles(g, o) { return R.buildObstacles(g, o.spotR); }
   function certOf(g, u, o, obs) {
-    var ctx = { aIdx: u.a, bIdx: u.b, A: [g.spots[u.a].x, g.spots[u.a].y], B: [g.spots[u.b].x, g.spots[u.b].y], rho: o.rho, spotR: o.spotR };
+    var ctx = { aIdx: u.a, bIdx: u.b, A: [g.spots[u.a].x, g.spots[u.a].y], B: [g.spots[u.b].x, g.spots[u.b].y], rho: o.rho, spotR: o.spotR,
+                rA: R.spotRadius(g.spots[u.a], o.spotR), rB: R.spotRadius(g.spots[u.b], o.spotR) };   // (v265: the end spots at their own size — relax.js rSelf)
     if (!obs) obs = allObstacles(g, o);
     ctx.skipSeg = {}; u.edges.forEach(function (i) { ctx.skipSeg[4 + i] = true; });
-    if (u.z >= 0) ctx.skipSpot = u.z;
+    if (u.z >= 0) { ctx.skipSpot = u.z; ctx.Z = [g.spots[u.z].x, g.spots[u.z].y]; }   // (v269: Z — the halves meet there by angle, relax.js rSelf)
     return R.certify(obs, ctx, unitCurve(g, u).pieces, 0.6 * o.d0).clearance;
   }
   function unitKey(u) { return u.edges.join(','); }

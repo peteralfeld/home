@@ -136,8 +136,22 @@
 
   /* spots: {x, y, deg} (lives = 3 - deg).  edges: {a, b, pieces, h, player} — a and b index spots. */
   var game = { W0: 1, H0: 1, spots: [], edges: [], player: 1, moves: 0, phase: 'play' };
-  var history = [];      // JSON snapshots of `game`, for Undo
-  var historyWhy = {};   // what the snapshot at history[i] was taken for, if not a move (for the Undo log line; not saved)
+  /* THE UNDO STEPS (v269, Peter 11/12: "How about we only keep a list of the moves … when we go backwards in the move
+     list we simply remove the curve of that move, and do not change the locations of the spots or curves"). Until v266
+     every step was the whole picture as text — 1.5 GB for his 500-seed game, and the page died of it. Now, oldest first:
+     MOVE — a move: going back takes its spot and its two curves off the picture AS IT IS NOW (they are the last ones;
+            a move changes nothing else but two degrees, the count and the turn), and nothing else moves;
+     SPOT — a spot placed or added by hand: going back takes it off;
+     or a picture as text — a change of the picture alone (room made, R, Z, a spot moved by hand): going back puts
+            that picture back. Pictures are kept only for the changes SINCE THE LAST MOVE: the next move drops them
+            (moveStep), so they never add up.
+     The moves themselves are nowhere but in the picture: its curves come in pairs through each move's new spot, in
+     the order played, so the steps of a loaded game are read off it (stepsOf) and a game file holds no history. */
+  var history = [], MOVE = 'move', SPOT = 'spot';
+  var historyWhy = {};   // what the picture at history[i] was kept for (for the Undo log line; not saved)
+  /* Where each seed, and each spot added by hand, first stood: i → [x, y, W0, H0] (N starts a new game from them,
+     Replay replays from them; saved with a game). A spot not in it stands where it first stood, or nobody knows. */
+  var firstAt = {};
   var stroke = null;     // { from: spotIndex, pts: [[x,y],...] } while the pointer is down
   var band = null;       // the elastic band being relaxed, while a move is animating
   var relaying = null;   // { kind: 'redraw' | 'fresh', keep, after, st, start, t0, before } while the drawing is rearranged (R) or drawn afresh (Z)
@@ -578,6 +592,50 @@
 
   /* ---------------- game set-up ---------------- */
   function snapshot(why) { if (why) historyWhy[history.length] = why; history.push(JSON.stringify(game)); }
+  function isPicture(e) { return e !== MOVE && e !== SPOT; }
+  function dropPictures() { while (history.length && isPicture(history[history.length - 1])) { delete historyWhy[history.length - 1]; history.pop(); } }
+  function moveStep() { dropPictures(); history.push(MOVE); }   // before a move goes into the game
+  function spotStep() { dropPictures(); history.push(SPOT); }   // before a spot placed or added by hand does
+  /* The last move off game g (its spot and two curves; what else a move sets is put back as it was before), and on
+     again. `off` is what was taken. */
+  function takeMoveOff(g) {
+    var off = { e2: g.edges.pop(), e1: g.edges.pop(), spot: g.spots.pop(), player: g.player, phase: g.phase, thin: null, endTidied: g.endTidied };
+    g.spots[off.e1.a].deg -= 1; g.spots[off.e2.b].deg -= 1;
+    g.moves -= 1; g.player = off.e1.player; g.phase = 'play';
+    if (g.thin) { off.thin = g.thin; g.thin = g.thin.filter(function (k) { return k < g.edges.length; }); }   // (the untidied thin curves: this move's are gone)
+    delete g.endTidied;
+    return off;
+  }
+  function putMoveOn(g, off) {
+    g.spots.push(off.spot); g.edges.push(off.e1, off.e2);
+    g.spots[off.e1.a].deg += 1; g.spots[off.e2.b].deg += 1;
+    g.moves += 1; g.player = off.player; g.phase = off.phase;
+    if (off.thin) g.thin = off.thin;
+    if (off.endTidied) g.endTidied = off.endTidied;
+  }
+  /* Game g as it was before its last move, or (spot) before its last spot was added by hand: a copy that shares
+     what it does not change — for reading, as the log's description of a move does. */
+  function gameBefore(g, spot) {
+    var c = Object.assign({}, g);
+    c.spots = g.spots.slice(0, -1);
+    if (spot) { c.added = (g.added || 0) - 1; return c; }
+    var e2 = g.edges[g.edges.length - 1], e1 = g.edges[g.edges.length - 2];
+    c.edges = g.edges.slice(0, -2);
+    c.spots[e1.a] = Object.assign({}, c.spots[e1.a]); c.spots[e1.a].deg -= 1;
+    c.spots[e2.b] = Object.assign({}, c.spots[e2.b]); c.spots[e2.b].deg -= 1;
+    c.moves = g.moves - 1; c.player = e1.player; c.phase = 'play';
+    return c;
+  }
+  /* The steps of game g read off its picture: after the seeds, a spot is a move's new spot or one added by hand. */
+  function stepsOf(g) {
+    var out = [], mine = {}, e = g.edges, i;
+    if (g.phase === 'place') { for (i = 0; i < g.spots.length; i++) out.push(SPOT); return out; }
+    for (i = 0; i + 1 < e.length; i += 2) if (e[i].b === e[i + 1].a) mine[e[i].b] = true;
+    for (i = g.spots.length - g.moves - (g.added || 0); i < g.spots.length; i++) out.push(mine[i] ? MOVE : SPOT);
+    return out;
+  }
+  function textKey(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0; return s.length + ':' + h; }
+  function gameKey() { return textKey(JSON.stringify(game)); }   // the picture, to tell whether anything changed it (the way forward, >)
 
   function layoutCircle(n, W, H) {
     if (n === 1) return [[W / 2, H / 2]];
@@ -676,24 +734,19 @@
       el.value = v; el.dispatchEvent(new Event('input'));
     });
   }
-  /* Where the seeds first stood, scaled to a W x H area (Peter 11/1: "With Random Points, when I press N for a new
-     game, it regenerates the point set. It should use the old point set." — N took the seeds where they stood at
-     the END of the game, and R tidying had moved them by hundreds of pixels). Every change to the game is preceded
-     by an undo snapshot, so the first snapshot that has spot i holds it where it was placed; a spot in no snapshot
-     (no change since it came) is where it is now. Each snapshot is scaled by its own W0 x H0. */
+  /* Where the spots idx first stood (firstAt), scaled to a W x H area (Peter 11/1: "With Random Points, when I press N
+     for a new game, it regenerates the point set. It should use the old point set." — N took the seeds where they
+     stood at the END of the game, and R tidying had moved them by hundreds of pixels). A spot without a record is
+     where it is now. Each place is scaled by its own area's size. */
   function firstPlaces(idx, W, H) {
-    var out = {}, need = idx.slice(), k = 0;
-    function take(g, list) {
-      return list.filter(function (i) {
-        if (i >= g.spots.length) return true;
-        out[i] = W === g.W0 && H === g.H0 ? [g.spots[i].x, g.spots[i].y] : [g.spots[i].x * W / g.W0, g.spots[i].y * H / g.H0];   // (v240: exact in the same area — x · W / W0 moved seeds by 1e-14 px, and the drawing grew that to 23 px by the end of a 5-seed game)
-        return false;
-      });
-    }
-    while (need.length && k < history.length) need = take(JSON.parse(history[k++]), need);
-    take(game, need);
+    var out = {};
+    idx.forEach(function (i) {
+      var f = firstAt[i] || [game.spots[i].x, game.spots[i].y, game.W0, game.H0];
+      out[i] = W === f[2] && H === f[3] ? [f[0], f[1]] : [f[0] * W / f[2], f[1] * H / f[3]];   // (v240: exact in the same area — x · W / W0 moved seeds by 1e-14 px, and the drawing grew that to 23 px by the end of a 5-seed game)
+    });
     return out;
   }
+  function setFirst() { firstAt = {}; game.spots.forEach(function (s, i) { firstAt[i] = [s.x, s.y, game.W0, game.H0]; }); }
   function newGame(layout, preview, afresh) {
     if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true, null, true); return; }   // (v79)
     var nb = net && !netAllow ? netBlock(true) : null;
@@ -732,9 +785,10 @@
       phase: layout === 'manual' ? 'place' : 'play', rules: document.getElementById('opt-rules').value,   // ('manual kept' plays at once)
       spots: pts.map(function (p) { return { x: p[0], y: p[1], deg: 0 }; })
     };
+    writeLoadedMoves();
+    setFirst();
     history = []; historyWhy = {}; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = !!preview; aiHalt = false; titleKey = null; browsing = false; redoList = [];
     if (replay) { replay = null; setReplayLabel(); }
-    historyRebuilt = false;
     log(layout === 'manual' ? 'New game: spots to be placed by hand, ' + rulesName(game.rules) + '.'
                             : 'New game: ' + n + (n === 1 ? ' spot (' : ' spots (') + (kept ? 'the same seeds as before' : layout) + '), ' + rulesName(game.rules) + (seed === null ? '' : ', random seed ' + seed) + '.');
     resizeCanvas();
@@ -746,7 +800,7 @@
   function startPlay() {
     if (game.phase !== 'place') return;
     if (game.spots.length < 1) { say('Place at least one spot first.', true); return; }
-    history = []; historyWhy = {};
+    history = []; historyWhy = {}; setFirst();
     game.phase = 'play'; aiHeld = false; browsing = false; redoList = [];
     log('Play starts with ' + game.spots.length + ' spots placed by hand.');
     netGameStarted();
@@ -769,11 +823,10 @@
     if (net && !remote) { var nb = netBlock(true); if (nb) { say(nb, true); return; } }
     var vsComputer = !net && !remote && (isAI(1) !== isAI(2));
     if (vsComputer) {
-      var prev = JSON.parse(history[history.length - 1]);
-      if (prev.moves < game.moves && prev.moves === 0 && isAI(prev.player)) { say('The only move so far is the computer\'s: type N to restart the game.', true); return; }
+      if (history[history.length - 1] === MOVE && game.moves === 1 && isAI(game.edges[game.edges.length - 1].player)) { say('The only move so far is the computer\'s: type N to restart the game.', true); return; }
     }
-    var was = game.moves, redo = net ? { game: JSON.stringify(game), entry: history[history.length - 1], why: historyWhy[history.length - 1] } : null;
-    do undoStep(); while (remote && history.length && game.moves === was);
+    var was = game.moves, redo = [];
+    do redo.push(undoStep()); while (remote && history.length && game.moves === was);
     if (vsComputer && game.moves < was) while (history.length && game.phase === 'play' && isAI(game.player)) undoStep();
     stroke = null; band = null; armed = null; if (!remote) aiCancel();
     if (net && !remote && game.moves < was) { netRedo = redo; net.session.undone(was); }
@@ -781,51 +834,68 @@
     maybeAI();
   }
   /* < and > (v97, Peter): back and forward through the game one MOVE at a
-     time (a move and the picture steps on top of it — room made, A, R, spots
-     moved — go and come back together). Unlike U, < takes back any move, the
+     time, taken off the picture as it is (changes of the picture since the
+     last move — R, room made, spots moved — are not undone). Unlike U, < takes back any move, the
      computer's too, and nothing is taken back with it; while browsing
      (`browsing`) the computer players wait, so a move can be made by hand in
      the computer's place — a move made anywhere ends the browsing, clears the
      way forward, and the game goes on from there. > at the end of the way
      forward is back at the present, and the computer plays again. The way
-     forward (`redoList`) holds, for each step back, the states taken off and
-     the position after it; it is dropped as soon as anything else changes
-     the game. Not while connected. */
+     forward (`redoList`) holds, for each step back, what its undo steps took
+     off (redoSteps puts it back exactly) and the picture's key after it; it
+     is dropped as soon as anything else changes the game. Not while connected. */
   var redoList = [], browsing = false;
   function stepBack() {
     if (net) { say('Not while connected: U undoes a move on both computers.', true); return; }
-    if (!history.length || game.phase === 'place') { say('Nothing to go back to.', true); return; }
+    if (!history.some(function (e) { return !isPicture(e); }) || game.phase === 'place') { say('Nothing to go back to.', true); return; }
     aiCancel(); stroke = null; band = null; armed = null;
-    var before = JSON.stringify(game), hist = history.slice(), why = Object.assign({}, historyWhy), was = game.moves;
-    do undoStep(); while (history.length && game.moves === was);
-    var k = history.length, w = {};
-    Object.keys(why).forEach(function (i) { if (Number(i) >= k) w[i] = why[i]; });
-    redoList.push({ game: before, hist: hist.slice(k), why: w, base: k, after: JSON.stringify(game) });
+    /* (v269, Peter 11/12: "< should just undo moves, no Rs at all" — the first < after a game put the picture before
+       the last R back, the later ones did not) the pictures kept since the last move are SET ASIDE, not put back:
+       the move comes off the picture as it is. > puts them where they were, so U after it still undoes that R. */
+    var was = game.moves, taken = [], pics = [];
+    while (isPicture(history[history.length - 1])) { var k = history.length - 1; pics.unshift({ entry: history.pop(), why: historyWhy[k] }); delete historyWhy[k]; }
+    do taken.push(undoStep()); while (history.length && game.moves === was);
+    redoList.push({ taken: taken, pics: pics, base: history.length, after: gameKey() });
     browsing = true;
     sayTurn(); draw();
     maybeAI();
   }
   function stepForward() {
     var r = redoList[redoList.length - 1];
-    if (r && (history.length !== r.base || JSON.stringify(game) !== r.after)) { redoList = []; r = null; }   // something else changed the game since
+    if (r && (history.length !== r.base || gameKey() !== r.after)) { redoList = []; r = null; }   // something else changed the game since
     if (!r) { say('Nothing to go forward to.', true); return; }
     aiCancel(); stroke = null; band = null; armed = null;
     redoList.pop();
-    history = history.concat(r.hist);
-    Object.keys(r.why).forEach(function (i) { historyWhy[i] = r.why[i]; });
-    game = JSON.parse(r.game); pendingRoom = null; roomSnapshot = false;
+    redoSteps(r.taken); pendingRoom = null; roomSnapshot = false;
+    r.pics.forEach(function (p) { if (p.why) historyWhy[history.length] = p.why; history.push(p.entry); });
     log('Redo move ' + game.moves + '.');
     browsing = redoList.length > 0;
     sayTurn(); draw();
     maybeAI();
   }
+  /* One step back; what it took off is returned, for redoSteps. */
   function undoStep() {
-    var was = game.moves, n = game.spots.length, placing = game.phase === 'place';
-    var why = historyWhy[history.length - 1];
-    delete historyWhy[history.length - 1];
-    game = JSON.parse(history.pop()); pendingRoom = null; roomSnapshot = false;
-    log(game.moves < was ? 'Undo move ' + was + '.' : placing ? 'Undo (spot placement).' : why ? 'Undo (' + why + ').' :
+    var was = game.moves, n = game.spots.length, placing = game.phase === 'place', k = history.length - 1, e = history.pop();
+    var t = { entry: e, why: historyWhy[k] };
+    delete historyWhy[k];
+    if (e === MOVE) t.off = takeMoveOff(game);
+    else if (e === SPOT) { t.spot = game.spots.pop(); t.first = firstAt[n - 1]; delete firstAt[n - 1]; if (!placing) game.added = (game.added || 0) - 1; }
+    else { t.game = game; game = JSON.parse(e); }   // (the picture left is kept as it is — nothing changes an object that is no longer the game)
+    pendingRoom = null; roomSnapshot = false;
+    log(game.moves < was ? 'Undo move ' + was + '.' : placing ? 'Undo (spot placement).' : t.why ? 'Undo (' + t.why + ').' :
         game.spots.length < n ? 'Undo (spot ' + n + ' added by hand).' : 'Undo (spot moved by hand).');
+    return t;
+  }
+  /* The steps `taken` (by undoStep, in the order taken) put back, last taken first: the game is as before them. */
+  function redoSteps(taken) {
+    for (var i = taken.length - 1; i >= 0; i--) {
+      var t = taken[i];
+      if (t.why) historyWhy[history.length] = t.why;
+      history.push(t.entry);
+      if (t.entry === MOVE) putMoveOn(game, t.off);
+      else if (t.entry === SPOT) { if (t.first) firstAt[game.spots.length] = t.first; game.spots.push(t.spot); if (game.phase !== 'place') game.added = (game.added || 0) + 1; }
+      else game = t.game;
+    }
   }
 
   /* ---------------- pointer input ---------------- */
@@ -847,7 +917,7 @@
   function placeSpot(p) {
     if (p[0] < SPOT_R || p[1] < SPOT_R || p[0] > game.W0 - SPOT_R || p[1] > game.H0 - SPOT_R) return;
     if (game.spots.some(function (s) { return s.x === p[0] && s.y === p[1]; })) return;   // (v225: any distance from the others but none — thin moves, Peter 11/1)
-    snapshot();
+    spotStep();
     game.spots.push({ x: p[0], y: p[1], deg: 0 });
     sayTurn(); draw();
   }
@@ -1476,6 +1546,26 @@
      in a worker of its own (sprouts-draw-worker.js, a redraw job); its polylines come back every frame while
      animated and are shown as the game's picture, as relayFrame did; Space terminates it (freezeRelaying);
      the result is finished by finishRelaying as before (rl.result). False when no worker could be started. */
+  /* R'S HELPERS (v269; sprouts-draw-worker.js has the whole of it): R's worker asks for n more; each is a worker of the
+     same script, kept from one R to the next (rHelpers), and gets one end of a message channel whose other end goes to
+     R's worker — never more than one less than the Workers menu says. One that fails is ended and R's worker told. */
+  var rHelpers = [];
+  function giveHelpers(rl, w, n) {
+    var ports = [];
+    rl.helpers = rl.helpers || 0;
+    while (n-- > 0 && rl.helpers < poolSize() - 1) {
+      var i = rl.helpers, h = rHelpers[i], ch = new MessageChannel();
+      if (!h) { try { h = rHelpers[i] = new Worker('sprouts-draw-worker.js' + version()); } catch (e) { break; } }
+      h.onerror = (function (i, h) { return function (ev) {
+        if (ev.preventDefault) ev.preventDefault();
+        h.terminate(); if (rHelpers[i] === h) rHelpers[i] = null;
+        if (relaying === rl) w.postMessage({ id: 1, helperLost: i, why: (ev.message || 'unknown') + (ev.lineno ? ' (' + String(ev.filename || '').split('/').pop().split('?')[0] + ', line ' + ev.lineno + ')' : '') });
+      }; })(i, h);
+      h.postMessage({ helper: true, port: ch.port2 }, [ch.port2]);
+      ports.push(ch.port1); rl.helpers++;
+    }
+    if (ports.length) w.postMessage({ id: 1, ports: ports }, ports);
+  }
   function startRedrawWorker(o, keep, retry) {
     var w;
     try { w = new Worker('sprouts-draw-worker.js' + version()); } catch (e) { return false; }
@@ -1485,6 +1575,7 @@
       var m = ev.data;
       if (relaying !== rl) return;
       if (m.smoothing) rl.smoothing = true;
+      if (m.wantHelpers) { giveHelpers(rl, w, m.wantHelpers); return; }
       if (m.done) { rl.result = m; rl.before = m.before; w.terminate(); finishRelaying(false); return; }
       if (m.picture) {
         w.postMessage({ id: m.id, drawn: true });   // (v242: the worker sends the next picture only after this one is taken — see sprouts-draw-worker.js)
@@ -1501,7 +1592,7 @@
       say('Not rearranged: a script error in its worker (see the log).', true); draw();
       if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
     };
-    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate, before: knownClearance(game) });   // (v253: before, when tidying has just measured it)
+    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate, before: knownClearance(game), helpers: poolSize() - 1 });   // (v253: before, when tidying has just measured it; v269: R's helpers — with this worker as many as the Workers menu says)
     say(relayWord() + '…   Space stops');
     draw();
     return true;
@@ -1547,7 +1638,7 @@
       var s0 = JSON.parse(rl.start).spots;
       r.moved = r.game.spots.reduce(function (m, sp, i) { return i < s0.length ? Math.max(m, G.dist([sp.x, sp.y], [s0[i].x, s0[i].y])) : m; }, 0);
     }
-    snapshot(fresh && !rl.fresh ? 'drawing made afresh' : fresh ? undefined : 'drawing rearranged');
+    if (rl.fresh) moveStep(); else snapshot(fresh ? 'drawing made afresh' : 'drawing rearranged');   // (v269: a move made in a picture drawn afresh is a move — going back takes it off that picture)
     game = r.game;
     rememberClearance(game, r.clearance);         // (v249: for the next tidying's "before")
     if (game.thin) game.thin = [];                 // (v257: an accepted R or Z tidies every thin curve)
@@ -1563,18 +1654,15 @@
          fresh && st && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
         (r.straight ? '; the smooth curves did not fit: ' + (r.corners ? r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump and ' : '') + r.straight + (r.straight > 1 ? ' curves' : ' curve') + ' drawn straight (as polylines)' :
          r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
-         r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') + '.');
+         r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') +
+        (r.helpers ? '; ' + r.helped + (r.helped === 1 ? ' box' : ' boxes') + ' descended by ' + r.helpers + (r.helpers > 1 ? ' helpers' : ' helper') + (r.lost ? ' (' + r.lost + ' failed: ' + r.lostWhy + ')' : '') : '') + '.');   // (v269)
     if (par) log('    The layouts (each with another region outside), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
     logSizes(JSON.parse(rl.start), game);
     if (rl.fresh) {                               // the computer's move, made in the new picture (the two curves are R's, certified)
       var f = rl.fresh;
       marksUsed = null; note = null; browsing = false; redoList = [];   // (the router's leftovers; a move ends browsing, as in commitMove)
       ai = f.a; ai.fresh = true;                  // (v152: aiCommitted checks it, as any move of the computer's — and the other computer's is not sent back)
-      /* the log describes the move by where its spot lies in the picture BEFORE it — here the new
-         picture without the move (a drawing of the position before), not the old picture */
-      var before = JSON.parse(JSON.stringify(game));
-      before.spots.pop(); before.edges.length -= 2; before.spots[f.mv.x].deg--; before.spots[f.mv.y].deg--; before.moves--; before.player = f.player;
-      afterMoveMade({ a: f.mv.x, b: f.mv.y }, 'drawn afresh, ' + fmt(r.clearance), before);
+      afterMoveMade({ a: f.mv.x, b: f.mv.y }, 'drawn afresh, ' + fmt(r.clearance));
       return;
     }
     sayTurn(); draw();
@@ -1717,7 +1805,8 @@
   }
   function addSpot(p, fit) {
     armed = null; pendingRoom = null; roomSnapshot = false;
-    snapshot();
+    spotStep();
+    firstAt[game.spots.length] = [p[0], p[1], game.W0, game.H0];
     game.spots.push({ x: p[0], y: p[1], deg: 0 });
     game.added = (game.added || 0) + 1;
     var n = game.spots.length;
@@ -2525,7 +2614,7 @@
   function commitMove(a, b, fit, curveInfo) {
     var mv = { a: a, b: b };
     var cut = G.splitCurveAtHalf(fit), A = game.spots[mv.a], B = game.spots[mv.b];
-    if (!roomSnapshot) snapshot();               // (after making room, its snapshot covers the move too)
+    moveStep();                                  // (v269: room made for it, or anything else since the last move, is no undo step of its own any more)
     roomSnapshot = false; browsing = false; redoList = [];   // (v97: a move ends browsing with < >)
     var z = game.spots.length;
     game.spots.push({ x: cut.point[0], y: cut.point[1], deg: 2 });
@@ -2539,10 +2628,10 @@
   /* The bookkeeping once a move is in the game object (its spot and two curves added, the move
      counted, the turn passed): the end of the game, the log, the other computer, the turn line,
      what follows a move. Shared by commitMove and a move made in a picture drawn afresh (Z). */
-  function afterMoveMade(mv, curveInfo, before) {
+  function afterMoveMade(mv, curveInfo) {
     if (!E.analyse(game.spots, game.edges).canMove) game.phase = 'over';
     pendingRoom = null; climb = null;
-    var line = D.move(before || JSON.parse(history[history.length - 1]), game, playerName(3 - game.player));
+    var line = D.move(gameBefore(game), game, playerName(3 - game.player));   // (described by where its spot lies in the picture without it)
     if (marksUsed && marksUsed.length) line += '\n    Marked to enclose: ' + marksUsed.map(function (i) { return i + 1; }).join(', ') + '.';
     if (note) line += '\n    Note: ' + note + '.';
     line += '\n    Curve: ' + curveInfo + '.';
@@ -2635,70 +2724,70 @@
     setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
   }
 
-  /* A GAME FILE (version 2, 9/23): the game object, the routing settings, the colors, the players, the drawing
-     area's size, and the undo history (the positions before each move, oldest first), so a position can be sent
-     along with a bug report, loaded back, and moves undone to replay them with a fix. Since v236 it is written
-     without indentation, one piece to a line: a header line, then "game", "route", "colours", "players" and
-     "area" (and since v238 "seed", the Random seed) each on a line of its own, "history":[ on its own, ONE LINE PER UNDO POSITION (the history is kept as
-     JSON strings already — they go into the file as they are), and ]} — so that a file too long to be read as one
-     string can still be read back line by line (readGameByLines). */
+  /* A GAME FILE (version 3, v269): the game object — the picture, which holds the moves in the order played —, the
+     routing settings, the colors, the players, the drawing area's size, the Random seed if any, and where the seeds
+     and the spots added by hand first stood ("first"). No undo history: going back takes the moves off the picture
+     (see the undo steps at the top), so a loaded game can be taken back and replayed as the one that saved it.
+     Written without indentation, one piece to a line (a header line, then each part on a line of its own), as
+     since v236. (Versions 1 and 2 held every earlier position, a line each since v236: 1.5 GB for a 500-seed game.
+     They still load — of their history only the first position in play is read, for where the seeds stood.) */
   function gameParts(d) {
-    var p = ['{"format":"sprouts-game","version":2,\n'];
-    ['game', 'route', 'colours', 'players', 'area', 'seed'].forEach(function (k) { if (d[k] !== undefined) p.push(JSON.stringify(k) + ':' + JSON.stringify(d[k]) + ',\n'); });
-    p.push('"history":[\n');
-    d.history.forEach(function (h, i) { p.push(h, i < d.history.length - 1 ? ',\n' : '\n'); });
-    p.push(']}\n');
+    var p = ['{"format":"sprouts-game","version":3'];
+    ['game', 'route', 'colours', 'players', 'area', 'seed', 'first'].forEach(function (k) { if (d[k] !== undefined) p.push(',\n' + JSON.stringify(k) + ':' + JSON.stringify(d[k])); });
+    p.push('\n}\n');
     return p;
   }
   function gameFileParts() {
     var sv = document.getElementById('opt-seed').value.trim(), seed = sv !== '' && isFinite(Number(sv)) ? Math.floor(Number(sv)) : undefined;   // (v238: the Random seed, if any)
-    return gameParts({ game: game, route: route, colours: colours, players: players, area: { w: stage.clientWidth, h: stage.clientHeight }, seed: seed, history: history });
+    return gameParts({ game: game, route: route, colours: colours, players: players, area: { w: stage.clientWidth, h: stage.clientHeight }, seed: seed, first: firstAt });
   }
-  /* A game file read line by line (v236), for one too long to be read as one string: as gameParts writes it. */
-  function readGameByLines(file) {
-    var data = null, inHistory = false, rest = '', reader = file.stream().pipeThrough(new TextDecoderStream()).getReader();
+  /* A game file read line by line (v236), for one too long to be read as one string: as gameParts writes it — or wrote
+     it until v266, with the undo history, a position a line: of those only the first in play is kept (firstGame). */
+  /* progress(percent), if given: called as each further hundredth of the file has been read (Peter, 11/12: a 1.5 GB
+     snapshot takes a while — "Loading files, 30% done"); the page gets a moment to show it each time. The bytes are
+     counted here, so the text is decoded here too (a TextDecoderStream would hide them). */
+  function readGameByLines(file, progress) {
+    var data = null, inHistory = false, rest = [], reader = file.stream().getReader(), decoder = new TextDecoder(), got = 0, shown = -1;
     function line(s) {
       s = s.trim();
       if (!s) return;
       if (data === null) { data = JSON.parse(s.replace(/,$/, '}')); return; }               // the header line
-      if (inHistory) { if (s === ']}') inHistory = false; else data.history.push(JSON.parse(s.replace(/,$/, ''))); return; }
-      if (s === '"history":[') { data.history = []; inHistory = true; return; }
+      if (inHistory) {
+        if (s === ']}') { inHistory = false; return; }
+        if (!data.firstGame) { var g = JSON.parse(s.replace(/,$/, '')); if (g.phase !== 'place') data.firstGame = g; }
+        return;
+      }
+      if (s === '"history":[') { inHistory = true; return; }
+      if (s === '}') return;                         // (the end of the file)
       var piece = JSON.parse('{' + s.replace(/,$/, '') + '}');
       Object.keys(piece).forEach(function (k) { data[k] = piece[k]; });
     }
     function next() {
       return reader.read().then(function (r) {
-        if (r.done) { line(rest); return data; }
-        var lines = (rest + r.value).split('\n');
-        rest = lines.pop();
-        lines.forEach(line);
-        return next();
+        if (r.done) { rest.push(decoder.decode()); line(rest.join('')); return data; }
+        got += r.value.byteLength;
+        /* (v269) a line is put together from ITS OWN pieces of the chunks (join: a string of its own). Before, the
+           chunk was added to what was left over and the whole cut at the line ends — and each line kept, unseen, the
+           string it was cut from, with the start of the next line in it: measured on 200 positions of the 500-seed
+           game (417 MB), 598 MB held for them; now what the file holds. */
+        var segs = decoder.decode(r.value, { stream: true }).split('\n');
+        for (var q = 0; q + 1 < segs.length; q++) { rest.push(segs[q]); line(rest.join('')); rest = []; }
+        rest.push(segs[segs.length - 1]);
+        var pc = Math.floor(100 * got / file.size);
+        if (!progress || pc === shown) return next();
+        shown = pc; progress(pc);
+        return new Promise(function (go) { setTimeout(go, 0); }).then(next);
       });
     }
     return next();
   }
   /* the game handed over by Y (a new window) — an object, not a file */
   function gameData() {
-    return { format: 'sprouts-game', version: 2, game: game, route: route, colours: colours,   // (colours: v42)
+    return { format: 'sprouts-game', version: 3, game: game, route: route, colours: colours,   // (colours: v42)
              players: players, area: { w: stage.clientWidth, h: stage.clientHeight },   // (v185, Peter: the players and the drawing area's size too)
-             history: history.map(function (h) { return JSON.parse(h); }) };
+             first: firstAt, steps: history.slice(), why: Object.assign({}, historyWhy) };   // (the undo steps as they are, the pictures since the last move too)
   }
   function saveGame() { saveFile('sprouts-' + stamp() + '.json', gameFileParts, 'application/json'); }
-  /* The undo history of a version-1 file, which has none: rebuilt by taking the
-     moves off one by one. A move appended its new spot and its two edges
-     (x→z, z→y) last and changed nothing else but the two degrees, the move
-     count and the player. */
-  function rebuildHistory(g) {
-    var out = [], cur = JSON.parse(JSON.stringify(g));
-    while (cur.moves > 0 && cur.edges.length >= 2) {
-      var e2 = cur.edges.pop(), e1 = cur.edges.pop();
-      cur.spots.pop();
-      cur.spots[e1.a].deg -= 1; cur.spots[e2.b].deg -= 1;
-      cur.moves -= 1; cur.player = e1.player; cur.phase = 'play';
-      out.unshift(JSON.stringify(cur));
-    }
-    return out;
-  }
   function loadGame() {
     if (net) { say('No loading while connected: the other computer could not follow (Net → Leave first).', true, null, true); return; }   // (v79)
     var input = document.createElement('input');
@@ -2713,19 +2802,20 @@
         useLoaded(data, file.name);
         if (then) then();
       }
-      function byLines() {   // (v236) too long to be read as one string: line by line, as the game files of v236 on are written
-        readGameByLines(file).then(use, function (e) {
-          say(e instanceof SyntaxError ? 'Not a JSON file (' + file.name + ', ' + sizeText(file.size) + ').' : 'Could not read ' + file.name + ' (' + sizeText(file.size) + '): ' + e.message + '.', true, null, true);
-        });
+      function fail(e) {
+        say(e instanceof SyntaxError ? 'Not a JSON file (' + file.name + ', ' + sizeText(file.size) + ').' : 'Could not read ' + file.name + ' (' + sizeText(file.size) + '): ' + e.message + '.', true, null, true);
       }
-      /* (v262, Peter 11/11: the 400-seed snapshot, 825 MB, intact, was "Not a JSON file") a file too long for one
-         string can come back from text() cut short instead of refused, and then fails to parse as JSON: whatever
-         fails here is read line by line, and only if that fails too is it not a game file */
-      file.text().then(function (text) {
-        var data;
-        try { data = JSON.parse(text); } catch (e) { byLines(); return; }
-        use(data);
-      }, byLines);
+      /* (v266) LINE BY LINE FIRST (v236: as the game files of v236 on are written — and a file all on one line, as
+         before v236, is read whole as its first line), and only what fails that way as one string. v236–v265 asked
+         for the whole text first and went line by line when that failed (v262: the 400-seed snapshot, 825 MB, came
+         back from text() cut short) — but asking for 1.5 GB as one string does not fail: the page dies of it. */
+      readGameByLines(file, function (pc) { statusEl.textContent = 'Loading ' + file.name + ' (' + sizeText(file.size) + '): ' + pc + '% done'; }).then(use, function () {
+        file.text().then(function (text) {
+          var data;
+          try { data = JSON.parse(text); } catch (e) { fail(e); return; }
+          use(data);
+        }, fail);
+      });
   }
   /* (v243, Peter 11/6: the manual's table of games links to them) index.html?game=FILE opens the page with that game
      file loaded, as File → Load game does — a file on the same site, read as a Blob, so a long one is read line by
@@ -2741,11 +2831,16 @@
   }
   /* A game file's contents put in place (Load game; v166: also the game handed over by Y, `moved`) */
   function useLoaded(data, name, moved) {
+    writeLoadedMoves();
     game = data.game; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHalt = false; titleKey = null;
     if (replay) { replay = null; setReplayLabel(); }
     aiHeld = false;                               // (v240: a hold for N left by a menu change before loading — Layout, Spots, a Player — belongs to the game replaced)
-    history = data.history ? data.history.map(function (h) { return JSON.stringify(h); }) : rebuildHistory(game); historyWhy = {}; browsing = false; redoList = [];
-    historyRebuilt = !data.history;               // (v261: no record of where the seeds first stood — Replay says so)
+    history = data.steps ? data.steps.slice() : stepsOf(game); historyWhy = data.why ? Object.assign({}, data.why) : {}; browsing = false; redoList = [];
+    /* where the spots first stood: the file's record; for a file of v266 or before, its first position in play */
+    var fg = data.firstGame || (data.history || []).filter(function (g) { return g.phase !== 'place'; })[0];
+    firstAt = {};
+    if (data.first) Object.keys(data.first).forEach(function (i) { firstAt[i] = data.first[i]; });
+    else if (fg) fg.spots.forEach(function (s, i) { firstAt[i] = [s.x, s.y, fg.W0, fg.H0]; });
     if (data.route) applySettings(data.route);
     if (data.colours) applyColours(data.colours);
     if (game.rules) document.getElementById('opt-rules').value = game.rules;
@@ -2778,27 +2873,42 @@
     if (sd !== null) log('Random seed ' + sd + (typeof data.seed === 'number' ? ' (from the file)' : '') + ': the generator starts afresh.');
     maybeAI();
   }
-  /* The log lines for a loaded game: its start and every move so far,
-     from its history (rebuilt for a version-1 file). */
+  /* (v269, Peter 11/12: "can we just omit that and only generate it when we need it for downloading?") THE MOVES OF A
+     LOADED GAME ARE WRITTEN INTO THE LOG WHEN THEY ARE NEEDED, not on loading: a line for every move is worked out from
+     the position before it, 90 ms a move in his 500-seed game — the minute between "99% done" and the picture for the
+     1.5 GB snapshot. On loading only the first line is logged and the game as loaded is set aside as text
+     (loadedMoves). writeLoadedMoves puts the lines in at their place, under that first line and with its time: when
+     the log is saved (Save log, a snapshot), handed to a new window, or the game is replaced (a new game, another
+     file, a replay) — so no log ever lacks them. Made from the last move back to the first, each step taken off the
+     one after it (gameBefore). */
+  var loadedMoves = null;   // { at: where in logLines, t: the time of loading, game (text) }
   function logLoaded(name) {
-    var states = history.map(function (h) { return JSON.parse(h); }).filter(function (g) { return g.phase !== 'place'; }).concat([game]);
-    var first = states[0];
     if (game.phase === 'place') { log('Loaded ' + name + ': ' + game.spots.length + ' spots placed so far.'); return; }
-    log('Loaded ' + name + ': started with ' + (first.spots.length - first.moves - (first.added || 0)) + ' spots, ' + rulesName(game.rules) + '. The game so far:');
-    for (var i = 1; i < states.length; i++) {
-      if (states[i].moves === states[i - 1].moves && states[i].spots.length === states[i - 1].spots.length + 1) {
-        var an = E.analyse(states[i - 1].spots, states[i - 1].edges), q = states[i].spots[states[i].spots.length - 1], r = an.regionAt([q.x, q.y]);
-        log('Spot ' + states[i].spots.length + ' added by hand (Ctrl+click)' + (r ? ', in ' + D.region(an, r) : '') + '.');
-        continue;
-      }
-      if (states[i].moves !== states[i - 1].moves + 1) continue;
-      var last = states[i].edges[states[i].edges.length - 1];
-      log(D.move(states[i - 1], states[i], playerName(last.player)));
-    }
+    log('Loaded ' + name + ': started with ' + (game.spots.length - game.moves - (game.added || 0)) + ' spots, ' + rulesName(game.rules) + '. The game so far:');
+    loadedMoves = { at: logLines.length, t: new Date().toTimeString().slice(0, 8), game: JSON.stringify(game) };
     if (game.phase === 'over') log(gameOverText().replace(/\s{2,}/g, ' '));
+  }
+  function writeLoadedMoves() {
+    var p = loadedMoves, lines = [], out = [];
+    if (!p) return;
+    loadedMoves = null;
+    var cur = JSON.parse(p.game), steps = stepsOf(cur);
+    for (var k = steps.length - 1; k >= 0; k--) {
+      var prev = gameBefore(cur, steps[k] === SPOT);
+      if (steps[k] === SPOT) {
+        var an = E.analyse(prev.spots, prev.edges), q = cur.spots[cur.spots.length - 1], r = an.regionAt([q.x, q.y]);
+        lines.push('Spot ' + cur.spots.length + ' added by hand (Ctrl+click)' + (r ? ', in ' + D.region(an, r) : '') + '.');
+      } else lines.push(D.move(prev, cur, playerName(cur.edges[cur.edges.length - 1].player)));
+      cur = prev;
+    }
+    for (k = lines.length - 1; k >= 0; k--) lines[k].split('\n').forEach(function (l, i) { out.push((i ? '         ' : p.t + ' ') + l); });
+    logLines = logLines.slice(0, p.at).concat(out, logLines.slice(p.at));
+    if (areaLogAt >= p.at) areaLogAt += out.length;
+    logDirty = true;
   }
 
   function logParts() {
+    writeLoadedMoves();
     var p = ['Sprouts log — ' + document.getElementById('app-version').textContent + ', saved ' + new Date().toString() + '\n\n'];
     logLines.forEach(function (l) { p.push(l, '\n'); });
     return p;
@@ -4153,7 +4263,7 @@
      (aiHalt), U takes moves back and the replay goes on from there; File → Stop the replay hands the game to the
      players of the Player menus. The game must not have spots added by hand during play (their numbers would
      sit between the moves' spots). */
-  var replay = null, historyRebuilt = false;   // { src: the game replayed (its final state), n0: its seeds, total: its moves, stopping }
+  var replay = null;   // { src: the game replayed (its final state), n0: its seeds, total: its moves, stopping }
   function setReplayLabel() { document.getElementById('cmd-replay').textContent = replay ? 'Stop the replay' : 'Replay the game'; }
   function replayCommand() {
     if (replay) {
@@ -4175,9 +4285,11 @@
     if (src.edges.length !== 2 * M) { say('This game cannot be replayed: its curves do not match its moves.', true, null, true); return; }
     var idx = [];
     for (m = 0; m < n0; m++) idx.push(m);
-    var W = stage.clientWidth, H = stage.clientHeight, first = firstPlaces(idx, W, H), noStart = !history.length || historyRebuilt;
+    var W = stage.clientWidth, H = stage.clientHeight, first = firstPlaces(idx, W, H), noStart = !idx.every(function (i) { return firstAt[i]; });
     game = { W0: W, H0: H, edges: [], player: src.edges[0].player || 1, moves: 0, added: 0, phase: 'play', rules: src.rules || document.getElementById('opt-rules').value,
              spots: idx.map(function (i) { return { x: first[i][0], y: first[i][1], deg: 0 }; }) };
+    writeLoadedMoves();
+    setFirst();
     history = []; historyWhy = {}; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false; aiCancel(); aiHeld = false; aiHalt = false; titleKey = null; browsing = false; redoList = [];
     replay = { src: src, n0: n0, total: M, stopping: false };
     setReplayLabel();
@@ -4289,7 +4401,7 @@
     undo: function (msg, done) { whenIdle(function () { log('Net: the other computer undoes move ' + msg.k + '.'); undo(true); done(true); }); },
     revert: function (w) {
       if (w.type === 'move') { takeBackMove(); log('Net: my move taken back (the host moved at the same time).'); }
-      else if (w.type === 'undo' && netRedo) { history.push(netRedo.entry); if (netRedo.why) historyWhy[history.length - 1] = netRedo.why; game = JSON.parse(netRedo.game); log('Net: my undo taken back (the host acted at the same time).'); }
+      else if (w.type === 'undo' && netRedo) { redoSteps(netRedo); log('Net: my undo taken back (the host acted at the same time).'); }
       netRedo = null; stroke = null; band = null; armed = null; pendingRoom = null; roomSnapshot = false;
       sayTurn(); draw();
     },
@@ -4455,6 +4567,7 @@
     if (relaying || roomBusy || routeBusy || band) { say('Wait until the drawing is finished, then press Y again.', true, null, true); return; }
     var toOwn = !ownWindow();
     aiCancel();                                   // (the computer thinks again in the new window)
+    writeLoadedMoves();
     window.__sproutsHandoff = { data: gameData(), menus: menuValues(), log: logLines.slice(), previous: previousLog, area: [stage.clientWidth, stage.clientHeight], own: toOwn };
     var w = toOwn ? window.open(location.pathname, 'sprouts', 'popup,width=' + stage.clientWidth + ',height=' + (stage.clientHeight + menubar.offsetHeight + statusbarEl.offsetHeight) +
                                 ',left=' + window.screenX + ',top=' + window.screenY)   // (v168, Peter: where the browser window was — its upper left corner. The way back cannot: a tab goes where the browser puts it)

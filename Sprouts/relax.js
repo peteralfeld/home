@@ -282,6 +282,11 @@
               if (Math.sqrt(bx * bx + by * by) * legScale >= best) continue;
             }
             var d = G.distPointSeg(p, pts[j - 1], pts[j]) * legScale;
+            /* (v269) the two halves of a move meet at its own spot Z as two curves meet at a spot: across Z their
+               separation is an angle too (ctx.Z, ctx.sZ — certify). A tongue pulled in until its tip, the move's
+               spot, was a fold of 23° between its strands failed here by a pixel as one curve, where two curves
+               leaving a spot at that angle pass: unit 83-1448-1377 of Peter's 500-seed game, R by patches. */
+            if (ctx.sZ !== undefined && ((s < ctx.sZ && S[j - 1] >= ctx.sZ) || (s > ctx.sZ && S[j] <= ctx.sZ))) d *= Math.max(1, ctx.rho / (G.dist(p, ctx.Z) || 1e-9));
             if (d >= SELF_RATIO * sigma) continue;
             if (d < best) { best = d; bj = j; }
           }
@@ -293,11 +298,20 @@
        nothing from shrinking to a point. */
     var total = S[pts.length - 1];
     var dA = G.dist(p, ctx.A), dB = G.dist(p, ctx.B), from = null;
+    /* (v265) Two things the certificate got wrong, each by about a pixel, on Peter's 500-seed game of 11/11–12 — where
+       they had every R refused from move 905 on, 82 in a row, 16 of the run's 21 hours:
+       the spot's OWN size (ctx.rA, ctx.rB — room.js certOf), not the full size for all: a stump at half size keeps its
+       loop off the disc that is drawn (the loop 145-962-145, 31 px round);
+       and "come back" taken at its word (ctx.farA, ctx.farB — certify): a point near an end spot counts only if the
+       curve has been farther from A before it, or will be farther from B after it. A short curve bent between two
+       spots two radii apart is nearer to B than SELF_RATIO of the arc left, yet it is only arriving (1340-238, 19 px
+       long, and 434-1451: 0.9 and 0.5 px short). The bands are as they were. */
+    var rA = ctx.rA !== undefined ? ctx.rA : ctx.spotR, rB = ctx.rB !== undefined ? ctx.rB : ctx.spotR;
     if (loop) {                                   // the middle half of a loop keeps clear of its spot
-      if (s > 0.25 * total && s < 0.75 * total && dA - ctx.spotR < best) { best = dA - ctx.spotR; from = ctx.A; }
+      if (s > 0.25 * total && s < 0.75 * total && dA - rA < best) { best = dA - rA; from = ctx.A; }
     } else {
-      if (dA < SELF_RATIO * s && dA - ctx.spotR < best) { best = dA - ctx.spotR; from = ctx.A; }
-      if (dB < SELF_RATIO * (total - s) && dB - ctx.spotR < best) { best = dB - ctx.spotR; from = ctx.B; }
+      if (dA < SELF_RATIO * s && !(ctx.farA <= dA) && dA - rA < best) { best = dA - rA; from = ctx.A; }
+      if (dB < SELF_RATIO * (total - s) && !(ctx.farB <= dB) && dB - rB < best) { best = dB - rB; from = ctx.B; }
     }
     if (dir && best < Infinity) {                 // the gradient of best (with the other points held: as the finite differences had it)
       var qx, qy;
@@ -702,7 +716,17 @@
     var ctx = Object.assign({}, ctx0, { scaleEnds: true });
     var maxLeg = Math.min(4, dmin), poly = G.refinedPolygon(pieces, 0.25, maxLeg);
     var pts = poly.pts, S = arcs(pts), worst = Infinity, at = null, margin = poly.eps + maxLeg / 2;
+    /* (v265) how far from A the curve has been up to each point, and how far from B it will still be: see rSelf */
+    var farA = new Float64Array(pts.length), farB = new Float64Array(pts.length), k;
+    for (k = 0; k < pts.length; k++) farA[k] = Math.max(k ? farA[k - 1] : 0, G.dist(pts[k], ctx.A));
+    for (k = pts.length - 1; k >= 0; k--) farB[k] = Math.max(k + 1 < pts.length ? farB[k + 1] : 0, G.dist(pts[k], ctx.B));
+    if (ctx.Z) {                                   // where along the curve its move's spot lies (rSelf)
+      var iz = 0;
+      for (k = 1; k < pts.length; k++) if (G.dist(pts[k], ctx.Z) < G.dist(pts[iz], ctx.Z)) iz = k;
+      ctx.sZ = S[iz];
+    }
     for (var i = 1; i + 1 < pts.length; i++) {
+      ctx.farA = farA[i]; ctx.farB = farB[i];
       var r = Math.min(rObs(obs, ctx, pts[i]), rSelf(ctx, pts, S, pts[i], S[i]) - poly.eps) - margin;
       if (r < worst) { worst = r; at = pts[i]; }
     }

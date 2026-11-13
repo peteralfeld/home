@@ -109,6 +109,11 @@ table.series th { color: #FFD700; }
 table.series tr th:first-child { text-align: left; }
 table.series td img { height: 60px; width: auto; vertical-align: middle; border: 1px solid #6495ED; }
 
+/* the chart under the tables of games played to the end (an inline SVG: .z/series/chart.js) */
+figure.series-chart { margin: 0.5em 0 1.5em 2em; max-width: 900px; }
+figure.series-chart svg { width: 100%; height: auto; display: block; }
+figure.series-chart figcaption { font-size: 16px; color: rgba(255,255,255,.75); margin-top: 0.3em; }
+
 /* thumbnails in the text: a small picture that opens the full-size one */
 a.thumb img { height: 100px; width: auto; vertical-align: middle; border: 1px solid #6495ED; margin: 2px 4px; }
 a.thumb:hover img { border-color: #c00; }

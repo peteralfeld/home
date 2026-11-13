@@ -516,8 +516,8 @@ is local by construction: a knot goes only where it is needed.</p>
 <p>The spline is then <e>certified</e> (<code>relax.certify</code>): its refined control polygon (section
 <a href="#sec-polygons">2.2</a>) must keep $0.6\,d_0$ from everything. The new spot is placed near half the arc
 length (section <a href="#sec-splines">2.1</a>), the spline is cut there into the move&rsquo;s two curves, the
-position is recomputed (section <a href="#sec-rotation">2.3</a>), and the move is recorded: in the undo
-history, in the log (in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or
+position is recomputed (section <a href="#sec-rotation">2.3</a>), and the move is recorded: as an undo
+step (section <a href="#sec-memory">7.2</a>), in the log (in words, such as &ldquo;3 &rarr; 5 enclosing 7, 8-9&rdquo;, with the regions it split or
 joined) and, in network play, sent to the other computer.</p>
 
 <h2 id="sec-thin">3.7. Allow thin moves: spots as points, curves thin</h2>
@@ -655,7 +655,7 @@ the checked steps are taken in order and the unchecked ones skipped. When the st
 stops and says so. A human&rsquo;s move stays waiting, and the keys still work by hand. A new click on a
 destination starts the ladder anew, and <code>Space</code> during a step stops the climb. Heroic mode (section
 <a href="#sec-heroic">4.7</a>) switches the human&rsquo;s boxes off. Each change of the picture is its own undo
-step, and the move that follows a change made for it shares that step. Every one of these operations ends with
+step until the next move is made (section <a href="#sec-memory">7.2</a>). Every one of these operations ends with
 the check of section <a href="#sec-invariant">1.2</a>.</p>
 
 <h2 id="sec-window">4.2. The window</h2>
@@ -868,6 +868,33 @@ result is refused if the position changed or the clearance is not positive. A cu
 length keeps its knots as its points, so pressing <code>R</code> a second time starts where the
 first ended and changes next to nothing. A spot that was drawn smaller than its size by an earlier Z (section
 <a href="#sec-z">4.6</a>) grows back to its size in R as soon as there is room for it.</p>
+
+<p><e>R by patches</e> (since v269). One descent for the whole picture has one step size, one memory and one stop
+rule, and the stiffest place anywhere sets them for every point. The more spots, the stiffer the stiffest place: the
+step scale measured 1.4 on a picture with 1,700 points, 0.06 with 5,900, and 0.0015 with 7,700, where R stopped
+after three steps with two tongues of almost 800 pixels left. In a 500-seed game R ran for 12 to 25 minutes at a
+time and most of its results were refused. But a point feels only what lies within the energy&rsquo;s reach $H$
+(100 pixels at the default settings), so the picture is many nearly independent problems. R therefore cuts the
+picture&rsquo;s bounding box into boxes at least $2H$ wide and high (a picture smaller than $4H$ either way is one
+box, and R runs as before). A point is <e>free</e> in a box when it and its neighbors along its curves are inside
+it. The descent of a box moves its free points only, with its own step size, memory and stop rule, and keeps them
+inside the box, so the moving segments of two boxes can never meet. The energy is evaluated only on what the free
+points can change, so a step costs what the box holds, not the picture. Each round shifts the grid by half a box
+(across, down, and both), so that points near a box&rsquo;s side are free in a later round. After each round the
+curves are re-spaced. When four rounds in a row move no point by a pixel, or gain less than a pixel&rsquo;s worth
+of energy a step, the descent of the whole picture has the last word.</p>
+
+<p>A round goes in four <e>passes</e>. The boxes of a pass are those of one color of a checkerboard in twos (column
+and row both even, and so on), so no two of them are neighbors. Every box of a pass starts from the picture as the
+pass found it, and what the boxes moved goes into the picture when the pass is over. So it does not matter who
+descends a box, or when: the result is the same to the last bit. That is what lets the boxes of a pass run at the
+same time (section <a href="#sec-workers">7.1</a>).</p>
+
+<p>Two changes to the acceptance of R&rsquo;s result came with it. A curve without clearance counts against the
+result only if it has less clearance than before R (a curve that was too close already is not R&rsquo;s fault). And
+when the last fallback still leaves such curves, each gets a descent of its own in a box around it, and the picture
+is finished again, for as long as that leaves fewer of them. A place that fails costs its own neighborhood, not the
+whole picture.</p>
 
 <p>Tried and dropped: starting R from <e>Tutte&rsquo;s</e> barycentric embedding [<a href="#ref-tutte">7</a>] of the
 position&rsquo;s map, made into a triangulation. It is exact in theory and gives a genuinely fresh start, but
@@ -1235,7 +1262,7 @@ version 253 drew round seeds 16, 17, 29, 44 and version 260 round 16, 17, 29, 33
 move 19.</p>
 
 <p><e>The game&rsquo;s own moves.</e> File &rarr; Replay the game therefore does not ask any player again. It plays
-the present game&rsquo;s moves, in order, from its seeds where they first stood (from the undo history). Each move
+the present game&rsquo;s moves, in order, from its seeds where they first stood (kept with the game). Each move
 is read off the game&rsquo;s <e>final</e> picture: the curves of moves 1 to $m$ of it, the later ones left out,
 are a picture of the position after move $m$, since a picture never changes the position. From that position the
 move is described as it is sent to the other computer in network play (section <a href="#sec-net">6</a>): its two
@@ -1304,7 +1331,7 @@ grid drawing, is implemented in the program itself.</p>
   the number of logical processors), for Monte Carlo and Parity search and for computing the candidates&rsquo;
   canonical forms;</li>
   <li>the <e>drawing</e> workers (<code>sprouts-draw-worker.js</code>), one layout each for Z, the same number,
-  and one of them for R (since v226);</li>
+  and one of them for R (since v226), with <e>helpers</e> of the same kind for R&rsquo;s boxes (since v269, below);</li>
   <li>one worker for the router and for making room (<code>sprouts-room-worker.js</code>): sliding spots, pushing
   curves apart, the marked route, and moves drawn thin (since v227).</li>
 </ul>
@@ -1314,12 +1341,37 @@ Workers do not share memory here: shared memory needs special server headers (cr
 Pages does not send, so each thinking worker keeps its own tables. Workers do not run from a page opened as a file;
 the program then works on the page&rsquo;s own thread and says so.</p>
 
+<p><e>R&rsquo;s helpers.</e> R goes by boxes, in passes whose boxes do not depend on one another (section
+<a href="#sec-ar">4.5</a>). The worker that runs R stays in charge: it holds the state, re-spaces the curves,
+finishes the picture and sends it to the page. When a pass has more boxes than it has hands, it asks the page for
+helpers, never more in all than one less than the Workers menu says. The page keeps the helpers from one R to the
+next and connects each to R&rsquo;s worker by a message channel, so boxes and answers go straight between the
+workers. (A worker may start workers of its own in most browsers, but not everywhere.) A helper keeps its own copy
+of the state, gets the pass&rsquo;s picture with each box, and sends back the points it moved. R&rsquo;s worker
+takes boxes too: first those nobody has, then those a helper has not answered yet, and the first answer counts
+(both are the same). So nothing waits on a helper, and one that fails costs only its box&rsquo;s time. With the
+Workers menu at 1 there are no helpers and R&rsquo;s worker does every box itself, with the same result. On a
+500-seed position with 32 processors R took 185 seconds with helpers and 506 without. Re-spacing, the last descent
+of the whole picture and the finish are not shared out, and each pass waits for its slowest box.</p>
+
 <h2 id="sec-memory">7.2. Memory</h2>
 
 <p>Chrome gives a page and all its workers together one JavaScript heap of at most 4 GB, however much memory the
 computer has. A Z layout of a crowded 30- or 40-spot position takes 50 to 110 MB, so with 32 drawing workers and
 32 thinking workers the total can approach that limit. While Z runs, the idle thinking workers are therefore ended
 (they are started again for the computer&rsquo;s next move), and the drawing workers are ended when Z is done.</p>
+
+<p><e>The undo steps.</e> Until v266 every undo step was the whole picture as text, and a game file held them all.
+For a 500-seed game that was 1.5 GB, and the page died of it. Since v269 an undo step is one of three things. A
+<e>move</e>: going back takes its spot and its two curves off the picture as it is now (they are the last ones, and
+a move changes nothing else but two degrees, the count of moves and the turn), and nothing else moves. A <e>spot</e>
+placed or added by hand: going back takes it off. Or a <e>picture</e> as text, for a change of the picture alone
+(room made, R, Z, a spot moved by hand): going back puts that picture back. Pictures are kept only for the changes
+since the last move, and the next move drops them, so they never add up. <code>U</code> undoes the last step,
+whatever it is. <code>&lt;</code> takes off the last move and leaves the picture otherwise as it is, and
+<code>&gt;</code> puts back exactly what was taken off. The moves themselves are stored nowhere but in the picture:
+its curves come in pairs through each move&rsquo;s new spot, in the order played, so the steps of a loaded game are
+read off it.</p>
 
 <p>When a move does not fit, the program looks for a narrower way, at half the minimum clearance, then a quarter, and so
 on, to explain the refusal and to know where to make room. Its grid cells shrink with the clearance, so in a large
@@ -1337,15 +1389,18 @@ reasoning (candidates, depth reached, verdicts), every refusal with its numbers,
 periodic &ldquo;watch&rdquo; lines with the memory in use and what the page is busy with. File &rarr; Save log
 writes it as a text file. It is also kept in the browser&rsquo;s local storage as it grows, so that after a crash
 or a freeze the log of the session that died can still be saved (File &rarr; Save the log of the last session).
+The moves of a loaded game are written into the log only when they are needed (when the log is saved, or the game
+is replaced), since describing a move of a 500-seed game takes about 90 ms and there are over a thousand of them.
 Since the log names every move by its spots and the regions it creates, the positions of a game that crashed
 can be rebuilt from it, which is how several problems were found.</p>
 
 <p>Saving never stops anything and works at any time, also while R, Z or the router is busy. A file is handed to
-the browser in pieces rather than built as one string first, since a browser&rsquo;s longest string has about
-537 million characters and a game file can be longer: it holds the game&rsquo;s whole undo history, every
-position before each move, so it grows roughly with the square of the number of moves (a 300-seed game passed that
-limit). A game file is therefore written without indentation, one piece to a line, with one line per undo position;
-a file too long to be read as one string is read back line by line. Every save is logged with its size, and a
+the browser in pieces rather than built as one string first. A game file (version 3, since v269) holds the game
+object (the picture, which holds the moves in the order played), the settings, the colors, the players, the drawing
+area&rsquo;s size, the random seed if any, and where the seeds and the spots added by hand first stood (for N and
+for Replay). It is written without indentation, one piece to a line, and read back line by line. Files of earlier
+versions also held every earlier position, one to a line. They still load: of their history only the first position
+is read, for where the seeds stood. Every save is logged with its size, and a
 save that fails says why.</p>
 
 <h2 id="sec-files">7.4. The files</h2>

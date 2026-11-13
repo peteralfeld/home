@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sprouts</title>
-<link rel="stylesheet" href="style.css?v=264">
+<link rel="stylesheet" href="style.css?v=269">
 <!-- Firebase (compat SDK): the relay for two-computer play (menu Net) — the one thing not self-contained, as in Backgammon -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
@@ -12,7 +12,7 @@
 <body>
 
 <div id="menubar">
-  <span id="app-version">SPROUTS v. 264</span>
+  <span id="app-version">SPROUTS v. 269</span>
   <div class="menu">
     <button class="menu-title" id="help-title" data-tip="m-help">Help</button>
     <div class="menu-panel">
@@ -274,7 +274,7 @@
   <div data-tip-for="size-full"><b>Full screen.</b> The page fills the screen, as with <kbd>F</kbd> (View menu); <kbd>F</kbd> or <kbd>Esc</kbd> leaves it.</div>
   <div data-tip-for="cmd-new"><b>New game</b> <kbd>N</kbd>. Starts a new game with the Spots, Layout and Rules above. With the Random and Place by hand layouts, and after a game was loaded from a file, the game starts from the same seeds as the game before (a change of the Spots or Layout fields, or the keys <kbd>1</kbd> &hellip; <kbd>9</kbd> and <kbd>0</kbd>, lay them out anew). While spots are being placed by hand it starts the game from them instead.
     <kbd>1</kbd> &hellip; <kbd>9</kbd>: a new game with that many spots in the chosen layout. <kbd>0</kbd>: a blank window, spots placed by hand (Layout becomes Place by hand); <kbd>Enter</kbd> or <kbd>N</kbd> starts the game from them.</div>
-  <div data-tip-for="cmd-undo"><b>Undo move</b> <kbd>U</kbd>. Takes back the last move, with any room made for it. Against the computer it goes back to your turn. Over the net either player may undo; it takes back the last move whoever made it, on both computers.
+  <div data-tip-for="cmd-undo"><b>Undo move</b> <kbd>U</kbd>. Takes back the last move: its curve and its spot are taken off the picture as it is now, and nothing else moves (room made for it stays). A change of the picture alone since the last move &mdash; R, Z, room made, a spot moved by hand &mdash; is undone first, back to the picture before it; once a move follows, such a change can no longer be undone on its own. Against the computer it goes back to your turn. Over the net either player may undo; it takes back the last move whoever made it, on both computers.
     <kbd>&lt;</kbd> / <kbd>&gt;</kbd>: back / forward through the game one move at a time, the computer&rsquo;s moves too. Meanwhile the computer waits; make a move anywhere (also in the computer&rsquo;s place) and the game goes on from there.</div>
   <div data-tip-for="cmd-exit"><b>Exit</b> <kbd>X</kbd>. Closes the page (and leaves a network game). A browser lets a page close itself only when it was opened on its own, e.g. from a desktop shortcut; otherwise the status line says how to close it.</div>
 
@@ -347,28 +347,28 @@
   <div data-tip-for="colour-deg3"><b>Stumps</b>: spots with three curves and no lives; no curve may touch them again.</div>
 
   <div data-tip-for="m-file"><b>File.</b> Load and save games, the picture, the log and the position.</div>
-  <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors, players, drawing area size and undo history, so it can be played on or taken back move by move. The drawing area is given the saved size as Game &rarr; Size gives it. Not while connected to another computer.</div>
+  <div data-tip-for="cmd-load"><b>Load game.</b> Opens a game saved with Save game as JSON, with its settings, colors, players and drawing area size, so it can be played on or taken back move by move. The drawing area is given the saved size as Game &rarr; Size gives it. Not while connected to another computer.</div>
   <div data-tip-for="cmd-snap"><b>Snapshot</b> <kbd>B</kbd>. Saves, at once and with one time stamp, the picture as drawn now (PNG), the game as it is now (JSON &mdash; while R or Z runs, the picture on the screen) and the log. Nothing stops; it works at any time, also while something is running.</div>
   <div data-tip-for="cmd-png"><b>Save picture as PNG</b> <kbd>P</kbd>. Saves the drawing area as it is now as an image (in the browser&rsquo;s download folder).</div>
   <div data-tip-for="cmd-replay"><b>Replay the game.</b> Plays the present game (loaded, or just played) again from the start: its seeds where they first stood, then its own moves, one after the other, each drawn as the computer draws its moves &mdash; with the Room menu&rsquo;s steps for the computer and the present settings. The moves are the game&rsquo;s, so the same game is played whatever version of the page replays it; only the picture may differ. Space pauses and continues; U takes moves back and the replay goes on from there. While it runs this item reads <b>Stop the replay</b>: the players set in the Player menus then take over. Not while connected to another computer, nor for a game with spots added by hand during play.</div>
-  <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors, the players, the drawing area&rsquo;s size and every earlier position (the undo history). Load game brings it all back. A long game makes a large file.</div>
+  <div data-tip-for="cmd-save"><b>Save game as JSON.</b> Saves the whole game: the picture, the settings, the colors, the players, the drawing area&rsquo;s size and where the seeds first stood. The picture holds the moves in the order played, so a loaded game can be taken back move by move and replayed. Load game brings it all back.</div>
   <div data-tip-for="cmd-log"><b>Save log as text.</b> Saves this session&rsquo;s log: every move in words, the computer&rsquo;s thinking, room made or refused, with times and pixel figures &mdash; useful for reporting a problem.</div>
   <div data-tip-for="cmd-log-prev"><b>Save the log of the last session.</b> The log is kept in this browser as it grows, so after a crash or a reload the last session&rsquo;s log can still be saved. Only the one session before this one is kept.</div>
   <div data-tip-for="cmd-position"><b>Save position as text.</b> The present position in words: whose turn it is, every region with the spots met going round each of its boundaries, and every spot with its curves and lives.</div>
 </div>
 
-<script src="geom.js?v=264"></script>
-<script src="relax.js?v=264"></script>
-<script src="route.js?v=264"></script>
-<script src="engine.js?v=264"></script>
-<script src="describe.js?v=264"></script>
-<script src="room.js?v=264"></script>
-<script src="thin.js?v=264"></script>
-<script src="moves.js?v=264"></script>
-<script src="redraw.js?v=264"></script>
-<script src="layout.js?v=264"></script>
-<script src="ai.js?v=264"></script>
-<script src="net.js?v=264"></script>
-<script src="ui.js?v=264"></script>
+<script src="geom.js?v=269"></script>
+<script src="relax.js?v=269"></script>
+<script src="route.js?v=269"></script>
+<script src="engine.js?v=269"></script>
+<script src="describe.js?v=269"></script>
+<script src="room.js?v=269"></script>
+<script src="thin.js?v=269"></script>
+<script src="moves.js?v=269"></script>
+<script src="redraw.js?v=269"></script>
+<script src="layout.js?v=269"></script>
+<script src="ai.js?v=269"></script>
+<script src="net.js?v=269"></script>
+<script src="ui.js?v=269"></script>
 </body>
 </html>

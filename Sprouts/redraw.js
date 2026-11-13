@@ -423,6 +423,7 @@
   function evaluate(st, P, g, cap) {
     var n = P.length, o = st.o, D = o.D, lam = o.lambda === undefined ? 1 : o.lambda, box = st.box, E = 0, i, k;
     var segs = st.segs, lines = st.lines, vinfo = st.vinfo, rad = st.rad, KH = HORIZON, H = KH * 2 * D, CELL = H;
+    var pt = st.patch || null, held = st.fixed;      // (v269) a patch: only what its free points can change — see setPatch
     /* φ for a comfort distance c: (c/r − 1)², growing like (c/r)² towards 0, falling smoothly (with its slope) to 0 at c */
     /* r is a distance less a pad (a spot's radius, where a spot is measured; else 0). Where r is
        below EPS (a pixel) φ goes on as φ of r' = EPS · d / (EPS + pad), d = r + pad the plain
@@ -436,7 +437,9 @@
     function phi01(r, c) { var Hc = KH * c; if (r >= Hc) return 0; if (KH === 1) { var q = c / r - 1; return -2 * q * c / (r * r); } var h1 = 1 / Hc, den = 1 / c - h1, q2 = (1 / r - h1) / den; return -2 * q2 / (den * r * r); }
     function phi(r, c, pad) { if (r >= EPS) return phi0(r, c); pad = pad || 0; return phi0(EPS * (r + pad) / (EPS + pad), c); }
     function phi1(r, c, pad) { if (r >= EPS) return phi01(r, c); pad = pad || 0; return phi01(EPS * (r + pad) / (EPS + pad), c) * EPS / (EPS + pad); }
-    if (g) for (i = 0; i < n; i++) { g[i][0] = 0; g[i][1] = 0; cap[i] = H; }
+    /* (a patch: only its free points' gradient and cap are ever read — the rest of g and cap is left as it is) */
+    if (g && pt) for (i = 0; i < pt.free.length; i++) { g[pt.free[i]][0] = 0; g[pt.free[i]][1] = 0; cap[pt.free[i]] = H; }
+    else if (g) for (i = 0; i < n; i++) { g[i][0] = 0; g[i][1] = 0; cap[i] = H; }
     function push(v, fx, fy) { g[v][0] += fx; g[v][1] += fy; }
     /* f · ∇(arc length of legs kFrom … kTo−1 of a line): ± the unit vector of each leg at its ends */
     function pushArc(arc, f) {
@@ -454,7 +457,16 @@
        wound into mazes to gain area; v51 dropped it and live regions got squeezed — Peter, 9/24:
        "shouldn't that region be much larger? It has three lives left!") */
     var PW = Math.PI * D * D / 4;
-    for (var ri = 0; ri < st.regions.length; ri++) {
+    for (var rq = 0; pt && rq < pt.regions.length; rq++) {   // a patch: the area as its fixed part + the edges that can move
+      var rgp = st.regions[pt.regions[rq]], le = pt.redges[rq], Ap = pt.A0[rq], tr = pt.rtri[rq];
+      for (var eq = 0; eq < le.length; eq += 2) Ap += (P[le[eq]][0] * P[le[eq + 1]][1] - P[le[eq + 1]][0] * P[le[eq]][1]) / 2;
+      if (!(Ap > 0)) return Infinity;
+      E -= PW * rgp.lives * Math.log(Ap);
+      if (!g) continue;
+      var fpp = -PW * rgp.lives / Ap / 2;
+      for (eq = 0; eq < tr.length; eq += 3) { g[tr[eq + 1]][0] += fpp * (P[tr[eq + 2]][1] - P[tr[eq]][1]); g[tr[eq + 1]][1] += fpp * (P[tr[eq]][0] - P[tr[eq + 2]][0]); }
+    }
+    for (var ri = 0; !pt && ri < st.regions.length; ri++) {
       var rg = st.regions[ri];
       if (!rg.lives) continue;
       var A = rg.outside ? (box[2] - box[0]) * (box[3] - box[1]) : 0;
@@ -471,13 +483,16 @@
       });
     }
     /* arc length along each line (for the self rule) */
-    var S = lines.map(function (ln) {
-      var s = [0];
+    var S = [];
+    function arcOf(li) {                            // (a patch asks for few of them: made when first wanted)
+      var s = S[li];
+      if (s) return s;
+      var ln = lines[li]; s = S[li] = [0];
       for (var t = 1; t < ln.length; t++) s.push(s[t - 1] + G.dist(P[ln[t]], P[ln[t - 1]]));
       return s;
-    });
+    }
     /* LENGTH, and even spacing of the points along each curve (a gauge: it only moves them along) */
-    st.paths.forEach(function (p) {
+    (pt ? pt.paths : st.paths).forEach(function (p) {
       var m = p.length - 1, L = 0, ls = [], us = [], t;
       for (t = 0; t < m; t++) {
         var vx = P[p[t + 1]][0] - P[p[t]][0], vy = P[p[t + 1]][1] - P[p[t]][1], l = Math.sqrt(vx * vx + vy * vy) || 1e-12;
@@ -494,7 +509,8 @@
     });
     /* the grid */
     var cells = new Map();
-    for (k = 0; k < segs.length; k++) {
+    for (var kq = 0, nk = pt ? pt.segs.length : segs.length; kq < nk; kq++) {
+      k = pt ? pt.segs[kq] : kq;
       var a = segs[k][0], b = segs[k][1];
       var x0 = Math.floor(Math.min(P[a][0], P[b][0]) / CELL), x1 = Math.floor(Math.max(P[a][0], P[b][0]) / CELL);
       var y0 = Math.floor(Math.min(P[a][1], P[b][1]) / CELL), y1 = Math.floor(Math.max(P[a][1], P[b][1]) / CELL);
@@ -509,8 +525,9 @@
     var seen = st.seen || (st.seen = new Float64Array(segs.length)), stampBase = (st.evals = (st.evals || 0) + 1) * n;
     var nL = lines.length, bestD = new Float64Array(nL), bestK = new Int32Array(nL), bestT = new Float64Array(nL), bestW = new Array(nL), bestA = new Array(nL), bestS = new Float64Array(nL), mark = new Int32Array(nL).fill(-1), touched = [];
     var RING = 1, cB = st.comfort;
-    for (var y = 0; y < n; y++) {
-      var X = Math.floor(P[y][0] / CELL), Y = Math.floor(P[y][1] / CELL), vi = vinfo[y], u = vi ? vi.u : -1, Su = vi ? S[u] : null, sy = vi ? Su[vi.k] : 0;
+    for (var yq = 0, ny = pt ? pt.active.length : n; yq < ny; yq++) {
+      var y = pt ? pt.active[yq] : yq;
+      var X = Math.floor(P[y][0] / CELL), Y = Math.floor(P[y][1] / CELL), vi = vinfo[y], u = vi ? vi.u : -1, Su = vi ? arcOf(u) : null, sy = vi ? Su[vi.k] : 0;
       touched.length = 0;
       for (var dx = -RING; dx <= RING; dx++) for (var dy = -RING; dy <= RING; dy++) {
         var list = cells.get((X + dx) * 65536 + Y + dy);
@@ -533,9 +550,9 @@
             if (y >= st.nS) continue;
             var own = st.spotAt[v][y];
             if (own !== undefined) {                // (Z, 9/30: a curve's far part passed 0.06 px from its own spot
-              ka = st.segK[k]; s0 = S[v][ka]; s1 = S[v][ka + 1]; sig = Infinity;   //  between two of its points — the points'
+              ka = st.segK[k]; s0 = arcOf(v)[ka]; s1 = arcOf(v)[ka + 1]; sig = Infinity;   //  between two of its points — the points'
               for (var oi = 0; oi < own.length; oi++) {                            //  term below never saw the segment)
-                var sp = S[v][own[oi]], sg1 = sp < s0 ? s0 - sp : sp > s1 ? sp - s1 : 0;
+                var sp = arcOf(v)[own[oi]], sg1 = sp < s0 ? s0 - sp : sp > s1 ? sp - s1 : 0;
                 if (sg1 < sig) { sig = sg1; arc = sp < s0 ? [v, own[oi], ka] : [v, ka + 1, own[oi]]; }
               }
               wt = selfWeight(dd, sig);
@@ -588,7 +605,8 @@
         push(y, fx, fy); push(a, -fx * (1 - t), -fy * (1 - t)); push(b, -fx * t, -fy * t);
         if (wC[2]) pushArc(bestA[v], lam * w * wC[2] * phi(r, c));
       }
-      for (var s = 0; s < st.nS; s++) {
+      for (var sq = 0, nsq = pt ? pt.spots.length : st.nS; sq < nsq; sq++) {
+        var s = pt ? pt.spots[sq] : sq;
         var sx = P[s][0] - py[0], sy2 = P[s][1] - py[1], ds = Math.sqrt(sx * sx + sy2 * sy2), rs = ds - rad[s], pad = rad[s];
         if (rs >= H) continue;
         var own = st.spotAt[u][s], wP = ONE;        // its own curve's spots: only where it has come back
@@ -626,9 +644,10 @@
     /* BENDING: D² Σ |second difference|² / ℓ³ ≈ D² Σ θ² / ℓ = D² ∫ κ² ds, the elastic energy: a bend
        tighter than D costs more than its length (ℓ the mean of the two legs) */
     var cBend = D * D;
-    for (var li2 = 0; li2 < lines.length; li2++) {
-      var L3 = lines[li2];
-      for (var q = 1; q + 1 < L3.length; q++) {
+    var q;
+    for (var li2 = 0, nb2 = pt ? pt.bends.length / 2 : lines.length; li2 < nb2; li2++) {
+      var L3 = lines[pt ? pt.bends[2 * li2] : li2];
+      for (q = pt ? pt.bends[2 * li2 + 1] : 1; pt ? q === pt.bends[2 * li2 + 1] : q + 1 < L3.length; q++) {
         var p0 = P[L3[q - 1]], p1 = P[L3[q]], p2 = P[L3[q + 1]];
         var ax2 = p1[0] - p0[0], ay2 = p1[1] - p0[1], bx2 = p2[0] - p1[0], by2 = p2[1] - p1[1];
         var lA = Math.sqrt(ax2 * ax2 + ay2 * ay2), lB = Math.sqrt(bx2 * bx2 + by2 * by2), ell = (lA + lB) / 2;
@@ -645,8 +664,9 @@
     }
     /* a T at a move's spot with a third curve (v48): D Σ (t·n)² over the two halves' first legs n,
        t the third curve's — it leaves at right angles */
-    for (var tI = 0; tI < st.tees.length; tI++) {
-      var T = st.tees[tI], z = P[T[0]], tv = [P[T[3]][0] - z[0], P[T[3]][1] - z[1]], tln = Math.sqrt(tv[0] * tv[0] + tv[1] * tv[1]) || 1e-9, tu = [tv[0] / tln, tv[1] / tln];
+    var tees = pt ? pt.tees : st.tees, corners = pt ? pt.corners : st.corners;
+    for (var tI = 0; tI < tees.length; tI++) {
+      var T = tees[tI], z = P[T[0]], tv = [P[T[3]][0] - z[0], P[T[3]][1] - z[1]], tln = Math.sqrt(tv[0] * tv[0] + tv[1] * tv[1]) || 1e-9, tu = [tv[0] / tln, tv[1] / tln];
       for (var hh = 1; hh <= 2; hh++) {
         var vv = T[hh], Lg = [P[vv][0] - z[0], P[vv][1] - z[1]], ll = Math.sqrt(Lg[0] * Lg[0] + Lg[1] * Lg[1]) || 1e-9, nu = [Lg[0] / ll, Lg[1] / ll];
         var cs = tu[0] * nu[0] + tu[1] * nu[1];
@@ -660,8 +680,8 @@
     /* ANGLES at a spot (Peter's cusp at 7, 9/24): the curves leave it at equal angles — straight
        through a spot with two, 120° apart with three: D Σ (θ − 2π/k)² over the k angles between
        neighbouring first legs */
-    for (var ci = 0; ci < st.corners.length; ci++) {
-      var C = st.corners[ci], sp = C.s, kk = C.nb.length, want = 2 * Math.PI / kk;
+    for (var ci = 0; ci < corners.length; ci++) {
+      var C = corners[ci], sp = C.s, kk = C.nb.length, want = 2 * Math.PI / kk;
       for (q = 0; q < kk; q++) {
         var U = C.nb[q], W = C.nb[(q + 1) % kk];
         var uxx = P[U][0] - P[sp][0], uyy = P[U][1] - P[sp][1], wx = P[W][0] - P[sp][0], wy = P[W][1] - P[sp][1];
@@ -679,8 +699,11 @@
        across, two seeds whose discs touched were still 28 px apart by that measure and hardly pushed: Peter's
        100-seed game of 10/20, where no curve could pass between seeds 30 and 7; v188 added a second term,
        between the discs, for pairs with a seed, now this one) */
-    for (i = 0; i < st.nS; i++) {
-      for (var j = i + 1; j < st.nS; j++) {
+    for (var iq = 0, nsp = pt ? pt.spots.length : st.nS; iq < nsp; iq++) {
+      i = pt ? pt.spots[iq] : iq;
+      for (var jq = iq + 1; jq < nsp; jq++) {
+        var j = pt ? pt.spots[jq] : jq;
+        if (pt && held[i] && held[j]) continue;
         var dij = G.dist(P[i], P[j]), padij = st.game.spots[i].deg > 0 && st.game.spots[j].deg > 0 ? 0 : rad[i] + rad[j], rij = dij - padij;
         if (!(dij > 0)) return Infinity;
         if (g) { if (dij < cap[i]) cap[i] = dij; if (dij < cap[j]) cap[j] = dij; }
@@ -694,6 +717,7 @@
          through a disc (phi's pad): finite, pushing it in. Before, the energy was infinite there and R could not
          take a single step: Peter's 200-seed game of 11/1 on v226, a thin move put spot 381 at 3.4 px from the top
          (its radius 6.6) at move 181, and every R from then on was refused after minutes. */
+      if (pt && held[i]) continue;
       var ri = rad[i], ws = [P[i][0] - box[0] - ri, box[2] - P[i][0] - ri, P[i][1] - box[1] - ri, box[3] - P[i][1] - ri];
       for (wi = 0; wi < 4; wi++) {
         if (!(ws[wi] + ri > 0)) return Infinity;
@@ -704,10 +728,12 @@
       }
     }
     /* every point inside the window */
-    for (i = 0; i < n; i++) {
+    for (var wq = 0, nw = pt ? pt.free.length : n; wq < nw; wq++) {
+      i = pt ? pt.free[wq] : wq;
       var wl = P[i][0] - box[0], wr = box[2] - P[i][0], wt = P[i][1] - box[1], wb = box[3] - P[i][1];
       if (!(wl > 0 && wr > 0 && wt > 0 && wb > 0)) return Infinity;
       if (g) cap[i] = Math.min(cap[i], wl, wr, wt, wb);
+      if (g && pt) cap[i] = Math.min(cap[i], P[i][0] - pt.box[0], pt.box[2] - P[i][0], P[i][1] - pt.box[1], pt.box[3] - P[i][1]);   // a patch's points stay in its box
     }
     return E;
   }
@@ -768,46 +794,63 @@
   /* x = (I + βL)⁻¹ v on the free points (fixed points held at 0), per coordinate; conjugate gradients with
      Jacobi's preconditioner (I + βL is symmetric positive definite, its diagonal 1 + β · a point's degree) */
   function smoothAlong(st, v) {
-    var n = st.P.length, fx = st.fixed, segs = st.segs, beta = smoothing(st), x = new Float64Array(2 * n), i, k;
-    var deg = st.smoothDeg;
-    if (!deg || st.smoothSegs !== segs) {          // (built again after a re-spacing: new points, new segments)
-      deg = new Float64Array(n);
-      for (k = 0; k < segs.length; k++) { deg[segs[k][0]]++; deg[segs[k][1]]++; }
-      st.smoothDeg = deg; st.smoothSegs = segs;
+    var F = st.F, m = F.length, beta = smoothing(st), x = new Float64Array(2 * m), sm = st.Fsm, i, k;
+    if (!sm) {                                      // (built again when the free points or the segments change: descend clears it)
+      var loc = new Int32Array(st.P.length).fill(-1), deg = new Float64Array(m), pairs = [], segs = st.segs;
+      for (i = 0; i < m; i++) loc[F[i]] = i;
+      for (k = 0; k < segs.length; k++) {
+        var la = loc[segs[k][0]], lb = loc[segs[k][1]];
+        if (la >= 0) deg[la]++;
+        if (lb >= 0) deg[lb]++;
+        if (la >= 0 && lb >= 0) pairs.push(la, lb);
+      }
+      sm = st.Fsm = { deg: deg, pairs: Int32Array.from(pairs) };
     }
+    var dg = sm.deg, pr = sm.pairs;
     function mul(u, out) {                         // out = (I + βL) u
-      for (var j = 0; j < n; j++) { var dj = fx[j] ? 0 : 1 + beta * deg[j]; out[2 * j] = dj * u[2 * j]; out[2 * j + 1] = dj * u[2 * j + 1]; }
-      for (var m = 0; m < segs.length; m++) {
-        var a = segs[m][0], b = segs[m][1];
-        if (!fx[a]) { out[2 * a] -= beta * u[2 * b]; out[2 * a + 1] -= beta * u[2 * b + 1]; }
-        if (!fx[b]) { out[2 * b] -= beta * u[2 * a]; out[2 * b + 1] -= beta * u[2 * a + 1]; }
+      for (var j = 0; j < 2 * m; j++) out[j] = (1 + beta * dg[j >> 1]) * u[j];
+      for (var t = 0; t < pr.length; t += 2) {
+        var a = pr[t], b = pr[t + 1];
+        out[2 * a] -= beta * u[2 * b]; out[2 * a + 1] -= beta * u[2 * b + 1];
+        out[2 * b] -= beta * u[2 * a]; out[2 * b + 1] -= beta * u[2 * a + 1];
       }
     }
-    var r = new Float64Array(2 * n), z = new Float64Array(2 * n), p = new Float64Array(2 * n), q = new Float64Array(2 * n), rz = 0, r0 = 0;
-    for (i = 0; i < 2 * n; i++) { r[i] = fx[i >> 1] ? 0 : v[i]; z[i] = r[i] / (1 + beta * deg[i >> 1]); p[i] = z[i]; rz += r[i] * z[i]; r0 += r[i] * r[i]; }
+    var r = new Float64Array(2 * m), z = new Float64Array(2 * m), p = new Float64Array(2 * m), q = new Float64Array(2 * m), rz = 0, r0 = 0;
+    for (i = 0; i < 2 * m; i++) { r[i] = v[i]; z[i] = r[i] / (1 + beta * dg[i >> 1]); p[i] = z[i]; rz += r[i] * z[i]; r0 += r[i] * r[i]; }
     if (!(r0 > 0)) return x;
-    for (var it = 0; it < 2 * n; it++) {
+    for (var it = 0; it < 2 * m; it++) {
       mul(p, q);
       var pq = 0;
-      for (i = 0; i < 2 * n; i++) pq += p[i] * q[i];
+      for (i = 0; i < 2 * m; i++) pq += p[i] * q[i];
       var al = rz / pq, rr = 0;
-      for (i = 0; i < 2 * n; i++) { x[i] += al * p[i]; r[i] -= al * q[i]; rr += r[i] * r[i]; }
+      for (i = 0; i < 2 * m; i++) { x[i] += al * p[i]; r[i] -= al * q[i]; rr += r[i] * r[i]; }
       if (rr < 1e-16 * r0) break;                  // (to the arithmetic's precision, relative to the push)
       var rz2 = 0;
-      for (i = 0; i < 2 * n; i++) { z[i] = r[i] / (1 + beta * deg[i >> 1]); rz2 += r[i] * z[i]; }
+      for (i = 0; i < 2 * m; i++) { z[i] = r[i] / (1 + beta * dg[i >> 1]); rz2 += r[i] * z[i]; }
       var bb = rz2 / rz; rz = rz2;
-      for (i = 0; i < 2 * n; i++) p[i] = z[i] + bb * p[i];
+      for (i = 0; i < 2 * m; i++) p[i] = z[i] + bb * p[i];
     }
     return x;
   }
   function descend(st) {
-    var P = st.P, n = P.length, i, k, beta = smoothing(st);
+    var P = st.P, n = P.length, i, k, q, beta = smoothing(st);
     if (!st.g) {
-      st.g = P.map(function () { return [0, 0]; }); st.cap = new Float64Array(n);
+      /* (v269) The vectors of the descent hold the FREE points only (st.F), and the trial positions, gradients and
+         caps are kept from step to step (st.Q; st.gA / gB, st.capA / capB, the one not in use takes the trial): a
+         patch's step no longer costs what the whole picture holds. Measured on a 150-seed picture by patches before
+         this: 38 % of the time went to clearing away each step's arrays. */
+      var F0 = [];
+      for (i = 0; i < n; i++) if (!st.fixed[i]) F0.push(i);
+      st.F = Int32Array.from(F0); st.Fsm = null;
+      if (!st.Q || st.Q.length !== n) {
+        st.Q = P.map(function (p) { return p.slice(); });
+        st.gA = P.map(function () { return [0, 0]; }); st.gB = P.map(function () { return [0, 0]; }); st.capA = new Float64Array(n); st.capB = new Float64Array(n);
+      } else for (i = 0; i < n; i++) { st.Q[i][0] = P[i][0]; st.Q[i][1] = P[i][1]; }
+      st.g = st.gA; st.cap = st.capA;
       st.E = evaluate(st, P, st.g, st.cap); st.S = []; st.Y = []; st.MY = [];
       if (st.E0 === undefined) st.E0 = st.E;
     }
-    var g = st.g, free = st.fixed, gv = new Float64Array(2 * n);
+    var g = st.g, F = st.F, m = F.length, gv = new Float64Array(2 * m);
     /* With the spots fixed (A, v53): a curve's points move only ACROSS their curve — the part of
        the gradient along it is dropped, as the band does (relax.js, v8). The quadrature charges
        crowding per point, so it rewards points for sliding out of crowded stretches: with the
@@ -818,17 +861,17 @@
        there as well, and the curves through them failed on the 30-spot game of 9/30. */
     function across(vec, Q) {
       if (!st.fixSpots && !st.o.tight) return;
-      for (var y = 0; y < n; y++) {
-        var vi = st.vinfo[y];
-        if (!vi || free[y]) continue;
+      for (var yq = 0; yq < m; yq++) {
+        var y = F[yq], vi = st.vinfo[y];
+        if (!vi) continue;
         var ln = st.lines[vi.u], a = Q[ln[vi.k - 1]], b = Q[ln[vi.k + 1]];
         var tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.sqrt(tx * tx + ty * ty);
         if (!(tl > 0)) continue;
-        var s = (vec[2 * y] * tx + vec[2 * y + 1] * ty) / (tl * tl);
-        vec[2 * y] -= s * tx; vec[2 * y + 1] -= s * ty;
+        var s = (vec[2 * yq] * tx + vec[2 * yq + 1] * ty) / (tl * tl);
+        vec[2 * yq] -= s * tx; vec[2 * yq + 1] -= s * ty;
       }
     }
-    for (i = 0; i < n; i++) if (!free[i]) { gv[2 * i] = g[i][0]; gv[2 * i + 1] = g[i][1]; }
+    for (q = 0; q < m; q++) { gv[2 * q] = g[F[q]][0]; gv[2 * q + 1] = g[F[q]][1]; }
     across(gv, P);
     function dot(u, v) { var s = 0; for (var j = 0; j < u.length; j++) s += u[j] * v[j]; return s; }
     for (var attempt = 0; attempt < 2; attempt++) {
@@ -858,16 +901,17 @@
       /* each vertex's move is clipped to a third of its cap (so nothing can cross); the first
          step without memory goes as far as the largest cap allows */
       var dmax = 0;
-      for (i = 0; i < n; i++) dmax = Math.max(dmax, Math.sqrt(d[2 * i] * d[2 * i] + d[2 * i + 1] * d[2 * i + 1]));
+      for (q = 0; q < m; q++) dmax = Math.max(dmax, Math.sqrt(d[2 * q] * d[2 * q] + d[2 * q + 1] * d[2 * q + 1]));
       if (!(dmax > 0)) break;
-      var alpha = st.S.length ? 1 : 2 * st.o.D / 3 / dmax, Q = P.map(function (p) { return p.slice(); }), En = Infinity, gT = null, capT = null;
+      var alpha = st.S.length ? 1 : 2 * st.o.D / 3 / dmax, Q = st.Q, En = Infinity, gT = null, capT = null;
       for (var h = 0; h < 60; h++) {
         var gd = 0, far = 0, rel = 0, clipped = false;
-        for (i = 0; i < n; i++) {
-          var mx = alpha * d[2 * i], my = alpha * d[2 * i + 1], ml = Math.sqrt(mx * mx + my * my), lim = st.cap[i] / 3;
+        for (q = 0; q < m; q++) {
+          i = F[q];
+          var mx = alpha * d[2 * q], my = alpha * d[2 * q + 1], ml = Math.sqrt(mx * mx + my * my), lim = st.cap[i] / 3;
           if (ml > lim) { mx *= lim / ml; my *= lim / ml; clipped = true; }
           Q[i][0] = P[i][0] + mx; Q[i][1] = P[i][1] + my;
-          gd += gv[2 * i] * mx + gv[2 * i + 1] * my;
+          gd += gv[2 * q] * mx + gv[2 * q + 1] * my;
           far = Math.max(far, Math.abs(mx) + Math.abs(my));
           rel = Math.max(rel, (Math.abs(mx) + Math.abs(my)) / Math.min(1, st.cap[i] || 1));
         }
@@ -891,7 +935,7 @@
            start do), that gradient is the next step's — before, it was evaluated a second time right after. Measured
            on Peter's 200-seed picture at move 221: 1.18 trials a step, the gradient evaluation as dear as a trial —
            R 446 s, of it 223 s gradients and 215 s trials. */
-        gT = Q.map(function () { return [0, 0]; }); capT = new Float64Array(n);
+        gT = st.g === st.gA ? st.gB : st.gA; capT = st.cap === st.capA ? st.capB : st.capA;
         En = evaluate(st, Q, gT, capT);
         if (En <= st.E + 1e-4 * gd && En < st.E) break;
         alpha /= 2;
@@ -918,7 +962,7 @@
          hundredth of it — stopped 2–3 times sooner still, but a second press then went on to move
          spots 70–130 px: the drawing was not at rest.) A second press now moves spots a few px at most. */
       var mv = 0;
-      for (i = 0; i < n; i++) mv = Math.max(mv, Math.abs(Q[i][0] - P[i][0]) + Math.abs(Q[i][1] - P[i][1]));
+      for (q = 0; q < m; q++) { i = F[q]; mv = Math.max(mv, Math.abs(Q[i][0] - P[i][0]) + Math.abs(Q[i][1] - P[i][1])); }
       var hist = st.hist || (st.hist = []);
       hist.push([st.E - En, mv]);
       if (hist.length > 3 * MEM) hist.shift();
@@ -931,12 +975,13 @@
       var tiny = st.E - En < 1000 * 2.2e-16 * Math.abs(st.E);
       var g2 = gT, cap2 = capT;
       if (st.fixSpots || st.o.tight) { g2 = Q.map(function () { return [0, 0]; }); cap2 = new Float64Array(n); En = evaluate(st, Q, g2, cap2); }   // (the points were spread again: their own gradient)
-      var sv = new Float64Array(2 * n), yv = new Float64Array(2 * n), g2v = new Float64Array(2 * n);
-      for (i = 0; i < n; i++) if (!free[i]) { g2v[2 * i] = g2[i][0]; g2v[2 * i + 1] = g2[i][1]; }
+      var sv = new Float64Array(2 * m), yv = new Float64Array(2 * m), g2v = new Float64Array(2 * m);
+      for (q = 0; q < m; q++) { g2v[2 * q] = g2[F[q]][0]; g2v[2 * q + 1] = g2[F[q]][1]; }
       across(g2v, Q);
-      for (i = 0; i < n; i++) {
-        sv[2 * i] = Q[i][0] - P[i][0]; sv[2 * i + 1] = Q[i][1] - P[i][1];
-        yv[2 * i] = g2v[2 * i] - gv[2 * i]; yv[2 * i + 1] = g2v[2 * i + 1] - gv[2 * i + 1];
+      for (q = 0; q < m; q++) {
+        i = F[q];
+        sv[2 * q] = Q[i][0] - P[i][0]; sv[2 * q + 1] = Q[i][1] - P[i][1];
+        yv[2 * q] = g2v[2 * q] - gv[2 * q]; yv[2 * q + 1] = g2v[2 * q + 1] - gv[2 * q + 1];
         P[i][0] = Q[i][0]; P[i][1] = Q[i][1];
       }
       if (tiny) { st.S = []; st.Y = []; st.MY = []; }   // a tiny gain along L-BFGS's direction: try the plain gradient next
@@ -1074,9 +1119,209 @@
     st.separated = rounds;
     return rounds;
   }
+  /* ---------------- R BY PATCHES (v269) ----------------
+     One step scale, one memory and one stop rule for the whole picture: the stiffest place anywhere set the step for
+     every point, and the more places, the stiffer the stiffest (measured 11/12: the scale 1.4 at 1,700 points, 0.06 at
+     5,900, 0.0015 at 7,700, where R stopped after 3 steps with 936 points still pulled and two tongues of 790 and
+     760 px left). But a point feels only what is within the energy's reach H, so the picture is many nearly
+     independent problems. A PATCH is a box of the picture: its points move, everything else stands still, and the
+     descent in it is the same descent with its own scale, memory and stop rule.
+     - The grid: boxes at least 2 H wide and high (narrower, a box has no inside of its own), as many as the
+       picture's bounding box holds; a picture smaller than 4 H either way is one box, and R runs as it always did.
+     - A point is FREE in a box when it and the points next to it along its curves are inside. So every segment that
+       moves lies in its box, and with the cap below (a point never leaves its box) the moving segments of two boxes
+       cannot meet — whatever the other boxes do. Points at a box's sides wait for a later round: the grid is
+       shifted by half a box, across, down and both, round after round, and every point with legs shorter than a
+       quarter box is free in one of the four.
+     - evaluate() with st.patch looks only at what the free points can change (the lists made here), so a step costs
+       what the patch holds, not the picture. What it leaves out is CONSTANT while the patch's points move in their
+       box, so differences of E — all the descent uses — are those of the whole energy (patch-test.js checks them
+       against the whole evaluate). It rests on: the comfort distance below a third of H (2 c / (1 − RAMP·…) < H:
+       a curve's own parts crowd it only where the arc between is short), which holds by a wide margin (c = 2 d0).
+     - A round visits every box once; each runs to its own stop. Then the curves are re-spaced, and the next round
+       shifts. After four rounds running in which no point moved a pixel the patches are done, and the descent of
+       the whole picture has the last word (it finds nothing left to do, or little). */
+  function patchGrid(st) {
+    var P = st.P, H = HORIZON * 2 * st.o.D, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (var i = 0; i < P.length; i++) { if (P[i][0] < x0) x0 = P[i][0]; if (P[i][0] > x1) x1 = P[i][0]; if (P[i][1] < y0) y0 = P[i][1]; if (P[i][1] > y1) y1 = P[i][1]; }
+    var nx = Math.max(1, Math.floor((x1 - x0) / (2 * H))), ny = Math.max(1, Math.floor((y1 - y0) / (2 * H)));
+    return { x0: x0, y0: y0, x1: x1, y1: y1, nx: nx, ny: ny, sx: (x1 - x0) / nx, sy: (y1 - y0) / ny };
+  }
+  /* THE BOXES OF A ROUND IN FOUR PASSES (v269, for the workers). A box's descent starts from the picture as it was
+     when its PASS began, and what it moved is put into the picture only when the pass is over; the boxes of a pass
+     are those of one colour of a checkerboard in twos (column and row both even, …), so no two of them are
+     neighbours — a whole box, 2 H or more, lies between. Then it does not matter who descends a box or when: the
+     worker in charge or a helper, one after the other or all at once, the picture after the pass is the same to the
+     last bit. Not neighbours for the ENERGY's sake: what two such boxes move is further apart than the energy
+     reaches, so each lowering its own lowers the whole (two neighbours at once could raise it). Nothing can cross
+     in any case — a box's points stay inside it. */
+  function startRound(st, round, quiet) {
+    var gr = patchGrid(st);
+    if (gr.nx * gr.ny < 2) return null;
+    var ox = round % 4 === 1 || round % 4 === 2 ? 0.5 : 0, oy = round % 4 === 1 || round % 4 === 3 ? 0.5 : 0, boxes = [], passes = [[], [], [], []];
+    for (var i = 0; i < gr.nx + (ox ? 1 : 0); i++) for (var j = 0; j < gr.ny + (oy ? 1 : 0); j++) {
+      var a = i - ox, b = j - oy;
+      passes[i % 2 * 2 + j % 2].push(boxes.length);
+      boxes.push([a <= 0 ? -Infinity : gr.x0 + a * gr.sx, b <= 0 ? -Infinity : gr.y0 + b * gr.sy,
+                  a + 1 >= gr.nx ? Infinity : gr.x0 + (a + 1) * gr.sx, b + 1 >= gr.ny ? Infinity : gr.y0 + (b + 1) * gr.sy]);
+    }
+    return { round: round, quiet: quiet, boxes: boxes, passes: passes.filter(function (p) { return p.length; }), pass: 0, res: [], out: [], cur: -1, steps: 0,
+             grid: gr, fixed0: Uint8Array.from(st.fixed), P0: st.P.map(function (p) { return p.slice(); }), E0: evaluate(st, st.P, null, null), it0: st.it };
+  }
+  /* The lists for one box (see above); false when no point is free in it. */
+  function setPatch(st, bx, fixed0) {
+    var P = st.P, n = P.length, H = HORIZON * 2 * st.o.D, segs = st.segs, i, k, q;
+    var inb = new Uint8Array(n), free = new Uint8Array(n), any = false;
+    for (i = 0; i < n; i++) inb[i] = P[i][0] > bx[0] && P[i][0] < bx[2] && P[i][1] > bx[1] && P[i][1] < bx[3] ? 1 : 0;
+    for (i = 0; i < n; i++) free[i] = inb[i] && !fixed0[i] ? 1 : 0;
+    for (k = 0; k < segs.length; k++) if (!inb[segs[k][0]] || !inb[segs[k][1]]) { free[segs[k][0]] = 0; free[segs[k][1]] = 0; }
+    for (i = 0; i < n; i++) if (free[i]) { any = true; break; }
+    if (!any) return false;
+    var pt = { box: bx, active: [], segs: [], spots: [], paths: [], regions: [], A0: [], redges: [], rtri: [], bends: [], tees: [], corners: [] };
+    /* ACTIVE: the points whose own terms can change — the free ones, and those near enough to the box to feel what
+       moves in it: within the reach of φ (HORIZON · comfort, + a radius for a spot), or within the arc over which a
+       curve's own parts still count (that reach / (RAMP · SELF_RATIO)). The segments: all in the 3 × 3 cells of an
+       active point, as the whole evaluate would look them up (a free point's cap needs them all). The spots: within
+       H of the box (a cap never looks further). */
+    var maxRad = 0, cells = {};
+    for (i = 0; i < st.nS; i++) if (st.rad[i] > maxRad) maxRad = st.rad[i];
+    var reach = HORIZON * st.comfort, ha = Math.max(reach / (RAMP * SELF_RATIO), reach + maxRad);
+    function off(p) { var dx = p[0] < bx[0] ? bx[0] - p[0] : p[0] > bx[2] ? p[0] - bx[2] : 0, dy = p[1] < bx[1] ? bx[1] - p[1] : p[1] > bx[3] ? p[1] - bx[3] : 0; return Math.sqrt(dx * dx + dy * dy); }
+    for (i = 0; i < n; i++) if (free[i] || off(P[i]) < ha) {
+      pt.active.push(i);
+      var X = Math.floor(P[i][0] / H), Y = Math.floor(P[i][1] / H);
+      for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) cells[(X + dx) * 65536 + Y + dy] = true;
+    }
+    for (k = 0; k < segs.length; k++) {
+      var a = P[segs[k][0]], b = P[segs[k][1]], hit = false;
+      for (var sx = Math.floor(Math.min(a[0], b[0]) / H); !hit && sx <= Math.floor(Math.max(a[0], b[0]) / H); sx++)
+        for (var sy = Math.floor(Math.min(a[1], b[1]) / H); !hit && sy <= Math.floor(Math.max(a[1], b[1]) / H); sy++) hit = cells[sx * 65536 + sy] === true;
+      if (hit) pt.segs.push(k);
+    }
+    for (i = 0; i < st.nS; i++) if (off(P[i]) < H + maxRad) pt.spots.push(i);
+    st.paths.forEach(function (p) { for (var t = 0; t < p.length; t++) if (free[p[t]]) { pt.paths.push(p); return; } });
+    st.regions.forEach(function (rg, ri) {
+      if (!rg.lives) return;
+      var le = [], tr = [], A = rg.outside ? (st.box[2] - st.box[0]) * (st.box[3] - st.box[1]) : 0;
+      rg.cycles.forEach(function (c) {
+        A += Eng.signedArea(c.map(function (v) { return P[v]; }));
+        for (var q2 = 0, m = c.length; q2 < m; q2++) {
+          var pv = c[(q2 + m - 1) % m], cu = c[q2], nx = c[(q2 + 1) % m];
+          if (free[pv] || free[cu]) { le.push(pv, cu); A -= (P[pv][0] * P[cu][1] - P[cu][0] * P[pv][1]) / 2; }
+          if (free[cu]) tr.push(pv, cu, nx);
+        }
+      });
+      if (!le.length) return;
+      pt.regions.push(ri); pt.A0.push(A); pt.redges.push(le); pt.rtri.push(tr);
+    });
+    st.lines.forEach(function (ln, li) { for (q = 1; q + 1 < ln.length; q++) if (free[ln[q - 1]] || free[ln[q]] || free[ln[q + 1]]) pt.bends.push(li, q); });
+    pt.tees = st.tees.filter(function (T) { return free[T[0]] || free[T[1]] || free[T[2]] || free[T[3]]; });
+    pt.corners = st.corners.filter(function (C) { return free[C.s] || C.nb.some(function (v) { return free[v]; }); });
+    var fl = [];
+    for (i = 0; i < n; i++) { st.fixed[i] = free[i] ? 0 : 1; if (free[i]) fl.push(i); }
+    pt.free = Int32Array.from(fl);
+    st.patch = pt;
+    return true;
+  }
+  function clearPatch(st, fixed0) { st.patch = null; st.clipStuck = false; for (var i = 0; i < fixed0.length; i++) st.fixed[i] = fixed0[i]; st.g = null; st.S = []; st.Y = []; st.MY = []; st.hist = null; st.confirmed = false; }
+  /* One box's descent: boxBegin (false when no point is free in it), descend() until it returns false, boxEnd — which
+     gives what the box moved ({ free: the points, xy: where they are now, steps }) and puts the points back where
+     the pass found them. */
+  function boxBegin(st, bx, fixed0) {
+    if (!setPatch(st, bx, fixed0)) return false;
+    var F = st.patch.free, xy = new Float64Array(2 * F.length);
+    for (var q = 0; q < F.length; q++) { xy[2 * q] = st.P[F[q]][0]; xy[2 * q + 1] = st.P[F[q]][1]; }
+    st.patch.xy0 = xy;
+    st.g = null; st.S = []; st.Y = []; st.MY = []; st.hist = null; st.confirmed = false;
+    return true;
+  }
+  function boxEnd(st, fixed0, steps) {
+    var F = st.patch.free, xy0 = st.patch.xy0, xy = new Float64Array(2 * F.length), P = st.P;
+    for (var q = 0; q < F.length; q++) { var p = P[F[q]]; xy[2 * q] = p[0]; xy[2 * q + 1] = p[1]; p[0] = xy0[2 * q]; p[1] = xy0[2 * q + 1]; }
+    clearPatch(st, fixed0);
+    return { free: F, xy: xy, steps: steps };
+  }
+  var NOBOX = { free: new Int32Array(0), xy: new Float64Array(0), steps: 0 };
+  /* One step of the box in hand (true), or the bookkeeping between two boxes, two passes or two rounds (false).
+     The box taken next is one nobody has yet (pr.out: handed to a helper by the worker in charge); when every box
+     left is with a helper, one of those — whichever is done first counts, and both come to the same. So a helper
+     that never answers costs its box's time, not the picture, and with no helpers at all the boxes are simply done
+     one after the other. */
+  function patchStep(st) {
+    var pr = st.pr, i, q;
+    if (!pr) {
+      pr = st.pr = startRound(st, st.prRound || 0, st.prQuiet || 0);
+      if (!pr) { st.prDone = true; return false; }
+    }
+    var list = pr.passes[pr.pass];
+    if (pr.cur >= 0 && pr.res[pr.cur]) { boxEnd(st, pr.fixed0, 0); st.it -= pr.steps; pr.cur = -1; }   // a helper was first with the box in hand
+    if (pr.cur < 0) {
+      var next = -1;
+      for (i = 0; i < list.length && next < 0; i++) if (!pr.res[list[i]] && !pr.out[list[i]]) next = list[i];
+      for (i = 0; i < list.length && next < 0; i++) if (!pr.res[list[i]]) next = list[i];
+      if (next < 0) {                               // the pass is over: what its boxes moved goes into the picture
+        list.forEach(function (k) {
+          var r = pr.res[k];
+          for (q = 0; q < r.free.length; q++) { st.P[r.free[q]][0] = r.xy[2 * q]; st.P[r.free[q]][1] = r.xy[2 * q + 1]; }
+          if (!r.own) st.it += r.steps;             // (the steps made here were counted as they were made)
+        });
+        pr.pass++; pr.res = []; pr.out = []; pr.flat = null;
+        if (pr.pass < pr.passes.length) return false;
+        clearPatch(st, pr.fixed0);                  // the round is over
+        var far = 0;
+        for (i = 0; i < st.P.length; i++) far = Math.max(far, Math.abs(st.P[i][0] - pr.P0[i][0]) + Math.abs(st.P[i][1] - pr.P0[i][1]));
+        /* a QUIET round, by the descent's own measure: no point moved a pixel, or the whole energy fell by less than
+           a pixel's worth (LENGTH) a step */
+        var gain = pr.E0 - evaluate(st, st.P, null, null);
+        st.prRound = pr.round + 1; st.prQuiet = far < 1 || gain < LENGTH * (st.it - pr.it0) ? pr.quiet + 1 : 0; st.pr = null;
+        if (respace(st)) st.prQuiet = 0;
+        if (st.prQuiet >= 4) st.prDone = true;
+        return false;
+      }
+      if (!boxBegin(st, pr.boxes[next], pr.fixed0)) { pr.res[next] = NOBOX; return false; }
+      pr.cur = next; pr.steps = 0;
+    }
+    if (descend(st)) { pr.steps++; return true; }
+    var r = boxEnd(st, pr.fixed0, pr.steps);
+    r.own = true; pr.res[pr.cur] = r; pr.cur = -1;
+    return false;
+  }
+  /* FOR THE WORKERS (sprouts-draw-worker.js). The worker in charge runs stepRedraw as ever; between its slices it
+     asks patchPass for the pass in hand, marks the boxes it hands to helpers in .out, and gives their answers to
+     patchTake. A helper holds helperState's copy of the state (again after every re-spacing: st.respaced), and for a
+     box takes the pass's picture (helperBox: flat, x and y of every point), then descends as above. */
+  function patchPass(st) {
+    var pr = st.pr;
+    return pr && byPatches(st) ? { round: pr.round, pass: pr.pass, list: pr.passes[pr.pass], boxes: pr.boxes, res: pr.res, out: pr.out, cur: pr.cur, fixed0: pr.fixed0 } : null;
+  }
+  function patchTake(st, round, pass, k, r) {
+    var pr = st.pr;
+    if (pr && pr.round === round && pr.pass === pass && !pr.res[k]) pr.res[k] = r;
+  }
+  var NOT_SENT = { game: 1, key0: 1, pr: 1, patch: 1, Q: 1, gA: 1, gB: 1, capA: 1, capB: 1, g: 1, cap: 1, S: 1, Y: 1, MY: 1, hist: 1, seen: 1, counts: 1, best: 1, F: 1, Fsm: 1 };
+  function helperState(st) {                        // (of the game the energy asks only whether a spot has curves: the rest, megabytes in a large game, stays here)
+    var h = { game: { spots: st.game.spots.map(function (s) { return { deg: s.deg }; }) } };
+    for (var k in st) if (!NOT_SENT[k]) h[k] = st[k];
+    return h;
+  }
+  function flatPoints(st) {                         // the picture as the pass in hand found it (the box in hand here put back), made once a pass
+    var pr = st.pr, n = st.P.length, f = pr.flat, pt = st.patch;
+    if (f) return f;
+    f = pr.flat = new Float64Array(2 * n);
+    for (var i = 0; i < n; i++) { f[2 * i] = st.P[i][0]; f[2 * i + 1] = st.P[i][1]; }
+    for (var q = 0; pt && pt.xy0 && q < pt.free.length; q++) { f[2 * pt.free[q]] = pt.xy0[2 * q]; f[2 * pt.free[q] + 1] = pt.xy0[2 * q + 1]; }
+    return f;
+  }
+  function helperBox(hst, bx, fixed0, flat) {
+    for (var i = 0; i < hst.P.length; i++) { hst.P[i][0] = flat[2 * i]; hst.P[i][1] = flat[2 * i + 1]; }
+    for (i = 0; i < fixed0.length; i++) hst.fixed[i] = fixed0[i];
+    return boxBegin(hst, bx, fixed0);
+  }
+  function byPatches(st) { return !st.fixSpots && !st.o.tight && st.o.patches !== false && !st.prDone; }
   function stepRedraw(st, count) {
     if (st.separated === undefined && !st.o.tight) separate(st);
     while (count-- > 0 && !st.done) {
+      if (byPatches(st)) { if (patchStep(st)) st.it++; continue; }
       if (descend(st)) st.it++;
       /* (v229, Peter: "give up at once when R cannot move") the first step moved nothing because one point,
          clipped to its tiny gap, ruled it (clipStuck): nothing to re-space or finish — the picture is as it was,
@@ -1138,7 +1383,11 @@
 
   /* The drawing as it is now, curves as their polylines (for the animation). */
   function redrawCurrent(st) {
-    var g = JSON.parse(JSON.stringify(st.game)), P = st.P;
+    var g = JSON.parse(JSON.stringify(st.game)), P = st.P, pr = st.pr;
+    if (pr && pr.res.some(function (r) { return r && r.free.length; })) {   // (v269) with what the boxes done in this pass have moved, though it is not in st.P yet
+      P = P.map(function (p) { return p.slice(); });
+      pr.res.forEach(function (r) { for (var q = 0; r && q < r.free.length; q++) { P[r.free[q]][0] = r.xy[2 * q]; P[r.free[q]][1] = r.xy[2 * q + 1]; } });
+    }
     g.spots.forEach(function (s, i) { s.x = P[i][0]; s.y = P[i][1]; });
     sizesInto(st, g);
     g.edges.forEach(function (e, k) { e.pieces = E.polylinePieces(st.paths[k].map(function (v) { return P[v]; })); });
@@ -1219,10 +1468,50 @@
     P.forEach(function (q) { q[0] = nx + sx * (q[0] - cx); q[1] = ny + sy * (q[1] - cy); });
     return true;
   }
+  /* (v269) "TOO CLOSE" BY COMPARISON. A drawing was refused when any curve had no clearance left — one curve of
+     2,163 threw the whole of R away, though moves drawn thin leave such curves all the time and R had not made that
+     one any worse (Peter's 500-seed game of 11/11–12: 116 R's refused, 18 of 21 hours). Now a curve without clearance
+     counts against the new drawing only if it has LESS than it had before; the least clearance is reported as ever.
+     worse(): those curves (their edges), measured against the drawing R started from. */
+  var beforeOf = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
+  function certsOf(g, o) { var obs = Rm.allObstacles(g, o), c = {}; Rm.unitsOf(g).forEach(function (u) { c[u.edges.join(',')] = Rm.certOf(g, u, o, obs); }); return c; }
+  function worse(st, g) {
+    var was = beforeOf && beforeOf.get(st.game);
+    if (!was) { was = certsOf(st.game, st.o); if (beforeOf) beforeOf.set(st.game, was); }
+    var now = certsOf(g, st.o), out = [];
+    Object.keys(now).forEach(function (k) { if (!(now[k] > 0) && now[k] < was[k]) out.push(k.split(',').map(Number)); });
+    return out;
+  }
+  /* (v269) REPAIR. When the last fallback still leaves curves worse than they were, each of them gets a descent of
+     its own — a patch (see R BY PATCHES) holding the curve and what is within the energy's reach H of it — and the
+     drawing is finished again; for as long as that leaves fewer of them. A place that fails costs its own
+     neighbourhood, not the picture. */
+  function repair(st, failing) {
+    var H = HORIZON * 2 * st.o.D, fixed0 = Uint8Array.from(st.fixed), steps = 0;
+    failing.forEach(function (edges) {
+      var bx = [Infinity, Infinity, -Infinity, -Infinity];
+      edges.forEach(function (ei) { st.paths[ei].forEach(function (v) { var p = st.P[v]; bx[0] = Math.min(bx[0], p[0] - H); bx[1] = Math.min(bx[1], p[1] - H); bx[2] = Math.max(bx[2], p[0] + H); bx[3] = Math.max(bx[3], p[1] + H); }); });
+      if (!setPatch(st, bx, fixed0)) return;
+      st.g = null; st.S = []; st.Y = []; st.MY = []; st.hist = null; st.confirmed = false;
+      while (descend(st)) steps++;
+      clearPatch(st, fixed0);
+    });
+    return steps;
+  }
   function finishRedraw(st) {
     if (st.stuck) return { game: st.game, error: 'it could not move the drawing at all (a curve passes too close to a spot or to another curve)', moved: 0, clearance: leastClearance(st.game, st.o) };   // (v229)
     fillArea(st);
-    if (!smallSpots(st)) return finishSized(st);
+    if (!smallSpots(st)) {
+      var rf = finishSized(st);
+      if (!rf.error || !rf.failing || st.fixSpots || st.o.tight) return rf;
+      for (var left = rf.failing.length, repaired = 0; ;) {
+        repaired += repair(st, rf.failing);
+        var rn = finishSized(st);
+        if (!rn.error) { rn.repaired = repaired; return rn; }
+        if (!rn.failing || rn.failing.length >= left) return rn;
+        left = rn.failing.length; rf = rn;
+      }
+    }
     var keep = st.rad, gp = spotGaps(st), r;
     st.rad = Float64Array.from(st.full);
     r = finishSized(st);
@@ -1278,14 +1567,16 @@
       r5 = finishWith(ev, st.o.D, false, corners, straight);
       if (!r5.error) { r5.dense = true; r5.corners = Object.keys(corners).length; r5.straight = Object.keys(straight).length; return r5; }
     }
+    if (Rm.positionKey(r5.game) === st.key0) r.failing = worse(st, r5.game);   // (v269: for the repair — finishRedraw)
     return r;
   }
   /* A copy of the state with each edge's points spread evenly along its polyline, as many as
      createRedraw would give it; the polylines, the position and everything else are as in st. */
   function evenly(st) {
-    var g = redrawCurrent(st), D = st.o.D;
+    var g = redrawCurrent(st), D = st.o.D, polylines = [];
     g.edges.forEach(function (e, ei) {
       var Q = st.paths[ei].map(function (v) { return st.P[v]; }), S = [0], t, q = 1;
+      polylines.push(Q.map(function (p) { return p.slice(); }));
       for (t = 1; t < Q.length; t++) S.push(S[t - 1] + G.dist(Q[t], Q[t - 1]));
       var L = S[S.length - 1], k = Math.max(leastPoints(st.game, ei), Math.round(L / D)), out = [Q[0]];
       for (var j = 1; j <= k; j++) {
@@ -1299,6 +1590,7 @@
     });
     var ns = createRedraw(g, st.o, st.fixSpots);
     ns.key0 = st.key0; ns.game = st.game;           // measured against the drawing R started from
+    ns.polylines = polylines;                       // the descent's own polylines, for the curves drawn straight (finishWith)
     return ns;
   }
   /* The least radius of curvature over all curves, sampled (41 points a piece). */
@@ -1344,8 +1636,12 @@
     }
     st.units.forEach(function (u, ui) {
       if (straight && straight[ui]) {               // (v259) the unit as its polyline: straight pieces through its points
+        /* (v265) through the DESCENT's points (st.polylines, kept by evenly), which is the polyline the descent kept
+           clear. v259–v264 drew it through evenly's points, and their chords cut the polyline's corners: in Peter's
+           500-seed game three curves join the stumps 301 and 1363, and the outer two, drawn "straight", passed 1 px
+           too close to the middle one's spot 1376 — where the descent's polylines had 1.6 px to spare. */
         u.edges.forEach(function (ei) {
-          var pc = E.polylinePieces(st.paths[ei].map(function (v) { return P[v]; }));
+          var pc = E.polylinePieces(st.polylines ? st.polylines[ei] : st.paths[ei].map(function (v) { return P[v]; }));
           g.edges[ei].pieces = pc; g.edges[ei].h = pc.map(function (b) { return G.dist(b[0], b[3]); });
         });
         return;
@@ -1370,7 +1666,7 @@
       error = Rm.positionKey(redrawCurrent(st)) === st.key0 ?
               'the smooth curves would cross where the drawing is too tight' + (st.fixSpots ? ' with the spots fixed — R moves them too' : '') :
               'the new drawing would not be the same position (a bug: please save the game)';
-    else if (!(clearance > 0)) error = 'a curve came too close to something' + (st.fixSpots ? ': too tight with the spots fixed — R moves them too' : '');
+    else if (!(clearance > 0) && worse(st, g).length) error = 'a curve came too close to something' + (st.fixSpots ? ': too tight with the spots fixed — R moves them too' : '');
     /* (v189) the spots drawn smaller than the Settings' size: [{ i, f }] — the caller decides whether that
        will do (a fresh drawing only when the Room menu's • allows it); none below o.minSpotR */
     var small = [];
@@ -1399,7 +1695,8 @@
   }
 
   var api = { createRedraw: createRedraw, stepRedraw: stepRedraw, redrawCurrent: redrawCurrent, finishRedraw: finishRedraw, fillArea: fillArea,
-              leastClearance: leastClearance, leastRadius: leastRadius, evaluate: evaluate };
+              leastClearance: leastClearance, leastRadius: leastRadius, evaluate: evaluate, setPatch: setPatch, clearPatch: clearPatch, patchGrid: patchGrid, startRound: startRound,
+              descend: descend, boxEnd: boxEnd, patchPass: patchPass, patchTake: patchTake, helperState: helperState, helperBox: helperBox, flatPoints: flatPoints };
   root.SproutsRedraw = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof self !== 'undefined' ? self : this);
