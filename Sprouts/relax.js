@@ -27,8 +27,6 @@
   /* scene: { W0, H0, spots: [{x,y}], edges: [{a, b, pieces}] }, spotR = drawn spot radius.
      Curves become refined control polygons: segments {a, b, eps, s0, s1} where the
      true curve is within eps of the segment chain and s0, s1 are the edge's end spots. */
-  /* A spot's radius: the Settings' spotR, or less for a spot drawn smaller to make room (v189: s.f, its share
-     of spotR, set where a picture drawn afresh had no room for it at full size — Room menu's • column) */
   /* v212 (Peter 10/30: "let's make stumps count half size"): with View → Stumps half size (H, route.smallDead) a
      stump — a spot of degree 3, which can never get another curve — is not only DRAWN at half the diameter but
      counts so for room everywhere: routing, the certificate, M, and A / R / Z (redraw.js). Before, the half size
@@ -38,7 +36,6 @@
   var halfStumps = false;
   function setHalfStumps(on) { halfStumps = !!on; }
   function fullRadius(s, spotR) { return halfStumps && s.deg >= 3 ? spotR / 2 : spotR; }
-  function spotRadius(s, spotR) { var full = fullRadius(s, spotR); return s.f > 0 && s.f < 1 ? Math.min(full, s.f * spotR) : full; }
   function buildObstacles(scene, spotR, extra) {
     var obs = { segs: [], spots: [], cells: new Map(), spotR: spotR };
     function cellList(cx, cy) {
@@ -70,7 +67,7 @@
       for (i = 1; i < pts.length; i++) addSeg(pts[i - 1], pts[i], poly.eps, e.a, e.b, 4 + ei, cum[i - 1], L - cum[i]);
     });
     scene.spots.forEach(function (s, idx) {
-      var sp = { p: [s.x, s.y], idx: idx, id: 4 + scene.edges.length + idx, r: spotRadius(s, spotR) };
+      var sp = { p: [s.x, s.y], idx: idx, id: 4 + scene.edges.length + idx, r: fullRadius(s, spotR) };
       obs.spots.push(sp);
       cellList(Math.floor(s.x / CELL), Math.floor(s.y / CELL)).spots.push(sp);
     });
@@ -999,7 +996,7 @@
 
   var api = { normalAt: normalAt, MIN_START: MIN_START, QUIET_E: QUIET_E, QUIET_MOVE: QUIET_MOVE,
     createSplineBand: createSplineBand, iterateSpline: iterateSpline, splinePieces: splinePieces,
-    buildObstacles: buildObstacles, spotRadius: spotRadius, fullRadius: fullRadius, setHalfStumps: setHalfStumps, rObs: rObs,
+    buildObstacles: buildObstacles, fullRadius: fullRadius, setHalfStumps: setHalfStumps, rObs: rObs,
     polylineCrossesObstacle: polylineCrossesObstacle, polylineCrossesItself: polylineCrossesItself,
     createBand: createBand, iterate: iterate, createRoute: createRoute, advance: advance, certify: certify
   };

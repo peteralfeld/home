@@ -1,7 +1,7 @@
 /* =========================================================================
    sprouts-draw-worker.js — draws the picture afresh (Z) in a Web Worker
    (v118): the position (after the move, if any) laid out from its map alone
-   with ONE chosen region outside (layout.js, FPP), then the tight descent and
+   with ONE chosen region outside (layout.js, FPP), then R as it is (v270) and
    the splines (redraw.js); the page starts one job per region, every region
    may be the outer one, and which is best cannot be told in advance (9/30:
    the least clearance ranged from failing to 22 px over the 17 choices of one
@@ -45,11 +45,11 @@
    Out: { id, gap, it }                      now and then: how promising the job looks while it runs — the least
                                              gap between the polylines (px)
         { id, picture, it }                  while shown: the polylines now
-        { id, done: true, error, game, clearance, corners, small, dense, moved, it, stages }   (small, v189: the spots drawn smaller)
+        { id, done: true, error, game, clearance, corners, dense, moved, it }
    ========================================================================= */
 var q = self.location.search;
 importScripts('geom.js' + q, 'relax.js' + q, 'route.js' + q, 'engine.js' + q, 'describe.js' + q,
-              'room.js' + q, 'redraw.js' + q, 'layout.js' + q);
+              'room.js' + q, 'redraw.js' + q, 'layout.js' + q, 'flip.js' + q);
 var Ly = self.SproutsLayout, Rd = self.SproutsRedraw;
 var REPORT_MS = 100;                             // how often a shown job sends its picture (the page draws at most that often)
 var SLICE_MS = 50;                               // steps between yields (a message waits at most this long)
@@ -73,7 +73,15 @@ self.onmessage = function (e) {
     return;
   }
   if (d.redraw) {                                  // R (v226)
-    job = { id: d.id, show: !!d.show, st: Rd.createRedraw(d.game, d.o, !!d.keep), o: d.o, last: 0, redraw: true, filled: false, smoothing: false, helpers: d.helpers || 0, asked: 0,
+    /* (v271) { …, flip: true }: the picture turned inside out first (flip.js), then R from there. When no region
+       would make a shallower outside: { id, done, none: why } and nothing else. */
+    var from = d.game, flip = null;
+    if (d.flip) {
+      flip = self.SproutsFlip.insideOut(d.game);
+      if (flip.none) { self.postMessage({ id: d.id, done: true, none: flip.none, before: d.before }); return; }
+      from = flip.game; flip = { from: flip.from, to: flip.to, room: flip.room };
+    }
+    job = { id: d.id, show: !!d.show, flip: flip, st: Rd.createRedraw(from, d.o, !!d.keep), o: d.o, last: 0, redraw: true, filled: false, smoothing: false, helpers: d.helpers || 0, asked: 0,
             before: typeof d.before === 'number' ? d.before : Rd.leastClearance(d.game, d.o) };   // (v253: the page's, when it knows it)
     setTimeout(slice, 0);
     return;
@@ -101,7 +109,7 @@ function slice() {
     if (j.helpers) { var pr = st.pr, now = pr ? pr.round + ',' + pr.pass + ',' + pr.cur : ''; if (now !== at) { feed(j); at = now; } }   // (a pass or a box began: boxes for the helpers)
     done = Rd.stepRedraw(st, 1);
   } while (!done && Date.now() - t < span);
-  if (done && j.redraw && j.o.fill && !j.filled && !st.stuck) {   // (v226, as the page's smoothAfterFill: enlarge, then smooth with the seeds kept)
+  if (done && j.o.fill && !j.filled && !st.stuck) {   // (v270: Z's layouts too — Z ends with R as it is)   // (v226, as the page's smoothAfterFill: enlarge, then smooth with the seeds kept)
     j.filled = true;
     if (Rd.fillArea(st)) {
       var o2 = {}, k;
@@ -120,9 +128,9 @@ function slice() {
        not be finished, "with the spots fixed — R moves them too"): then the enlarged picture as it was before the
        smoothing is finished instead */
     if (rr.error && j.pre) { var r0 = Rd.finishRedraw(j.pre); if (!r0.error) { rr = r0; unsmoothed = true; } }
-    self.postMessage({ id: j.id, done: true, error: rr.error, game: rr.game, clearance: rr.clearance, corners: rr.corners || 0, straight: rr.straight || 0, small: rr.small || [],
-                       dense: !!rr.dense, moved: rr.moved, it: st.it, stages: st.stages, smoothing: j.smoothing, unsmoothed: unsmoothed, before: j.before,
-                       helpers: helpers.length, helped: j.helped || 0, lost: helpers.filter(function (h) { return h.dead; }).length, lostWhy: j.lostWhy || '' });
+    self.postMessage({ id: j.id, done: true, error: rr.error, game: rr.game, clearance: rr.clearance, corners: rr.corners || 0, straight: rr.straight || 0,
+                       dense: !!rr.dense, moved: rr.moved, it: st.it, smoothing: j.smoothing, unsmoothed: unsmoothed, before: j.before,
+                       helpers: helpers.length, helped: j.helped || 0, lost: helpers.filter(function (h) { return h.dead; }).length, lostWhy: j.lostWhy || '', flip: j.flip || null });
     helpers.forEach(function (h) { h.port.postMessage({ helper: true, drop: true, over: true }); h.port.close(); }); helpers = [];
     job = null;
     return;

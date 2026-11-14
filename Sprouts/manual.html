@@ -5,7 +5,7 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
  <title>Sprouts &mdash; User's Guide</title>
- <link rel="stylesheet" href="manual.css?v=269">
+ <link rel="stylesheet" href="manual.css?v=274">
 <script>
   MathJax = {
     tex: {
@@ -263,11 +263,13 @@ Only the layout of the curves and spots is magnified: the curves keep their thic
   <OL>
 <LI><e>M</e> (make room) adjusts the location of spots and the routing of nearby curves for a specific move.   The rest of the picture stays.</LI>
 <LI><e>R</e> (rearrange) reshapes the whole drawing: curves and spots move so that the whole picture can spread out.</LI>
-<LI><e>Z</e> (draw afresh) ignores the present drawing and draws the position from scratch, then polishes it as R does.   It is the slowest of the three.</LI>
+<LI><e>Z</e> (draw afresh) ignores the present drawing and draws the position from scratch, then rearranges that drawing as R does.   It tries several regions as the outside of the picture at once, as many as there are workers, namely those from which the other regions are reached across the fewest curves.   It is the slowest of the three, and useful only for small positions: the picture it starts from is much longer than it needs to be, and at the end of the game of 450 seeds below it had not finished after almost two hours.   The space bar stops it, and the picture before is kept.</LI>
   </OL>
 
+<p> A fourth way, <e>Turn the picture inside out</e> (key <e>I</e>), is for large positions.   Which region is the outside is a matter of the drawing, not of the game: a move that encloses most of the board is a curve around nearly everything, but with another region outside the same move is a small loop.   Games with many such moves end as rings within rings, like the game of 450 seeds below.   This option makes the region the outside from which the other regions are reached across the fewest curves, by turning the present picture inside out about a point of that region, and then rearranges the result with R.   The position stays the same.   If the present outside is that region already, nothing happens.   It is never done automatically, and <e>U</e> undoes it.
+
 <p> The checkboxes in the Room Menu can be used to determine which actions will be taken automatically by humans or AIs when the system can't draw a move without meeting the active clearance requirements.  
-The corresponding keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any time, and the space bar stops M, R or Z: R and Z keep the picture as it is on the screen at that moment, and <e>U</e> goes back to the picture before.   M, R and Z run in workers of their own, as does the measuring of the least clearance after a thin move, so the page stays responsive while they work.
+The corresponding keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any time, and the space bar stops M, R or Z: R and Z keep the picture as it is on the screen at that moment, and <e>U</e> goes back to the picture before.   M, R, Z and turning the picture inside out run in workers of their own, as does the measuring of the least clearance after a thin move, so the page stays responsive while they work.
 
 <p> <e>Allow thin moves</e>, on by default, decides what happens when a move does not fit the ordinary way.   The move is then drawn at once with the spots counted as points and the curves as thin lines, so it does not fail for lack of room.   Its curve crosses and touches nothing, however narrow the way: it is smooth where it can be, and a polyline otherwise, and a move that encloses something hugs what it encloses.   In a crowded picture the curve may run closer to other curves than the minimum clearance, or across a spot&rsquo;s disc, but the position is exactly the one intended.   Meanwhile the status row says <e>Drawing it with spots as points and curves thin&hellip;</e>; in a very crowded picture this can take a while, and the space bar stops it.   Nothing else is done first to make room, but M (make room in place) if it is checked in the Room menu for the player who moved.   Afterwards, if the picture falls short of the minimum clearance, the picture is <i>tidied</i>: the steps R and Z checked in the Room menu for the player who moved are run automatically, in that order, until the clearance is restored (M is not used for this).   For the computer&rsquo;s moves, <e>Delayed tidying</e> (below, on by default) postpones this.   Rarely, in a very crowded picture, even a thin move cannot be drawn, because the way is narrower than the arithmetic can certify; then the steps R and Z checked in the Room menu are tried, and if none is checked, or they fail too, the game stops and the status row says why.   Press R or Z to redraw, and the computer tries its move again, or set the player to Human and draw a move by hand.
 
@@ -391,6 +393,9 @@ The corresponding keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any tim
 
 <p>The sub-menus let you change the colors of the various parts of the drawing.   You can save your favorite scheme by setting up a game as you like and download it as a JSON file, using the File menu.   To start afresh from the same position import the position, again using the File menu.
 
+<p><e>Color regions</e> (key <e>O</e>, on by default) fills every region except the outside with one of five colors, so that no two regions sharing a curve have the same color.   (Regions that meet only at a spot may.)   The outside keeps the <e>Background</e> color, and turns to the <e>Background while computing</e> color while you have to wait, as before.   As the game goes on, every region keeps its color as far as possible: a move only colors the pieces of the region it divides, taking the five colors in turn.   The coloring is something a game on paper does not have, and it makes even a large picture easy to read.
+<p>Clicking the words <e>Color regions</e> shows the colors of the Background menu as boxes; clicking them again, or closing the menu, hides them.   The five colors in use are outlined.   If you check more than five, the five most distinct of the checked colors are used.   If you check five or fewer, they are used, together with the most distinct of the remaining colors that are neither the Background nor the Background while computing color.   Medium gray is used only if you check it, since it would dominate the picture.   By default the five <e>Soft</e> colors (Soft peach, Soft khaki, Soft aqua, Soft sky and Soft lilac) are checked: they are pale enough for the curves and spots to stand out, and they differ from each other far more than the pale colors do.
+
   <H3 class="menu-head" id="sec-importing" style="--menu: #ac6488">Importing and Exporting</H3>
   
   <p>You can download various records of your game, and import a saved game, with these options.   All the saving options work at any time, also while something is running:
@@ -453,11 +458,13 @@ The corresponding keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any tim
     <tr><td><kbd>R</kbd></td><td>Rearrange the drawing</td></tr>
     <tr><td><kbd>A</kbd></td><td>Keep seeds in place (when R rearranges) on / off</td></tr>
     <tr><td><kbd>Z</kbd></td><td>Draw the picture afresh</td></tr>
+    <tr><td><kbd>I</kbd></td><td>Turn the picture inside out</td></tr>
   </table>
   <table>
     <tr><th colspan="2">View</th></tr>
     <tr><td><kbd>F</kbd></td><td>Full screen</td></tr>
     <tr><td><kbd>C</kbd></td><td>Control polygons</td></tr>
+    <tr><td><kbd>O</kbd></td><td>Color regions on / off</td></tr>
     <tr><td><kbd>S</kbd></td><td>Spot indices</td></tr>
     <tr><td><kbd>T</kbd></td><td>Initial seeds as triangles</td></tr>
     <tr><td><kbd>G</kbd></td><td>No indices at stumps</td></tr>

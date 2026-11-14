@@ -374,7 +374,7 @@
     out.runs = all;
     g.spots.forEach(function (sp, i) {
       if (i === a || i === b) return;
-      var d = distToRuns([[sp.x, sp.y]], all) - R.spotRadius(sp, o.spotR);
+      var d = distToRuns([[sp.x, sp.y]], all) - R.fullRadius(sp, o.spotR);
       if (!(d < o.d0)) return;
       if (sp.deg === 0) { out.seeds.push({ idx: i, d: d }); return; }   // (v188: a seed can be moved — moveSeed)
       if (!out.spot || d < out.spot.d) out.spot = { idx: i, d: d };
@@ -437,7 +437,7 @@
   function moveSpot(g, z, runs, o, floors, key0) {
     var p = [g.spots[z].x, g.spots[z].y], near = nearestOnRuns(p, runs);
     if (!near) return null;
-    var rz = R.spotRadius(g.spots[z], o.spotR), need = o.d0 - (near.d - rz);
+    var rz = R.fullRadius(g.spots[z], o.spotR), need = o.d0 - (near.d - rz);
     if (!(need > 0)) return null;
     var dir = [p[0] - near.q[0], p[1] - near.q[1]], dl = Math.hypot(dir[0], dir[1]);
     if (dl > 0) dir = [dir[0] / dl, dir[1] / dl];
@@ -524,7 +524,7 @@
   function allObstacles(g, o) { return R.buildObstacles(g, o.spotR); }
   function certOf(g, u, o, obs) {
     var ctx = { aIdx: u.a, bIdx: u.b, A: [g.spots[u.a].x, g.spots[u.a].y], B: [g.spots[u.b].x, g.spots[u.b].y], rho: o.rho, spotR: o.spotR,
-                rA: R.spotRadius(g.spots[u.a], o.spotR), rB: R.spotRadius(g.spots[u.b], o.spotR) };   // (v265: the end spots at their own size — relax.js rSelf)
+                rA: R.fullRadius(g.spots[u.a], o.spotR), rB: R.fullRadius(g.spots[u.b], o.spotR) };   // (v265: the end spots at their own size — relax.js rSelf)
     if (!obs) obs = allObstacles(g, o);
     ctx.skipSeg = {}; u.edges.forEach(function (i) { ctx.skipSeg[4 + i] = true; });
     if (u.z >= 0) { ctx.skipSpot = u.z; ctx.Z = [g.spots[u.z].x, g.spots[u.z].y]; }   // (v269: Z — the halves meet there by angle, relax.js rSelf)

@@ -95,6 +95,7 @@ page takes you back here.</p>
       <li><a href="#sec-setrep">2.4. The position as lists of corners</a></li>
       <li><a href="#sec-moves">2.5. The moves</a></li>
       <li><a href="#sec-canonical">2.6. When are two positions the same?</a></li>
+      <li><a href="#sec-coloring">2.7. Coloring the regions</a></li>
     </ul>
   </li>
   <li><a href="#sec-drawing">3. Drawing a Move</a>
@@ -108,7 +109,7 @@ page takes you back here.</p>
       <li><a href="#sec-thin">3.7. Allow thin moves: spots as points, curves thin</a></li>
     </ul>
   </li>
-  <li><a href="#sec-room">4. Making Room: Six Kinds of Rearranging</a>
+  <li><a href="#sec-room">4. Making Room: Seven Kinds of Rearranging</a>
     <ul>
       <li><a href="#sec-room-overview">4.1. Overview</a></li>
       <li><a href="#sec-window">4.2. The window</a></li>
@@ -116,7 +117,8 @@ page takes you back here.</p>
       <li><a href="#sec-push">4.4. Pushing curves apart</a></li>
       <li><a href="#sec-ar">4.5. R: one energy for the whole picture</a></li>
       <li><a href="#sec-z">4.6. Z: the picture drawn afresh</a></li>
-      <li><a href="#sec-heroic">4.7. Heroic mode</a></li>
+      <li><a href="#sec-flip">4.7. The picture turned inside out</a></li>
+      <li><a href="#sec-heroic">4.8. Heroic mode</a></li>
     </ul>
   </li>
   <li><a href="#sec-ai">5. The Computer Players</a>
@@ -374,6 +376,42 @@ not the same name as an equal position&rsquo;s, which costs a missed table hit a
 position made of independent <e>parts</e> (section <a href="#sec-parts">5.6</a>) is written as the sorted forms
 of its parts joined by &ldquo;+&rdquo;, each part named on its own.</p>
 
+<h2 id="sec-coloring">2.7. Coloring the regions</h2>
+
+<p>With Colors &rarr; <e>Color regions</e> (key <code>O</code>; <code>regions.js</code>) every region but the
+outside is filled, and two regions that share a stretch of curve get different colors. The regions and their
+neighbors come from the analysis of section <a href="#sec-rotation">2.3</a>: a region is a set of boundary cycles of
+half-edges, and the two half-edges of a curve name the regions on its two sides. The outside is left out, so it
+can keep its color as the sign that the computer is busy. A region is filled as the path of its own face cycle
+together with the outer cycles of the parts of the picture that lie inside it, with the even&ndash;odd rule, so the
+parts inside are holes in it; the curves are drawn on top.</p>
+
+<p>The map of regions is a plane map, so four colors would always suffice. Finding a four-coloring is a hard
+problem in practice, however, and the program uses five, which can always be found quickly and leave far more
+freedom to keep colors where they were. The colors are kept from move to move: a move adds two curves and never
+renumbers the old ones, so each region of the new picture takes over the color of the region of the old picture
+with which it shares the most half-edges, unless a neighbor already has it. The remaining regions (in practice the
+second piece of the region the move divided) take the next of the five colors in turn, skipping any a neighbor has.
+Taking the first free color instead made the first color dominate. Only if some region finds all five colors
+taken by its neighbors is the whole map colored afresh: the regions are removed one at a time, always one with
+the fewest neighbors left (a plane map always has one with at most five), and colored in the reverse order; where a
+region&rsquo;s five neighbors hold all five colors, two of the colors are swapped along a chain of regions colored
+with just those two (a <e>Kempe chain</e>), which in a plane map frees a color. The five colors are then
+permuted to agree with as many of the old colors as possible. The topology is worked out again only when the
+position changes. While R, Z or making room move the picture frame by frame, the regions stay as they are unless
+a face cycle turns over, which happens when Z or the inside-out flip (section <a href="#sec-flip">4.7</a>) makes
+another region the outside. Coloring the 450-seed position of the manual&rsquo;s tables takes about 70 ms.</p>
+
+<p>Which five colors are used is decided by comparing colors, not by a fixed list. Distances are measured in the
+CIELAB color space, in which equal distances look roughly equally different. Of the Background menu&rsquo;s colors,
+the checked ones are kept (the most distinct five of them, if more than five are checked) and the set is completed
+from the unchecked colors that are neither the Background nor the Background while computing color, and are not
+Medium gray. Every possible set is tried, and the one whose two closest colors (the two backgrounds counted too)
+are farthest apart wins. The twelve pale colors are all very light and nearly gray, so the best five of them differ
+by only about 5 units, which is hard to see side by side. Hence the five <e>Soft</e> colors: lightness 88 and
+chroma 18, with hues 72&deg; apart, turned to stay clear of White and Pale cerulean. Their closest pair differs by
+14 units, and they are the default.</p>
+
 <h1 id="sec-drawing">3. Drawing a Move<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <p>Whether a move comes from a person&rsquo;s mouse or from the computer, it reaches the geometry as the same
@@ -620,13 +658,13 @@ once per picture (<code>room.allObstacles</code>) and each curve skips its own s
 result to the bit: the least clearance of that picture in 0.8 s, the last stage of a late R in 5 s instead of
 225.</p>
 
-<h1 id="sec-room">4. Making Room: Six Kinds of Rearranging<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
+<h1 id="sec-room">4. Making Room: Seven Kinds of Rearranging<a href="#toc" class="to-top" title="Back to the Table of Contents">&#8679;</a></h1>
 
 <h2 id="sec-room-overview">4.1. Overview</h2>
 
 <p>As a game goes on, regions get crowded and a legal move may find no way through with the minimum clearance.
-The program then changes the picture, never the position, in one of six ways. They range from the very local
-and cheap to the global and expensive, and each later one is tried only when the earlier ones are not enough.</p>
+The program then changes the picture, never the position, in one of seven ways. They range from the very local
+and cheap to the global and expensive. The last, turning the picture inside out, is started only by hand.</p>
 
 <table class="desc">
   <tr><th>What</th><th>How it is started</th><th>What moves</th><th>Section</th></tr>
@@ -636,6 +674,7 @@ and cheap to the global and expensive, and each later one is tried only when the
   <tr><td>Rearranging, seeds kept in place</td><td><code>R</code> with <e>Keep seeds in place</e> on (key <code>A</code>)</td><td>every curve; the seeds stay (spots made by moves ride on their curves)</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Rearranging</td><td><code>R</code></td><td>every curve and every spot</td><td><a href="#sec-ar">4.5</a></td></tr>
   <tr><td>Drawing afresh</td><td><code>Z</code></td><td>everything; the present picture is ignored</td><td><a href="#sec-z">4.6</a></td></tr>
+  <tr><td>Turning the picture inside out</td><td><code>I</code></td><td>everything; another region becomes the outside</td><td><a href="#sec-flip">4.7</a></td></tr>
 </table>
 
 <p><e>The ladder.</e> The commands <code>M</code> (sliding spots, then pushing curves), <code>R</code> and
@@ -654,7 +693,7 @@ tries the move again, and the ladder then goes on from there by the same rule. F
 the checked steps are taken in order and the unchecked ones skipped. When the steps are used up, the program
 stops and says so. A human&rsquo;s move stays waiting, and the keys still work by hand. A new click on a
 destination starts the ladder anew, and <code>Space</code> during a step stops the climb. Heroic mode (section
-<a href="#sec-heroic">4.7</a>) switches the human&rsquo;s boxes off. Each change of the picture is its own undo
+<a href="#sec-heroic">4.8</a>) switches the human&rsquo;s boxes off. Each change of the picture is its own undo
 step until the next move is made (section <a href="#sec-memory">7.2</a>). Every one of these operations ends with
 the check of section <a href="#sec-invariant">1.2</a>.</p>
 
@@ -784,8 +823,7 @@ anything it could hit (every segment not its own, and the window). No vertex can
 step, so <e>nothing ever crosses</e>, and the position cannot change. When a curve&rsquo;s length no longer suits
 its number of points it is re-spaced. The new spacing is kept only if the new polylines do not cross, because two
 curves crossing twice would leave the rotation system, and hence the position text, unchanged and could not be
-detected by the check. When no step lowers the energy any more, the points are jiggled at random within a sixth of
-their caps, a few times, to get out of shallow traps.</p>
+detected by the check.</p>
 
 <p><b>The push smoothed along the curves (v241).</b> Late in a large game tongues and stumps stayed where they were,
 although pulling them in would have shortened the curves a great deal. Such a move shifts a long strand of points
@@ -804,7 +842,7 @@ about 800 pixels, the curves 16% shorter; on a crowded 200-seed picture it neede
 late 200-seed picture that the old descent could not move at all it shortened the curves by 13%. In a 60-seed game
 on a 400&nbsp;&times;&nbsp;400 area the old descent was refused after every move for the last twenty moves, the
 thin moves piling up, while the new one tidied to the end. It is used only while the spots may move: with the seeds
-kept in place (and in the smoothing after the area is filled, and from Z&rsquo;s tight start) the points move only
+kept in place (and in the smoothing after the area is filled) the points move only
 across their curves and are spread again, and there it made the descent slower.</p>
 
 <p>Each step of the line search evaluates the energy at the trial point together with its gradient and caps
@@ -866,8 +904,7 @@ since v259, a curve that still fails drawn as its polyline, straight pieces thro
 kept the polylines apart, so the result is the position with positive clearance, instead of R thrown away. The
 result is refused if the position changed or the clearance is not positive. A curve whose pieces already suit its
 length keeps its knots as its points, so pressing <code>R</code> a second time starts where the
-first ended and changes next to nothing. A spot that was drawn smaller than its size by an earlier Z (section
-<a href="#sec-z">4.6</a>) grows back to its size in R as soon as there is room for it.</p>
+first ended and changes next to nothing.</p>
 
 <p><e>R by patches</e> (since v269). One descent for the whole picture has one step size, one memory and one stop
 rule, and the stiffest place anywhere sets them for every point. The more spots, the stiffer the stiffest place: the
@@ -904,10 +941,10 @@ polynomial.</p>
 
 <h2 id="sec-z">4.6. Z: the picture drawn afresh</h2>
 
-<p>R starts from the present picture and can only improve it locally. When a move cannot be drawn even after
-R, <e>Z</e> draws the position from its combinatorial map alone (<code>layout.js</code>), with no regard to how it
-looks now. For the computer, the position <e>after</e> its intended move is drawn, so the move needs no router at
-all.</p>
+<p>R starts from the present picture and can only improve it locally. <e>Z</e> draws the position from its
+combinatorial map alone (<code>layout.js</code>), with no regard to how it looks now, and then rearranges that
+drawing by R. For the computer, the position <e>after</e> its intended move is drawn, so the move needs no router
+at all.</p>
 
 <ol>
   <li><e>The map.</e> The rotation system and the faces are read off the present drawing through the engine
@@ -927,46 +964,79 @@ all.</p>
   becomes the outside</e>: any region can be made the outer one. The drawing is scaled into the window, all helper
   vertices and edges are removed, and each curve comes out as a two-leg polyline $u - m - v$ through its
   midpoint.</li>
-  <li><e>Polish.</e> R&rsquo;s descent (section <a href="#sec-ar">4.5</a>) then turns the straight, crowded grid drawing
-  into a picture, in a variant for this start. The spots begin small, each at half its own least gap to a curve
-  or another spot (v189; before, every spot started at half the least gap in the whole drawing), and are grown
-  in stages, each by its own room. Long legs are subdivided so that points cannot drain out of crowded
-  stretches. Below one pixel the crowding term is reshaped so that it stays finite inside a spot&rsquo;s disc
-  while still growing without bound as the true distance goes to zero. The jiggles of section
-  <a href="#sec-ar">4.5</a> are kept only while they give the spots more room.</li>
+  <li><e>R.</e> The straight, crowded grid drawing is then rearranged by R exactly as section
+  <a href="#sec-ar">4.5</a> describes it (v270): by patches, with the picture&rsquo;s shape kept or the area filled
+  as the Room menu says for R. Until v269 the layout was followed by a descent of its own, in which spots began
+  small and grew in stages and points moved only across their curves. It ended at the first drawing that passed
+  the check and left the layout&rsquo;s long detours standing: at the end of a 20-seed game it gave 27,400 pixels
+  of curve where R gives 4,600, in twice the time. That descent, and the spots drawn smaller that only it
+  produced, are gone.</li>
 </ol>
 
-<p>Which region should be outside is not known in advance, and the results differ a lot (on one 9-spot position
-the least clearance ranged from 0.5 to 22.6 pixels over its 17 regions). So Z runs one layout per region in
-parallel, on the drawing workers (section <a href="#sec-workers">7.1</a>), with the present outside first. The one
-the screen shows is the one with the widest gap at the moment, and it changes as they progress. The program
-stops at the <e>first</e> layout drawn with at least the least clearance the picture had before, provided that
-clearance was at least the minimum clearance of the Settings. The purpose is to draw the move, not to find the
-most beautiful picture. A picture whose least clearance, measured at its single tightest place, is already below
-the minimum is broken, and then the first layout that can be drawn at all is taken (v194: holding out for 3.0 px
-against a layout with 2.6 px once cost 38 minutes in a 100-seed game). A layout drawn with some spots smaller
-(below) counts when that is allowed. When a layout has been drawn but did not meet that bar, Z ends
-with the best so far as soon as one <e>round</e> is complete (as many layouts as there are workers), rather than
-running every region to the end. Stragglers are given up by comparison, not by a fixed time. Once half the
-layouts are done, one still running after twice the time of the median finished one (drawn or failed) is
-stopped. If a whole round fails (none of its layouts drawn), or every layout fails, Z gives up and says the
-picture has run out of room (v183: in a 60-seed game of about 160 spots every layout failed, each after minutes,
-because the smooth curves would cross where the drawing was too tight). More room then comes from smaller spots
-or a smaller minimum clearance. A larger drawing area helps only a new game, since during a game the picture is
-only scaled. The log names the reason each layout failed. <code>Space</code> stops Z and takes the best result
-so far.</p>
+<p>Which region should be outside matters a great deal (on one 9-spot position the least clearance ranged from
+0.5 to 22.6 pixels over its 17 regions). Z runs one layout for each of the $w$ regions with the <e>least
+nesting</e>, $w$ being the number of workers (v270), each on a drawing worker of its own (section
+<a href="#sec-workers">7.1</a>). The nesting of a region is the mean number of curves that must be crossed to
+reach the other regions from it (section <a href="#sec-flip">4.7</a>); on a tie the present outside comes first.
+The layout the screen shows is the one with the widest gap at the moment, and it changes as they progress. The
+program stops at the <e>first</e> layout drawn with at least the least clearance the picture had before, provided
+that clearance was at least the minimum clearance of the Settings. A picture whose least clearance is already
+below the minimum is broken, and then the first layout that can be drawn at all is taken (v194: holding out for
+3.0 px against a layout with 2.6 px once cost 38 minutes in a 100-seed game). Stragglers are given up by
+comparison, not by a fixed time: once half the layouts are done, one still running after twice the time of the
+median finished one (drawn or failed) is stopped. If every layout fails, Z gives up and says the picture has run
+out of room. More room then comes from smaller spots or a smaller minimum clearance. A larger drawing area helps
+only a new game, since during a game the picture is only scaled. The log names the reason each layout failed.
+<code>Space</code> stops Z and takes the best result so far.</p>
 
-<p><e>Spots drawn smaller where there is no room</e> (v189). A layout whose spots cannot all grow to the size
-the Settings ask for is a failure at full size. When Z runs with the computer&rsquo;s move and
-<e>Allow thin moves</e> is on (spots counted as points), such a layout is kept aside
-instead (v217; before, the Room menu had a &bull; box per player for this, and the key <code>.</code>): at the end each spot is tried at full size, then at the largest size its gap allows, and the
-layout keeps those spots smaller, never below the smallest size of the Settings&rsquo; slider. A layout kept
-aside that meets the bar above ends Z like one at full size. Otherwise, if no layout drew at full size, the one
-kept aside with the least shrinking (its smallest spot the largest, then the fewest spots shrunk) is taken. The size of a spot is part of the game object and is saved, loaded and undone with it.
-The router, the certificate and the room-making all see the spot at its smaller size, and the log names the
-spots drawn smaller. They grow back as soon as a later R or Z finds room for them.</p>
+<p><e>Z is for small positions.</e> Each layout&rsquo;s R runs alone on its worker, without the helpers R has
+when it is started by itself, and it starts from a picture several times longer than it needs to be: the grid
+layout packs most spots into a few corners and joins them with bundles of curves across the whole window. On a
+50-seed position R had brought a layout from 106,000 to 30,500 pixels of curve after four minutes on one thread,
+the game&rsquo;s own picture being 16,100. At the end of the 450-seed game of the series no layout of 32 had
+finished after 1&nbsp;hour 50&nbsp;minutes, and the one on the screen still had 352,000 pixels of curve against
+the game&rsquo;s 166,000. Nothing stops a user from starting Z on such a position; <code>Space</code> ends it,
+and the picture before is kept.</p>
 
-<h2 id="sec-heroic">4.7. Heroic mode</h2>
+<h2 id="sec-flip">4.7. The picture turned inside out</h2>
+
+<p>Which region is the outside is a choice of the drawing, not a property of the position: on a sphere there is no
+outside. The choice decides how the picture looks. A move that encloses most of the board is a curve round nearly
+everything; with another region outside, the same move is a small loop round the little it leaves out. Games in
+which such moves pile up end as rings within rings, and those are the slow ones (the games of 300 and 450 seeds in
+the series of the manual).</p>
+
+<p><e>Nesting.</e> Two regions are neighbors when some curve has one of them on each side. The depth of a region
+is the least number of curves to cross from the outside to reach it, found by a breadth-first search over the
+regions. The nesting of the picture is the mean depth, each region counted with the number of spots on its
+boundaries. Computed for every region as the outside, it says which outside gives the shallowest picture. The
+450-seed game ended with a nesting of 15.2; with the best region outside it is 5.6, about what the other games of
+the series have (4 to 7).</p>
+
+<p><e>The flip</e> (<code>flip.js</code>; Room &rarr; <e>Turn the picture inside out</e>, key <code>I</code>,
+v271) makes the region with the least nesting the outside without drawing anything anew. Let $c$ be the point of
+that region with the most room (found on a 2-pixel raster by a distance transform). Along every ray from $c$ the
+point at distance $r$ goes to distance $\ell - r$, where $\ell$ is the length of the ray to an ellipse round the
+picture (through the corners of the picture&rsquo;s bounding box, widened by the room at $c$). What was near $c$
+is then far from it and the reverse, distances along a ray are kept, and the map is one to one and continuous
+away from $c$, so no two curves can come to cross and the position is the same. The curves are taken as fine
+polylines, their images cut to pieces of at most 4 pixels, and the whole is scaled evenly back into the box the
+picture had. A circle inversion would also do this and keep angles, but it shrinks what is far from $c$ by the
+square of the distance, and whole clusters of the 450-seed game came out a fraction of a pixel wide. With the
+bounding box in place of the ellipse the box&rsquo;s corners put a kink into every curve, and R could not get
+past two nested kinks lying on each other.</p>
+
+<p>The turned picture is distorted, stretched round near the new outside and squeezed where the old outside was,
+and is meant only as a start for R, which runs at once, in R&rsquo;s worker with its helpers (section
+<a href="#sec-workers">7.1</a>). The flip and its R are one undo step. Because the turned picture is squeezed, R
+is not compared with it but with the picture before the flip: a result without positive clearance that is also
+closer than the picture before is refused. When the present outside already has the least nesting, nothing is
+done. Measured: a 50-seed position in the page, 34 s, nesting 5.2 to 2.7, the curves 16,100 to 12,500 pixels; the
+end of the 450-seed game outside the page on one thread, R done after 629 s, the curves 166,800 to 128,000
+pixels (23% shorter), accepted.</p>
+
+
+<h2 id="sec-heroic">4.8. Heroic mode</h2>
 
 <p>Room &rarr; Heroic is for players who want to draw every curve exactly as they please. A curve drawn by hand is
 kept exactly as drawn (as straight pieces between the sampled points, not smoothed). It must merely not touch or
@@ -1416,8 +1486,10 @@ save that fails says why.</p>
   <tr><td class="code">moves.js</td><td>the router&rsquo;s pieces: marked routes, ports, trial moves, making room, the thin route and its smooth curve (3.3&ndash;3.5, 3.7, 4.3&ndash;4.4)</td></tr>
   <tr><td class="code">thin.js</td><td>thin moves: the exact constrained triangulation, the walk, the hug, the certificate (3.7)</td></tr>
   <tr><td class="code">room.js</td><td>sliding spots and pushing curves apart (4.3&ndash;4.4)</td></tr>
-  <tr><td class="code">redraw.js</td><td>R, filling the area, and the polish after Z (4.5)</td></tr>
-  <tr><td class="code">layout.js</td><td>Z: the map, the triangulation, the grid drawing (4.6)</td></tr>
+  <tr><td class="code">redraw.js</td><td>R and filling the area (4.5)</td></tr>
+  <tr><td class="code">layout.js</td><td>Z: the map, the triangulation, the grid drawing, the regions with the least nesting (4.6)</td></tr>
+  <tr><td class="code">regions.js</td><td>Color regions: the regions and their neighbors, colors kept from move to move, the five most distinct colors (2.7)</td></tr>
+  <tr><td class="code">flip.js</td><td>the picture turned inside out: nesting, the roomiest point, the flip along rays (4.7)</td></tr>
   <tr><td class="code">ai.js</td><td>the position&rsquo;s topology, the moves, canonical forms, every computer player (2.4&ndash;2.6, 5)</td></tr>
   <tr><td class="code">net.js</td><td>two-computer play (6)</td></tr>
   <tr><td class="code">sprouts-worker.js, sprouts-draw-worker.js, sprouts-room-worker.js</td><td>the workers (7.1)</td></tr>

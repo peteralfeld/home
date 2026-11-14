@@ -120,3 +120,9 @@ kbd { opacity: .7; font: inherit; }
 .menu-panel .size-fields input { width: 72px; }
 .menu-panel .size-fields .item, .menu-panel .size-presets .item { width: auto; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.3); }
 .menu-panel .size-presets { flex-wrap: wrap; justify-content: flex-start; gap: 6px; max-width: 330px; }
+/* v274: Colors → Color regions — the Background menu's colors as boxes; the five in use outlined */
+.menu-panel .region-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 2px 6px 6px; }
+.menu-panel .region-grid label { display: flex; align-items: center; gap: 6px; padding: 2px 6px; border-radius: 3px; font-weight: bold; cursor: pointer; outline-offset: -2px; }
+.menu-panel .region-grid label.inuse { outline: 2px solid #ffffff; }
+.menu-panel .region-row > span { cursor: pointer; }
+.menu-panel .region-row .region-more { opacity: .8; }

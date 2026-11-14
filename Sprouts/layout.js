@@ -376,8 +376,8 @@
 
   /* The game drawn afresh: the position of `game`, or the position after the move mv (ai.js,
      as the computer names it; its curves get `player`), with the region of engine key `outerKey`
-     outside (-1: the present outside); every curve a straight two-leg polyline, for R's descent
-     (redraw.js, o.tight) to make into curves. The game object is a copy: spots, edges (pieces,
+     outside (-1: the present outside); every curve a straight two-leg polyline, for R (redraw.js)
+     to make into curves. The game object is a copy: spots, edges (pieces,
      player), moves, phase, player and the rest as before (+ 1 move). null for a lone spot. */
   /* outerFace (optional): the index of the outer face among the faces of the map after the move (see
      faceCount) — the keys are not enough: a move's two new regions share one (v118). */
@@ -398,8 +398,8 @@
     if (!dr) return null;
     var g = JSON.parse(JSON.stringify(game));
     g.spots = spots.map(function (s, i) { return { x: dr.spots[i][0], y: dr.spots[i][1], deg: s.deg }; });
-    /* each curve: its two legs, each cut into parts no longer than D — the descent (redraw.js,
-       o.keepKnots) takes these points as they are, the corner at the midpoint among them */
+    /* each curve: its two legs, each cut into parts no longer than D, the corner at the midpoint among them (R
+       samples the curve anew: redraw.js createRedraw) */
     g.edges = edges.map(function (e, i) {
       var c = dr.curves[i], pts = [c[0]];
       for (var k = 1; k < c.length; k++) {
@@ -417,7 +417,27 @@
     var m = mapOf(game), outer = 0;
     if (mv) m = withMove(m, mv);
     m.faces.forEach(function (f, i) { if (f.key === -1) outer = i; });
-    return { count: m.faces.length, outer: outer };
+    /* (v270, Peter 11/13: "rebuild Z so that it uses the outside region with the lowest nesting … or the w regions
+       with the lowest nesting where w is the number of workers") `order`: the regions by how deep the others would lie
+       if that one were outside, the shallowest first. Two regions are neighbors when a curve has one on each side;
+       a region's depth is the fewest curves to cross from the outside; the measure is the mean depth, each region
+       counted by what lies on its boundaries. His 450-seed game of 11/13: 15.2 with the outside it had, 5.6 with the
+       best — the picture was rings round everything. Ties: the present outside first, then as numbered. */
+    var n = m.faces.length, of = {}, adj = m.faces.map(function () { return {}; }), w = m.faces.map(function (f, i) {
+      var c = 0;
+      f.walks.forEach(function (wk) { if (wk.halves) { wk.halves.forEach(function (h) { of[h] = i; }); c += wk.halves.length; } else c += 1; });
+      return c;
+    });
+    Object.keys(of).forEach(function (h) { var a = of[h], b = of[h ^ 1]; if (b !== undefined && a !== b) adj[a][b] = true; });
+    var total = w.reduce(function (s, x) { return s + x; }, 0) || 1;
+    var mean = m.faces.map(function (f, s) {
+      var dist = [], q = [s], sum = 0, seen = 0;
+      dist[s] = 0;
+      for (var k = 0; k < q.length; k++) { sum += dist[q[k]] * w[q[k]]; seen++; Object.keys(adj[q[k]]).forEach(function (v) { if (dist[v] === undefined) { dist[v] = dist[q[k]] + 1; q.push(Number(v)); } }); }
+      return seen === n ? sum / total : Infinity;   // (every region is reached from every other; were one not, it comes last)
+    });
+    var order = m.faces.map(function (f, i) { return i; }).sort(function (a, b) { return mean[a] - mean[b] || (b === outer) - (a === outer) || a - b; });
+    return { count: n, outer: outer, order: order, depth: mean };
   }
   var MARGIN = 40;                                 // the layout keeps this far from the window's sides (R fills the window)
 

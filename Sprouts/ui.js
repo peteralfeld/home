@@ -16,7 +16,7 @@
       '<br><br><a style="color:#87CEEB" href="' + location.pathname + '">Open a new game in this tab</a></div>';
     return;
   }
-  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, Ly = SproutsLayout, AI = SproutsAI, Nt = SproutsNet;
+  var G = SproutsGeom, R = SproutsRelax, Rt = SproutsRoute, E = SproutsEngine, D = SproutsDescribe, Rm = SproutsRoom, Rd = SproutsRedraw, Ly = SproutsLayout, AI = SproutsAI, Nt = SproutsNet, Rg = SproutsRegions;
   /* moves.js (v137): the router's pieces and making room, shared with the room worker. They read and
      write the page's own game, settings, spot size, note and hush through MS. */
   var Mv = SproutsMoves, MS = { say: function (text, warn, detail, plain) { say(text, warn, detail, plain); } };
@@ -74,9 +74,15 @@
   ];
   /* The curve and spot menus: the twelve (white text) and the eight. */
   var COLOURS = PALETTE.map(function (c) { return [c[0], c[1], '#ffffff']; }).concat(EXTRA);
-  /* Backgrounds: white and the twelve pastels. [name, colour, its text colour in the menu] */
+  /* (v274, Peter 11/14) five stronger pastels, equally spaced in hue at CIELAB lightness 88, chroma 18 — the
+     pales are so faint that the most distinct five of them differed by only ΔE 5 (two "almost indistinguishable");
+     these five differ by at least ΔE 14, also from White and Pale cerulean, and are the regions' default.
+     [name, colour, its text colour in the menu] */
+  var SOFT = [['Soft peach', '#ffd3c7', '#a6401e'], ['Soft khaki', '#dde0bd', '#5f5a1e'], ['Soft aqua', '#b4e7de', '#126c5f'],
+              ['Soft sky', '#c1e1fd', '#2d6cab'], ['Soft lilac', '#f2d4ef', '#7a3f7a']];
+  /* Backgrounds: white, the twelve pastels and the five soft colors (v274). [name, colour, its text colour in the menu] */
   var BACKGROUNDS = [['White', '#ffffff', '#000000']].concat(PALETTE.map(function (c) { return ['Pale ' + c[0].toLowerCase(), c[2], c[1]]; }),
-                                                         [['Medium gray', '#969696', '#000000']]);   // (v155, Peter: rgb(150,150,150), the default while computing)
+                                                         SOFT, [['Medium gray', '#969696', '#000000']]);   // (v155, Peter: rgb(150,150,150), the default while computing)
   /* Spots are coloured by degree: how many curve ends are attached (0–3). */
   var COLOUR_ROLES = [
     ['background', 'Background'], ['busy', 'Background while computing'], ['player1', 'Player 1 curves'], ['player2', 'Player 2 curves'],
@@ -84,7 +90,8 @@
   ];
   /* defaults from Peter's game sprouts-2026-10-02T14-49-06.json (v146: Player 2 Green, spots with 1 curve Orange) */
   var colours = { background: '#e0f9ff', busy: '#ffffff', player1: '#0000ff', player2: '#008000',
-                  deg0: '#ac6488', deg1: '#fc6300', deg2: '#fc2dfc', deg3: '#666666' };
+                  deg0: '#ac6488', deg1: '#fc6300', deg2: '#fc2dfc', deg3: '#666666',
+                  regions: true, regionChecked: null };   // (v274: Color regions, O; the boxes checked — null until the page sets the default)
   /* While the program is computing (the computer's turn, A, R, Z, making room) the background is
      Colors → Background while computing (v135, Peter; Medium gray #969696 by default since v155 — White
      v135–v154, light gray #c8c8c8 from v59/v89; thin branch: white again, Peter's snapshot of 10/31). */
@@ -415,6 +422,7 @@
       return dx * dx + dy * dy <= q * q;
     } : function () { return true; };
 
+    fillRegions(mx, my);
     for (i = 0; i < game.edges.length; i++) {
       e = game.edges[i];
       ctx.beginPath();
@@ -552,6 +560,67 @@
     ctx.fillStyle = '#404040'; ctx.fillText(label, cx, cy + R - 10 * px);
     ctx.textAlign = 'start';
   }
+  /* Colors → Color regions (v274, Peter 11/14; regions.js): the inner regions filled, each in one of five colors
+     different from those of the regions it shares a curve with; the outside keeps the Background (while computing)
+     color. The topology (regions as half-edge cycles, their neighbors) is worked out again when the counts change or the
+     game object is replaced — except while R, Z, making room or a dragged spot replace it frame by frame without changing the
+     position: then only when the counts change or a face cycle turns over (Z or the inside-out flip made another
+     region the outside). The colors of the previous topology are handed on (regions.js assign). */
+  var ONLY_CHECKED = ['#969696'];   // (Medium gray: a region color only when checked — Peter 11/14, too dominant)
+  var regionCache = { game: null, key: '', topo: null, col: null }, regionPal = { key: '', list: null };
+  function regionKey() { return game.spots.length + ':' + game.edges.length + ':' + game.moves; }
+  function regionTopo() {
+    var c = regionCache, key = regionKey(), frames = !!relaying || roomBusy || !!slideDrag;
+    if (c.topo && c.key === key && (c.game === game || (frames && Rg.facesUpright(c.topo, game.edges)))) { c.game = game; return c; }   // (the counts too: undo changes the game object in place)
+    var topo = Rg.topology(E.analyse(game.spots, game.edges), game.edges.length);
+    if (!Rg.facesUpright(topo, game.edges)) { c.topo = null; return c; }   // (cannot happen: the analysis decides the faces by the same sign)
+    var col;
+    try { col = Rg.assign(topo, c.topo, c.col); }
+    catch (err) { log('Color regions: ' + err.message); c.topo = null; return c; }
+    c.game = game; c.key = key; c.topo = topo; c.col = col;
+    return c;
+  }
+  function regionPalette() {
+    var key = (colours.regionChecked || []).join() + '|' + colours.background + '|' + colours.busy;
+    if (regionPal.key !== key) { regionPal.key = key; regionPal.list = Rg.choose(BACKGROUNDS, colours.regionChecked || [], [colours.background, colours.busy], ONLY_CHECKED); }
+    return regionPal.list;
+  }
+  function fillRegions(mx, my) {
+    if (!colours.regions || !game.edges.length) return;
+    var c = regionTopo(), pal = regionPalette();
+    if (!c.topo) return;
+    c.topo.regions.forEach(function (r, i) {
+      ctx.beginPath();
+      r.cycles.forEach(function (cyc) {
+        var started = false;
+        cyc.forEach(function (h) {
+          var ps = game.edges[h >> 1].pieces, back = h & 1;
+          for (var k = 0; k < ps.length; k++) {
+            var b = back ? ps[ps.length - 1 - k] : ps[k], p0 = back ? b[3] : b[0], p1 = back ? b[2] : b[1], p2 = back ? b[1] : b[2], p3 = back ? b[0] : b[3];
+            if (!started) { ctx.moveTo(mx(p0[0]), my(p0[1])); started = true; }
+            ctx.bezierCurveTo(mx(p1[0]), my(p1[1]), mx(p2[0]), my(p2[1]), mx(p3[0]), my(p3[1]));
+          }
+        });
+        ctx.closePath();
+      });
+      ctx.fillStyle = pal[c.col[i]];
+      ctx.fill('evenodd');
+    });
+  }
+  function toggleRegions() { setRegions(!colours.regions); say('Color regions ' + (colours.regions ? 'on' : 'off') + '.'); }   // O
+  function setRegions(on) { colours.regions = on; syncRegionUI(); draw(); }
+  var regionUI = null;
+  function syncRegionUI() {
+    if (!regionUI) return;
+    regionUI.box.checked = colours.regions;
+    regionUI.words.querySelector('.region-more').innerHTML = regionUI.open ? '&#9652;' : '&#9662;';
+    regionUI.grid.style.display = regionUI.open ? '' : 'none';
+    var pal = regionPalette();
+    regionUI.picks.forEach(function (pk) {
+      pk.box.checked = (colours.regionChecked || []).indexOf(pk.hex) >= 0;
+      pk.label.classList.toggle('inuse', pal.indexOf(pk.hex) >= 0);
+    });
+  }
   function glassMagText(m) { return (m < 10 ? m.toFixed(1).replace(/\.0$/, '') : String(Math.round(m))) + '×'; }
   function drawSoon() { if (!glassFrame) glassFrame = requestAnimationFrame(function () { glassFrame = 0; draw(); }); }
   function setGlass(g) { glass = g; document.getElementById('opt-glass').checked = !!g; draw(); }
@@ -584,7 +653,7 @@
      not only drawn so but counted so for room everywhere (relax.js fullRadius; setSmallDead keeps relax.js's
      switch with route.smallDead) */
   function spotRadius(i) {
-    var t = armed ? armed.targets : stroke ? stroke.targets : null, own = R.spotRadius(game.spots[i], SPOT_R);   // (v189: a spot drawn smaller to make room)
+    var t = armed ? armed.targets : stroke ? stroke.targets : null, own = R.fullRadius(game.spots[i], SPOT_R);
     return t && t[i] ? 2 * own : own;
   }
   function setSmallDead(on) { route.smallDead = on; R.setHalfStumps(on); document.getElementById('opt-smalldead').checked = on; }
@@ -1280,13 +1349,25 @@
      Room → Draw the picture afresh (Z, v114; Peter 9/30: "a fundamentally new option … with A and R
      we have driven the polishing roughly as far as it can go"): the picture is laid out ANEW from
      the position alone (layout.js: the combinatorial map made a triangulation and drawn on a grid,
-     no reference to the present picture), then the same descent from that start (redraw.js
-     o.tight). With `fresh` = { a, mv, player, text, onFail }, the position drawn is the
+     no reference to the present picture), then R as it is from that start (v270).
+     With `fresh` = { a, mv, player, text, onFail }, the position drawn is the
      one AFTER the move mv (ai.js form) — the computer's Z rung (aiClimb): the move is then made in
      the new picture without the router, and aiCommitted checks it as any other.
-     With workers (v118) Z draws the position once for EVERY region as the outer one, side by side
-     (freshParallel), and keeps the drawing with the most room; without them (a page opened as a
+     With workers (v118) Z draws the position once for each of the w regions with the least nesting as the outer one,
+     w the number of workers, side by side (freshParallel), and keeps the drawing with the most room; without them (a page opened as a
      file) only with the present outside, on the page's own thread as A and R. */
+  /* Room → Turn the picture inside out (I; v271, Peter 11/13 — "a separate option, independent of Z"): the region
+     with the least nesting becomes the outside (flip.js), and R rearranges from there, in R's worker with its
+     helpers. One undo step. Needs workers. */
+  function turnInsideOut() {
+    if (relaying || band || game.phase === 'place' || !game.edges.length) return;
+    ensurePool();
+    if (noWorkers) { say('Turning the picture inside out needs workers (the page is open as a file).', true, null, true); return; }
+    armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
+    var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
+              keepShape: !route.rFill, fill: route.rFill, halfStumps: route.smallDead };
+    startRedrawWorker(o, false, null, true);
+  }
   function relayDrawing(kind, fresh) {
     if (relaying || band || game.phase === 'place' || !game.spots.length || (kind === 'redraw' && route.keepSeeds && !game.edges.length)) return;
     /* R or Z while a move waits for room (v50, Peter 9/24: offer R when the move cannot be made otherwise):
@@ -1295,16 +1376,17 @@
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
-              minSpotR: SPOT_R0 * Number(document.getElementById('opt-spotsize').min), keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
-    /* Z with the computer's move may draw spots in tight places smaller with Allow thin moves on (spots counted as
-       points; v216–v245 this was Z as the last resort for a move not drawn even thin, which v246 no longer runs;
-       Peter 11/1: the Room menu's • column and the key . removed; before, v189–v215, they allowed it for either player) */
-    var small = kind === 'fresh' && !!fresh && !!fresh.mv && route.thin;
+              keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
     if (kind === 'fresh') {
-      o.tight = true; o.keepKnots = true;
+      /* (v270, Peter 11/13: "I thought that Z simply applied R to the FPP configuration. Have we ever tried that?")
+         Z is the layout followed by R AS IT IS — by patches, with the picture's shape kept or the area filled as the
+         Room menu says for R. Until v269 the layout was followed by a descent of its own (points moved only
+         across their curves, none was ever taken out, and it ended at the first drawing that passed), which left the
+         layout's long detours standing: his 20-seed game, 27,400 px of curve where R makes 4,600, in twice the time. */
+      o.keepShape = !route.rFill; o.fill = route.rFill;
       ensurePool();                               // (finds out whether workers can be had at all)
       if (!noWorkers) {
-        relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(), small: small,
+        relaying = { kind: kind, st: null, start: JSON.stringify(game), t0: Date.now(),
                      before: leastClearanceOf(game, o), retry: retry, fresh: fresh || null };   // (v253: remembered after tidying's measurement)
         freshParallel(relaying, o);
         say(relayWord() + '…   Space stops');
@@ -1318,7 +1400,7 @@
        the initial seeds and those added by hand stay, curves move and the spots made by moves ride along */
     var keep = kind === 'redraw' && route.keepSeeds;
     if (kind === 'redraw') { ensurePool(); if (!noWorkers && startRedrawWorker(o, keep, retry)) return; }   // (v226: R in a worker; on the page's thread only without workers)
-    relaying = { kind: kind, keep: keep, st: Rd.createRedraw(from, o, keep), start: JSON.stringify(game), t0: Date.now(), small: small,
+    relaying = { kind: kind, keep: keep, st: Rd.createRedraw(from, o, keep), start: JSON.stringify(game), t0: Date.now(),
                  before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
     say(relayWord() + '…   Space stops');
     draw();                                       // the gray background at once, also when not animated
@@ -1355,10 +1437,10 @@
   var drawPool = [];     // the workers that draw afresh (sprouts-draw-worker.js), started on demand, as many as the Workers menu says
   function freshParallel(rl, o) {
     var f = rl.fresh, mv = f ? f.mv : null, player = f ? f.player : game.player, base = JSON.parse(rl.start);
-    /* one job per REGION, that region outside (the present outside first); `face` below is the region, `outer` the
-       present outside */
-    var F = Ly.faces(base, mv), outer = F.outer, order = [outer], i;
-    for (i = 0; i < F.count; i++) if (i !== outer) order.push(i);
+    /* one job per REGION, that region outside; `face` below is the region, `outer` the present outside */
+    /* (v270) the w regions with the least nesting, w the number of workers — one layout each, and no others (Peter
+       11/13; before: every region in turn, the present outside first, worker after worker) */
+    var F = Ly.faces(base, mv), outer = F.outer, order = F.order.slice(0, poolSize());
     /* v141: the page and ALL its workers share Chrome's one 4 GB JavaScript heap (V8 9.2+: one pointer-compression
        cage per process), however much memory the machine has — Peter's 40-spot game of 10/1 died ("Aw, Snap",
        out of memory) 22 s into a Z with 32 drawing and 32 thinking workers. The thinking workers are idle during
@@ -1383,21 +1465,10 @@
          MEDIAN (was: the slowest — with finished times from 138 to 1754 s the limit was 58 minutes). */
       if (j && !/^given up/.test(m.error || '')) par.times.push(Date.now() - j.t0);
       par.done++; par.results.push(m); delete par.running[m.face];
-      /* (v194) a round complete (one layout per worker) with a layout drawn — at full size, or with smaller spots
-         where allowed (rl.small) — ends Z with the best so far: the others are not waited for (before, once any full-size
-         layout had drawn below the bar, every layout was run to the end for the roomiest) */
-      var drawn = function () { return par.best || (rl.small && par.bestSmall); };
-      /* (v189) a layout drawn only with some spots smaller (m.small) is no success at full size: it is kept
-         aside, the one with the least shrinking (its smallest spot the largest, then the fewest small
-         spots), and taken only when no layout is drawn at full size and rl.small allows it (freshResult) */
-      if (!m.error && m.small && m.small.length) {
-        m.least = Math.min.apply(null, m.small.map(function (q) { return q.f; }));
-        if (!par.bestSmall || m.least > par.bestSmall.least || (m.least === par.bestSmall.least && m.small.length < par.bestSmall.small.length)) par.bestSmall = m;
-        if (rl.small && !(m.clearance < bar)) { par.early = m; return; }   // (v194: with rl.small, a layout with smaller spots meets the bar too)
-        if (par.done >= par.workers && par.done < order.length) { if (drawn()) par.roundDone = true; else par.roundFailed = true; }
-        if (m.face === par.shown) showNext();
-        return;
-      }
+      /* (v194) a round complete (one layout per worker) with a layout drawn ends Z with the best so far: the others
+         are not waited for (before, once any layout had drawn below the bar, every layout was run to the end for the
+         roomiest) */
+      var drawn = function () { return par.best; };
       if (!m.error && (!par.best || m.clearance > par.best.clearance)) par.best = m;
       /* DONE as soon as a layout is drawn with at least the room of the picture before (v121, Peter:
          "all we wish to accomplish is to draw the picture") — the others are not waited for */
@@ -1487,47 +1558,24 @@
     drawPool.forEach(function (w) { w.terminate(); }); drawPool = [];   // (v141: always — idle, they kept their memory from the thinking workers)
     var fails = par.results.filter(function (m) { return m.error; }), running = Object.keys(par.running).length;
     par.summary = par.results.slice().sort(function (a, b) { return (b.error ? -Infinity : b.clearance) - (a.error ? -Infinity : a.clearance); }).map(function (m) {
-      return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '') +
-                                                                                   (m.small && m.small.length ? ', ' + m.small.length + ' spot' + (m.small.length > 1 ? 's' : '') + ' smaller (down to ' + Math.round(2 * m.least * SPOT_R) + ' px)' : '')) +
+      return (m.face === par.outer ? 'the present outside' : 'region ' + (m.face + 1)) + ': ' + (m.error ? (/^given up/.test(m.error) ? 'given up (too slow)' : 'failed') : Math.round(m.clearance) + ' px' + (m.corners ? ', ' + m.corners + ' corner' + (m.corners > 1 ? 's' : '') : '')) +
              (m.secs !== undefined ? ' in ' + Math.round(m.secs) + ' s' : '');
     }).join('; ') + (running ? '; still running when it ended: ' + running + (all - par.next > 0 ? '; not started: ' + (all - par.next) : '') : all - par.next > 0 ? '; not started: ' + (all - par.next) : '');
     /* (v183) why they failed, each reason once with how many layouts gave it — it was not logged at all */
     var whys = {};
     fails.forEach(function (m) { var w = /^given up/.test(m.error) ? 'given up as too slow' : m.error; whys[w] = (whys[w] || 0) + 1; });
     if (fails.length) par.summary += '\n    Why they failed: ' + Object.keys(whys).sort(function (u, v) { return whys[v] - whys[u]; }).map(function (w) { return w + ' (' + whys[w] + ')'; }).join('; ') + '.';
-    if (par.early) return par.early;                      // (v194: may be a layout with smaller spots)
+    if (par.early) return par.early;                   
     if (par.best) return par.best;
-    if (rl.small && par.bestSmall) return par.bestSmall;   // (v189: some spots drawn smaller)
     /* v185: every layout failed (as in a game where there are no more regions than workers, so the round is all of
        them) is the same news as a failed round, and gets the same message */
     if (par.roundFailed || par.done === all) return { error: (par.roundFailed ? 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried'
-                                                                               : 'all ' + all + ' layouts (each region outside in turn) failed') + ' — the picture has run out of room. ' +
+                                                                               : 'all ' + all + ' layouts (the regions with the least nesting outside) failed') + ' — the picture has run out of room. ' +
                                          'More room: smaller spots (Settings → Spot size) or a smaller Minimum clearance (Settings); for the next game, a larger drawing area (Game → Size: during a game the picture is only scaled)', clearance: -Infinity, outOfRoom: true };
     return { error: par.done ? 'none of the ' + par.done + ' layouts finished so far could be drawn' : 'stopped before any layout was finished',
              clearance: -Infinity };
   }
-  /* (v189, Peter: "a summary at the end of the log") the spots still drawn smaller when the game ends */
-  function logSmallAtEnd() {
-    var small = [];
-    game.spots.forEach(function (s, i) { if (s.f) small.push(i); });
-    log(small.length ? 'At the end ' + small.length + ' of ' + game.spots.length + ' spots are drawn smaller than their size (' + Math.round(2 * SPOT_R) + ' px): ' +
-                       small.map(function (i) { return (i + 1) + ' (' + Math.round(2 * R.spotRadius(game.spots[i], SPOT_R)) + ' px)'; }).join(', ') + '.'
-                     : 'At the end every spot is drawn at its size (' + Math.round(2 * SPOT_R) + ' px).');
-  }
-  /* (v189) the spots drawn smaller or grown back between pictures g0 and g1, in the log */
-  function logSizes(g0, g1) {
-    var smaller = [], back = [];
-    g1.spots.forEach(function (s, i) {
-      var f0 = i < g0.spots.length && g0.spots[i].f ? g0.spots[i].f : 1, f1 = s.f || 1;
-      if (f1 < f0 - 1e-6) smaller.push(i); else if (f1 > f0 + 1e-6) back.push(i);
-    });
-    var px = function (i) { return Math.round(2 * R.spotRadius(g1.spots[i], SPOT_R)); };
-    if (smaller.length) log('    Spot' + (smaller.length > 1 ? 's ' : ' ') + smaller.map(function (i) { return (i + 1) + ' (' + px(i) + ' px)'; }).join(', ') +
-                            ' drawn smaller to make room (their size is ' + Math.round(2 * SPOT_R) + ' px).');
-    if (back.length) log('    Spot' + (back.length > 1 ? 's ' : ' ') + back.map(function (i) { return (i + 1) + (g1.spots[i].f ? ' (' + px(i) + ' px)' : ''); }).join(', ') +
-                         ' grown back' + (back.some(function (i) { return g1.spots[i].f; }) ? ' (those in brackets not yet to full size)' : ' to full size') + '.');
-  }
-  function relayWord() { return relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') + (relaying.small ? ' (spots smaller where there is no room)' : '') : 'Rearranging the drawing'; }
+  function relayWord() { return relaying.flip ? 'Turning the picture inside out' : relaying.kind === 'fresh' ? 'Drawing the picture afresh' + (relaying.fresh ? ', with ' + (relaying.fresh.brief || relaying.fresh.text) : '') : 'Rearranging the drawing'; }
   function relayFrame() {
     if (!relaying) return;
     var st = relaying.st;
@@ -1566,16 +1614,22 @@
     }
     if (ports.length) w.postMessage({ id: 1, ports: ports }, ports);
   }
-  function startRedrawWorker(o, keep, retry) {
+  function startRedrawWorker(o, keep, retry, flip) {
     var w;
     try { w = new Worker('sprouts-draw-worker.js' + version()); } catch (e) { return false; }
     var rl = relaying = { kind: 'redraw', keep: keep, st: null, worker: w, it: 0, start: JSON.stringify(game), t0: Date.now(), small: false,
-                          before: null, retry: retry, fresh: null };   // (before: measured by the worker too, sent with the result)
+                          before: null, retry: retry, fresh: null, flip: !!flip };   // (before: measured by the worker too, sent with the result)
     w.onmessage = function (ev) {
       var m = ev.data;
       if (relaying !== rl) return;
       if (m.smoothing) rl.smoothing = true;
       if (m.wantHelpers) { giveHelpers(rl, w, m.wantHelpers); return; }
+      if (m.done && m.none) {                      // (v271: nothing to turn inside out)
+        w.terminate(); relaying = null; game = JSON.parse(rl.start);
+        log('Not turned inside out: ' + m.none + '.');
+        say('Not turned inside out: ' + m.none + '.', true); draw();
+        return;
+      }
       if (m.done) { rl.result = m; rl.before = m.before; w.terminate(); finishRelaying(false); return; }
       if (m.picture) {
         w.postMessage({ id: m.id, drawn: true });   // (v242: the worker sends the next picture only after this one is taken — see sprouts-draw-worker.js)
@@ -1592,7 +1646,7 @@
       say('Not rearranged: a script error in its worker (see the log).', true); draw();
       if (rl.retry) retryMove(rl.retry, true); else afterRelay(true);
     };
-    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate, before: knownClearance(game), helpers: poolSize() - 1 });   // (v253: before, when tidying has just measured it; v269: R's helpers — with this worker as many as the Workers menu says)
+    w.postMessage({ id: 1, redraw: true, game: game, o: o, keep: keep, show: route.animate, before: knownClearance(game), helpers: poolSize() - 1, flip: !!flip });   // (v253: before, when tidying has just measured it; v269: R's helpers — with this worker as many as the Workers menu says)
     say(relayWord() + '…   Space stops');
     draw();
     return true;
@@ -1622,12 +1676,12 @@
     }
     if (runToEnd && st) { while (!Rd.stepRedraw(st, 50)) { /* on */ } if (smoothAfterFill(rl)) { st = rl.st; while (!Rd.stepRedraw(st, 50)) { /* on */ } } }
     relaying = null;
-    var r = par ? freshResult(rl) : rl.result || Rd.finishRedraw(st), not = fresh ? 'Not drawn afresh: ' : 'Not rearranged: ';
+    var r = par ? freshResult(rl) : rl.result || Rd.finishRedraw(st), not = rl.flip ? 'Not turned inside out: ' : fresh ? 'Not drawn afresh: ' : 'Not rearranged: ';
+    /* (v271) turned inside out, R compares its curves with the turned picture it started from, which is squeezed in
+       places: here with the picture before — no clearance, and less than it had, is refused */
+    if (rl.flip && !r.error && !(r.clearance > 0) && r.clearance < rl.before) r.error = 'the curves came closer than they were';
     if (r.error && rl.pre) { var r0 = Rd.finishRedraw(rl.pre); if (!r0.error) { r = r0; r.unsmoothed = true; } }   // (v233: the smoothing could not be finished — the enlarged picture before it, as the worker does)
     game = JSON.parse(rl.start);
-    /* (v189) a fresh picture with spots smaller than their size only where allowed (relayDrawing's small) (A and R keep what spots
-       had: they only grow spots made smaller before) */
-    if (!r.error && fresh && !par && r.small && r.small.length && !rl.small) r.error = 'there is room only with some spots drawn smaller';
     if (r.error) {
       say(not + r.error, true, not + r.error + (par ? '' : ' (least clearance ' + r.clearance.toFixed(1) + ' px)') + (par && par.summary ? '\n    ' + par.summary : '')); draw();
       if (game.phase === 'over') statusEl.textContent += '   —   ' + gameOverText(true);   // (v260: the end-of-game tidying refused — the game is still over)
@@ -1638,26 +1692,26 @@
       var s0 = JSON.parse(rl.start).spots;
       r.moved = r.game.spots.reduce(function (m, sp, i) { return i < s0.length ? Math.max(m, G.dist([sp.x, sp.y], [s0[i].x, s0[i].y])) : m; }, 0);
     }
-    if (rl.fresh) moveStep(); else snapshot(fresh ? 'drawing made afresh' : 'drawing rearranged');   // (v269: a move made in a picture drawn afresh is a move — going back takes it off that picture)
+    if (rl.fresh) moveStep(); else snapshot(rl.flip ? 'picture turned inside out' : fresh ? 'drawing made afresh' : 'drawing rearranged');   // (v269: a move made in a picture drawn afresh is a move — going back takes it off that picture)
     game = r.game;
     rememberClearance(game, r.clearance);         // (v249: for the next tidying's "before")
     if (game.thin) game.thin = [];                 // (v257: an accepted R or Z tidies every thin curve)
     var fmt = function (c) { return isFinite(c) ? Math.round(c) + ' px' : 'no curves'; };
-    var what = fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing' + (rl.keep ? ' (seeds kept in place)' : r.unsmoothed ? ' (enlarged to fill the area; the smoothing after it could not be finished, so left out)' : rl.smoothing ? ' (enlarged to fill the area, then smoothed)' : '');
+    var what = rl.flip ? 'Turned the picture inside out (' + outsideOf(r.game) + ' outside; the mean nesting ' + r.flip.from.toFixed(1) + ' before, ' + r.flip.to.toFixed(1) + ' now), then rearranged' :
+               fresh ? 'Drew the picture afresh' + (rl.fresh ? ', with the move ' + rl.fresh.text : '') : 'Rearranged the drawing' + (rl.keep ? ' (seeds kept in place)' : r.unsmoothed ? ' (enlarged to fill the area; the smoothing after it could not be finished, so left out)' : rl.smoothing ? ' (enlarged to fill the area, then smoothed)' : '');
     log(what +
-        ((par ? par.done === par.order.length || par.early || par.roundDone : rl.result || st.done) ? '' : ' (stopped with Space)') + ': ' + (rl.keep || fresh ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
+        ((par ? par.done === par.order.length || par.early || par.roundDone : rl.result || st.done) ? '' : ' (stopped with Space)') + ': ' + (rl.keep || fresh || rl.flip ? '' : 'spots moved up to ' + Math.round(r.moved) + ' px; ') +
         'least clearance ' + fmt(rl.before) + ' before, ' + fmt(r.clearance) + ' now; ' + ((Date.now() - rl.t0) / 1000).toFixed(1) + ' s' +
         (par ? ' (' + (par.early ? 'the first layout ' + zBar(rl.before) + ', after ' + par.done + ' of ' + par.order.length : (par.roundDone ? 'the best of the first round, ' : '') + par.done + ' of ' + par.order.length + ' layouts') +
-               ' on ' + par.workers + ' workers, each region outside in turn' +
+               ' on ' + par.workers + ' workers, the regions with the least nesting outside' +
                (par.givenUp ? ', ' + par.givenUp + ' given up as too slow' : '') + '; the best: ' +
                (r.face === par.outer ? 'the present outside kept' : outsideOf(r.game) + ' outside') + ')' :
-         fresh && st && st.stages ? ' (' + st.stages + ' restart' + (st.stages > 1 ? 's' : '') + ')' : '') +
+         '') +
         (r.straight ? '; the smooth curves did not fit: ' + (r.corners ? r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump and ' : '') + r.straight + (r.straight > 1 ? ' curves' : ' curve') + ' drawn straight (as polylines)' :
          r.corners ? '; the smooth curves did not fit: ' + r.corners + (r.corners > 1 ? ' corners' : ' corner') + ' at a stump' :
          r.dense ? '; drawn close to the polylines (the smooth curves did not fit)' : '') +
         (r.helpers ? '; ' + r.helped + (r.helped === 1 ? ' box' : ' boxes') + ' descended by ' + r.helpers + (r.helpers > 1 ? ' helpers' : ' helper') + (r.lost ? ' (' + r.lost + ' failed: ' + r.lostWhy + ')' : '') : '') + '.');   // (v269)
     if (par) log('    The layouts (each with another region outside), least clearance: ' + par.summary + '.\n    ' + memoryText() + '.');
-    logSizes(JSON.parse(rl.start), game);
     if (rl.fresh) {                               // the computer's move, made in the new picture (the two curves are R's, certified)
       var f = rl.fresh;
       marksUsed = null; note = null; browsing = false; redoList = [];   // (the router's leftovers; a move ends browsing, as in commitMove)
@@ -1666,7 +1720,7 @@
       return;
     }
     sayTurn(); draw();
-    statusEl.textContent += '   —   ' + (fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
+    statusEl.textContent += '   —   ' + (rl.flip ? 'turned inside out' : fresh ? 'drawn afresh' : 'rearranged') + '   (U undoes it)';
     if (rl.retry) retryMove(rl.retry); else afterRelay();
   }
   /* SPACE DURING A, R OR Z (thin branch, Peter 10/31: "the idea of stopping with what you see at that moment
@@ -2133,7 +2187,7 @@
     var pending = measureClearance(game, o, function (cl) {
       if (!waiting) { now = cl; return; }
       if (tidyNext !== t || game !== g0 || relaying) { updateTitle(); maybeAI(); draw(); return; }   // (something else happened meanwhile)
-      if (!tidyStep(t, cl)) { updateTitle(); maybeAI(); draw(); }
+      if (!tidyStep(t, cl)) { sayTurn(); updateTitle(); maybeAI(); draw(); }   // (v273: none needed — the status line no longer stays at "Measuring…", e.g. at the end of a game)
     });
     if (!pending) return tidyStep(t, now);
     waiting = true;
@@ -2638,7 +2692,7 @@
     line += '\n    ' + countsText().replace(/  /g, ', ') + '.';
     log(line);
     marksUsed = null;
-    if (game.phase === 'over') { log(gameOverText().replace(/\s{2,}/g, ' ')); logSmallAtEnd(); }
+    if (game.phase === 'over') { log(gameOverText().replace(/\s{2,}/g, ' ')); }
     if (net && !(ai && ai.remote)) net.session.moved(game.moves - 1, netDescribe(mv.a, mv.b));   // (v79: my move goes to the other computer; sayTurn says so)
     sayTurn(); draw();
     if (note) { statusEl.textContent += '   —   ' + note; statusEl.classList.add('warn'); note = null; }
@@ -2972,6 +3026,7 @@
   });
   /* Help (v142): the keyboard list any time; the guides open in a new tab (target=_blank), the menu closes */
   document.getElementById('cmd-keys').addEventListener('click', function () { closeMenus(); keysOverlay.hidden = false; });
+  document.getElementById('cmd-insideout').addEventListener('click', function () { closeMenus(); turnInsideOut(); });
   document.querySelectorAll('.menu-panel a.item').forEach(function (a) { a.addEventListener('click', closeMenus); });
 
   /* v102 (Peter): before the first move, a change of Layout or Spots in the Game
@@ -3133,7 +3188,7 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); } };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); }, i: turnInsideOut, o: toggleRegions };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -3191,6 +3246,7 @@
   /* ---------------- menus ---------------- */
   function closeMenus() {
     hideTip();
+    if (regionUI && regionUI.open) { regionUI.open = false; syncRegionUI(); }   // (v274: the color boxes go with the menu)
     document.querySelectorAll('.menu.open').forEach(function (m) { m.classList.remove('open'); });
   }
   document.querySelectorAll('.menu-title').forEach(function (btn) {
@@ -3232,6 +3288,9 @@
       if (!c[role] || ![].some.call(cs.select.options, function (o) { return o.value === c[role]; })) return;
       cs.select.value = c[role]; colours[role] = c[role]; cs.paint();
     });
+    if (typeof c.regions === 'boolean') colours.regions = c.regions;   // (v274: files before it keep the page's setting)
+    if (Array.isArray(c.regionChecked)) colours.regionChecked = c.regionChecked.slice();
+    syncRegionUI();
     sayTurn(); draw();
   }
   COLOUR_ROLES.forEach(function (role) {
@@ -3255,10 +3314,45 @@
     function paint() { select.style.backgroundColor = select.value; select.style.color = ink[select.value]; }
     select.value = colours[role[0]];
     paint();
-    select.addEventListener('change', function () { colours[role[0]] = select.value; paint(); sayTurn(); draw(); });
+    select.addEventListener('change', function () { colours[role[0]] = select.value; paint(); syncRegionUI(); sayTurn(); draw(); });
     label.appendChild(select);
     colourPanel.appendChild(label);
+    if (role[0] === 'busy') addRegionRows();
   });
+  /* (v274) Color regions, under Background while computing: the on/off box; clicking the words shows the Background
+     menu's colors as boxes, clicking them again or closing the menu hides them (Peter 11/14); the five in use are
+     outlined (regions.js choose) */
+  function addRegionRows() {
+    var label = document.createElement('div'), box = document.createElement('input'), words = document.createElement('span');
+    label.className = 'row region-row'; label.dataset.tip = 'colour-regions';
+    words.innerHTML = 'Color regions <kbd>O</kbd> <span class="region-more">&#9662;</span>';
+    words.addEventListener('click', function () { regionUI.open = !regionUI.open; syncRegionUI(); placeOpen(); });
+    box.type = 'checkbox'; box.id = 'opt-regions';
+    box.addEventListener('change', function () { setRegions(box.checked); });
+    label.appendChild(words); label.appendChild(box);
+    colourPanel.appendChild(label);
+    var grid = document.createElement('div');
+    grid.className = 'region-grid'; grid.dataset.tip = 'colour-regionpick';
+    var picks = BACKGROUNDS.map(function (c) {
+      var l = document.createElement('label'), b = document.createElement('input');
+      b.type = 'checkbox';
+      l.style.backgroundColor = c[1]; l.style.color = c[2];
+      l.appendChild(b); l.appendChild(document.createTextNode(c[0]));
+      var hex = c[1].toLowerCase();
+      b.addEventListener('change', function () {
+        var list = (colours.regionChecked || []).filter(function (h) { return h !== hex; });
+        if (b.checked) list.push(hex);
+        colours.regionChecked = BACKGROUNDS.map(function (x) { return x[1].toLowerCase(); }).filter(function (h) { return list.indexOf(h) >= 0; });
+        syncRegionUI(); draw();
+      });
+      grid.appendChild(l);
+      return { hex: hex, box: b, label: l };
+    });
+    colourPanel.appendChild(grid);
+    regionUI = { box: box, grid: grid, picks: picks, words: words, open: false };
+    if (!colours.regionChecked) colours.regionChecked = Rg.choose(BACKGROUNDS, [], [colours.background, colours.busy], ONLY_CHECKED);   // the default: the five the rule picks with none checked
+    syncRegionUI();
+  }
 
   /* (thin branch, 10/31: the slider starts where the default puts it — route — not where the page's field
      says: a reload keeps the fields as they were, and the defaults seemed not to change) */

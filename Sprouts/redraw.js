@@ -272,7 +272,7 @@
          press starts exactly where the first ended (v51) */
       var nk = e.pieces.length - 1, xk = 0;          // (counted along the knots, as respace counts)
       for (var j1 = 0; j1 < e.pieces.length; j1++) xk += G.dist(e.pieces[j1][0], e.pieces[j1][3]) / o.D;
-      if (o.keepKnots || (nk >= least && (nk === Math.max(least, Math.floor(xk)) || nk === Math.max(least, Math.ceil(xk))))) {   // (keepKnots: Z's start — its points every D or less ALONG the two legs, the corner kept: sampled anew, a leg cut the corner and crossed a neighbour)
+      if (nk >= least && (nk === Math.max(least, Math.floor(xk)) || nk === Math.max(least, Math.ceil(xk)))) {
         for (var j0 = 0; j0 < nk; j0++) { path.push(P.length); P.push(e.pieces[j0][3].slice()); }
         path.push(e.b);
         return path;
@@ -350,7 +350,7 @@
       corners.push({ s: i, nb: nb });
     }
     var st = { game: game, o: o, key0: Rm.positionKey(game), corners: corners, regions: regions, fixSpots: !!fixSpots, comfort: comfort, vinfo: vinfo, segLine: segLine, segK: segK, spotAt: spotAt, P: P, nS: nS, paths: paths, segs: segs, lines: lines, units: units, fixed: fixed, tees: tees,
-               box: [0, 0, game.W0, game.H0], it: 0, done: false, spotR: o.spotR || 0, stages: 0 };
+               box: [0, 0, game.W0, game.H0], it: 0, done: false, spotR: o.spotR || 0 };
     /* KEEP THE SHAPE (v211, o.keepShape — R unless Room → "R fills the whole area" (v221; "R spreads to the whole area" v211–v220) is on; Peter 10/30: R
        spread the picture sideways in a wide drawing area, "it often looks weird"). Nothing in the energy
        stretches: the live regions' room pushes outward and the area's sides are the only limit, so in a wide
@@ -367,52 +367,12 @@
       var cx = Math.min(Math.max((bx0 + bx1) / 2, bw / 2), game.W0 - bw / 2), cy = Math.min(Math.max((by0 + by1) / 2, bh / 2), game.H0 - bh / 2);
       st.box = [cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2];
     }
-    /* EACH SPOT ITS OWN RADIUS (v189): st.rad[i], at most the Settings' o.spotR — less for a spot drawn
-       smaller to make room (its share f, kept in the game: Room menu's • column, after Z failed).
-       A TIGHT start (o.tight — Z, 9/30: a fresh layout has curves a few px apart, through spots'
-       discs): each spot is shrunk to half its own least gap to a curve or another spot, so that their
-       crowding is not so stiff that the descent cannot move anything else; when the descent
-       settles, stepRedraw starts it again with the spots grown to what now fits (restage), until
-       they have their size. (v116–v189 shrank every spot to half the LEAST gap of all: one crowded
-       spot kept all of them small.) A spot that is smaller than o.spotR also grows back in A and R
-       as far as there is room (restage with o.restaging), and keeps what it has where there is none. */
-    /* each spot's full radius (st.full: the Settings' size, half for a stump with Stumps half size, v212 — relax.js
-       fullRadius) and the radius it has now (st.rad: less for a spot drawn smaller) */
+    /* each spot's radius (st.rad: the Settings' size, half for a stump with Stumps half size, v212 — relax.js
+       fullRadius) */
     var target = o.spotR || 0;
-    st.rad = new Float64Array(nS); st.full = new Float64Array(nS);
-    for (i = 0; i < nS; i++) { st.full[i] = Rx.fullRadius(game.spots[i], target); st.rad[i] = Rx.spotRadius(game.spots[i], target); }
-    if (o.tight && !o.restaging) { var gp0 = spotGaps(st); for (i = 0; i < nS; i++) st.rad[i] = Math.min(st.full[i], gp0[i] / 2); }
-    else if (o.restaging) { var gp1 = spotGaps(st); for (i = 0; i < nS; i++) if (st.rad[i] < st.full[i]) st.rad[i] = Math.max(st.rad[i], Math.min(st.full[i], gp1[i] / 2)); }
+    st.rad = new Float64Array(nS);
+    for (i = 0; i < nS; i++) st.rad[i] = Rx.fullRadius(game.spots[i], target);
     return st;
-  }
-  /* For each spot the least distance to a segment of another curve or to another spot's centre */
-  function spotGaps(st) {
-    var P = st.P, out = new Float64Array(st.nS).fill(Infinity), s, k;
-    for (s = 0; s < st.nS; s++) {
-      for (k = 0; k < st.segs.length; k++) {
-        if (st.spotAt[st.segLine[k]][s] !== undefined) continue;
-        var d = G.distPointSeg(P[s], P[st.segs[k][0]], P[st.segs[k][1]]);
-        if (d < out[s]) out[s] = d;
-      }
-      for (k = s + 1; k < st.nS; k++) {
-        var dd = G.dist(P[s], P[k]);
-        if (dd < out[s]) out[s] = dd;
-        if (dd < out[k]) out[k] = dd;
-      }
-    }
-    return out;
-  }
-  function leastSpotGap(st) { var gp = spotGaps(st), m = Infinity; for (var s = 0; s < gp.length; s++) if (gp[s] < m) m = gp[s]; return m; }
-  function smallSpots(st) { for (var s = 0; s < st.nS; s++) if (st.rad[s] < st.full[s] * (1 - 1e-9)) return true; return false; }
-  function restage(st) {                           // false when no spot could grow: the descent is stuck (Peter's
-    var n2 = createRedraw(redrawCurrent(st), Object.assign({}, st.o, { restaging: true }), st.fixSpots);   //  30-spot game, 9/30: the page restarted for ever)
-    var grew = false;
-    for (var s = 0; s < st.nS && !grew; s++) if (n2.rad[s] > st.rad[s] * (1 + 1e-6)) grew = true;
-    if (!grew) return false;
-    n2.o = st.o; n2.it = st.it; n2.stages = st.stages + 1; n2.E0 = st.E0; n2.jiggles = st.jiggles; n2.seed = st.seed;
-    Object.keys(st).forEach(function (k) { delete st[k]; });
-    Object.assign(st, n2);
-    return true;
   }
 
   /* The energy at P (see the top). With g and cap: its gradient into g (n × [x, y]) and
@@ -785,12 +745,12 @@
      c (I + βL)⁻¹ instead of c I, L the graph Laplacian of the polylines (consecutive points of a curve, curves joined
      at their spots), c the preconditioned Barzilai–Borwein scale s·y / y·(I + βL)⁻¹y. A pull at a tongue's tip then
      moves the whole strand in one step. It changes how R steps, not the energy R lowers. Only when the spots may
-     move (R): with the seeds kept (A, the smoothing after the area is filled) and from Z's tight start the points
+     move (R): with the seeds kept (A, the smoothing after the area is filled) the points
      move across their curves and are spread again — there it made A slower (14-02-36 15 → 26 s) and is left out.
      SMOOTH_BETA: the strength, about √β point spacings along a curve (β 100: ten spacings, ≈ 10 D); 10, 100 and 1000
      all pulled the tongue in, 100 went furthest. */
   var SMOOTH_BETA = 100;
-  function smoothing(st) { return st.fixSpots || st.o.tight ? 0 : SMOOTH_BETA; }
+  function smoothing(st) { return st.fixSpots ? 0 : SMOOTH_BETA; }
   /* x = (I + βL)⁻¹ v on the free points (fixed points held at 0), per coordinate; conjugate gradients with
      Jacobi's preconditioner (I + βL is symmetric positive definite, its diagonal 1 + β · a point's degree) */
   function smoothAlong(st, v) {
@@ -856,11 +816,9 @@
        crowding per point, so it rewards points for sliding out of crowded stretches: with the
        spots fixed that left 120–180 px legs on curves meant to have a point every D (Peter's
        before.json, 9/25), and the smooth curve through such sparse points crossed its neighbour.
-       R keeps v52's descent, which Peter is happy with; whether it should have this too is open.
-       The descent from Z's tight start (o.tight) has it too (v116): without it the points drained
-       there as well, and the curves through them failed on the 30-spot game of 9/30. */
+       R keeps v52's descent, which Peter is happy with; whether it should have this too is open. */
     function across(vec, Q) {
-      if (!st.fixSpots && !st.o.tight) return;
+      if (!st.fixSpots) return;
       for (var yq = 0; yq < m; yq++) {
         var y = F[yq], vi = st.vinfo[y];
         if (!vi) continue;
@@ -905,7 +863,7 @@
       if (!(dmax > 0)) break;
       var alpha = st.S.length ? 1 : 2 * st.o.D / 3 / dmax, Q = st.Q, En = Infinity, gT = null, capT = null;
       for (var h = 0; h < 60; h++) {
-        var gd = 0, far = 0, rel = 0, clipped = false;
+        var gd = 0, far = 0, clipped = false;
         for (q = 0; q < m; q++) {
           i = F[q];
           var mx = alpha * d[2 * q], my = alpha * d[2 * q + 1], ml = Math.sqrt(mx * mx + my * my), lim = st.cap[i] / 3;
@@ -913,26 +871,19 @@
           Q[i][0] = P[i][0] + mx; Q[i][1] = P[i][1] + my;
           gd += gv[2 * q] * mx + gv[2 * q + 1] * my;
           far = Math.max(far, Math.abs(mx) + Math.abs(my));
-          rel = Math.max(rel, (Math.abs(mx) + Math.abs(my)) / Math.min(1, st.cap[i] || 1));
         }
         /* A step that moves no point by a 3·MEM-th of a pixel is no step: 3·MEM of them together would
            not move a point by the pixel the stop rule below asks for (v107). v51–v106 halved on, up
            to 60 times: near convergence 40–45 energy evaluations per step for moves of 1e-11 px —
-           on Peter's game of 9/29 (63 spots) 2100 of R's 3600 evaluations, 17 of its 30 s. v113–v116
-           exempted Z's tight start; there 26,000 trials for 1,800 steps took 127 of 138 s on the 30-spot
-           game of 9/30, a quarter of the accepted steps moving points by less than 1e-3 px — the
-           descent pressing against an energy jump, which a jiggle gets past far sooner (v117).
-           But from a tight start a point closer than a pixel to something may need steps that
-           small: there its own cap (a third of its gap) is the measure instead of the pixel (v118;
-           with the pixel alone Z failed at once, after 36–105 steps, for 3 of 16 outer regions). */
+           on Peter's game of 9/29 (63 spots) 2100 of R's 3600 evaluations, 17 of its 30 s. */
         /* (v260) …and that would gain less than a pixel's worth of energy (LENGTH) a step over the same 3·MEM steps: where
            curves are a fraction of a pixel apart the energy is so steep that only moves of thousandths of a pixel lower it,
            each still gaining hundreds. Peter's 10-seed game of 11/9, the final position: three curves between spots 6 and 32,
            a quarter of a pixel apart, the descent stopped after 2 steps with E at 209,000 and R was refused; now 591 steps,
            E 40,000, the curves 3.8 px apart, accepted. */
-        if ((st.o.tight ? rel : far) * 3 * MEM < 1 && -gd * 3 * MEM < LENGTH) { if (h === 0 && clipped && !st.S.length) st.clipStuck = true; En = Infinity; break; }   // (clipStuck, v229: see stepRedraw)
-        /* (v231) the trial with its gradient: when it is taken (and its points are not spread again, as A and Z's tight
-           start do), that gradient is the next step's — before, it was evaluated a second time right after. Measured
+        if (far * 3 * MEM < 1 && -gd * 3 * MEM < LENGTH) { if (h === 0 && clipped && !st.S.length) st.clipStuck = true; En = Infinity; break; }   // (clipStuck, v229: see stepRedraw)
+        /* (v231) the trial with its gradient: when it is taken (and its points are not spread again, as A
+           does), that gradient is the next step's — before, it was evaluated a second time right after. Measured
            on Peter's 200-seed picture at move 221: 1.18 trials a step, the gradient evaluation as dear as a trial —
            R 446 s, of it 223 s gradients and 215 s trials. */
         gT = st.g === st.gA ? st.gB : st.gA; capT = st.cap === st.capA ? st.capB : st.capA;
@@ -946,7 +897,7 @@
          chord between a point's neighbours, and where the polyline bends the points still drift
          apart or together — 14 → 89 px legs on a 40 px spacing were seen. The energy is that of
          the spread points. */
-      if (st.fixSpots || st.o.tight) even(st, P, Q);
+      if (st.fixSpots) even(st, P, Q);
       /* DONE when the last 3 · MEM steps (time for L-BFGS to learn the curvature afresh twice over)
          together moved no point by a whole pixel — the smallest change that can be seen — or
          gained less than a pixel's worth of energy a step: LENGTH a step, a curve one pixel shorter (v233; v54–v232
@@ -974,7 +925,7 @@
       }
       var tiny = st.E - En < 1000 * 2.2e-16 * Math.abs(st.E);
       var g2 = gT, cap2 = capT;
-      if (st.fixSpots || st.o.tight) { g2 = Q.map(function () { return [0, 0]; }); cap2 = new Float64Array(n); En = evaluate(st, Q, g2, cap2); }   // (the points were spread again: their own gradient)
+      if (st.fixSpots) { g2 = Q.map(function () { return [0, 0]; }); cap2 = new Float64Array(n); En = evaluate(st, Q, g2, cap2); }   // (the points were spread again: their own gradient)
       var sv = new Float64Array(2 * m), yv = new Float64Array(2 * m), g2v = new Float64Array(2 * m);
       for (q = 0; q < m; q++) { g2v[2 * q] = g2[F[q]][0]; g2v[2 * q + 1] = g2[F[q]][1]; }
       across(g2v, Q);
@@ -1000,7 +951,6 @@
      when no curve needs a different number of points, it is done — and a second press, which
      spaces them the same way, starts where this one ended. */
   function respace(st) {
-    if (st.o.tight) return subdivide(st);
     var need = false;
     st.paths.forEach(function (p, e) {
       var L = 0;
@@ -1040,37 +990,6 @@
     if (st.fixSpots) st.game.spots.forEach(function (s, i) { if (st.fixed[i]) { st.P[i][0] = s.x; st.P[i][1] = s.y; } });
     st.g = null; st.seen = null; st.hist = null; st.confirmed = false; st.respaced = (st.respaced || 0) + 1;
     return true;
-  }
-
-  /* Re-spacing from a TIGHT start (Z): every leg longer than D is cut into equal parts no longer
-     than D, and nothing else changes — the polylines stay exactly where they are, so nothing can
-     cross and the position cannot change. (Z's start has its points ON its straight legs, o.keepKnots,
-     and respace's createRedraw kept them as they were: no curve was ever re-spaced, the descent
-     drained the points out of crowded stretches — legs of 200–330 px with turns of 50–120° between
-     them on the 30-spot game of 9/30 — the bending term, D² θ²/ℓ, is cheap on long legs, and the
-     spline through such points swung wide of its polyline and touched its neighbours.) */
-  function subdivide(st) {
-    var g = redrawCurrent(st), D = st.o.D, any = false;
-    g.edges.forEach(function (e, ei) {
-      var Q = st.paths[ei].map(function (v) { return st.P[v]; }), R = [Q[0]];
-      for (var j = 1; j < Q.length; j++) {
-        var parts = Math.ceil(G.dist(Q[j - 1], Q[j]) / D);
-        if (parts > 1) any = true;
-        for (var f = 1; f < parts; f++) R.push([Q[j - 1][0] + f / parts * (Q[j][0] - Q[j - 1][0]), Q[j - 1][1] + f / parts * (Q[j][1] - Q[j - 1][1])]);
-        R.push(Q[j].slice());
-      }
-      e.pieces = E.polylinePieces(R);
-    });
-    if (!any) return false;
-    adopt(st, createRedraw(g, Object.assign({}, st.o, { keepKnots: true }), st.fixSpots));
-    st.respaced = (st.respaced || 0) + 1;
-    return true;
-  }
-  /* st takes over the points and everything built on them from ns (a createRedraw of the same drawing's
-     curves with other points); the descent starts afresh. */
-  function adopt(st, ns) {
-    ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'vinfo', 'segLine', 'segK', 'spotAt'].forEach(function (k) { st[k] = ns[k]; });
-    st.g = null; st.seen = null; st.hist = null; st.confirmed = false;
   }
 
   /* Do any two segments of the polylines cross (segments with a common end excepted)? Found
@@ -1317,9 +1236,9 @@
     for (i = 0; i < fixed0.length; i++) hst.fixed[i] = fixed0[i];
     return boxBegin(hst, bx, fixed0);
   }
-  function byPatches(st) { return !st.fixSpots && !st.o.tight && st.o.patches !== false && !st.prDone; }
+  function byPatches(st) { return !st.fixSpots && st.o.patches !== false && !st.prDone; }
   function stepRedraw(st, count) {
-    if (st.separated === undefined && !st.o.tight) separate(st);
+    if (st.separated === undefined) separate(st);
     while (count-- > 0 && !st.done) {
       if (byPatches(st)) { if (patchStep(st)) st.it++; continue; }
       if (descend(st)) st.it++;
@@ -1327,60 +1246,10 @@
          clipped to its tiny gap, ruled it (clipStuck): nothing to re-space or finish — the picture is as it was,
          and finishRedraw says so at once instead of making its curves for minutes */
       else if (st.it === 0 && st.clipStuck) { st.stuck = true; st.done = true; }
-      else if (!respace(st)) {
-        if (st.o.tight && jiggle(st)) continue;
-        if (smallSpots(st) && restage(st)) continue;   // the spots grow (see createRedraw)
-        st.done = true;
-      }
+      else if (!respace(st)) st.done = true;
     }
     return st.done;
   }
-  /* From a tight start (Z) the descent STICKS on the energy's jumps (the comfort side of a
-     neighbour, which of a curve's own parts is nearest — v53 knew them): every step along the
-     gradient raises E, though the drawing is nowhere near settled. A JIGGLE: every free point moves
-     a little at random (within a sixth of its cap: nothing can cross), and the descent goes on
-     from there with its memory cleared. Kept while the jiggles pay: given up after two in a row
-     that did not bring E below the best so far by the stop rule's measure (a pixel's worth a step
-     over 3·MEM steps — v117; v115 asked for 1e-6 of |E|), or after twelve in all. A jiggle can also
-     end WORSE than the drawing it started from (seen on every Z case of 9/30): so the best drawing
-     met is kept, and the descent ends there (v117; before, it ended wherever the last jiggle had
-     led — 400 px of energy above the best on the 9-spot game). */
-  function jiggle(st) {
-    /* v189 (Peter 10/20: Z "may take 10 or 20 minutes on one position, making only extremely small changes"):
-       a jiggle pays only if it also gives the spots more room — the least gap between a spot and a curve,
-       which decides how far they can grow (restage) — as well as lowering the energy. Growing the spots to
-       their size is what a fresh layout needs; on his 100-seed position the energy was −10⁷, mostly the room
-       by lives of 100+ regions, a pixel's worth of gain a step came easily, every jiggle "paid", and the 11
-       jiggles took 230 of a layout's 355 s without the spots ever getting room to grow. */
-    var gain = st.bestE === undefined ? Infinity : st.bestE - st.E, gap = leastSpotGap(st);
-    /* Tried and DROPPED (10/20 evening, Peter's 216-spot position): "grew" by a whole PIXEL (the stop rule's unit) —
-       the jiggles after the fifth grew the gap by hundredths of a pixel and all "paid". Measured on 8 regions, old
-       rule vs pixel rule: 4073 s vs 3665 s in all (−10 %), but drawn 2 vs 1 — the later jiggles and stages are
-       what finally makes the smooth curves fit, marginally; cutting them loses layouts. The outcome of a layout is
-       chaotic (region 20: drawn in 612 s, failed in 430 s after one jiggle fewer in stage 0). */
-    if (gain > 3 * MEM && !(gap <= st.bestGap)) { st.bestE = st.E; st.bestGap = gap; st.idle = 0; st.best = JSON.parse(JSON.stringify(redrawCurrent(st))); }   // (a deep copy:
-    else st.idle = (st.idle || 0) + 1;                                                                                                                     //  redrawCurrent's pieces share P's points)
-    if (st.idle >= 2 || (st.jiggles || 0) >= 12) {
-      if (st.best && st.E > st.bestE) {             // back to the best drawing met (the same points: nothing to check)
-        var ns = createRedraw(st.best, Object.assign({}, st.o, { keepKnots: true }), st.fixSpots);
-        adopt(st, ns);
-        st.E = st.bestE; st.S = []; st.Y = []; st.MY = [];
-      }
-      return false;
-    }
-    var P = st.P, n = P.length;
-    function rnd() { st.seed = (st.seed * 1103515245 + 12345) % 2147483648; return st.seed / 2147483648; }   // the same jiggles every time (tests)
-    if (st.seed === undefined) st.seed = 1;
-    for (var i = 0; i < n; i++) {
-      if (st.fixed[i]) continue;
-      var th = 2 * Math.PI * rnd(), r = st.cap[i] / 6 * rnd();
-      P[i][0] += r * Math.cos(th); P[i][1] += r * Math.sin(th);
-    }
-    st.g = null; st.S = []; st.Y = []; st.MY = []; st.hist = []; st.confirmed = false;
-    st.jiggles = (st.jiggles || 0) + 1;
-    return true;
-  }
-
   /* The drawing as it is now, curves as their polylines (for the animation). */
   function redrawCurrent(st) {
     var g = JSON.parse(JSON.stringify(st.game)), P = st.P, pr = st.pr;
@@ -1389,14 +1258,8 @@
       pr.res.forEach(function (r) { for (var q = 0; r && q < r.free.length; q++) { P[r.free[q]][0] = r.xy[2 * q]; P[r.free[q]][1] = r.xy[2 * q + 1]; } });
     }
     g.spots.forEach(function (s, i) { s.x = P[i][0]; s.y = P[i][1]; });
-    sizesInto(st, g);
     g.edges.forEach(function (e, k) { e.pieces = E.polylinePieces(st.paths[k].map(function (v) { return P[v]; })); });
     return g;
-  }
-  /* Each spot's radius into game g as its share f of the Settings' (none at full size) */
-  function sizesInto(st, g) {
-    var t = st.o.spotR || 0;
-    g.spots.forEach(function (s, i) { if (t > 0 && st.rad[i] < st.full[i] * (1 - 1e-9)) s.f = st.rad[i] / t; else delete s.f; });
   }
 
   function unit(v) { var l = Math.sqrt(v[0] * v[0] + v[1] * v[1]) || 1; return [v[0] / l, v[1] / l]; }
@@ -1427,10 +1290,6 @@
      through it with ONE tangent there — halfway between the legs arriving and leaving
      — so the move's curve has no corner at z (C¹). Then the checks.
      Returns { game, error, moved (largest spot move, px), clearance (least certified, px) }. */
-  /* (v189) With spots still smaller than their size (a fresh layout, or spots made smaller before): first
-     every spot at its full size — the growth in stages (restage) leaves each spot only half its gap, and
-     the finished drawing often has room for more; then each as large as keeps d0 from what is nearest it;
-     then as the descent left them. The first that can be drawn is taken. */
   /* FILL THE AREA (v220, o.fill — R with its spots free; Peter 11/1: "there is an option to have R fill the entire
      drawing space. It does not seem to work … R rendered the position small regardless of the setting"). The
      energy has nothing that makes a picture large: once no region has a move, nothing pushes outward and the
@@ -1501,26 +1360,15 @@
   function finishRedraw(st) {
     if (st.stuck) return { game: st.game, error: 'it could not move the drawing at all (a curve passes too close to a spot or to another curve)', moved: 0, clearance: leastClearance(st.game, st.o) };   // (v229)
     fillArea(st);
-    if (!smallSpots(st)) {
-      var rf = finishSized(st);
-      if (!rf.error || !rf.failing || st.fixSpots || st.o.tight) return rf;
-      for (var left = rf.failing.length, repaired = 0; ;) {
-        repaired += repair(st, rf.failing);
-        var rn = finishSized(st);
-        if (!rn.error) { rn.repaired = repaired; return rn; }
-        if (!rn.failing || rn.failing.length >= left) return rn;
-        left = rn.failing.length; rf = rn;
-      }
+    var rf = finishSized(st);
+    if (!rf.error || !rf.failing || st.fixSpots) return rf;
+    for (var left = rf.failing.length, repaired = 0; ;) {
+      repaired += repair(st, rf.failing);
+      var rn = finishSized(st);
+      if (!rn.error) { rn.repaired = repaired; return rn; }
+      if (!rn.failing || rn.failing.length >= left) return rn;
+      left = rn.failing.length; rf = rn;
     }
-    var keep = st.rad, gp = spotGaps(st), r;
-    st.rad = Float64Array.from(st.full);
-    r = finishSized(st);
-    if (r.error) {
-      st.rad = keep.map(function (x, i) { return Math.max(x, Math.min(st.full[i], gp[i] - st.o.d0)); });
-      r = finishSized(st);
-    }
-    if (r.error) { st.rad = keep; r = finishSized(st); }
-    return r;
   }
   function finishSized(st) {
     var r = finishWith(st, false);
@@ -1614,7 +1462,6 @@
   function finishWith(st, dense, unchecked, corners, straight) {
     var o = st.o, g = JSON.parse(JSON.stringify(st.game)), P = st.P;
     g.spots.forEach(function (s, i) { s.x = P[i][0]; s.y = P[i][1]; });
-    sizesInto(st, g);
     /* At a spot with just two curve ends (not a move's own spot) the curve runs smoothly THROUGH
        it: each end leaves along the direction halfway between its own first leg and the reverse of
        the other's, so the two meet with one tangent (C¹) — before, each left along its own first
@@ -1667,13 +1514,7 @@
               'the smooth curves would cross where the drawing is too tight' + (st.fixSpots ? ' with the spots fixed — R moves them too' : '') :
               'the new drawing would not be the same position (a bug: please save the game)';
     else if (!(clearance > 0) && worse(st, g).length) error = 'a curve came too close to something' + (st.fixSpots ? ': too tight with the spots fixed — R moves them too' : '');
-    /* (v189) the spots drawn smaller than the Settings' size: [{ i, f }] — the caller decides whether that
-       will do (a fresh drawing only when the Room menu's • allows it); none below o.minSpotR */
-    var small = [];
-    g.spots.forEach(function (s, i) { if (s.f) small.push({ i: i, f: s.f }); });
-    if (!error && o.minSpotR && small.some(function (m) { return m.f * o.spotR < o.minSpotR; }))
-      error = 'a spot would have to be drawn smaller than the smallest spot size';
-    return { game: g, error: error, moved: moved, clearance: clearance, small: small };
+    return { game: g, error: error, moved: moved, clearance: clearance };
   }
 
   /* A move's two halves through its spot, Q[k] = z, with one tangent at z. */
