@@ -48,7 +48,7 @@
   var TOL = Mv.TOL, CERT = Mv.CERT;   // the fitted spline: within TOL of the relaxed band, clearance at least CERT · d0 (moves.js)
   var STEPS_PER_FRAME = 4;
   var RELAY_FRAME_MS = 30;   // A / R: descent steps per animation frame for about this long (v51: they run to convergence)
-  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, delayedTidy: true, heroic: false, thin: true, rFill: false, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, numbers: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
+  var route = { d0: 6, D: 25, lambda: 1, animate: true, click: true, autoHuman: { M: false, R: false, Z: false }, autoAI: { M: false, R: true, Z: false }, keepSeeds: false, delayedTidy: true, tidyAfter: 2, heroic: false, thin: true, rFill: false, glassSize: 0.25, glassMag: 5, triangles: false, markStopped: true, smallDead: true, numbers: true, deadNumbers: false, seedNumbers: true, spotScale: 0.8, lineScale: 1, numberScale: 1.4 };   // (thin branch, 10/31: D 25, sizes × 0.8 / 1 / 1.4, every Room box off — Peter's snapshot sprouts-snap-2026-10-31T21-32-45; v160: defaults from Peter's game sprouts-2026-10-14T14-07-51 — d0 6, spots ×2.5, curves ×2.3, indices ×2; v161: T, G, H kept as before — off, on, on) the Settings and Room menus (v146: spot size and curve thickness from Peter's game sprouts-2026-10-02T14-49-06; v152: autoHuman / autoAI, the Room menu's eight boxes — see LADDER)
   var LINE_W = 2.5;
   var MIN_SEP = 4 * SNAP; // least distance between initial spots
 
@@ -1399,6 +1399,11 @@
     /* (v218, Peter 11/1: the Room menu's A column replaced by "Keep seeds in place") R with that option on is A:
        the initial seeds and those added by hand stay, curves move and the spots made by moves ride along */
     var keep = kind === 'redraw' && route.keepSeeds;
+    if (kind === 'redraw') {   // (v275) worth knowing when it happens: R puts such points back inside (redraw.js st.outPoints)
+      var outside = 0;
+      game.edges.forEach(function (e) { e.pieces.forEach(function (b) { var q = b[3]; if (q[0] < 0 || q[1] < 0 || q[0] > game.W0 || q[1] > game.H0) outside++; }); });
+      if (outside) log('R: ' + outside + ' curve point' + (outside === 1 ? '' : 's') + ' outside the window — put back inside first.');
+    }
     if (kind === 'redraw') { ensurePool(); if (!noWorkers && startRedrawWorker(o, keep, retry)) return; }   // (v226: R in a worker; on the page's thread only without workers)
     relaying = { kind: kind, keep: keep, st: Rd.createRedraw(from, o, keep), start: JSON.stringify(game), t0: Date.now(),
                  before: Rd.leastClearance(game, o), retry: retry, fresh: fresh || null };
@@ -2160,11 +2165,14 @@
      (aiClimb: thinNear) — one R tidies them all and makes room for the move — and once at the end of a game between
      two computers. An accepted R or Z empties the list (finishRelaying). */
   var thinFrom = null;
+  /* (v277, Peter 11/14) how many untidied thin MOVES lie in the move's region or on its boundary — a thin move's two
+     curves count as one (their number, halved and rounded up); R runs when it reaches route.tidyAfter (Room menu:
+     "Thin moves in a region that trigger R", shown since v281 as route.tidyAfter + 1; tidyAfter 1 = v257–v276) */
   function thinNear(ar) {
     var thin = game.thin || [], on = {};
-    if (!thin.length || !ar || !ar.region) return false;
+    if (!thin.length || !ar || !ar.region) return 0;
     ar.region.boundaries.forEach(function (b) { (b.spots || b).forEach(function (i) { on[i] = true; }); });
-    return thin.some(function (ei) { var e = game.edges[ei]; return !!e && !!on[e.a] && !!on[e.b]; });
+    return Math.ceil(thin.filter(function (ei) { var e = game.edges[ei]; return !!e && !!on[e.a] && !!on[e.b]; }).length / 2);
   }
   function tidyOn() {
     if (route.delayedTidy && bothAI() && game.phase === 'over' && game.thin && game.thin.length && !game.endTidied) {   // (also when the last move was drawn thin: its own tidying step is replaced — the 300-seed test of 11/9 ended untidied)
@@ -3004,7 +3012,8 @@
       });
     });
     setHeroic(r.heroic === true, true);           // (also shows the boxes)
-    if (typeof r.delayedTidy === 'boolean') { route.delayedTidy = r.delayedTidy; document.getElementById('opt-delayedtidy').checked = r.delayedTidy; }   // (v257)
+    if (typeof r.tidyAfter === 'number') setTidyAfter(r.tidyAfter);   // (v277)
+    else if (typeof r.delayedTidy === 'boolean') setTidyAfter(r.delayedTidy ? 1 : 0);   // (v257–v276: the checkbox)
     if (typeof r.keepSeeds === 'boolean') { route.keepSeeds = r.keepSeeds; document.getElementById('opt-keepseeds').checked = r.keepSeeds; }   // (v218; a file from before keeps the present choice)
     if (typeof r.rFill === 'boolean') { route.rFill = r.rFill; document.getElementById('opt-rspread').checked = r.rFill; }   // (v221: rFill — files of v211–v220 have rSpread, which meant less and was off in all of them: ignored, the present choice kept)
     if (typeof r.thin === 'boolean') { route.thin = r.thin; document.getElementById('opt-thin').checked = r.thin; }   // (thin branch; likewise)
@@ -3427,9 +3436,17 @@
   });
   /* v218 (Peter 11/1): Keep seeds in place — R (by hand, the ladders, tidying) keeps the initial seeds and
      those added by hand where they are, as A does (relayDrawing); replaces the Room menu's A column */
-  document.getElementById('opt-delayedtidy').addEventListener('change', function (e) {   // (v257)
-    route.delayedTidy = e.target.checked;
-    log('Room: delayed tidying ' + (route.delayedTidy ? 'on (the computer\'s thin moves are tidied by R only before a move in a region with untidied thin curves, and at the end)' : 'off (R after every thin move that leaves the picture short of the minimum clearance)') + '.');
+  /* (v277, Peter 11/14: "the number of thin curves … in one region before R is invoked") 0: R after every thin move of
+     the computer (Delayed tidying off, v257's checkbox unchecked); k = 1…4: R before a move that does not fit in a region
+     already holding k untidied thin moves (1 = the checkbox checked, v257–v276) */
+  function setTidyAfter(k) {
+    k = Math.max(0, Math.min(4, Math.round(k)));
+    route.tidyAfter = k; route.delayedTidy = k > 0;
+    document.getElementById('opt-tidyafter').value = String(k);
+  }
+  document.getElementById('opt-tidyafter').addEventListener('change', function (e) {
+    setTidyAfter(Number(e.target.value));
+    log('Room: thin moves in a region that trigger R: ' + (route.tidyAfter + 1) + (route.tidyAfter ? ' (the computer\'s thin moves are tidied by R only before a move that does not fit in a region with ' + route.tidyAfter + ' untidied thin move' + (route.tidyAfter === 1 ? '' : 's') + ', and at the end)' : ' (R after every thin move that leaves the picture short of the minimum clearance)') + '.');   // (v281, Peter 11/15: shown as 1–5, the thin moves in a region that trigger R — route.tidyAfter + 1; saved files keep tidyAfter)
   });
   function setKeepSeeds(on) {
     route.keepSeeds = on;
@@ -3932,9 +3949,9 @@
   function aiClimb(a) {
     /* (v257) Delayed tidying: untidied thin curves in or on the move's region — R first, once for the move
        (aiAgain tries the move again in the new picture; if it still does not fit it comes back here and is drawn thin) */
-    if (route.delayedTidy && route.thin && route.autoAI.R && a.thin && a.thin.mv === a.move && !a.thin.tried && !a.preR && thinNear(a.thin.ar)) {
+    if (route.delayedTidy && route.thin && route.autoAI.R && a.thin && a.thin.mv === a.move && !a.thin.tried && !a.preR && thinNear(a.thin.ar) >= route.tidyAfter) {
       a.preR = true;
-      log(a.who + ': ' + a.text + ' does not fit, and its region has untidied thin curves: rearranging (R) first (Delayed tidying).');
+      log(a.who + ': ' + a.text + ' does not fit, and its region has ' + thinNear(a.thin.ar) + ' untidied thin move' + (thinNear(a.thin.ar) === 1 ? '' : 's') + ': rearranging (R) first (Delayed tidying, R at ' + route.tidyAfter + ').');
       ai = null; a.used.push('R'); aiResume = a;
       relayDrawing('redraw');
       if (relaying) return;

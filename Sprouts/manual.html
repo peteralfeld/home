@@ -5,7 +5,7 @@
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
  <title>Sprouts &mdash; User's Guide</title>
- <link rel="stylesheet" href="manual.css?v=274">
+ <link rel="stylesheet" href="manual.css?v=277">
 <script>
   MathJax = {
     tex: {
@@ -281,7 +281,7 @@ The corresponding keys <e>M</e>, <e>R</e> and <e>Z</e> can be pressed at any tim
 
   <OL>
 <LI><e>R fills the whole area</e>, off by default: when R has finished, the picture is enlarged in each direction until it fills the drawing area (only enlarged, so nothing comes closer to anything), and the curves are then smoothed once more, since enlarging by different amounts in the two directions can leave kinks.   Off: R keeps the picture&rsquo;s shape and leaves it at the size it comes out, which at the end of a game is often small.</LI>
-<LI><e>Delayed tidying</e>, on by default, for the computer&rsquo;s moves: a move drawn thin is not tidied by R at once; its curves are remembered as untidied.   R runs before a later move that does not fit in a region with an untidied thin curve in it or on its boundary, so that one R tidies them all and makes room for that move, and once more at the end of a game between two computers.   Late in a game, when the board is split into many small regions, most thin moves need no R at all: in our tests this saved about a third of the time of a 300-seed game.   Between R&rsquo;s the picture shows more curves touching; the final picture is tidied.</LI>
+<LI><e>Thin moves in a region that trigger R</e> (delayed tidying), 3 by default, for the computer&rsquo;s moves: a move drawn thin is not tidied by R at once; its curves are remembered as untidied.   R runs when a region would hold this many thin moves, in it or on its boundary: before a move that does not fit in a region already holding one fewer, so that one R tidies them all and makes room for that move, and once more at the end of a game between two computers.   With 1, R runs after every thin move; with 4 or 5, thin moves pile up longer before R, which saves R&rsquo;s and leaves the picture more crowded in between.   Late in a game, when the board is split into many small regions, most thin moves need no R at all.   Between R&rsquo;s the picture shows more curves touching; the final picture is tidied.</LI>
 <LI><e>Keep seeds in place</e>, off by default, also switched with the key <e>A</e>: R keeps the initial seeds and seeds added by hand where they are and reshapes only the curves; the spots made by moves ride along with their curves.   This is useful for watching games from a fixed set of seeds.   The picture is then not enlarged.</LI>
 <LI><e>Heroic</e> keeps a curve you draw by hand as drawn, straight pieces, corners and all, instead of smoothing it, and nothing is done automatically to make room for your moves (the Human row is switched off, and M is not available).   The computer&rsquo;s moves are drawn as usual.</LI>
   </OL>   

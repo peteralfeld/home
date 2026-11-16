@@ -638,16 +638,22 @@ their answers is the picture&rsquo;s; the page stays responsive meanwhile. (Befo
 page&rsquo;s thread: 25 seconds on a 300-seed picture, the page frozen.) The value is remembered for the picture it
 was measured on, and R takes it along instead of measuring the same picture again.</p>
 
-<p><b>Delayed tidying</b> (Room menu, on by default since v258). For the computer&rsquo;s moves the R after a thin
+<p><b>Delayed tidying</b> (Room menu, on by default since v258; since v277 a setting, since v281 named <e>Thin moves in a
+region that trigger R</e> and shown as $k + 1 = 1, \dots, 5$, default 3 since v278 — $k = 0$ is the old checkbox off,
+$k = 1$ on). For the computer&rsquo;s moves the R after a thin
 move is postponed: the move&rsquo;s curves go on a list of untidied thin curves, kept in the game object
 (<code>game.thin</code>, so undo and saved games keep it). R runs before a later move that does not fit the
-ordinary way in a region with an untidied thin curve in it or on its boundary (both ends of the curve among the
-region&rsquo;s spots: <code>ui.thinNear</code>); the move is then tried again in the new picture, and drawn thin
+ordinary way in a region with $k$ untidied thin moves in it or on its boundary (both ends of a curve among the
+region&rsquo;s spots, a move&rsquo;s two curves counting as one: <code>ui.thinNear</code>); the move is then tried again in the new picture, and drawn thin
 only if it still does not fit. An accepted R or Z empties the list, and a game between two computers ends with one
 more R if the list is not empty. The test needs no distance: late in a game the board is split into many small
 regions, and a thin curve in one cannot narrow the way of a move in another, so most thin moves need no R, and
 one R tidies several thin curves at once. Measured (11/9, the 300-seed game of the series settings): 46 R&rsquo;s
-instead of 156, the game 3,318 s instead of 5,098; the 200-seed game 1,303 s instead of 1,794.</p>
+instead of 156, the game 3,318 s instead of 5,098; the 200-seed game 1,303 s instead of 1,794. The same 300-seed
+game on v281 with the setting at 1, 2, 3, 4 and 5 (11/15–16): 6,853, 5,764, 2,381, 3,424 and 3,407 s to the end of
+the game, with 185, 51, 26, 17 and 18 R&rsquo;s taking 5,486, 2,792, 1,075, 1,991 and 2,017 s; no R refused. Below 3
+the R&rsquo;s are many; above it they are few but start from more crowded pictures and each takes longer. Hence the
+default 3.</p>
 
 <p><b>Certifying many curves at once.</b> The least clearance of a picture, and R&rsquo;s last stage, certify every
 curve against everything else (<code>room.certOf</code>). Until v254 each curve copied the whole game without
@@ -768,7 +774,13 @@ section <a href="#sec-workers">7.1</a>). The page stays responsive and <code>Spa
 lays out all the curves at once, by minimizing one energy over the
 whole drawing (<code>redraw.js</code>). The idea is that every curve should be drawn as the band would draw it if
 it were drawn last, all at the same time. Every curve becomes a polyline through its end spots and points about $D$
-apart along it (a move&rsquo;s two curves form one unit, so bending is charged through the move&rsquo;s spot). The
+apart along it (a move&rsquo;s two curves form one unit, so bending is charged through the move&rsquo;s spot).
+This start is checked: no two of its segments may cross, and its position must be the drawing&rsquo;s. A segment at
+fault gets a point halfway along its curve between its ends; where the curve&rsquo;s refined polygon, along which the
+points are taken, has no vertex between them, the polygon is refined four times closer on that piece only (down to
+$10^{-9}$ pixels). Until v277 the whole curve was refined: two nearly coincident curves of a 300-seed game made one
+of them a polygon of 10.6 million vertices, a gigabyte, in a re-spacing (below), and the page crashed; refined
+piece by piece, that start took 2.5 s and 150 MB. The
 spots and the points then move together to a minimum of
 $$E = 10 \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{near}} \varphi(r)
 \;+\; D^2 \sum \frac{\theta^2}{\ell} \;+\; D \sum (\theta - 2\pi/k)^2 \;+\; D\sum (t\cdot n)^2
@@ -788,7 +800,10 @@ $$E = 10 \sum \text{length} \;+\; \lambda \sum_{\text{points}} w \sum_{\text{nea
   counts as a stretch $D$ of curve, and this is what places a spot with no curves). It is measured between the
   discs when one of the two is a seed and between the centers otherwise (v190; measured between the centers, two
   seeds whose discs touched were still a spot&rsquo;s width apart and hardly pushed, and in a 100-seed game two
-  of them had drifted together until no curve could pass between them).</td></tr>
+  of them had drifted together until no curve could pass between them). The term for the window&rsquo;s sides is
+  infinite outside the window, so a curve point found outside it when R starts is first put back just inside
+  (v275; one such point of a thin curve, 2 px past the top edge, let no step that kept it be taken, so R went on
+  and on, and an R that did end accepted the curve outside the window).</td></tr>
   <tr><td>bending</td><td>$D^2 \sum \theta^2/\ell$ over the turns $\theta$ between legs of length $\ell$: the
   discrete elastic energy $\int \kappa^2 ds$. A bend tighter than $D$ costs more than its length.</td></tr>
   <tr><td>angles</td><td>at a spot with $k$ curves, equal angles $2\pi/k$ (straight through a spot with two, 120°
@@ -824,6 +839,19 @@ step, so <e>nothing ever crosses</e>, and the position cannot change. When a cur
 its number of points it is re-spaced. The new spacing is kept only if the new polylines do not cross, because two
 curves crossing twice would leave the rotation system, and hence the position text, unchanged and could not be
 detected by the check.</p>
+
+<p><b>Points spread evenly again (v280).</b> During R the points slide along their curves and bunch, and in that
+state the descent can no longer step: on the final picture of a 300-seed game every box of a further round took no
+step at all, and five more cycles of rounds lowered the energy by 5 out of 1.59 million. Re-spacing re-takes the
+points only when a curve&rsquo;s <e>number</e> of points must change. What a second press of <code>R</code> brought
+(it pulled in tongues the first had left) turned out to be only its start: every curve&rsquo;s points taken evenly
+along it again. So when the rounds have gone quiet, R spreads every curve&rsquo;s points evenly along its polyline and
+goes on, and again after the next cycle, as long as a cycle lowered the energy by at least a pixel&rsquo;s worth
+($\text{LENGTH}$) for every move&rsquo;s curve in the picture; a cycle that ends no lower than the one before is
+undone. On that picture one R now does what two did before (curves 125,066 &rarr; 122,334 pixels, against 123,955
+after one R and 122,899 after two). Tried first and dropped: a step size for each point (the diagonal of the
+energy&rsquo;s Hessian as L-BFGS&rsquo;s starting matrix) &mdash; 2.5 times slower, and it ended higher than two plain
+R&rsquo;s.</p>
 
 <p><b>The push smoothed along the curves (v241).</b> Late in a large game tongues and stumps stayed where they were,
 although pulling them in would have shortened the curves a great deal. Such a move shifts a long strand of points

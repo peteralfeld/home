@@ -144,10 +144,10 @@
      and the position of the polylines is the drawing's — and a chord at fault gets a point halfway along the
      curve between its ends (a first try with every curve's points twice as dense measured 2380 points, too
      many for the descent); where the polygon the points are taken on is itself too coarse for that (no vertex
-     of it between the chord's ends), the polygon is made four times closer to its curve, down to 1e-9 px (the
-     arithmetic, as in thin.js). A curve that winds through no tight place keeps its points as before. */
-  function createRedraw(game, o, fixSpots) {
-    var spec = game.edges.map(function () { return null; }), st = createAt(game, o, fixSpots, spec);
+     of it between the chord's ends), the polygon is made four times closer to its curve on that piece, down to
+     1e-9 px (the arithmetic, as in thin.js). A curve that winds through no tight place keeps its points as before. */
+  function createRedraw(game, o, fixSpots, evenly) {
+    var spec = game.edges.map(function () { return null; }), st = createAt(game, o, fixSpots, spec, evenly);
     for (;;) {
       var bad = startFaults(st, spec), changed = false;
       if (!bad) return st;
@@ -158,29 +158,45 @@
         if (!sp) {                                  // (from now on by fractions of its length: as many as it has points now)
           var n = st.paths[ei].length - 2, F = [];
           for (var q = 1; q <= n; q++) F.push(q / (n + 1));
-          sp = spec[ei] = { lv: 0, F: F };
+          sp = spec[ei] = { lv: null, F: F };
         }
-        var all = [0].concat(sp.F, [1]), poly = polyOf(game.edges[ei], sp.lv), raise = false, out = [0];
+        var all = [0].concat(sp.F, [1]), poly = polyOf(game.edges[ei], sp), raise = {}, out = [0];
         for (var jj = 0; jj + 1 < all.length; jj++) {
           if (byEdge[ei][jj]) {
             var f0 = all[jj], f1 = all[jj + 1], inside = poly.S.some(function (x) { return x > f0 * poly.L && x < f1 * poly.L; });
-            if (inside) { out.push((f0 + f1) / 2); changed = true; } else raise = true;
+            if (inside) { out.push((f0 + f1) / 2); changed = true; }
+            else {                                  // the piece whose polygon leg holds the chord's stretch
+              var q = 1;
+              while (q < poly.S.length - 1 && poly.S[q] < f1 * poly.L) q++;
+              raise[poly.pc[q]] = true;
+            }
           }
           out.push(all[jj + 1]);
         }
         sp.F = out.slice(1, -1);
-        if (raise && START_EPS / Math.pow(4, sp.lv + 1) >= 1e-9) { sp.lv++; changed = true; }
+        Object.keys(raise).forEach(function (i) {
+          sp.lv = sp.lv || [];
+          var l = sp.lv[i] || 0;
+          if (START_EPS / Math.pow(4, l + 1) >= 1e-9) { sp.lv[i] = l + 1; changed = true; }
+        });
       });
       if (!changed) return st;                      // (as before: the descent and the check at the end tell)
       var halvedAll = st.halvedAll || bad.length === st.segs.length;   // (v243: see startFaults)
-      st = createAt(game, o, fixSpots, spec); st.halvedAll = halvedAll;
+      st = createAt(game, o, fixSpots, spec, evenly); st.halvedAll = halvedAll;
     }
   }
   var START_EPS = 0.5;                              // the polygon a curve's points are taken along, at first
-  function polyOf(e, lv) {                          // the polygon, its arc length at each vertex, its length
-    var pts = G.refinedPolygon(e.pieces, START_EPS / Math.pow(4, lv), 16).pts, S = [0];
-    for (var i = 1; i < pts.length; i++) S.push(S[i - 1] + G.dist(pts[i], pts[i - 1]));
-    return { pts: pts, S: S, L: S[S.length - 1] };
+  /* the polygon, its arc length at each vertex, its length, and the piece each vertex comes from. sp.lv: the levels
+     by piece (v278: LOCAL — only the pieces where a chord's stretch lay on one polygon leg are made closer; v243–v277
+     raised the whole curve: Peter's k = 4 game of 11/15, one curve 877 pieces → 10.6 M points, 1 GB, Aw, Snap) */
+  function polyOf(e, sp) {
+    var lv = sp && sp.lv, pts = [e.pieces[0][0]], pc = [0], S = [0], i;
+    for (i = 0; i < e.pieces.length; i++) {
+      var r = G.refinedPolygon([e.pieces[i]], START_EPS / Math.pow(4, (lv && lv[i]) || 0), 16).pts;
+      for (var j = 1; j < r.length; j++) { pts.push(r[j]); pc.push(i); }
+    }
+    for (i = 1; i < pts.length; i++) S.push(S[i - 1] + G.dist(pts[i], pts[i - 1]));
+    return { pts: pts, pc: pc, S: S, L: S[S.length - 1] };
   }
   /* null if the start is the drawing's position with no chords crossing; else the chords to cut, [edge, k]
      (the k-th chord of the edge's path): those that cross another chord — or, if the position differs
@@ -231,7 +247,7 @@
     g.edges.forEach(function (e, ei) {
       var path = st.paths[ei], sp = spec[ei], F = sp ? sp.F : [], n = path.length - 2, q;
       if (!sp) for (q = 1; q <= n; q++) F.push(q / (n + 1));
-      var all = [0].concat(F, [1]), poly = polyOf(e, sp ? sp.lv : 0);
+      var all = [0].concat(F, [1]), poly = polyOf(e, sp);
       for (var j = 0; j + 1 < path.length; j++) {
         var lens = [P[path[j]]], x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
         for (q = 0; q < poly.pts.length; q++) if (poly.S[q] > all[j] * poly.L && poly.S[q] < all[j + 1] * poly.L) lens.push(poly.pts[q]);
@@ -248,13 +264,13 @@
     });
     return bad;
   }
-  function createAt(game, o, fixSpots, spec) {
+  function createAt(game, o, fixSpots, spec, evenly) {
     var nS = game.spots.length, an = E.analyse(game.spots, game.edges), i;
     var P = game.spots.map(function (s) { return [s.x, s.y]; });
     /* paths[e]: the vertex indices along edge e, from e.a to e.b (spec[e]: its points at these fractions of
        its length, on its polygon of that level — see createRedraw) */
     var paths = game.edges.map(function (e, ei) {
-      var sp = spec[ei], pl = polyOf(e, sp ? sp.lv : 0), pts = pl.pts, S = pl.S;
+      var sp = spec[ei], pl = polyOf(e, sp), pts = pl.pts, S = pl.S;
       if (sp) {
         var pth = [e.a], q0 = 1;
         sp.F.forEach(function (f) {
@@ -272,7 +288,7 @@
          press starts exactly where the first ended (v51) */
       var nk = e.pieces.length - 1, xk = 0;          // (counted along the knots, as respace counts)
       for (var j1 = 0; j1 < e.pieces.length; j1++) xk += G.dist(e.pieces[j1][0], e.pieces[j1][3]) / o.D;
-      if (nk >= least && (nk === Math.max(least, Math.floor(xk)) || nk === Math.max(least, Math.ceil(xk)))) {
+      if (!evenly && nk >= least && (nk === Math.max(least, Math.floor(xk)) || nk === Math.max(least, Math.ceil(xk)))) {   // (evenly, v280: spreadEvenly)
         for (var j0 = 0; j0 < nk; j0++) { path.push(P.length); P.push(e.pieces[j0][3].slice()); }
         path.push(e.b);
         return path;
@@ -366,6 +382,17 @@
       bw = Math.min(game.W0, sc * bw); bh = Math.min(game.H0, sc * bh);
       var cx = Math.min(Math.max((bx0 + bx1) / 2, bw / 2), game.W0 - bw / 2), cy = Math.min(Math.max((by0 + by1) / 2, bh / 2), game.H0 - bh / 2);
       st.box = [cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2];
+    }
+    /* (v275) A CURVE POINT OUTSIDE THE WINDOW (or the box) is put back just inside it. Its energy was infinite (every
+       point inside the window, below), so no step that kept it could ever be taken: Peter's 600-seed game of 11/14,
+       point 1368 of the curve 551–815 at y = −2.2 — the R by patches went on and on, and an R that finished
+       accepted the curve 1.8 px past the top edge. Inside, the window's sides push it in like any curve point near them.
+       st.outPoints counts them (the page itself logs curve points outside the window when R starts). */
+    st.outPoints = 0;
+    for (var oi = nS; oi < P.length; oi++) {
+      if (fixed && fixed[oi]) continue;
+      var bxq = st.box, inset = 0.01, qx = Math.min(Math.max(P[oi][0], bxq[0] + inset), bxq[2] - inset), qy = Math.min(Math.max(P[oi][1], bxq[1] + inset), bxq[3] - inset);
+      if (qx !== P[oi][0] || qy !== P[oi][1]) { P[oi][0] = qx; P[oi][1] = qy; st.outPoints++; }
     }
     /* each spot's radius (st.rad: the Settings' size, half for a stump with Stumps half size, v212 — relax.js
        fullRadius) */
@@ -992,6 +1019,36 @@
     return true;
   }
 
+  /* (v280, Peter 11/15: R left tongues that a second R by hand pulled in at once) WHY: during R the points slide along
+     their curves and bunch; in that state no box can step (on the 300-seed picture of 11/15 all 51 boxes of a further
+     round took no step), and re-spacing (respace) re-takes the points only when a curve's COUNT must change. What a
+     second R brings is its start: every curve's points taken evenly along it again — the same as taking them evenly
+     along the polylines as they are (measured: the same start to the last bit, E 1,589,348 → 1,597,833, and then down
+     to 1,562,095 — the first R's rounds, continued five more times, had gained 5). So when the rounds have gone quiet,
+     the points are spread evenly and the rounds go on; again as long as the cycle before gained at least a pixel's
+     worth of energy (LENGTH) for every move's curve in the picture — on average each curve a pixel shorter. On that
+     picture the cycles went on gaining for 20 minutes (30,000, then 6,000, 5,000, … 2,000 a cycle); a pixel a curve
+     stops after the second. A cycle that ends no lower than the one before is undone: the picture is the best
+     cycle's end. */
+  var EVEN_KEYS = ['P', 'regions', 'paths', 'segs', 'lines', 'units', 'fixed', 'tees', 'corners', 'comfort', 'vinfo', 'segLine', 'segK', 'spotAt'];
+  function endOfRounds(st) {
+    var E = evaluate(st, st.P, null, null);
+    if (st.evenE !== undefined && !(E < st.evenE)) {   // no lower than the cycle before: back to where that one ended
+      var sv = st.evenSave;
+      EVEN_KEYS.forEach(function (k) { st[k] = sv[k]; });
+      st.g = null; st.seen = null; st.hist = null; st.confirmed = false; st.Fsm = null; st.respaced = (st.respaced || 0) + 1;
+      st.evenSave = null; st.prDone = true;
+      return;
+    }
+    if (st.evenE !== undefined && st.evenE - E < LENGTH * st.units.length) { st.evenSave = null; st.prDone = true; return; }   // (lower, but by less than a pixel a curve: kept, and done)
+    st.evenE = E;
+    var ns = createRedraw(redrawCurrent(st), st.o, st.fixSpots, true);
+    if (Rm.positionKey(redrawCurrent(ns)) !== st.key0 || polylinesCross(ns)) { st.evenSave = null; st.prDone = true; return; }
+    var save = {};
+    EVEN_KEYS.forEach(function (k) { save[k] = st[k]; st[k] = ns[k]; });
+    st.evenSave = save; st.evenCycles = (st.evenCycles || 0) + 1; st.prQuiet = 0;
+    st.g = null; st.seen = null; st.hist = null; st.confirmed = false; st.Fsm = null; st.respaced = (st.respaced || 0) + 1;
+  }
   /* Do any two segments of the polylines cross (segments with a common end excepted)? Found
      through a grid of cells the size of the horizon (any size would do: it only finds the candidates). */
   function polylinesCross(st) {
@@ -1194,7 +1251,7 @@
         var gain = pr.E0 - evaluate(st, st.P, null, null);
         st.prRound = pr.round + 1; st.prQuiet = far < 1 || gain < LENGTH * (st.it - pr.it0) ? pr.quiet + 1 : 0; st.pr = null;
         if (respace(st)) st.prQuiet = 0;
-        if (st.prQuiet >= 4) st.prDone = true;
+        if (st.prQuiet >= 4) endOfRounds(st);
         return false;
       }
       if (!boxBegin(st, pr.boxes[next], pr.fixed0)) { pr.res[next] = NOBOX; return false; }
@@ -1217,7 +1274,7 @@
     var pr = st.pr;
     if (pr && pr.round === round && pr.pass === pass && !pr.res[k]) pr.res[k] = r;
   }
-  var NOT_SENT = { game: 1, key0: 1, pr: 1, patch: 1, Q: 1, gA: 1, gB: 1, capA: 1, capB: 1, g: 1, cap: 1, S: 1, Y: 1, MY: 1, hist: 1, seen: 1, counts: 1, best: 1, F: 1, Fsm: 1 };
+  var NOT_SENT = { game: 1, key0: 1, pr: 1, patch: 1, Q: 1, gA: 1, gB: 1, capA: 1, capB: 1, g: 1, cap: 1, S: 1, Y: 1, MY: 1, hist: 1, seen: 1, counts: 1, best: 1, F: 1, Fsm: 1, evenSave: 1 };
   function helperState(st) {                        // (of the game the energy asks only whether a spot has curves: the rest, megabytes in a large game, stays here)
     var h = { game: { spots: st.game.spots.map(function (s) { return { deg: s.deg }; }) } };
     for (var k in st) if (!NOT_SENT[k]) h[k] = st[k];
