@@ -640,7 +640,8 @@ was measured on, and R takes it along instead of measuring the same picture agai
 
 <p><b>Delayed tidying</b> (Room menu, on by default since v258; since v277 a setting, since v281 named <e>Thin moves in a
 region that trigger R</e> and shown as $k + 1 = 1, \dots, 5$, default 3 since v278 — $k = 0$ is the old checkbox off,
-$k = 1$ on). For the computer&rsquo;s moves the R after a thin
+$k = 1$ on; since v282 also 0, $k = -1$: R after every move, however it was drawn, when the Room menu&rsquo;s R box is checked for
+whoever made it (for the computer by default), not in play over the net &mdash; for demonstrations). For the computer&rsquo;s moves the R after a thin
 move is postponed: the move&rsquo;s curves go on a list of untidied thin curves, kept in the game object
 (<code>game.thin</code>, so undo and saved games keep it). R runs before a later move that does not fit the
 ordinary way in a region with $k$ untidied thin moves in it or on its boundary (both ends of a curve among the

@@ -2711,6 +2711,18 @@
       if (route.delayedTidy && tidyNext && tidyNext.ai) { game.thin = (game.thin || []).slice(); for (var te = thinFrom; te < game.edges.length; te++) game.thin.push(te); }
       thinFrom = null;
     }
+    /* (v282, Peter 11/16: "Selecting it means there is an R run after every move, no matter how it is drawn. This is good
+       for setting up a quick demo") Room → Thin moves in a region that trigger R: 0 (route.tidyAfter −1) — every move,
+       drawn thin or not, is followed by R when the Room menu's R box is checked for whoever made it (Peter: for the
+       computer by default, for a human only if checked); R's own step after a thin move is then not needed. Not in play
+       over the net (Peter 11/16). */
+    var mover = 3 - game.player;
+    if (route.tidyAfter < 0 && !relaying && !net && game.edges.length && (isAI(mover) ? route.autoAI : route.autoHuman).R) {
+      tidyNext = null; game.thin = [];
+      log('R after the move (Room: thin moves in a region that trigger R: 0).');
+      relayDrawing('redraw');
+      if (relaying) return;
+    }
     if (!relaying && tidyOn()) return;            // (thin branch: tidying first; afterRelay goes on)
     if (!relaying) { updateTitle(); maybeAI(); draw(); }   // (the title before the next computer turn begins — it is not updated while busy; the background white again if no computer moves)
   }
@@ -3440,13 +3452,13 @@
      the computer (Delayed tidying off, v257's checkbox unchecked); k = 1…4: R before a move that does not fit in a region
      already holding k untidied thin moves (1 = the checkbox checked, v257–v276) */
   function setTidyAfter(k) {
-    k = Math.max(0, Math.min(4, Math.round(k)));
+    k = Math.max(-1, Math.min(4, Math.round(k)));   // (v282: −1, shown as 0 — R after every move, see afterMoveMade)
     route.tidyAfter = k; route.delayedTidy = k > 0;
     document.getElementById('opt-tidyafter').value = String(k);
   }
   document.getElementById('opt-tidyafter').addEventListener('change', function (e) {
     setTidyAfter(Number(e.target.value));
-    log('Room: thin moves in a region that trigger R: ' + (route.tidyAfter + 1) + (route.tidyAfter ? ' (the computer\'s thin moves are tidied by R only before a move that does not fit in a region with ' + route.tidyAfter + ' untidied thin move' + (route.tidyAfter === 1 ? '' : 's') + ', and at the end)' : ' (R after every thin move that leaves the picture short of the minimum clearance)') + '.');   // (v281, Peter 11/15: shown as 1–5, the thin moves in a region that trigger R — route.tidyAfter + 1; saved files keep tidyAfter)
+    log('Room: thin moves in a region that trigger R: ' + (route.tidyAfter + 1) + (route.tidyAfter < 0 ? ' (R after every move, however it was drawn)' : route.tidyAfter ? ' (the computer\'s thin moves are tidied by R only before a move that does not fit in a region with ' + route.tidyAfter + ' untidied thin move' + (route.tidyAfter === 1 ? '' : 's') + ', and at the end)' : ' (R after every thin move that leaves the picture short of the minimum clearance)') + '.');   // (v281, Peter 11/15: shown as 1–5, the thin moves in a region that trigger R — route.tidyAfter + 1; saved files keep tidyAfter)
   });
   function setKeepSeeds(on) {
     route.keepSeeds = on;
