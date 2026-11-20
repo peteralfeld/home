@@ -4,7 +4,9 @@
 
    All game geometry is in WORLD coordinates. The world rectangle W0 x H0 is
    the size of the drawing area (in CSS pixels) when the game was started;
-   when the window is resized the picture is scaled uniformly and centred.
+   when the window is resized the picture is scaled uniformly and centered —
+   its positions only: curve widths, spot sizes and indices stay in screen
+   pixels (v293, drawLayer).
    ========================================================================= */
 (function () {
   'use strict';
@@ -358,16 +360,19 @@
     view.s = Math.min(view.cw / game.W0, view.ch / game.H0);
     view.ox = (view.cw - game.W0 * view.s) / 2;
     view.oy = (view.ch - game.H0 * view.s) / 2;
+    if (typeof sizeW !== 'undefined' && sizeW) showSize();   // (v302: the fields show the drawing area, which a new game can change without a resize)
     draw();
   }
   function toWorldRaw(e) {
     var r = canvas.getBoundingClientRect();
     return [(e.clientX - r.left - view.ox) / view.s, (e.clientY - r.top - view.oy) / view.s];
   }
-  /* (v223) a point inside the magnifier means the magnified point under it: c + (p − c) / m */
+  /* (v223) a point inside the magnifier means the magnified point under it: f + (p − c) / m, f the point of the picture
+     shown at the glass's center c (v286: f = c until the wheel magnifies about the pointer — glassFocus) */
+  function glassFocus() { return [glass.fx !== undefined ? glass.fx : glass.x, glass.fy !== undefined ? glass.fy : glass.y]; }
   function toWorld(e) {
     var p = toWorldRaw(e);
-    if (glass && G.dist(p, [glass.x, glass.y]) < glassR()) p = [glass.x + (p[0] - glass.x) / route.glassMag, glass.y + (p[1] - glass.y) / route.glassMag];
+    if (glass && G.dist(p, [glass.x, glass.y]) < glassR()) { var f = glassFocus(); p = [f[0] + (p[0] - glass.x) / route.glassMag, f[1] + (p[1] - glass.y) / route.glassMag]; }
     return p;
   }
 
@@ -391,12 +396,18 @@
     document.title = titleText = v + '   ' + (game.moves + 1) + ': P = ' + (game.spots.length - game.moves) + '  L = ' + b.L + '  m = ' + b.m + '  ' + mText(b, x, ' ') +
       '  K = ' + Object.keys(stuckSpots()).length + '  R = ' + an.regions.length;
   }
+  var deadColor = null;
   function draw() {
     updateTitle();
     var dpr = window.devicePixelRatio || 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = background();
+    /* (v296, Peter 11/18: "so it's apparent that the space isn't available") the game's own rectangle W0 x H0 in the
+       background color; what a window of another shape adds beside it is the page's own dark gray (style.css body),
+       as around a drawing area made smaller by Game → Size in a tab — Peter: "The dead areas should be the same color" */
+    ctx.fillStyle = deadColor || (deadColor = getComputedStyle(document.body).backgroundColor);
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = background();
+    ctx.fillRect(dpr * view.ox, dpr * view.oy, dpr * view.s * game.W0, dpr * view.s * game.H0);
     ctx.setTransform(dpr * view.s, 0, 0, dpr * view.s, dpr * view.ox, dpr * view.oy);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     drawLayer(null);
@@ -410,15 +421,26 @@
      control points: exact at any magnification. Only what can reach the glass is drawn (vis, and the curve
      pieces whose control points' box comes near it), which also keeps the coordinates handed to the canvas
      small. */
+  /* (v293, Peter 11/17: "resizing the window also resizes the diameter of the spots and the size of its labels … readability of
+     indices and visibility of lines should not be reduced") The layer is drawn in screen pixels: every POSITION goes through
+     the view (ox + s · x), so the picture still scales with the window, but line widths, spot sizes, rings, marks and indices
+     are pixels on the screen at any size of the window — as in the magnifier since v223. The game's geometry (clearances,
+     the comfort distance, the disc curves keep clear of) is the picture's and scales with it. */
   function drawLayer(L) {
-    var i, j, e, b;
-    var mx = L ? function (x) { return L.cx + L.m * (x - L.cx); } : function (x) { return x; };
-    var my = L ? function (y) { return L.cy + L.m * (y - L.cy); } : function (y) { return y; };
-    var vis = L ? function (x, y, r) { var dx = x - L.cx, dy = y - L.cy, q = (L.R + r) / L.m; return dx * dx + dy * dy <= q * q; } : function () { return true; };
+    var dpr = window.devicePixelRatio || 1;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);       // (the glass's clip, set under the view's transform, stays)
+    try { drawLayerIn(L); } finally { ctx.restore(); }
+  }
+  function drawLayerIn(L) {
+    var i, j, e, b, vs = view.s, u = 1 / vs;
+    var mx = L ? function (x) { return view.ox + vs * (L.cx + L.m * (x - L.fx)); } : function (x) { return view.ox + vs * x; };   // (v286: fx, fy the point shown at the glass's center)
+    var my = L ? function (y) { return view.oy + vs * (L.cy + L.m * (y - L.fy)); } : function (y) { return view.oy + vs * y; };
+    var vis = L ? function (x, y, r) { var dx = x - L.fx, dy = y - L.fy, q = (L.R + r * u) / L.m; return dx * dx + dy * dy <= q * q; } : function () { return true; };
     var pieceVis = L ? function (b, r) {
       var x0 = Math.min(b[0][0], b[1][0], b[2][0], b[3][0]), x1 = Math.max(b[0][0], b[1][0], b[2][0], b[3][0]);
       var y0 = Math.min(b[0][1], b[1][1], b[2][1], b[3][1]), y1 = Math.max(b[0][1], b[1][1], b[2][1], b[3][1]);
-      var dx = Math.max(x0 - L.cx, 0, L.cx - x1), dy = Math.max(y0 - L.cy, 0, L.cy - y1), q = (L.R + r) / L.m;
+      var dx = Math.max(x0 - L.fx, 0, L.fx - x1), dy = Math.max(y0 - L.fy, 0, L.fy - y1), q = (L.R + r * u) / L.m;
       return dx * dx + dy * dy <= q * q;
     } : function () { return true; };
 
@@ -549,15 +571,16 @@
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.clip();
     ctx.fillStyle = background(); ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
-    drawLayer({ cx: cx, cy: cy, m: route.glassMag, R: R });
+    var f = glassFocus();
+    drawLayer({ cx: cx, cy: cy, fx: f[0], fy: f[1], m: route.glassMag, R: R });
     ctx.restore();
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI);
-    ctx.lineWidth = 3 * px; ctx.strokeStyle = '#ffffff'; ctx.stroke();
-    ctx.lineWidth = 1.5 * px; ctx.strokeStyle = '#404040'; ctx.stroke();
+    ctx.lineWidth = 9 * px; ctx.strokeStyle = '#ffffff'; ctx.stroke();      // (v285, Peter 11/16: the rim three times as thick — 3 and 1.5 px before)
+    ctx.lineWidth = 4.5 * px; ctx.strokeStyle = '#404040'; ctx.stroke();
     var label = glassMagText(route.glassMag);
     ctx.font = 'bold ' + (13 * px) + 'px Calibri, "Segoe UI", sans-serif'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-    ctx.lineWidth = 3 * px; ctx.strokeStyle = '#ffffff'; ctx.strokeText(label, cx, cy + R - 10 * px);
-    ctx.fillStyle = '#404040'; ctx.fillText(label, cx, cy + R - 10 * px);
+    ctx.lineWidth = 3 * px; ctx.strokeStyle = '#ffffff'; ctx.strokeText(label, cx, cy + R - 15 * px);
+    ctx.fillStyle = '#404040'; ctx.fillText(label, cx, cy + R - 15 * px);   // (v285: clear of the thicker rim)
     ctx.textAlign = 'start';
   }
   /* Colors → Color regions (v274, Peter 11/14; regions.js): the inner regions filled, each in one of five colors
@@ -778,31 +801,11 @@
      point distribution and not create or wait for a new one"); the keys 1–9 and 0, and a change in the menu,
      lay out anew. The seeds kept are the spots the game started with and those added by hand (originalSpots),
      where they first stood (firstPlaces), scaled to the drawing area if its size changed; the Spots field is set to their number. */
-  /* v185 (Peter 10/19): a new game's sizes follow its drawing area — with C the mean of its width and
-     height, spot size (the diameter) C/70 and index size C/50, each held to its slider's range. A loaded game
-     keeps the sizes saved with it; the sliders can still be moved by hand.
-     v195 (Peter 10/21, his game of 13-57-53 in 1456 x 937: "the default line thickness now is the maximum
-     available … when I type N the system changes the line thickness to max size"): the curve thickness no
-     longer follows the area — C/150 gave 8 px there and the slider's 7.5 px maximum from 1300 px up, while he
-     draws with 4.5–5.8 px whatever the area; the slider's own value stays (default × 2.3 = 5.8 px). And the
-     sizes are set from the area ONLY WHEN THE AREA HAS CHANGED since they were last set from it (sizedFor):
-     N in the same area leaves the sliders as the player set them. */
-  /* (thin branch, Peter 10/31: "set the defaults like they are in the most recent snapshot" — spots × 0.8 and
-     indices × 1.4 in his 1678 x 983 area, C = 1330.5: spot diameter 9.6 px = C/139, index 18.2 px = C/73;
-     before, C/70 and C/50 put × 1.6 and × 2 there whatever the defaults said) */
-  var AREA_PER_SPOT = 1330.5 / (0.8 * 2 * 6), AREA_PER_NUMBER = 1330.5 / (1.4 * 13);
-  var sizedFor = null;
+  /* (v294, Peter 11/17: "if I open the software in a large window the spots look larger than if I open it in a small
+     window. They should look the same.") Spot size, index size and curve thickness are the sliders' own, in screen
+     pixels, whatever the drawing area — v185–v293 set spots and indices from the area of a new game (C/139 and C/73,
+     C the mean of width and height), and that is gone. */
   var seedsLoaded = false;   // the present game's seeds came from a file (useLoaded) or are kept from one: N keeps them (v196)
-  function sizesFor(W, H) {
-    var key = W + 'x' + H;
-    if (key === sizedFor) return;
-    sizedFor = key;
-    var C = (W + H) / 2;
-    [['opt-spotsize', C / AREA_PER_SPOT / (2 * SPOT_R0)], ['opt-numbersize', C / AREA_PER_NUMBER / NUMBER_PX0]].forEach(function (s) {
-      var el = document.getElementById(s[0]), v = Math.min(Number(el.max), Math.max(Number(el.min), s[1]));
-      el.value = v; el.dispatchEvent(new Event('input'));
-    });
-  }
   /* Where the spots idx first stood (firstAt), scaled to a W x H area (Peter 11/1: "With Random Points, when I press N
      for a new game, it regenerates the point set. It should use the old point set." — N took the seeds where they
      stood at the END of the game, and R tidying had moved them by hundreds of pixels). A spot without a record is
@@ -815,6 +818,15 @@
     });
     return out;
   }
+  /* (v301, Peter 11/19: an empty strip along the left side of a 1000-seed game that no R would fill) the box of the
+     seeds where they first stood (the game's own spots and those added by hand), for R's kept shape (redraw.js
+     keepShape): the picture keeps the shape of the game's starting layout, not the shape it had when R started.
+     null when they have no extent in one direction (one seed, a Line layout): then the drawing area's shape. */
+  function startShape() {
+    var f = firstPlaces(Object.keys(originalSpots()).map(Number), game.W0, game.H0), x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    Object.keys(f).forEach(function (i) { var p = f[i]; x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+    return x1 > x0 && y1 > y0 ? [x0, y0, x1, y1] : null;
+  }
   function setFirst() { firstAt = {}; game.spots.forEach(function (s, i) { firstAt[i] = [s.x, s.y, game.W0, game.H0]; }); }
   function newGame(layout, preview, afresh) {
     if (net && net.role === 2 && !netAllow) { say('Only the host starts games while connected (Net → Leave to play alone).', true, null, true); return; }   // (v79)
@@ -823,7 +835,6 @@
     if (typeof layout !== 'string') layout = document.getElementById('opt-layout').value;
     var n = Math.floor(Number(document.getElementById('opt-spots').value));
     var W = stage.clientWidth, H = stage.clientHeight, pts = [], kept = null;
-    sizesFor(W, H);
     var seed = reseed();                           // (v201: a seeded run starts afresh with every new game)
     /* (with a seed the layout is repeatable anyway, and laying out again draws the same numbers from the generator, so
        the moves repeat too — but not a LOADED game's seeds, v240: Peter 11/2, N after a loaded seeded game laid out new
@@ -992,6 +1003,28 @@
   }
 
   canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  /* (v284, Peter 11/16: "when pressing the alt key rotating the mouse wheel changes the magnification") Alt+wheel over
+     the drawing: the magnifier's magnification, a notch (100 px or 3 lines of scrolling) a factor √2 — up to magnify
+     more; with no glass shown, one is put where the pointer is. The slider (View → Magnification) follows. Releasing
+     Alt after that does not take the focus to the browser's menu. */
+  var altWheeled = false;
+  /* (v285, Peter 11/16) …and the wheel alone with the pointer over the glass */
+  canvas.addEventListener('wheel', function (e) {
+    if (!e.deltaY) return;
+    var q = toWorldRaw(e);
+    if (!e.altKey && !(glass && G.dist(q, [glass.x, glass.y]) < glassR())) return;
+    e.preventDefault(); if (e.altKey) altWheeled = true;
+    if (!glass) setGlass({ x: q[0], y: q[1] });
+    var notches = e.deltaMode === 1 ? e.deltaY / 3 : e.deltaMode === 2 ? e.deltaY : e.deltaY / 100;
+    var inp = document.getElementById('opt-glassmag'), m0 = route.glassMag;
+    /* (v286, Peter 11/16: "the location of the cursor (within the glass) stays fixed") the point of the picture under
+       the pointer stays under it: the focus f moves so that f + (p − c) / m is the same point before and after */
+    var inside = G.dist(q, [glass.x, glass.y]) < glassR(), f0 = glassFocus(), w = [f0[0] + (q[0] - glass.x) / m0, f0[1] + (q[1] - glass.y) / m0];
+    inp.value = Math.max(Number(inp.min), Math.min(Number(inp.max), Number(inp.value) - notches * Math.log10(2) / 2));
+    inp.dispatchEvent(new Event('input'));
+    if (inside) { glass.fx = w[0] - (q[0] - glass.x) / route.glassMag; glass.fy = w[1] - (q[1] - glass.y) / route.glassMag; draw(); }
+  }, { passive: false });
+  document.addEventListener('keyup', function (e) { if (e.key === 'Alt' && altWheeled) { altWheeled = false; e.preventDefault(); } });
 
   canvas.addEventListener('pointerdown', function (e) {
     if (e.button === 0 && e.altKey) {             // (v223) Alt+click / Alt+drag: the magnifier — at any time, busy or not
@@ -1049,7 +1082,9 @@
     if (glassDrag) {                              // (v223) moving the magnifier; a press that moves by less than a pixel on the screen is still a click
       var q = toWorldRaw(e);
       if (!glassDrag.moved && G.dist(q, glassDrag.at) * view.s < 1) return;
-      glassDrag.moved = true; glass.x = q[0] + glassDrag.dx; glass.y = q[1] + glassDrag.dy;
+      glassDrag.moved = true;
+      var f1 = glassFocus(), nx = q[0] + glassDrag.dx, ny = q[1] + glassDrag.dy;
+      glass.fx = f1[0] + nx - glass.x; glass.fy = f1[1] + ny - glass.y; glass.x = nx; glass.y = ny;   // (v286: the focus moves with the glass)
       drawSoon();
       return;
     }
@@ -1365,7 +1400,7 @@
     if (noWorkers) { say('Turning the picture inside out needs workers (the page is open as a file).', true, null, true); return; }
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
-              keepShape: !route.rFill, fill: route.rFill, halfStumps: route.smallDead };
+              keepShape: !route.rFill, fill: route.rFill, halfStumps: route.smallDead, shape: startShape() };
     startRedrawWorker(o, false, null, true);
   }
   function relayDrawing(kind, fresh) {
@@ -1376,7 +1411,8 @@
                 { a: armed.a, b: pendingRoom.b, ar: armed, region: D.region(armed.an, armed.region) } : null;
     armed = null; pendingRoom = null; roomSnapshot = false; stroke = null;
     var o = { d0: route.d0, D: route.D, lambda: route.lambda, spotR: SPOT_R, rho: route.D * Math.SQRT2,
-              keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
+              keepShape: kind === 'redraw' && !route.keepSeeds && !route.rFill, fill: kind === 'redraw' && !route.keepSeeds && route.rFill, halfStumps: route.smallDead,
+              shape: startShape() }, from = game;   // (halfStumps: for the drawing workers, v212)   // (v211: keepShape, redraw.js)
     if (kind === 'fresh') {
       /* (v270, Peter 11/13: "I thought that Z simply applied R to the FPP configuration. Have we ever tried that?")
          Z is the layout followed by R AS IT IS — by patches, with the picture's shape kept or the area filled as the
@@ -1576,7 +1612,7 @@
        them) is the same news as a failed round, and gets the same message */
     if (par.roundFailed || par.done === all) return { error: (par.roundFailed ? 'the first ' + par.done + ' layouts (one round, one for each worker) all failed, so the others were not tried'
                                                                                : 'all ' + all + ' layouts (the regions with the least nesting outside) failed') + ' — the picture has run out of room. ' +
-                                         'More room: smaller spots (Settings → Spot size) or a smaller Minimum clearance (Settings); for the next game, a larger drawing area (Game → Size: during a game the picture is only scaled)', clearance: -Infinity, outOfRoom: true };
+                                         'More room: smaller spots (Settings → Spot size) or a smaller Minimum clearance (Settings); for the next game, a larger drawing area (Game → Drawing area size: during a game the picture is only scaled)', clearance: -Infinity, outOfRoom: true };
     return { error: par.done ? 'none of the ' + par.done + ' layouts finished so far could be drawn' : 'stopped before any layout was finished',
              clearance: -Infinity };
   }
@@ -2470,7 +2506,6 @@
   /* Second click: route from the armed start to spot b and hand over to the band. */
   function connectTo(b) {
     var ar = armed;
-    plainOffer = null;
     marksUsed = Object.keys(ar.markedSpots).map(Number).sort(function (x, y) { return x - y; });
     if (Object.keys(ar.marks).length || Object.keys(ar.arcMarks).length || ar.encloseNone || ar.mArc) {   // (v112: as aiTry — also the computer's arc and a loop round nothing)
       ar.why = null;
@@ -2480,15 +2515,6 @@
       return;
     }
     connectRouted(ar, b, false);
-  }
-  /* Enter after the marks could not be applied (v140): the move the shortest way, the marks dropped */
-  var plainOffer = null;
-  function plainAnyway() {
-    var o = plainOffer; plainOffer = null;
-    if (!o || armed !== o.ar) return;
-    marksUsed = null;
-    note = 'the marks could not be applied — drawn the shortest way (Enter)';
-    connectRouted(o.ar, o.b, false);
   }
   /* connectTo's second half (v139: after the marked route, which may come from the worker) */
   function connectRouted(ar, b, marked, mr) {
@@ -2509,10 +2535,12 @@
         setTimeout(function () { roomCheck = false; if (armed === ar) explainMarkedNoRoom(b); }, 30);
         return;
       }
-      if (mr.plain && mr.failed) {                 // v140 (Peter): a hand move is drawn as marked or not at all — the shortest way only if asked (Enter)
-        plainOffer = { ar: ar, b: b };
+      /* v140 (Peter): a hand move is drawn as marked or not at all. (v289, Peter 11/17: Enter's "the shortest way anyway"
+         taken out — it drew another move than the one marked; with Allow thin moves on, the default, this is not
+         reached: the move is drawn thin round the marks, above) */
+      if (mr.plain && mr.failed) {
         say('The marks cannot be applied here: ' + String(note || 'no way round them').replace(/ — drawn the shortest way$/, '') +
-            '.   Enter: the shortest way anyway (it may enclose other spots) — or draw the curve by hand, or click another spot', true);
+            '.   Draw the curve by hand, or click another spot — or switch on Room → Allow thin moves, which always honors the marks', true);
         note = null; draw(); return;
       }
       armed = null;
@@ -2534,7 +2562,7 @@
     var st = stroke; stroke = null;
     var a = st.from, A = game.spots[a];
     var reject = function (msg) { say(msg, true); draw(); };
-    var b = dest !== undefined ? dest : nearestSpot(st.pts[st.pts.length - 1], function (sp, i) { return i === a ? sp.deg <= 1 : sp.deg < 3; }, 3 * SNAP);
+    var b = dest !== undefined ? dest : nearestSpot(st.pts[st.pts.length - 1], function (sp, i) { return i === a ? sp.deg <= 1 : sp.deg < 3; }, 3 * SNAP / view.s);   // (v293: pixels on the screen, as the spots are drawn)
     if (b < 0) return reject('End the curve near a spot with a free connection.');
     var B = game.spots[b], loop = a === b;
 
@@ -2926,7 +2954,6 @@
     if (data.players) log('Players from the file: ' + [1, 2].map(function (p) { return 'Player ' + p + ' (' + playerName(p) + ') ' + playerText(p); }).join(', ') + '.');
     /* (v185) the drawing area's size saved with it, as Game → Size sets it (in a tab: inside the window) */
     if (data.area && data.area.w > 0 && data.area.h > 0 && (data.area.w !== stage.clientWidth || data.area.h !== stage.clientHeight)) { sizeKeepsGame = true; applySize(Math.round(data.area.w), Math.round(data.area.h)); }   // (the loaded game is kept, not laid out afresh)
-    sizedFor = (data.area && data.area.w > 0 ? Math.round(data.area.w) + 'x' + Math.round(data.area.h) : stage.clientWidth + 'x' + stage.clientHeight);   // (v195: the loaded sizes count as set for this area — a new game here keeps them)
     seedsLoaded = true; document.getElementById('opt-spots').value = Object.keys(originalSpots()).length;   // (v196: N starts a new game from the file's seeds; the Spots field shows their number)
     /* v205 (Peter 10/23): a game loaded in play between two computers used to start
        moving the moment it was loaded, leaving no chance to look at the position. It
@@ -3073,16 +3100,27 @@
      window stays resizable either way. Max square: the largest square the screen has room for (the window's,
      where it cannot be resized). Full screen: as F. Before the first move the spots are laid out afresh for
      the new size (previewLayout); later the picture is only scaled, as by any resize. */
-  var fixedArea = null, sizing = false, sizeKeepsGame = false, sizeQuiet = false;   // (sizeQuiet, v170: Y's own resize names no refusal)   // (sizeKeepsGame, v166: Y's resize lays out nothing afresh)
+  var fixedArea = null, sizing = false, sizeKeepsGame = false, sizeQuiet = false, sizeSaid = null, sizeShaped = null;   // (sizeShaped, v302: the size asked for when the game's shape made it another)   // (sizeQuiet, v170: Y's own resize names no refusal)   // (sizeKeepsGame, v166: Y's resize lays out nothing afresh)
   var sizeW = document.getElementById('opt-width'), sizeH = document.getElementById('opt-height'), statusbarEl = document.getElementById('statusbar');
   function showSize() {
     if (document.activeElement === sizeW || document.activeElement === sizeH) return;   // (not while one is being typed in)
-    sizeW.value = stage.clientWidth; sizeH.value = stage.clientHeight;
+    var d = drawnArea(); sizeW.value = d[0]; sizeH.value = d[1];
   }
   function setFixed(w, h) {
     fixedArea = w ? { w: w, h: h } : null;
     stage.style.flex = w ? '0 0 auto' : ''; stage.style.width = w ? w + 'px' : ''; stage.style.height = w ? h + 'px' : '';
     stage.style.margin = w ? '0 auto' : '';
+  }
+  /* whether a new size lays the game out afresh (sized → previewLayout: the same conditions) */
+  function willLayOut() {
+    if (sizeKeepsGame || net || game.moves > 0 || relaying || band || roomBusy || routeBusy) return false;
+    var layout = document.getElementById('opt-layout').value, n = Math.floor(Number(document.getElementById('opt-spots').value));
+    return layout !== 'manual' && n >= 1;
+  }
+  /* the largest area of the game's shape (W0 x H0) inside w x h, in whole pixels */
+  function shapeIn(w, h) {
+    var s = Math.min(w / game.W0, h / game.H0);
+    return [Math.max(1, Math.min(w, Math.round(game.W0 * s))), Math.max(1, Math.min(h, Math.round(game.H0 * s)))];
   }
   function windowRoom() { return { w: window.innerWidth, h: window.innerHeight - menubar.offsetHeight - statusbarEl.offsetHeight }; }
   function applySize(w, h, square) {
@@ -3094,8 +3132,16 @@
     setFixed(0);
     var dW = window.outerWidth - stage.clientWidth, dH = window.outerHeight - stage.clientHeight;
     var maxW = screen.availWidth - dW, maxH = screen.availHeight - dH;
-    if (square) w = h = Math.min(maxW, maxH);
+    /* (v302, Peter 11/20: the drawing area is where curves can be drawn, and gray beside it "means something did
+       not go as intended") when no new layout follows — moves made, a game loaded or carried over by Y, spots
+       placed by hand — the game's shape is fixed, and the size asked for becomes the largest area of that shape
+       inside it (Max square: inside the screen), so no gray is left beside the picture */
+    var kept = !willLayOut(), asked = w + ' x ' + h;
+    if (square) { if (kept) { w = maxW; h = maxH; } else w = h = Math.min(maxW, maxH); }
+    if (kept) { var f = shapeIn(w, h); w = f[0]; h = f[1]; }
     var tw = Math.min(w, maxW), th = Math.min(h, maxH), before = [window.outerWidth, window.outerHeight];
+    if (kept) { f = shapeIn(tw, th); tw = f[0]; th = f[1]; }
+    sizeShaped = kept && !square && asked !== w + ' x ' + h ? asked : null;
     sizing = true;
     var x = Math.max(screen.availLeft || 0, Math.min(window.screenX, (screen.availLeft || 0) + screen.availWidth - (tw + dW)));
     var y = Math.max(screen.availTop || 0, Math.min(window.screenY, (screen.availTop || 0) + screen.availHeight - (th + dH)));
@@ -3104,8 +3150,9 @@
     afterResize(function () {
       if (window.outerWidth === before[0] && window.outerHeight === before[1] && (stage.clientWidth !== tw || stage.clientHeight !== th)) {
         var room = windowRoom();                  // refused: the size inside the window
-        if (square) w = h = Math.min(room.w, room.h);
+        if (square && !kept) w = h = Math.min(room.w, room.h);
         tw = Math.min(w, room.w); th = Math.min(h, room.h);
+        if (kept) { f = shapeIn(tw, th); tw = f[0]; th = f[1]; }
         setFixed(tw, th);
       } else if (stage.clientWidth !== tw || stage.clientHeight !== th) {   // resized, but the frame came out a pixel or so other than measured: once more by the difference
         window.resizeTo(window.outerWidth + tw - stage.clientWidth, window.outerHeight + th - stage.clientHeight);
@@ -3138,8 +3185,10 @@
     /* said after the new layout's turn message and the resize's own "Drawing area is …" (the ResizeObserver
        reports in the frame after the change), so that it is what stays on the status line */
     requestAnimationFrame(function () { requestAnimationFrame(function () {
-      say('Drawing area is ' + a + ' x ' + b + (short ? '   —   ' + w + ' x ' + h + ' does not fit: this is the most there is room for' + (fixedArea ? ' in this window' : ' on this screen') : '') +
-          (fixedArea && !quiet ? '   —   the window could not be resized (' + whyFixed() + '), so the drawing area is set inside it' : ''), short || (!!fixedArea && !quiet), null, true);
+      var shaped = sizeShaped; sizeShaped = null;
+      say(areaText() + (shaped ? '   —   the game\'s shape inside the ' + shaped + ' asked for' : '') + (short ? '   —   ' + w + ' x ' + h + ' does not fit: this is the most there is room for' + (fixedArea ? ' in this window' : ' on this screen') : '') +
+          (fixedArea && !quiet ? '   —   the window could not be resized: ' + whyFixed() : ''), short || (!!fixedArea && !quiet), null, true);
+      sizeSaid = statusEl.textContent;            // (v291: a later resize replaces it — see the ResizeObserver)
     }); });
   }
   /* Why the browser refused to resize the window (v163, Peter 10/14: his game ran in an ordinary tab, opened by
@@ -3147,9 +3196,9 @@
      is 'standalone' (a tab's is 'browser'; window.toolbar.visible is true in both: checked in Chromium) — and
      not one in full screen or maximized. */
   function whyFixed() {
-    if (browserFull()) return 'Chrome is in full screen: F11 leaves it';
-    if (!ownWindow()) return 'the game runs in an ordinary browser tab: Y opens it in a window of its own, which can be';
-    if (window.outerWidth >= screen.availWidth && window.outerHeight >= screen.availHeight) return 'the window is maximized: restore it first';
+    if (browserFull()) return 'Chrome is in full screen (F11 leaves it)';
+    if (!ownWindow()) return 'in a browser tab only App mode (Y) allows that';
+    if (window.outerWidth >= screen.availWidth && window.outerHeight >= screen.availHeight) return 'the window is maximized (restore it first)';
     return 'the browser refused';
   }
   window.addEventListener('resize', function () { if (!sizing && fixedArea) setFixed(0); });   // (the window resized by hand: the drawing area fills it again)
@@ -3209,7 +3258,8 @@
      #keys-overlay); Space or K / ? again closes it. The drawing and whatever runs behind are untouched. */
   var keysOverlay = document.getElementById('keys-overlay');
   function toggleKeys() { keysOverlay.hidden = !keysOverlay.hidden; }
-  var keys = { x: exitPage, '<': stepBack, '>': stepForward, n: newOrStart, u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); else plainAnyway(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); }, i: turnInsideOut, o: toggleRegions };
+  var keys = { x: exitPage, '<': stepBack, '>': stepForward, arrowleft: stepBack, arrowright: stepForward, n: newOrStart,   // (v288, Peter 11/17: ← and → as < and >)
+             u: undo, f: toggleFullScreen, c: togglePolygons, s: toggleNumbers, h: toggleSmallDead, t: toggleTriangles, g: toggleDeadNumbers, '/': toggleSeedNumbers, q: function () { sayArea(); }, y: openOwnWindow, enter: function () { if (game.phase === 'place') startPlay(); }, m: function () { byHand('M'); makeRoom(); }, d: drawAgain, a: toggleKeepSeeds, r: function () { byHand('R'); relayDrawing('redraw'); }, z: function () { byHand('Z'); relayDrawing('fresh'); }, i: turnInsideOut, o: toggleRegions };
   for (var dk = 0; dk <= 9; dk++) keys[String(dk)] = quickGame.bind(null, dk);
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -3221,6 +3271,7 @@
     if (k === 'p' && keysOverlay.hidden) { e.preventDefault(); closeMenus(); savePNG(); return; }   // (v236) likewise
     if (!keysOverlay.hidden) return;              // while the list is shown, the other keys wait (Space closes it, above)
     if (relaying || roomBusy || routeBusy) return;   // (the space bar is handled above; roomBusy, routeBusy: in a worker, v137, v139)
+    if ((k === 'arrowleft' || k === 'arrowright') && tag === 'INPUT' && e.target.type === 'range') return;   // (v288: on a slider the arrows move the slider)
     var fn = keys[k];
     if (fn) { e.preventDefault(); closeMenus(); fn(); }
   });
@@ -3274,7 +3325,7 @@
     btn.addEventListener('click', function (e) {
       var menu = btn.parentNode, wasOpen = menu.classList.contains('open');
       closeMenus();
-      if (!wasOpen) { menu.classList.add('open'); placePanel(menu); }
+      if (!wasOpen) { showTitle(btn); menu.classList.add('open'); placePanel(menu); }
       e.stopPropagation();
     });
   });
@@ -3289,6 +3340,58 @@
   function placeOpen() { document.querySelectorAll('.menu.open').forEach(placePanel); }
   menubar.addEventListener('scroll', placeOpen);   // (an open panel follows its title)
   window.addEventListener('resize', placeOpen);
+  /* v295 (Peter 11/17: in a narrow window not all menus could be reached — the bar scrolled with the wheel only,
+     and nothing showed it): when the bar holds more than fits, an arrow ‹ or › lies over the end that is cut off.
+     A click scrolls to the next title that is hidden on that side, holding the arrow down goes on title by title;
+     the wheel still scrolls. The arrows lie over the bar (position: fixed), so its height does not change. A menu
+     opened while its title is partly hidden scrolls it into view first (showTitle). */
+  var barArrows = ['left', 'right'].map(function (side) {
+    var b = document.createElement('button');
+    b.className = 'bar-arrow'; b.innerHTML = side === 'left' ? '&lsaquo;' : '&rsaquo;'; b.dataset.side = side;
+    document.body.appendChild(b);
+    var held = null;
+    function stop() { clearTimeout(held); held = null; }
+    b.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); e.stopPropagation(); closeMenus();
+      (function again(first) { barStep(side); held = setTimeout(function () { again(false); }, first ? 400 : 250); })(true);   // (the key-repeat rhythm)
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (t) { b.addEventListener(t, stop); });
+    b.addEventListener('click', function (e) { e.stopPropagation(); });
+    return b;
+  });
+  function arrowW() { return barArrows[0].offsetWidth || barArrows[1].offsetWidth; }
+  function titles() { return [].slice.call(menubar.querySelectorAll('.menu-title')); }
+  /* the next title (to the left or right) not fully clear of the arrows, brought fully into view */
+  function barStep(side) {
+    var r = menubar.getBoundingClientRect(), w = arrowW() || 0, lo = r.left + w, hi = r.right - w;
+    var t = titles().map(function (b) { return b.getBoundingClientRect(); });
+    if (side === 'left') {
+      var cut = t.filter(function (q) { return q.left < lo - 0.5; }).pop();
+      menubar.scrollLeft = cut ? menubar.scrollLeft - (lo - cut.left) : 0;
+    } else {
+      var next = t.filter(function (q) { return q.right > hi + 0.5; })[0];
+      menubar.scrollLeft = next ? menubar.scrollLeft + (next.right - hi) : menubar.scrollWidth;
+    }
+  }
+  function showTitle(btn) {
+    var r = menubar.getBoundingClientRect(), q = btn.getBoundingClientRect(), w = menubar.scrollWidth > menubar.clientWidth ? arrowW() : 0;
+    if (q.left < r.left + w) menubar.scrollLeft -= r.left + w - q.left;
+    else if (q.right > r.right - w) menubar.scrollLeft += q.right - (r.right - w);
+  }
+  function placeArrows() {
+    var r = menubar.getBoundingClientRect(), max = menubar.scrollWidth - menubar.clientWidth;
+    barArrows.forEach(function (b) {
+      var on = max > 0.5 && (b.dataset.side === 'left' ? menubar.scrollLeft > 0.5 : menubar.scrollLeft < max - 0.5);
+      b.style.display = on ? 'block' : 'none';
+      if (!on) return;
+      b.style.top = r.top + 'px'; b.style.height = r.height + 'px';
+      b.style.left = (b.dataset.side === 'left' ? r.left : r.right - b.offsetWidth) + 'px';
+    });
+  }
+  menubar.addEventListener('scroll', placeArrows);
+  window.addEventListener('resize', placeArrows);
+  new ResizeObserver(placeArrows).observe(menubar);
+  placeArrows();
   /* the mouse wheel over the bar scrolls it sideways, when there is more than fits */
   [menubar, document.getElementById('statusbar')].forEach(function (bar) {   // (v142: the status line, now a line of its own, too)
     bar.addEventListener('wheel', function (e) {
@@ -3418,7 +3521,7 @@
   window.addEventListener('resize', showFull);
   showFull();
   document.getElementById('opt-triangles').addEventListener('change', function (e) { route.triangles = e.target.checked; draw(); });
-  document.getElementById('opt-rules').addEventListener('change', function (e) { game.rules = e.target.value; log('Rules changed to ' + rulesName(game.rules) + '.'); sayTurn(); });
+  document.getElementById('opt-rules').addEventListener('change', function (e) { game.rules = e.target.value; log('Game mode changed to ' + rulesName(game.rules) + '.'); sayTurn(); });
   document.getElementById('opt-click').addEventListener('change', function (e) { route.click = e.target.checked; if (!route.click && armed) disarm('Cancelled.'); });
   /* The Room menu (v152, Peter 10/7): which rungs of the ladder (LADDER, climbOn, aiClimb) are used
      automatically, for a human's moves and the computer's; and Heroic (v67), which switches the human's
@@ -3914,7 +4017,31 @@
     aiNext();
   }
   /* after A or R: the move in the new drawing */
+  /* (v290) another move between the move's two spots that gives the intended position (its key or its canonical form)
+     and has not been tried in this drawing yet — as aiFind, but every family between the spots, not the first */
+  function aiEquivalent(a) {
+    var cur = a.move;
+    if (!cur || a.remote) return null;
+    var id = function (mv) { return [mv.r, mv.j, mv.i, mv.j2, mv.i2, (mv.S || []).join('.')].join(':'); };
+    var tried = a.equivTried || (a.equivTried = {}), enc = a.enc || {}, out = null;
+    tried[id(cur)] = true;
+    AI.families(a.pos).forEach(function (fam) {
+      if (out || !((fam.x === a.mx && fam.y === a.my) || (fam.x === a.my && fam.y === a.mx))) return;
+      var bds = a.pos.regions[fam.r].boundaries, S = fam.others.filter(function (k) { return bds[k].every(function (t) { return enc[t]; }); });
+      [S, fam.others.filter(function (k) { return S.indexOf(k) < 0; })].forEach(function (sx) {
+        if (out) return;
+        var mv = AI.expand(fam, sx), q = AI.apply(a.pos, mv);
+        if (!tried[id(mv)] && (AI.gameKey(q) === a.key || (a.canon && AI.canonical(q) === a.canon))) out = mv;
+      });
+    });
+    if (!out) return null;
+    tried[id(out)] = true;
+    var e = easyEnclosure(a.pos, out);
+    tried[id(e)] = true;
+    return e;
+  }
   function aiAgain(a) {
+    a.equivTried = null;                           // (v290: in a new drawing every way may be tried again)
     a.an = E.analyse(game.spots, game.edges); a.pos = AI.fromAnalysis(a.an, game.spots);
     a.useM = false;                                // (M only in the first round)
     aiRound(a);
@@ -3973,6 +4100,17 @@
       a.thin.tried = true; ai = a;
       thinDraw(a.thin.ar, a.thin.y, function (why) {   // (committed: aiCommitted judges it; else the Room menu's checked steps, below)
         ai = a; a.failed.push(a.text + ' (even thin: ' + why + ')');
+        /* (v290, Peter 11/17) before anything else, a move that gives the same position (its canonical form) in
+           another way — another region or other corners: in the series' 500-seed game 381 → 1489 in a sliver of a
+           region could not be drawn even thin (since v290 it can: moves.js, the ends inside the corner), R was refused
+           and the game stopped; the retry found the same position as a move in the region next to it and drew it at
+           once. (v287 tried "the same move from its other end" instead — built on a wrong reading; it did not help.) */
+        var eq = aiEquivalent(a);
+        if (eq) {
+          log(a.who + ': ' + a.text + ' could not be drawn even thin — trying ' + AI.describe(a.pos, eq) + ', which gives the same position.');
+          aiRound(a, [eq]);
+          return;
+        }
         aiClimb(a);
       });
       return;
@@ -4628,7 +4766,15 @@
      Drawing area is W x H" (CSS pixels of the canvas); it says the size again whenever the area changes
      (the window resized, full screen) and on Q. Logged at the start and after each change (v144). */
   var lastArea = null;
-  function areaText() { return 'Drawing area is ' + stage.clientWidth + ' x ' + stage.clientHeight; }
+  /* (v302, Peter 11/20: "Let's define drawing area to mean the area you can draw curves in") the game's own
+     rectangle as shown (W0 x H0 at the view's scale), not the space below the status row (the canvas) — the two
+     differ when the window has another shape than the one the game was laid out in, and the message says so */
+  function drawnArea() { return [Math.round(game.W0 * view.s), Math.round(game.H0 * view.s)]; }
+  function areaText() {
+    var d = drawnArea(), cw = stage.clientWidth, ch = stage.clientHeight;
+    return 'Drawing area is ' + d[0] + ' x ' + d[1] + (d[0] < cw || d[1] < ch ? ' of the ' + cw + ' x ' + ch +
+           ' below the status row (the game was laid out in a window of another shape; N lays out a new game in all of it)' : '');
+  }
   function sayArea() { say(areaText(), false, null, true); }
   new ResizeObserver(function () {
     resizeCanvas();
@@ -4639,8 +4785,12 @@
        log and on Q — so it does not take the place of a message the player still needs: the game's last
        word, or a refusal. Chrome's debugging bar appearing and disappearing resizes the area, and the
        result of a finished game was lost that way. */
-    if (!(game && game.phase === 'over') && !statusEl.classList.contains('warn'))
+    /* (v291, Peter 11/17) …but what Size said about the area (does not fit, the window could not be resized) is
+       about the area that was: when the area changes again it is out of date, and the new size takes its place */
+    var stale = sizeSaid !== null && statusEl.textContent === sizeSaid;
+    if (stale || (!(game && game.phase === 'over') && !statusEl.classList.contains('warn')))
       say((lastArea ? '' : 'Welcome to Sprouts.   ') + a, false, null, true);
+    if (stale) sizeSaid = null;
     lastArea = a;
     /* and in the log (v144, Peter): at the start and after each change. While a window edge is dragged
        the size changes many times in a row: a new size replaces the line of the one before when nothing
@@ -4696,7 +4846,7 @@
                                 ',left=' + window.screenX + ',top=' + window.screenY)   // (v168, Peter: where the browser window was — its upper left corner. The way back cannot: a tab goes where the browser puts it)
                   : window.open(location.pathname, '_blank');
     if (!w) { window.__sproutsHandoff = null; say('The browser did not open the new ' + (toOwn ? 'window' : 'tab') + ' (are pop-ups blocked for this page?).', true, null, true); maybeAI(); return; }
-    say(toOwn ? 'Opening the game in a window of its own…' : 'Moving the game to a browser tab…', false, null, true);
+    say(toOwn ? 'Opening the game in app mode…' : 'Moving the game to a browser tab…', false, null, true);
   }
   /* View → Window of its own: checked while the game has one (the box asks for the switch; it shows the state) */
   var windowBox = document.getElementById('opt-window');
@@ -4722,7 +4872,7 @@
     useLoaded(h.data, null, true);
     logLines = h.log.slice(); previousLog = h.previous;   // the log goes on where the tab left it
     try { if (previousLog) localStorage.setItem(LOG_PREV, previousLog); } catch (e) { /* nothing kept */ }
-    log(h.own ? 'The game moved to a window of its own (Y).' : 'The game moved back to a browser tab (Y).');
+    log(h.own ? 'The game moved to app mode (Y).' : 'The game moved back to a browser tab (Y).');
     try { window.opener.__sproutsMoved(); } catch (e) { /* the tab is gone already */ }
     /* v170 (Peter: "typing y changes the size of the drawing area … no options or settings should change"): the
        drawing area keeps its size both ways — the window resized to it, or in a tab (which takes the browser

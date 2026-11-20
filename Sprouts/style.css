@@ -18,6 +18,12 @@ body {
 }
 #menubar::-webkit-scrollbar { display: none; }
 #menubar > * { flex: 0 0 auto; }
+/* v295: the arrows over a cut-off end of the menu bar (ui.js placeArrows) */
+.bar-arrow {
+  display: none; position: fixed; z-index: 9; width: 24px; padding: 0; border: 0; cursor: pointer;
+  background: #1b2a4a; color: #e8ecf5; font: bold 22px/1 Calibri, sans-serif; box-shadow: 0 0 8px 4px #1b2a4a;
+}
+.bar-arrow:hover { background: #2b3f6b; }
 .menu { position: relative; }
 .menu-title {
   background: none; border: 0; color: inherit; font: inherit;

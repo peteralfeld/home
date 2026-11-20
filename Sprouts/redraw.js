@@ -378,8 +378,14 @@
     if (o.keepShape && P.length) {
       var bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity, mg = comfort + (o.spotR || 0);
       P.forEach(function (q) { if (q[0] < bx0) bx0 = q[0]; if (q[0] > bx1) bx1 = q[0]; if (q[1] < by0) by0 = q[1]; if (q[1] > by1) by1 = q[1]; });
-      var bw = bx1 - bx0 + 2 * mg, bh = by1 - by0 + 2 * mg, sc = Math.max(1, Math.min(game.W0 / bw, game.H0 / bh));
-      bw = Math.min(game.W0, sc * bw); bh = Math.min(game.H0, sc * bh);
+      /* (v301, Peter 11/19) the box's SHAPE is the game's starting layout's (o.shape: where the seeds first stood —
+         ui.js startShape; none: the area's), enlarged evenly as far as the area allows, and never smaller than the
+         picture as it is. Taken from the picture as it was when R started (v211–v300), the box could only narrow: once
+         the picture touched the top and bottom, no R could make it wider again, and a strip it had left along a side
+         stayed empty for the rest of the game (his 1000-seed game: x from 0 to 96 of 2560). */
+      var pw = bx1 - bx0 + 2 * mg, ph = by1 - by0 + 2 * mg, sh = o.shape;
+      var sw = sh ? sh[2] - sh[0] + 2 * mg : game.W0, shh = sh ? sh[3] - sh[1] + 2 * mg : game.H0, sc = Math.min(game.W0 / sw, game.H0 / shh);
+      var bw = Math.min(game.W0, Math.max(pw, sc * sw)), bh = Math.min(game.H0, Math.max(ph, sc * shh));
       var cx = Math.min(Math.max((bx0 + bx1) / 2, bw / 2), game.W0 - bw / 2), cy = Math.min(Math.max((by0 + by1) / 2, bh / 2), game.H0 - bh / 2);
       st.box = [cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2];
     }
@@ -1388,14 +1394,21 @@
      2,163 threw the whole of R away, though moves drawn thin leave such curves all the time and R had not made that
      one any worse (Peter's 500-seed game of 11/11–12: 116 R's refused, 18 of 21 hours). Now a curve without clearance
      counts against the new drawing only if it has LESS than it had before; the least clearance is reported as ever.
-     worse(): those curves (their edges), measured against the drawing R started from. */
+     worse(): those curves (their edges), measured against the drawing R started from.
+     (v287, Peter 11/17) …and less than the TIGHTEST curve of that drawing had: compared curve by curve, one loop that
+     ended 1.4 px tighter (−6.7 px against −5.3) threw away an R that had cleared 176 other curves, the worst of them
+     78 px short (the series' 500-seed game of 11/17, move 1104 — the game stopped). An R whose every curve has at
+     least the clearance the tightest one had before makes the picture no worse anywhere than it already was; one
+     that leaves a curve tighter than that still is refused (a picture that had room everywhere: any curve without). */
   var beforeOf = typeof WeakMap !== 'undefined' ? new WeakMap() : null;
   function certsOf(g, o) { var obs = Rm.allObstacles(g, o), c = {}; Rm.unitsOf(g).forEach(function (u) { c[u.edges.join(',')] = Rm.certOf(g, u, o, obs); }); return c; }
   function worse(st, g) {
     var was = beforeOf && beforeOf.get(st.game);
     if (!was) { was = certsOf(st.game, st.o); if (beforeOf) beforeOf.set(st.game, was); }
+    var least = Infinity;
+    Object.keys(was).forEach(function (k) { if (was[k] < least) least = was[k]; });
     var now = certsOf(g, st.o), out = [];
-    Object.keys(now).forEach(function (k) { if (!(now[k] > 0) && now[k] < was[k]) out.push(k.split(',').map(Number)); });
+    Object.keys(now).forEach(function (k) { if (!(now[k] > 0) && now[k] < was[k] && now[k] < least) out.push(k.split(',').map(Number)); });
     return out;
   }
   /* (v269) REPAIR. When the last fallback still leaves curves worse than they were, each of them gets a descent of

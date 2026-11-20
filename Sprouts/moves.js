@@ -893,7 +893,47 @@
         if (!holes.length && !ownMarked) return rt.loopNothing(a, okA);
         if (ownMarked && cyc) o.base = part(own);
         var P1 = hug();
-        return P1 && judge(P1) ? P1 : null;
+        return P1 && judge(P1) ? P1 : P1 ? endsInside(P1) : null;
+      }
+      /* (v290) THE ENDS INSIDE THE CORNER. Where the hug runs along a curve into a spot, its last leg can reach the spot
+         on the far side of that curve's direction there, though every point of it lies in the region: then the judge
+         (engine.afterMove) sees the move in the next region and refuses it. Peter's 500-seed game of 11/17, 381 → 1489
+         in a sliver of a region (22 px², 29 x 8 px): at 1489 the curve from 1360 arrives along −154.84°, the hug along
+         −155.56°. So, when the judge refuses the hug, each end may get one more point near its spot, on the direction
+         halfway between two neighbouring curves there — the curve then reaches the spot inside a corner, at an angle
+         however small, which R opens later. The judge decides which corner: every corner at each end is tried (a
+         spot has at most three curves), a quarter of the end leg from the spot (the judge goes by the direction at the
+         spot, which the distance does not change); a hug tried so once is not tried again (thinRoute's rounds). */
+      function curveDirsAt(s) {                    // the directions (angles) in which the curves at spot s leave it
+        var out = [];
+        gm.edges.forEach(function (e) {
+          if (!e.pieces || !e.pieces.length) return;
+          if (e.a === s) { var p = e.pieces[0]; out.push(Math.atan2(p[1][1] - p[0][1], p[1][0] - p[0][0])); }
+          if (e.b === s) { var q = e.pieces[e.pieces.length - 1]; out.push(Math.atan2(q[2][1] - q[3][1], q[2][0] - q[3][0])); }
+        });
+        return out;
+      }
+      var TAU = 2 * Math.PI, mod = function (x) { return ((x % TAU) + TAU) % TAU; };
+      function bisectors(s) {                      // the middle of each corner between neighbouring curves at s
+        var ts = curveDirsAt(s).map(mod).sort(function (u, v) { return u - v; }), out = [];
+        for (var k = 0; k < ts.length; k++) { var m = ts[k] + (mod(ts[(k + 1) % ts.length] - ts[k]) || TAU) / 2; out.push([Math.cos(m), Math.sin(m)]); }
+        return out;
+      }
+      function endsInside(P) {
+        var n = P.length, key = JSON.stringify(P), SA = [gm.spots[a].x, gm.spots[a].y], SB = [gm.spots[b].x, gm.spots[b].y];
+        var tried = ar.endsTried || (ar.endsTried = {});
+        if (tried[key]) return null;
+        tried[key] = true;
+        var LA = G.dist(P[1], SA) / 4, LB = G.dist(P[n - 2], SB) / 4;
+        var ua = [null].concat(gm.spots[a].deg >= 2 ? bisectors(a) : []), ub = [null].concat(gm.spots[b].deg >= 2 ? bisectors(b) : []);
+        for (var i = 0; i < ua.length; i++) for (var j = 0; j < ub.length; j++) {
+          if (!ua[i] && !ub[j]) continue;
+          var Q = P.slice();
+          if (ub[j]) Q.splice(Q.length - 1, 0, [SB[0] + LB * ub[j][0], SB[1] + LB * ub[j][1]]);
+          if (ua[i]) Q.splice(1, 0, [SA[0] + LA * ua[i][0], SA[1] + LA * ua[i][1]]);
+          if (judge(Q) && Th.certify(rt.tri, Q, 0, a, b).ok) return Q;   // (certified here: a point that cuts across a curve is no way, and thinRoute's rounds would refine for it in vain)
+        }
+        return null;
       }
       /* the arcs of a's boundary from a to b: arcOf[k] = 1 for the half-edges from a's corner round to b's */
       /* (b twice on the boundary, no side chosen at it: each of its corners in turn) */
@@ -921,6 +961,8 @@
           o.arc = legs;
           var P2 = hug();
           if (P2 && judge(P2)) return P2;
+          var P3 = P2 && endsInside(P2);
+          if (P3) return P3;
         }
       }
       return null;
